@@ -1,0 +1,40 @@
+{
+  "name": "pryv-javascript-light",
+  "version": "0.0.1",
+  "homepage": "https://github.com/pryv/lib-javascript-light",
+  "description": "Pryv Javascript Library",
+  "keywords": [
+    "Pryv"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pryv/lib-javascript-light"
+  },
+  "bugs": {
+    "url": "https://github.com/pryv/lib-javascript-light/issues"
+  },
+  "author": {
+    "name": "Pryv"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "build": "./node_modules/.bin/webpack --config webpack.config.js",
+    "test": "./node_modules/mocha/bin/mocha --reporter spec  test/**/*.test.js",
+    "test-cover": "./node_modules/istanbul/lib/cli.js cover ./node_modules/mocha/bin/_mocha -- -R spec ./test/**/*.test.js"
+  },
+  "contributors": [
+    {
+      "name": "Pierre-Mikael Legris",
+      "email": "perki@pryv.com"
+    }
+  ],
+  "dependencies": {
+    "superagent": "^5.1.3"
+  },
+  "devDependencies": {
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.9",
+    "webpack-dev-server": "^3.8.2"
+  },
+  "license": "BSD-3-Clause"
+}
