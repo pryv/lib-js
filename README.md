@@ -2,13 +2,12 @@
 
 ## Dev
 
-`npm install`
-
-### Build
-
-`npm run build`
-
-result is published in `./dist`directory 
+- Install: `npm install`
+- Build pryv.js library for browsers: `npm run build` result is published in `./dist`
+- Build documentation: `npm run doc` result is published in ` ./dist/doc` 
+- Node Tests: `npm run test`
+- Coverage: `npm run cover`result is visible in `./coverage`
+- Browser tests:  **build**, then`npm run webserver `and open https://l.rec.la:4443/dist/browser-tests.html
 
 
 ## Lib documentation
@@ -63,3 +62,23 @@ Pryv.auth
 
 
 ```
+
+# Todos
+
+Whishlist and todos.
+
+1. Review Connection.options setters design
+
+2. Add **Auto-load service info** and event listener
+
+3. Add Monitor and Filter with synchronization method
+
+4. Implement Get call with streaming of result
+
+5. Add HF event manipulation 
+
+6. Add Attachment support
+
+7. Auth: Check permission format at set-up
+
+   

@@ -2,28 +2,13 @@
 <html>
 
 <head>
-  <title>Pryv - Light - Javascript Lib</title>
-
-  <script src="./pryv-light.js"></script>
+  <title>Pryv - Javascript Lib</title>
+  <script src="./pryv.js"></script>
 </head>
 
 <body>
 <script>
-  var bob = new pryvLight.Connection('https://ck48a23l000hn1g40xjjg1y0i@marianne.pryv.me');
-
-  (async () => {
-      try {
-        const res = await bob.api(
-          [
-            {
-              "method": "events.get",
-              "params": {}
-            }]);
-        console.log(res);
-      } catch (err) {
-        console.error(err);
-      }
-    })();
+  
 </script>
 
 </body>
