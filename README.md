@@ -54,10 +54,20 @@ try {
 }
 ```
 
+### Service
+
+```javascript
+const pryvService = new Pryv.Service('https://reg.pryv.me/service/info');
+
+const pryvServiceInfo = await pryvService.info(); // return current service info or fetch if needed
+```
+
+
+
 ### Auth
 
-```
-Pryv.auth
+```javascript
+Pryv.Auth.setup(settings);
 
 
 

@@ -6,6 +6,7 @@
  * @namespace Pryv
  */
 module.exports = {
+  Service: require('./Service.js'),
   Connection: require('./Connection'),
   Auth: require('./Auth'),
   utils: require('./utils')

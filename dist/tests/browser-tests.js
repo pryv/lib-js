@@ -94,7 +94,18 @@ var browserTest =
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-eval("const should = chai.should();\nconst expect = chai.expect();\n\n\nconst testData = __webpack_require__(/*! ./test-data.js */ \"./test/test-data.js\");\n\nconst conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);\n\ndescribe('Connection', function () {\n  it('.api() events.get', async () => {\n    const res = await conn.api(\n      [\n        {\n          \"method\": \"events.get\",\n          \"params\": {}\n        }\n      ]);\n    res.length.should.equal(1);\n  });\n\n  it('.api() events.get split in chunks', async () => {\n    conn.options.chunkSize = 2;\n    const res = await conn.api(\n      [\n        { \"method\": \"events.get\", \"params\": {} },\n        { \"method\": \"events.get\", \"params\": {} },\n        { \"method\": \"events.get\", \"params\": {} }\n      ]);\n    res.length.should.equal(3);\n\n  });\n\n  it('.api() with callbacks', function (done) {\n    conn.api(\n      [\n        { \"method\": \"events.get\", \"params\": {} }\n      ]).then((res) => {\n        res.length.should.equal(1);\n        done();\n      }, (err) => {\n        should.not.exist(err);\n        done();\n      });\n\n  });\n});\n\n//# sourceURL=webpack://browserTest/./test/Connection.test.js?");
+eval("const should = chai.should();\nconst expect = chai.expect();\n\n\nconst testData = __webpack_require__(/*! ./test-data.js */ \"./test/test-data.js\");\n\nconst conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);\n\ndescribe('Connection', function () {\n\n  describe('.api()', function () {\n    it('.api() events.get', async () => {\n      const res = await conn.api(\n        [\n          {\n            \"method\": \"events.get\",\n            \"params\": {}\n          }\n        ]);\n      res.length.should.equal(1);\n    });\n\n    it('.api() events.get split in chunks', async () => {\n      conn.options.chunkSize = 2;\n      const res = await conn.api(\n        [\n          { \"method\": \"events.get\", \"params\": {} },\n          { \"method\": \"events.get\", \"params\": {} },\n          { \"method\": \"events.get\", \"params\": {} }\n        ]);\n      res.length.should.equal(3);\n\n    });\n\n    it('.api() with callbacks', function (done) {\n      conn.api(\n        [\n          { \"method\": \"events.get\", \"params\": {} }\n        ]).then((res) => {\n          res.length.should.equal(1);\n          done();\n        }, (err) => {\n          should.not.exist(err);\n          done();\n        });\n\n    });\n  });\n\n  describe('.get()', () => {\n    it ('/events', async () => { \n      const res = await conn.get('events',{limit: 1});\n      res.events.length.should.equal(1);\n    });\n\n  });\n\n});\n\n//# sourceURL=webpack://browserTest/./test/Connection.test.js?");
+
+/***/ }),
+
+/***/ "./test/Service.test.js":
+/*!******************************!*\
+  !*** ./test/Service.test.js ***!
+  \******************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+eval("\nconst should = chai.should();\n\nconst testData = __webpack_require__(/*! ./test-data.js */ \"./test/test-data.js\");\n\ndescribe('Service', function () {\n  it('info()', async () => {\n    const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);\n    const res = await pryvService.info();\n    should.exist(res);\n    should.exist(res.access);\n  });\n});\n\n\n\n\n//# sourceURL=webpack://browserTest/./test/Service.test.js?");
 
 /***/ }),
 
@@ -105,7 +116,7 @@ eval("const should = chai.should();\nconst expect = chai.expect();\n\n\nconst te
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-eval("/**\n * Entry Point for WebPack to build test series to be run in browser\n */\n__webpack_require__(/*! ./utils.test.js */ \"./test/utils.test.js\");\n__webpack_require__(/*! ./Connection.test.js */ \"./test/Connection.test.js\");\n\n//# sourceURL=webpack://browserTest/./test/browser-index.js?");
+eval("/**\n * Entry Point for WebPack to build test series to be run in browser\n */\n__webpack_require__(/*! ./utils.test.js */ \"./test/utils.test.js\");\n__webpack_require__(/*! ./Connection.test.js */ \"./test/Connection.test.js\");\n__webpack_require__(/*! ./Service.test.js */ \"./test/Service.test.js\");\n\n//# sourceURL=webpack://browserTest/./test/browser-index.js?");
 
 /***/ }),
 
@@ -116,7 +127,7 @@ eval("/**\n * Entry Point for WebPack to build test series to be run in browser\
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-eval("/**\n * Data used for tests\n */\nconst defaults = {\n  user: 'marianne.pryv.me',\n  token: 'ck48a23l000hn1g40xjjg1y0i'\n}\n\nmodule.exports = {\n  defaults: defaults,\n  pryvApiEndPoints : [\n    'https://' + defaults.token + '@' + defaults.user\n  ]\n}\n\n//# sourceURL=webpack://browserTest/./test/test-data.js?");
+eval("/**\n * Data used for tests\n */\nconst defaults = {\n  user: 'marianne.pryv.me',\n  token: 'ck48a23l000hn1g40xjjg1y0i',\n  serviceInfoUrl: 'https://reg.pryv.me/service/info'\n}\n\nmodule.exports = {\n  defaults: defaults,\n  pryvApiEndPoints : [\n    'https://' + defaults.token + '@' + defaults.user\n  ]\n}\n\n//# sourceURL=webpack://browserTest/./test/test-data.js?");
 
 /***/ }),
 

@@ -3,3 +3,4 @@
  */
 require('./utils.test.js');
 require('./Connection.test.js');
+require('./Service.test.js');
