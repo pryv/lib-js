@@ -20,9 +20,10 @@ class Auth {
    * @param {string | boolean} settings.returnURL : false, // set this if you don't want a popup
    * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
    * @param {Object} settings.callbacks
-   * @param {Object} settings.callbacks.accepted : function(apiEndPoint)
-   * @param {Object} settings.callbacks.refused: function(reason)
-   * @param {Object?} settings.callbacks.error: Optional function(code, message) 
+   * @param {Function} settings.callbacks.accepted : function(apiEndPoint)
+   * @param {Function} settings.callbacks.refused: function(reason)
+   * @param {Function?} settings.callbacks.error: Optional function(code, message)
+   * @param {Function?} settings.callbacks.serviceInfo: Optional function(code, s)
    */
   constructor(settings) {
     this.settings = settings;
@@ -48,13 +49,39 @@ class Auth {
     }
     
 
-    // 1. fetch service-info
+    init();
+  }
 
+  async function init() {
+    // 1. fetch service-info
+    this.pryvService = new Pryv.Service(settings.serviceInfoUrl);
+    await this.pryvService.info();
+
+    
+  }
+
+  /**
+   * Open Login Page.
+   * 
+   */
+  async function openLoginPage() { 
     // 2. Post access
     // 3.a Open Popup
     // 3.a.1 Poll Access
     // 3.b Open url 
   }
+
+  /**
+   * Revoke Connection and clean local cookies
+   * 
+   */
+  async function logOut() {
+    // 2. Post access
+    // 3.a Open Popup
+    // 3.a.1 Poll Access
+    // 3.b Open url 
+  }
+
 
 }
 
