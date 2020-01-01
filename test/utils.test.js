@@ -13,6 +13,18 @@ describe('utils', function () {
 
     done();
   });
+
+  it('buildAPIEndpoint', function (done) {
+    const apiEndPoint = Pryv.utils
+      .buildPryvApiEndPoint({ 
+        token: testData.defaults.token, 
+        endpoint: 'https://' + testData.defaults.user + '/'});
+    
+    apiEndPoint.should.equals(testData.pryvApiEndPoints[0] + '/');
+
+    done();
+  });
+
 });
 
 

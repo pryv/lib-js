@@ -94,7 +94,121 @@ var browserTest =
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-eval("const should = chai.should();\nconst expect = chai.expect();\n\n\nconst testData = __webpack_require__(/*! ./test-data.js */ \"./test/test-data.js\");\n\nconst conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);\n\ndescribe('Connection', function () {\n\n  describe('.api()', function () {\n    it('.api() events.get', async () => {\n      const res = await conn.api(\n        [\n          {\n            \"method\": \"events.get\",\n            \"params\": {}\n          }\n        ]);\n      res.length.should.equal(1);\n    });\n\n    it('.api() events.get split in chunks', async () => {\n      conn.options.chunkSize = 2;\n      const res = await conn.api(\n        [\n          { \"method\": \"events.get\", \"params\": {} },\n          { \"method\": \"events.get\", \"params\": {} },\n          { \"method\": \"events.get\", \"params\": {} }\n        ]);\n      res.length.should.equal(3);\n\n    });\n\n    it('.api() with callbacks', function (done) {\n      conn.api(\n        [\n          { \"method\": \"events.get\", \"params\": {} }\n        ]).then((res) => {\n          res.length.should.equal(1);\n          done();\n        }, (err) => {\n          should.not.exist(err);\n          done();\n        });\n\n    });\n  });\n\n  describe('.get()', () => {\n    it ('/events', async () => { \n      const res = await conn.get('events',{limit: 1});\n      res.events.length.should.equal(1);\n    });\n\n  });\n\n});\n\n//# sourceURL=webpack://browserTest/./test/Connection.test.js?");
+function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
+
+function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
+
+var should = chai.should();
+var expect = chai.expect();
+
+var testData = __webpack_require__(/*! ./test-data.js */ "./test/test-data.js");
+
+var conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);
+describe('Connection', function () {
+  describe('.api()', function () {
+    it('.api() events.get',
+    /*#__PURE__*/
+    _asyncToGenerator(
+    /*#__PURE__*/
+    regeneratorRuntime.mark(function _callee() {
+      var res;
+      return regeneratorRuntime.wrap(function _callee$(_context) {
+        while (1) {
+          switch (_context.prev = _context.next) {
+            case 0:
+              _context.next = 2;
+              return conn.api([{
+                "method": "events.get",
+                "params": {}
+              }]);
+
+            case 2:
+              res = _context.sent;
+              res.length.should.equal(1);
+
+            case 4:
+            case "end":
+              return _context.stop();
+          }
+        }
+      }, _callee);
+    })));
+    it('.api() events.get split in chunks',
+    /*#__PURE__*/
+    _asyncToGenerator(
+    /*#__PURE__*/
+    regeneratorRuntime.mark(function _callee2() {
+      var res;
+      return regeneratorRuntime.wrap(function _callee2$(_context2) {
+        while (1) {
+          switch (_context2.prev = _context2.next) {
+            case 0:
+              conn.options.chunkSize = 2;
+              _context2.next = 3;
+              return conn.api([{
+                "method": "events.get",
+                "params": {}
+              }, {
+                "method": "events.get",
+                "params": {}
+              }, {
+                "method": "events.get",
+                "params": {}
+              }]);
+
+            case 3:
+              res = _context2.sent;
+              res.length.should.equal(3);
+
+            case 5:
+            case "end":
+              return _context2.stop();
+          }
+        }
+      }, _callee2);
+    })));
+    it('.api() with callbacks', function (done) {
+      conn.api([{
+        "method": "events.get",
+        "params": {}
+      }]).then(function (res) {
+        res.length.should.equal(1);
+        done();
+      }, function (err) {
+        should.not.exist(err);
+        done();
+      });
+    });
+  });
+  describe('.get()', function () {
+    it('/events',
+    /*#__PURE__*/
+    _asyncToGenerator(
+    /*#__PURE__*/
+    regeneratorRuntime.mark(function _callee3() {
+      var res;
+      return regeneratorRuntime.wrap(function _callee3$(_context3) {
+        while (1) {
+          switch (_context3.prev = _context3.next) {
+            case 0:
+              _context3.next = 2;
+              return conn.get('events', {
+                limit: 1
+              });
+
+            case 2:
+              res = _context3.sent;
+              res.events.length.should.equal(1);
+
+            case 4:
+            case "end":
+              return _context3.stop();
+          }
+        }
+      }, _callee3);
+    })));
+  });
+});
 
 /***/ }),
 
@@ -105,7 +219,42 @@ eval("const should = chai.should();\nconst expect = chai.expect();\n\n\nconst te
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-eval("\nconst should = chai.should();\n\nconst testData = __webpack_require__(/*! ./test-data.js */ \"./test/test-data.js\");\n\ndescribe('Service', function () {\n  it('info()', async () => {\n    const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);\n    const res = await pryvService.info();\n    should.exist(res);\n    should.exist(res.access);\n  });\n});\n\n\n\n\n//# sourceURL=webpack://browserTest/./test/Service.test.js?");
+function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
+
+function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
+
+var should = chai.should();
+
+var testData = __webpack_require__(/*! ./test-data.js */ "./test/test-data.js");
+
+describe('Service', function () {
+  it('info()',
+  /*#__PURE__*/
+  _asyncToGenerator(
+  /*#__PURE__*/
+  regeneratorRuntime.mark(function _callee() {
+    var pryvService, res;
+    return regeneratorRuntime.wrap(function _callee$(_context) {
+      while (1) {
+        switch (_context.prev = _context.next) {
+          case 0:
+            pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
+            _context.next = 3;
+            return pryvService.info();
+
+          case 3:
+            res = _context.sent;
+            should.exist(res);
+            should.exist(res.access);
+
+          case 6:
+          case "end":
+            return _context.stop();
+        }
+      }
+    }, _callee);
+  })));
+});
 
 /***/ }),
 
@@ -116,7 +265,14 @@ eval("\nconst should = chai.should();\n\nconst testData = __webpack_require__(/*
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-eval("/**\n * Entry Point for WebPack to build test series to be run in browser\n */\n__webpack_require__(/*! ./utils.test.js */ \"./test/utils.test.js\");\n__webpack_require__(/*! ./Connection.test.js */ \"./test/Connection.test.js\");\n__webpack_require__(/*! ./Service.test.js */ \"./test/Service.test.js\");\n\n//# sourceURL=webpack://browserTest/./test/browser-index.js?");
+/**
+ * Entry Point for WebPack to build test series to be run in browser
+ */
+__webpack_require__(/*! ./utils.test.js */ "./test/utils.test.js");
+
+__webpack_require__(/*! ./Connection.test.js */ "./test/Connection.test.js");
+
+__webpack_require__(/*! ./Service.test.js */ "./test/Service.test.js");
 
 /***/ }),
 
@@ -127,7 +283,18 @@ eval("/**\n * Entry Point for WebPack to build test series to be run in browser\
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-eval("/**\n * Data used for tests\n */\nconst defaults = {\n  user: 'marianne.pryv.me',\n  token: 'ck48a23l000hn1g40xjjg1y0i',\n  serviceInfoUrl: 'https://reg.pryv.me/service/info'\n}\n\nmodule.exports = {\n  defaults: defaults,\n  pryvApiEndPoints : [\n    'https://' + defaults.token + '@' + defaults.user\n  ]\n}\n\n//# sourceURL=webpack://browserTest/./test/test-data.js?");
+/**
+ * Data used for tests
+ */
+var defaults = {
+  user: 'marianne.pryv.me',
+  token: 'ck48a23l000hn1g40xjjg1y0i',
+  serviceInfoUrl: 'https://reg.pryv.me/service/info'
+};
+module.exports = {
+  defaults: defaults,
+  pryvApiEndPoints: ['https://' + defaults.token + '@' + defaults.user]
+};
 
 /***/ }),
 
@@ -138,8 +305,20 @@ eval("/**\n * Data used for tests\n */\nconst defaults = {\n  user: 'marianne.pr
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-eval("\nconst should = chai.should();\n\nconst testData = __webpack_require__(/*! ./test-data.js */ \"./test/test-data.js\");\n\ndescribe('utils', function () {\n  it('extractTokenAndApiEndpoint', function (done) {\n    const tokenAndAPI = Pryv.utils\n      .extractTokenAndApiEndpoint(testData.pryvApiEndPoints[0]);\n    testData.defaults.token.should.equals(tokenAndAPI.token);\n\n    ('https://' + testData.defaults.user + '/').should.equals(tokenAndAPI.endpoint);\n\n    done();\n  });\n});\n\n\n\n\n//# sourceURL=webpack://browserTest/./test/utils.test.js?");
+var should = chai.should();
+
+var testData = __webpack_require__(/*! ./test-data.js */ "./test/test-data.js");
+
+describe('utils', function () {
+  it('extractTokenAndApiEndpoint', function (done) {
+    var tokenAndAPI = Pryv.utils.extractTokenAndApiEndpoint(testData.pryvApiEndPoints[0]);
+    testData.defaults.token.should.equals(tokenAndAPI.token);
+    ('https://' + testData.defaults.user + '/').should.equals(tokenAndAPI.endpoint);
+    done();
+  });
+});
 
 /***/ })
 
 /******/ });
+//# sourceMappingURL=browser-tests.js.map

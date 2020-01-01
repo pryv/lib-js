@@ -1,6 +1,8 @@
 
 const regexAPIandToken = /(.+):\/\/(.+)@(.+)/gm;
 
+const regexSchemaAndPath = /(.+):\/\/(.+)/gm;
+
 /**
  * Utilities to access Pryv API
  * @namespace utils
@@ -13,7 +15,7 @@ const utils = {
    * @memberof Pryv.utils
    * @property {Superagent} superagent 
    */
-  superagent : require('superagent'),
+  superagent: require('superagent'),
 
   /**
    * From a PryvApiEndpoint URL, return an object (TokenAndAPI) with two properties
@@ -21,14 +23,33 @@ const utils = {
    * @param {PryvApiEndpoint} pryvApiEndpoint
    * @returns {TokenAndEndpoint}
    */
-    extractTokenAndApiEndpoint: function (pryvApiEndpoint) {
+  extractTokenAndApiEndpoint: function (pryvApiEndpoint) {
     regexAPIandToken.lastIndex = 0;
     const res = regexAPIandToken.exec(pryvApiEndpoint);
     // add a trailing '/' to end point if missing
-    if (! res[3].endsWith('/')) { 
+    if (!res[3].endsWith('/')) {
       res[3] += '/';
     }
     return { endpoint: res[1] + '://' + res[3], token: res[2] }
+  },
+
+  /**
+   * Get a PryvApiEndpoint URL from a TokenAndAPI object
+   * @memberof Pryv.utils
+   * @param {TokenAndEndpoint} tokenAndApi
+   * @returns {PryvApiEndpoint}
+   */
+  buildPryvApiEndPoint: function (tokenAndApi) {
+    if (! tokenAndApi.token) { 
+      return tokenAndApi.endpoint; 
+    }
+    regexSchemaAndPath.lastIndex = 0;
+    const res = regexSchemaAndPath.exec(tokenAndApi.endpoint);
+    // add a trailing '/' to end point if missing
+    if (!res[2].endsWith('/')) {
+      res[2] += '/';
+    }
+    return res[1] + '://' + tokenAndApi.token + '@' + res[2];
   }
 }
 

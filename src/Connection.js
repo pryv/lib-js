@@ -5,12 +5,15 @@ const utils = require('./utils.js');
  * @class Connection
  * Create an instance of Connection to Pryv API.
  * The connection will be opened on
+ * 
+ * @type {TokenAndEndpoint}
  *
  * @example
  * create a connection for the user 'tom' on 'pryv.me' backend with the token 'TTZycvBTiq'
  * var conn = new pryv.Connection('https://TTZycvBTiq@tom.pryv.me');
  *
- * @property {TokenAndEndpoint} tokenAndApi
+ * @property {string} [token]
+ * @property {string} endpoint
  * @memberof Pryv
  * 
  * @constructor
@@ -20,7 +23,9 @@ const utils = require('./utils.js');
 class Connection {
 
   constructor(pryvApiEndpoint) {
-    this.tokenAndApi = utils.extractTokenAndApiEndpoint(pryvApiEndpoint);
+    const { token, endpoint } = utils.extractTokenAndApiEndpoint(pryvApiEndpoint);
+    this.token = token;
+    this.endpoint = endpoint;
     this.options = {};
     this.options.chunkSize = 1000;
     this._deltaTime = { value: 0, weight: 0 };
@@ -33,16 +38,14 @@ class Connection {
    * @param {Array.<MethodCall>} arrayOfAPICalls Array of Method Calls
    * @returns {Promise<Array>} Promise to Array of results matching each method call in order
    */
-  api(arrayOfAPICalls) {
-    return new Promise(async (resolve, reject) => {
-      const res = [];
-      for (let cursor = 0; arrayOfAPICalls.length >= cursor; cursor += this.options.chunkSize) {
-        const thisBatch = arrayOfAPICalls.slice(cursor, cursor + this.options.chunkSize);
-        const resRequest = await this.post('', thisBatch);
-        Array.prototype.push.apply(res, resRequest.results)
-      }
-      resolve(res);
-    });
+  async api(arrayOfAPICalls) {
+    const res = [];
+    for (let cursor = 0; arrayOfAPICalls.length >= cursor; cursor += this.options.chunkSize) {
+      const thisBatch = arrayOfAPICalls.slice(cursor, cursor + this.options.chunkSize);
+      const resRequest = await this.post('', thisBatch);
+      Array.prototype.push.apply(res, resRequest.results)
+    }
+    return res;
   }
 
   /**
@@ -52,13 +55,11 @@ class Connection {
    * @param {string} path 
    * @returns {Promise<Array|Object>}  Promise to result.body
    */
-  post(path, data, queryParams) {
-    return new Promise(async (resolve, reject) => {
-      const now = Date.now() / 1000;
-      const res = await this.postRaw(path, data, queryParams);
-      this._handleMeta(res.body, now);
-      resolve(res.body);
-    });
+  async post(path, data, queryParams) {
+    const now = Date.now() / 1000;
+    const res = await this.postRaw(path, data, queryParams);
+    this._handleMeta(res.body, now);
+    return res.body;
   }
 
   /**
@@ -68,9 +69,9 @@ class Connection {
    * @param {string} path 
    * @returns {request.superagent}  Promise from superagent's post request
    */
-  postRaw(path, data, queryParams) {
-    return utils.superagent.post(this.tokenAndApi.endpoint + path)
-      .set('Authorization', this.tokenAndApi.token)
+  async postRaw(path, data, queryParams) {
+    return await utils.superagent.post(this.endpoint + path)
+      .set('Authorization', this.token)
       .set('accept', 'json')
       .query(queryParams)
       .send(data);
@@ -82,13 +83,11 @@ class Connection {
    * @param {string} path 
    * @returns {Promise<Array|Object>}  Promise to result.body
    */
-  get(path, queryParams) {
-    return new Promise(async (resolve, reject) => {
+  async get(path, queryParams) {
       const now = Date.now() / 1000;
       const res = await this.getRaw(path, queryParams);
       this._handleMeta(res.body, now);
-      resolve(res.body);
-    });
+      return res.body
   }
 
   /**
@@ -97,10 +96,10 @@ class Connection {
    * @param {string} path 
    * @returns {request.superagent}  Promise from superagent's get request
    */
-  getRaw(path, queryParams) {
+  async getRaw(path, queryParams) {
     path = path || '';
-    return utils.superagent.get(this.tokenAndApi.endpoint + path)
-      .set('Authorization', this.tokenAndApi.token)
+    return await utils.superagent.get(this.endpoint + path)
+      .set('Authorization', this.token)
       .set('accept', 'json')
       .query(queryParams);
   }
@@ -112,6 +111,15 @@ class Connection {
    * @property {number} deltaTime
    */
   get deltaTime() {
+    return this._deltaTime.value;
+  }
+
+  /**
+   * Pryv API Endpoint of this connection
+   * @readonly
+   * @property {PryvApiEndpoint} deltaTime
+   */
+  get apiEndpoint() {
     return this._deltaTime.value;
   }
 
