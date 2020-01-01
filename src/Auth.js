@@ -52,7 +52,7 @@ class Auth {
     init();
   }
 
-  async function init() {
+  async init() {
     // 1. fetch service-info
     this.pryvService = new Pryv.Service(settings.serviceInfoUrl);
     await this.pryvService.info();
@@ -64,7 +64,7 @@ class Auth {
    * Open Login Page.
    * 
    */
-  async function openLoginPage() { 
+  async openLoginPage() { 
     // 2. Post access
     // 3.a Open Popup
     // 3.a.1 Poll Access
@@ -75,7 +75,7 @@ class Auth {
    * Revoke Connection and clean local cookies
    * 
    */
-  async function logOut() {
+  async logOut() {
     // 2. Post access
     // 3.a Open Popup
     // 3.a.1 Poll Access
