@@ -10,18 +10,39 @@ describe('utils', function () {
     testData.defaults.token.should.equals(tokenAndAPI.token);
 
     ('https://' + testData.defaults.user + '/').should.equals(tokenAndAPI.endpoint);
-
     done();
+  });
+
+  it('extractTokenAndApiEndpoint should work without token', function (done) {
+    const tokenAndAPI = Pryv.utils
+      .extractTokenAndApiEndpoint(testData.pryvApiEndPoints[1]);
+      
+    should.not.exist(tokenAndAPI.token);
+
+    ('https://' + testData.defaults.user + '/').should.equals(tokenAndAPI.endpoint);
+    done();
+  });
+
+  it('extractTokenAndApiEndpoint should fail on invalid url', function (done) {
+    let error = null;
+    try {
+      const tokenAndAPI = Pryv.utils
+        .extractTokenAndApiEndpoint('blip');
+    } catch (e) {
+      error = e;
+      
+      return done();
+    }
+    should.exist(error);
+    
   });
 
   it('buildAPIEndpoint', function (done) {
     const apiEndPoint = Pryv.utils
       .buildPryvApiEndPoint({ 
         token: testData.defaults.token, 
-        endpoint: 'https://' + testData.defaults.user + '/'});
-    
+        endpoint: 'https://' + testData.defaults.user + '/'});   
     apiEndPoint.should.equals(testData.pryvApiEndPoints[0] + '/');
-
     done();
   });
 

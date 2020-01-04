@@ -26,11 +26,25 @@ const utils = {
   extractTokenAndApiEndpoint: function (pryvApiEndpoint) {
     regexAPIandToken.lastIndex = 0;
     const res = regexAPIandToken.exec(pryvApiEndpoint);
-    // add a trailing '/' to end point if missing
-    if (!res[3].endsWith('/')) {
-      res[3] += '/';
+
+    if (res !== null) { // has token
+      // add a trailing '/' to end point if missing
+      if (!res[3].endsWith('/')) {
+        res[3] += '/';
+      }
+      return { endpoint: res[1] + '://' + res[3], token: res[2] }
     }
-    return { endpoint: res[1] + '://' + res[3], token: res[2] }
+    // else check if valud url
+    regexSchemaAndPath.lastIndex = 0;
+    const res2 = regexSchemaAndPath.exec(pryvApiEndpoint);
+    if (res2 === null) {
+      throw new Error('Cannot find endpoint, invalid URL format');
+    }
+    // add a trailing '/' to end point if missing
+    if (!res2[2].endsWith('/')) {
+      res2[2] += '/';
+    }
+    return { endpoint: res2[1] + '://' + res2[2] , token: null }
   },
 
   /**

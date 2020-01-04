@@ -10,6 +10,7 @@ const defaults = {
 module.exports = {
   defaults: defaults,
   pryvApiEndPoints : [
-    'https://' + defaults.token + '@' + defaults.user
+    'https://' + defaults.token + '@' + defaults.user,
+    'https://' + defaults.user 
   ]
 }
