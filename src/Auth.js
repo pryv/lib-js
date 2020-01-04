@@ -1,4 +1,5 @@
-const utils = require('./utils.js');
+const utils = require('./utils');
+const Service = require('./Service');
 
 /**
  * @class Auth
@@ -15,9 +16,10 @@ class Auth {
   /**
    * @param {Object} settings 
    * @param {string} settings.serviceInfoUrl
-   * @param {string} settings.requestingAppId Application id, ex: 'my-app'
-   * @param {Object} settings.requestedPermissions See http://api.pryv.com/reference/#data-structure-access
-   * @param {string | boolean} settings.returnURL : false, // set this if you don't want a popup
+   * @param {Object} settings.accessRequest See http://api.pryv.com/reference/#data-structure-access
+   * @param {string} settings.accessRequest.requestingAppId Application id, ex: 'my-app'
+   * @param {Object} settings.accessRequest.requestedPermissions 
+   * @param {string | boolean} settings.accessRequest.returnURL : false, // set this if you don't want a popup
    * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
    * @param {Object} settings.callbacks
    * @param {Function} settings.callbacks.accepted : function(apiEndPoint)
@@ -28,44 +30,51 @@ class Auth {
   constructor(settings) {
     this.settings = settings;
     if (! settings) { throw new Error('settings cannot be null'); }
-    if (! settings.requestingAppId) { throw new Error('Missing settings.requestingAppId'); }
-    if (! settings.requestedPermissions) { throw new Error('Missing settings.requestedPermissions'); }
-    if (! settings.callbacks) { throw new Error('Missing settings.callbacks'); }
-    if (! settings.callbacks.accepted) { throw new Error('Missing settings.callbacks.accepted'); }
-    if (! settings.callbacks.refused) { throw new Error('Missing settings.callbacks.refused'); }
-
-    // -- Set default Error handling if not specified -- //
-    if (! settings.callbacks.error) { 
-      settings.callbacks.error = function(code, message) {
-        const text = 'Error code: ' + code + ' => ' + message;
-        console.error(text);
-        throw new Error(text)
-      }
-    };
+    if (! settings.accessRequest) { throw new Error('Missing settings.accessRequest'); }
+    if (! settings.accessRequest.requestingAppId) { 
+        throw new Error('Missing settings.accessRequest.requestingAppId'); }
+    if (! settings.accessRequest.requestedPermissions) { 
+      throw new Error('Missing settings.accessRequest.requestedPermissions'); }
+    if (! settings.on) { throw new Error('Missing settings.on Event listner'); }
 
     // -- Extract service info from URL query params if nor specified -- //
     if (! settings.serviceInfoUrl) {
      // TODO
     }
-    
-
-    init();
-  }
-
-  async init() {
-    // 1. fetch service-info
-    this.pryvService = new Pryv.Service(settings.serviceInfoUrl);
-    await this.pryvService.info();
-
-    
   }
 
   /**
+   * @private
+   */
+  async init() {
+    if (this.pryvService) {
+      throw new Error('Auth service already initialized');
+    }
+    // 1. fetch service-info
+    this.pryvService = new Service(this.settings.serviceInfoUrl);
+    /**
+     * @property {PryvServiceInfo}
+     */
+    this.pryvServiceInfo = await this.pryvService.info();
+
+    // 2. build button
+
+    // 3. check autologin 
+
+  }
+
+  /**
+   * Follow Auth Process and 
    * Open Login Page.
-   * 
    */
   async openLoginPage() { 
+    // 1. Make sure Auth is initialized
+    if (!this.pryvServiceInfo) {
+      throw new Error('Auth service must be initialized first');
+    }
     // 2. Post access
+    const accessResult = await this._postAccess();
+
     // 3.a Open Popup
     // 3.a.1 Poll Access
     // 3.b Open url 
@@ -82,7 +91,22 @@ class Auth {
     // 3.b Open url 
   }
 
+  /**
+   * @private
+   */
+  async _postAccess() {
+    const res = await utils.superagent.post(this.pryvServiceInfo.access)
+      .set('accept', 'json')
+      .send(this.settings.accessRequest);
+    return res.body;
+  }
+
 
 }
+
+Auth.MESSAGE_ERROR = 'error';
+Auth.MESSAGE_AUTHORIZED = 'loggedIn';
+Auth.MESSAGE_REFUSED = 'refused';
+Auth.MESSAGE_OPENURL = 'openURL';
 
 module.exports = Auth;
