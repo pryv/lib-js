@@ -41,7 +41,7 @@ describe('utils', function () {
     const apiEndPoint = Pryv.utils
       .buildPryvApiEndPoint({ 
         token: testData.defaults.token, 
-        endpoint: 'https://' + testData.defaults.user + '/'});   
+        endpoint: 'https://' + testData.defaults.user});   
     apiEndPoint.should.equals(testData.pryvApiEndPoints[0] + '/');
     done();
   });
@@ -50,7 +50,7 @@ describe('utils', function () {
     const apiEndPoint = Pryv.utils
       .buildPryvApiEndPoint({
         token: null,
-        endpoint: 'https://' + testData.defaults.user + '/'
+        endpoint: 'https://' + testData.defaults.user
       });
     apiEndPoint.should.equals('https://' + testData.defaults.user + '/');
     done();

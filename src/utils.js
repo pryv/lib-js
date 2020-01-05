@@ -55,7 +55,11 @@ const utils = {
    */
   buildPryvApiEndPoint: function (tokenAndApi) {
     if (! tokenAndApi.token) { 
-      return tokenAndApi.endpoint; 
+      let res = tokenAndApi.endpoint;
+      if (!tokenAndApi.endpoint.endsWith('/')) {
+        res += '/';
+      }
+      return res; 
     }
     regexSchemaAndPath.lastIndex = 0;
     const res = regexSchemaAndPath.exec(tokenAndApi.endpoint);

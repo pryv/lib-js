@@ -120,7 +120,7 @@ class Connection {
    * @property {PryvApiEndpoint} deltaTime
    */
   get apiEndpoint() {
-    return this._deltaTime.value;
+    return utils.buildPryvApiEndPoint(this);
   }
 
   // private method that handle meta data parsing

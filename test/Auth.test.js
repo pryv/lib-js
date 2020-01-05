@@ -18,7 +18,6 @@ describe('Auth', function () {
   it('init()', (done) => {
     const auth = new Pryv.Auth(genSettings());
     auth.init().then((res) => {
-      console.log(res);
       done();
     }).catch((error) =>  {
       should.not.exist(error);

@@ -1,14 +1,14 @@
 const should = chai.should();
-const expect = chai.expect();
+const expect = chai.expect;
 
 
 const testData = require('./test-data.js');
 
 const conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);
 
-describe('Connection', function () {
+describe('Connection', () => {
 
-  describe('.api()', function () {
+  describe('.api()',  () => {
     it('.api() events.get', async () => {
       const res = await conn.api(
         [
@@ -32,7 +32,7 @@ describe('Connection', function () {
 
     });
 
-    it('.api() with callbacks', function (done) {
+    it('.api() with callbacks', (done) => {
       conn.api(
         [
           { "method": "events.get", "params": {} }
@@ -53,6 +53,21 @@ describe('Connection', function () {
       res.events.length.should.equal(1);
     });
 
+  });
+
+  describe('time', () => {
+    it('deltatime property', async () => {
+      await conn.get('events', { limit: 1 });
+      const deltaTime = conn.deltaTime; 
+      expect(Math.abs(deltaTime) < 2).to.be.true;
+    });
+  });
+
+  describe('API', () => {
+    it('endpoint property', async () => {
+      const apiEndpoint = conn.apiEndpoint;
+      expect(apiEndpoint.startsWith('https://' + conn.token + '@')).to.be.true;
+    });
   });
 
 });
