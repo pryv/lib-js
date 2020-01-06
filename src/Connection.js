@@ -32,7 +32,7 @@ class Connection {
   }
 
   /**
-   * Issue a Batch call http://api.pryv.com/reference/#call-batch .
+   * Issue a Batch call https://api.pryv.com/reference/#call-batch .
    * arrayOfAPICalls will be splited in multiple calls if the size is > `conn.options.chunkSize` .
    * Default chunksize is 1000.
    * @param {Array.<MethodCall>} arrayOfAPICalls Array of Method Calls

@@ -88,14 +88,14 @@ module.exports = utils;
 */
 
 /**
- * API Method call, for batch call http://api.pryv.com/reference/#call-batch
+ * API Method call, for batch call https://api.pryv.com/reference/#call-batch
  * @typedef {Object} MethodCall
  * @property {string}  method The method id
  * @property {Object|Array}  params The call parameters as required by the method.
  */
 
 /**
- * Common Meta are returned by each standard call on the API http://api.pryv.com/reference/#in-method-results
+ * Common Meta are returned by each standard call on the API https://api.pryv.com/reference/#in-method-results
  * @typedef {Object} CommonMeta
  * @property {string} apiVersion The version of the API in the form {major}.{minor}.{revision}. Mirrored in HTTP header API-Version.
  * @property {number} serverTime The current server time as a timestamp in second. Keeping track of server time is necessary to properly handle time in API calls.

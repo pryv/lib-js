@@ -16,7 +16,7 @@ class Auth {
   /**
    * @param {Object} settings 
    * @param {string} settings.serviceInfoUrl
-   * @param {Object} settings.accessRequest See http://api.pryv.com/reference/#data-structure-access
+   * @param {Object} settings.accessRequest See https://api.pryv.com/reference/#data-structure-access
    * @param {string} settings.accessRequest.requestingAppId Application id, ex: 'my-app'
    * @param {Object} settings.accessRequest.requestedPermissions 
    * @param {string | boolean} settings.accessRequest.returnURL : false, // set this if you don't want a popup
@@ -73,7 +73,7 @@ class Auth {
       throw new Error('Auth service must be initialized first');
     }
     // 2. Post access
-    const accessResult = await this._postAccess();
+    this._processAccess(await this._postAccess());
 
     // 3.a Open Popup
     // 3.a.1 Poll Access
@@ -99,6 +99,23 @@ class Auth {
       .set('accept', 'json')
       .send(this.settings.accessRequest);
     return res.body;
+  }
+
+  /**
+   * @private 
+   */
+   _processAccess(accessData) {
+    if (! accessData || ! accessData.status) {
+      throw new Error('Invalid Access data response');
+    }
+    this.accessData = accessData;
+  }
+
+  /**
+   * @private 
+   */
+  async _poll() {
+
   }
 
 

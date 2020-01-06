@@ -40,10 +40,10 @@ describe('Auth', function () {
   it ('unit _postAccess() ', async () => { 
     const auth = new Pryv.Auth(genSettings());
     await auth.init();
-
     const res = await auth._postAccess();
     should.exist(res);
     should.exist(res.status);
+    console.log(res);
   });
 });
 
