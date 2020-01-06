@@ -1,10 +1,13 @@
 const path = require('path');
 
+require("babel-core/register");
+require("babel-polyfill");
+
 module.exports = [
 	{
 		mode: 'production',
 		entry: {
-			'pryv': './src/index.js',
+			'pryv': ['babel-polyfill', './src/index.js'],
 		},
 		output: {
 			filename: '[name].js',
@@ -33,7 +36,7 @@ module.exports = [
 	{
 		mode: 'development',
 		entry: {
-			'pryv': './src/index.js',
+			'pryv': ['babel-polyfill', './src/index.js'],
 		},
 		output: {
 			filename: '[name]-dev.js',
