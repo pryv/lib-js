@@ -25,16 +25,17 @@ class Service {
    * @param {boolean?} forceFetch If true, will force fetching service info.
    * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
    */
-  info(forceFetch) {
-    return new Promise(async (resolve, reject) => {
-      if (!forceFetch && this._pryvServiceInfo) {
-        resolve(this._pryvServiceInfo);
-      } else { 
-        const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('accept', 'json');
-        this._pryvServiceInfo = res.body;
-        resolve(this._pryvServiceInfo);
+  async info(forceFetch) {
+    if (!forceFetch && this._pryvServiceInfo) {
+      return this._pryvServiceInfo;
+    } else {
+      const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('accept', 'json');
+      this._pryvServiceInfo = res.body;
+      if (! this._pryvServiceInfo.name) { 
+        throw new Error('Invalid data from service/info');
       }
-    });
+      return this._pryvServiceInfo;
+    }
   }
 }
 

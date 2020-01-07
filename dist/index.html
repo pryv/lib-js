@@ -5,12 +5,158 @@
   <title>Pryv - Javascript Lib</title>
   <script src="./pryv.js"></script>
 </head>
+<style>
+  body {
+    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+
+  h3 {
+    margin: 1.5em 0 0;
+  }
+
+  h5 {
+    margin: 1em 0 0;
+  }
+
+  textarea {
+    width: 100%;
+    height: 20em;
+  }
+</style>
 
 <body>
-<script>
-  
-</script>
+  <h1>Pryv value from</h1>
+
+  <p>This example lets the user sign in, then enternotes and values.</p>
+
+  <p>
+    <span id="pryv-button"></span> <strong>⇠ sign in here</strong><br>
+  </p>
+
+  <h5>Notes</h5>
+  <input type='text' id='create-note' placeholder='Content' value='' />
+  <button onClick='createNoteEvent()'>Save Note</button>
+
+  <h5>Numerical Value</h5>
+  <input type='text' id='create-value' placeholder='Content' value='' />
+  <button onClick='createValueEvent()'>Save Value</button>
+
+  <h3>Events</h3>
+  <textarea id='events'></textarea>
+
+  <div class="clearfix"></div>
+  <h3>Console</h3>
+  <textarea id='console'></textarea>
+
 
 </body>
+
+<script>
+  // UI
+  (function () {
+  var $console = document.getElementById('console'),
+    $events = document.getElementById('events'),
+    $noteContent = document.getElementById('create-note'),
+    $valueContent = document.getElementById('create-value');
+
+  // Authenticate user
+  var connection = null;
+
+  var authSettings = {
+    serviceInfoUrl: 'https://reg.pryv.me/service/info',
+    accessRequest: { // See: http://api.pryv.com/reference/#auth-request
+      requestingAppId: 'test-value-notes',
+      requestedPermissions: [
+        {
+          streamId: 'test',
+          defaultName: 'test',
+          level: 'manage'
+        }
+      ],
+      clientData: {
+        'app-web-auth:description': {
+          'type': 'note/txt', 'content': 'This is a consent message.'
+        }
+      }
+    },
+    spanButtonID: 'pryv-button',
+    callbacks: {
+      accepted: accepted,
+      refused: function (reason) {
+        logToConsole('# Auth refused: ' + reason);
+      },
+      error: function (code, message) {
+        logToConsole('# Auth error: ' + code + ' ' + message);
+      }
+    }
+  };
+
+  Pryv.Auth.setup(authSettings);
+
+
+  /**
+   * @param {Pryv.Connection} connection
+   */
+  function accepted(conn) {
+    connection = conn;
+    logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
+    //getLastEvents();
+  }
+
+  // Handle local user actions
+
+  function createNoteEvent() {
+    if (!connection) { return alert('Please sign in first.'); }
+    logToConsole('Creating event...');
+    var eventData = {
+      streamId: 'test',
+      type: 'note/txt',
+      content: $noteContent.value
+    };
+    connection.events.create(eventData, function (err, event) {
+      if (err) { return logToConsole('...error: ' + JSON.stringify(err)); }
+      logToConsole('...event created: ' + event.id);
+      getLastEvents();
+    });
+  }
+
+
+  function createValueEvent() {
+    if (!connection) { return alert('Please sign in first.'); }
+    logToConsole('Creating event...');
+    var eventData = {
+      streamId: 'test',
+      type: 'count/generic',
+      content: $valueContent.value
+    };
+    connection.events.create(eventData, function (err, event) {
+      if (err) { return logToConsole('...error: ' + JSON.stringify(err)); }
+      logToConsole('...event created: ' + event.id);
+      getLastEvents();
+    });
+  }
+
+  // UTILS
+  // Retrieve last events
+  function getLastEvents() {
+    var filter = new pryv.Filter({ limit: 20 });
+    connection.events.get(filter, function (err, events) {
+      // convert pryv.Event objects to plain data for display
+      display(events.map(function (e) { return e.getData(); }), $events);
+    });
+  }
+
+  function logToConsole(text) {
+    $console.value += text + '\n';
+    $console.scrollTop = $console.scrollHeight;
+  }
+
+  function display(obj, $textArea) {
+    $textArea.value = JSON.stringify(obj, null, 2);
+  }
+
+  })();
+</script>
+
 
 </html>
