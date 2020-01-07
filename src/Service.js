@@ -37,6 +37,32 @@ class Service {
       return this._pryvServiceInfo;
     }
   }
+
+/**
+ * Return an API Endpoint from a username and token
+ * @param {string} username
+ * @param {string} token
+ * @return {PryvApiEndpoint}
+ */
+  async apiEndpointFor(username, token) {
+    const serviceInfo = await this.info();
+    return Service.buildAPIEndpoint(serviceInfo, username, token);
+  }
+  
+
+  /**
+   * Return an API Endpoint from a username and token and a PryvServiceInfo
+   * @param {PryvServiceInfo} serviceInfo
+   * @param {string} username
+   * @param {string} token
+   * @return {PryvApiEndpoint}
+   */
+  static buildAPIEndpoint(serviceInfo, username, token) {
+    const endpoint = serviceInfo.api.replace('{username}', username);
+    return utils.buildPryvApiEndPoint({endpoint: endpoint, token: token});
+  }
+
+
 }
 
 module.exports = Service;

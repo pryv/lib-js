@@ -106,7 +106,7 @@ class Auth {
     } catch (e) {
       this.state = {
         id: States.ERROR,
-        message: 'Cannot fecth service/info',
+        message: 'Cannot fetch service/info',
         error: e
       }
       throw e; // forward error
@@ -132,12 +132,20 @@ class Auth {
     if (!this.pryvServiceInfo) {
       throw new Error('Auth service must be initialized first');
     }
-    // 2. Post access
-    this._processAccess(await this._postAccess());
 
-    // 3.a Open Popup
-    // 3.a.1 Poll Access
-    // 3.b Open url 
+    // 2. Post access if needed
+    if (! this.accessData) {
+      this._processAccess(await this._postAccess());
+    }
+
+
+
+    // 3.a Open Popup (even if already opened)
+    if (this.accessData.status === 'NEED_SIGNIN')
+      window.open(this.accessData.url, "PryvLogin");
+
+    // 3.a.1 Poll Access if not yet in course
+    if (!this.polling) this._poll();
   }
 
   /**
@@ -162,22 +170,58 @@ class Auth {
   }
 
   /**
+  * @private
+  */
+  async _getAccess() {
+    const res = await utils.superagent.get(this.accessData.poll)
+      .set('accept', 'json');
+    return res.body;
+  }
+
+  /**
    * @private 
    */
   _processAccess(accessData) {
     console.log('_processAccess :', accessData);
     if (!accessData || !accessData.status) {
-      throw new Error('Invalid Access data response');
+      this.state = {
+        id: States.ERROR,
+        message: 'Invalid Access data response',
+        error: new Error('Invalid Access data response')
+      };
+      throw this.state.error;
     }
     this.accessData = accessData;
-    
+
+    switch (this.accessData.status) {
+      case 'NEED_SIGNIN':
+        // nothing to do
+        break;
+      case 'ACCEPTED': 
+        console.log(this.pryvServiceInfo);
+        const apiEndpoint = 
+          Service.buildAPIEndpoint(this.pryvServiceInfo, this.accessData.username, this.accessData.token);
+        console.log('YEPEE!!! ', apiEndpoint);
+        this.state = {
+          id: States.AUTHORIZED,
+          apiEndpoint: apiEndpoint
+        };
+        
+        break;
+    }
   }
 
   /**
    * @private 
    */
   async _poll() {
-
+    if (this.accessData.status !== 'NEED_SIGNIN') {
+      this.polling = false;
+      return;
+    }
+    this.polling = true;
+    this._processAccess(await this._getAccess());
+    setTimeout(this._poll.bind(this), this.accessData.poll_rate_ms);
   }
 
   set state(newState) {
@@ -188,17 +232,13 @@ class Auth {
       if (this.loginButton) {
         this.loginButton.stateChanged();
       } 
-    } catch (e) {
-      console.log(e);
-      //ignore
+    } catch (e) { console.log(e); //ignore 
     }
     try {
       if (this.callbacks && this.callbacks.stateChanged) {
         this.callbacks.stateChanged();
       }
-    } catch (e) {
-      console.log(e);
-      //ignore
+    } catch (e) { console.log(e); //ignore
     }
 
     try {
@@ -219,9 +259,7 @@ class Auth {
         default:
           //throw new Error('Unkown state.id: ' + this._state.id);
       }
-    } catch (e) {
-      console.log(e);
-      //ignore
+    } catch (e) {  console.log(e); //ignore
     }
 
   }

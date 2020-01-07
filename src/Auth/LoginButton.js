@@ -1,5 +1,5 @@
 
-const Messages = require('./LoginButtonMessages');
+const Messages = require('./LoginButtonMessages')('en');
 const States = require('./States');
 
 class LogingButton {
@@ -14,7 +14,7 @@ class LogingButton {
 
     this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
     this.auth = auth;
-    this.text = '...';
+    this.text = Messages.LOADING;
   }
 
   setText(text) {
@@ -33,8 +33,11 @@ class LogingButton {
         this.text = Messages.ERROR + ': ' + this.auth.state.message
       break;
       case States.PROPOSE_LOGIN:
-        this.text = 'Login: ' + this.auth.pryvServiceInfo.name;
+        this.text = Messages.LOGIN + ': ' + this.auth.pryvServiceInfo.name;
       break;
+      case States.AUTHORIZED:
+        this.text =  'Y : ' + this.auth.state.apiEndpoint;
+        break;
       default:
         console.log('Unhandled state for Login: ' + this.auth.state.id);
     }

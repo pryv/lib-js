@@ -1,6 +1,5 @@
 
 const regexAPIandToken = /(.+):\/\/(.+)@(.+)/gm;
-
 const regexSchemaAndPath = /(.+):\/\/(.+)/gm;
 
 /**
@@ -69,6 +68,7 @@ const utils = {
     }
     return res[1] + '://' + tokenAndApi.token + '@' + res[2];
   }
+
 }
 
 module.exports = utils;
