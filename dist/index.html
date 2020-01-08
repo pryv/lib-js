@@ -53,11 +53,7 @@
 
 <script>
   // UI
-  (function () {
-  var $console = document.getElementById('console'),
-    $events = document.getElementById('events'),
-    $noteContent = document.getElementById('create-note'),
-    $valueContent = document.getElementById('create-value');
+  
 
   // Authenticate user
   var connection = null;
@@ -83,16 +79,24 @@
     onStateChange: pryvAuthStateChanged
   };
 
-  Pryv.Auth.setup(authSettings);
 
+      var $console = document.getElementById('console'),
+        $events = document.getElementById('events'),
+        $noteContent = document.getElementById('create-note'),
+        $valueContent = document.getElementById('create-value');
 
+    (function () {
+      Pryv.Auth.setup(authSettings);
+    })();
+  
 
   function pryvAuthStateChanged (state) {
-    if (state.id === Pryv.Auth.AUTHORIZED) {
+    console.log('##pryvAuthStateChanged', state);
+    if (state.id === Pryv.Auth.States.AUTHORIZED) {
       connection = new Pryv.Connection(state.apiEndpoint);
       logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
     }
-    if (state.id === Pryv.Auth.LOGOUT) {
+    if (state.id === Pryv.Auth.States.LOGOUT) {
       connection = null;
       logToConsole('# Logout');
     }
@@ -102,32 +106,32 @@
   // Handle local user actions
 
   function createNoteEvent() {
-    if (!connection) { return alert('Please sign in first.'); }
-    logToConsole('Creating event...');
-    var eventData = {
-      streamId: 'test',
-      type: 'note/txt',
-      content: $noteContent.value
-    };
-    connection.events.create(eventData, function (err, event) {
-      if (err) { return logToConsole('...error: ' + JSON.stringify(err)); }
-      logToConsole('...event created: ' + event.id);
-      getLastEvents();
-    });
+     createEvent({
+        streamId: 'test',
+        type: 'note/txt',
+        content: $noteContent.value
+      });
   }
 
 
   function createValueEvent() {
-    if (!connection) { return alert('Please sign in first.'); }
-    logToConsole('Creating event...');
-    var eventData = {
+    createEvent({
       streamId: 'test',
       type: 'count/generic',
       content: $valueContent.value
-    };
-    connection.events.create(eventData, function (err, event) {
+    });
+  }
+
+  function createEvent(data) {
+     if (!connection) { return alert('Please sign in first.'); }
+    logToConsole('Creating event...');
+    var data = [{
+      method: 'events.create',
+      params: data
+    }];
+    connection.api(data).then(function (res, err) {
       if (err) { return logToConsole('...error: ' + JSON.stringify(err)); }
-      logToConsole('...event created: ' + event.id);
+      logToConsole('...event created: ' + JSON.stringify(res));
       getLastEvents();
     });
   }
@@ -135,10 +139,15 @@
   // UTILS
   // Retrieve last events
   function getLastEvents() {
-    var filter = new pryv.Filter({ limit: 20 });
-    connection.events.get(filter, function (err, events) {
+    var data = [{
+      method: 'events.get',
+      params: {
+        limit: 20
+      }
+    }];
+    connection.api(data).then( function (res,err)  {
       // convert pryv.Event objects to plain data for display
-      display(events.map(function (e) { return e.getData(); }), $events);
+      display(res[0].events, $events);
     });
   }
 
@@ -151,7 +160,6 @@
     $textArea.value = JSON.stringify(obj, null, 2);
   }
 
-  })();
 </script>
 
 
