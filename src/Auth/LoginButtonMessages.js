@@ -7,6 +7,9 @@ const Messages = {
   },
   LOGIN: {
     'en': 'Login'
+  },
+  LOGOUT_CONFIRM: {
+    'en': 'Logout ?'
   }
 }
 

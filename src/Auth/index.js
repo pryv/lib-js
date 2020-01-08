@@ -1,8 +1,11 @@
 const utils = require('../utils');
 const Service = require('../Service');
 const LoginButton = require('./LoginButton');
-
+const LoginButtonMessages = require('./LoginButtonMessages')('en');
 const States = require('./States');
+const Cookies = require('./CookieUtils');
+
+const COOKIE_STRING = 'pryv-local-auth';
 
 /**
  * @class Auth
@@ -45,7 +48,7 @@ class Auth {
 
     try { // Wrap all in a large try catch 
       // -- Check Error CallBack
-      if (! this.settings.onStateChange) { throw new Error('Missing settings.onStateChange'); }
+      if (!this.settings.onStateChange) { throw new Error('Missing settings.onStateChange'); }
       this.stateChangeListners.push(this.settings.onStateChange);
 
       // -- settings 
@@ -93,11 +96,33 @@ class Auth {
       throw e; // forward error
     }
 
-    
-    // 3. check autologin 
 
+    // 3. check autologin 
+    let loginCookie = null;
+    try { 
+      loginCookie = Cookies.get(COOKIE_STRING);
+       console.log(loginCookie)
+    } catch (e) { console.log(e); }
+    if (loginCookie) {
+      this.state = {
+        id: States.AUTHORIZED,
+        apiEndpoint: loginCookie.apiEndpoint,
+        displayName: loginCookie.displayName,
+        action: this.logOut
+      };
+      return ; 
+    }
 
     // 4. Propose Login
+    this._readyAndClean();
+  }
+
+  /**
+   * Called at the end init() and when logging out()
+   */
+  _readyAndClean() {
+    Cookies.del(COOKIE_STRING)
+    this.accessData = null;
     this.state = {
       id: States.INITIALIZED,
       serviceInfo: this.serviceInfo,
@@ -105,37 +130,8 @@ class Auth {
     }
   }
 
-  /**
-   * Follow Auth Process and 
-   * Open Login Page.
-   */
-  async openLoginPage() {
-    console.log('OpenLogin', this);
-    // 1. Make sure Auth is initialized
-    if (!this.pryvServiceInfo) {
-      throw new Error('Auth service must be initialized first');
-    }
+  // ----------------------- ACCESS --------------- ///
 
-    // 2. Post access if needed
-    if (! this.accessData) {
-      this._processAccess(await this._postAccess());
-    }
-
-    // 3.a Open Popup (even if already opened)
-    if (this.accessData.status === 'NEED_SIGNIN')
-      window.open(this.accessData.url, "PryvLogin");
-
-    // 3.a.1 Poll Access if not yet in course
-    if (!this.polling) this._poll();
-  }
-
-  /**
-   * Revoke Connection and clean local cookies
-   * 
-   */
-  async logOut() {
-    
-  }
 
   /**
    * @private
@@ -154,6 +150,21 @@ class Auth {
     const res = await utils.superagent.get(this.accessData.poll).set('accept', 'json');
     return res.body;
   }
+
+  /**
+   * @private 
+   */
+  async _poll() {
+    if (this.accessData.status !== 'NEED_SIGNIN') {
+      this.polling = false;
+      return;
+    }
+    this.polling = true;
+    this._processAccess(await this._getAccess());
+    setTimeout(this._poll.bind(this), this.accessData.poll_rate_ms);
+  }
+
+
 
   /**
    * @private 
@@ -177,39 +188,33 @@ class Auth {
           message: 'Error on the backend'
         };
         break;
-      case 'ACCEPTED': 
-        const apiEndpoint = 
+      case 'ACCEPTED':
+        const apiEndpoint =
           Service.buildAPIEndpoint(this.pryvServiceInfo, this.accessData.username, this.accessData.token);
+
+        Cookies.set(COOKIE_STRING, { apiEndpoint: apiEndpoint, displayName: this.accessData.username });
 
         this.state = {
           id: States.AUTHORIZED,
           apiEndpoint: apiEndpoint,
-          displayName: this.accessData.username
+          displayName: this.accessData.username,
+          action: this.logOut
         };
-        
+
         break;
     }
   }
 
-  /**
-   * @private 
-   */
-  async _poll() {
-    if (this.accessData.status !== 'NEED_SIGNIN') {
-      this.polling = false;
-      return;
-    }
-    this.polling = true;
-    this._processAccess(await this._getAccess());
-    setTimeout(this._poll.bind(this), this.accessData.poll_rate_ms);
-  }
+
+  // ---------------------- STATES ----------------- //
 
   set state(newState) {
     console.log('State Changed:' + JSON.stringify(newState));
     this._state = newState;
 
-    this.stateChangeListners.map((listner) => { 
-      try { listner(this._state)} catch (e) { console.log(e); } });
+    this.stateChangeListners.map((listner) => {
+      try { listner(this._state) } catch (e) { console.log(e); }
+    });
   }
 
   get state() {
@@ -221,6 +226,42 @@ class Auth {
    */
   static get States() {
     return States;
+  }
+
+  // ------------------ ACTIONS  ----------- //
+
+  /**
+   * Follow Auth Process and 
+   * Open Login Page.
+   */
+  async openLoginPage() {
+    console.log('OpenLogin', this);
+    // 1. Make sure Auth is initialized
+    if (!this.pryvServiceInfo) {
+      throw new Error('Auth service must be initialized first');
+    }
+
+    // 2. Post access if needed
+    if (!this.accessData) {
+      this._processAccess(await this._postAccess());
+    }
+
+    // 3.a Open Popup (even if already opened)
+    if (this.accessData.status === 'NEED_SIGNIN')
+      window.open(this.accessData.url, "PryvLogin");
+
+    // 3.a.1 Poll Access if not yet in course
+    if (!this.polling) this._poll();
+  }
+
+  /**
+   * Revoke Connection and clean local cookies
+   * 
+   */
+  logOut() {
+    if (confirm(LoginButtonMessages.LOGOUT_CONFIRM)) {
+      this._readyAndClean();
+    }
   }
 
 }
