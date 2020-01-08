@@ -1,6 +1,7 @@
 const utils = require('../utils');
 const Service = require('../Service');
 const LoginButton = require('./LoginButton');
+
 const States = require('./States');
 
 /**
@@ -24,14 +25,10 @@ class Auth {
    * @param {Object} settings.accessRequest.requestedPermissions 
    * @param {string | boolean} settings.accessRequest.returnURL : false, // set this if you don't want a popup
    * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
-   * @param {Object} settings.callbacks
-   * @param {Function} settings.callbacks.signedIn : function(apiEndPoint)
-   * @param {Function} settings.callbacks.refused: function(reason)
-   * @param {Function?} settings.callbacks.error: Optional function(code, message)
-   * @param {Function?} settings.callbacks.serviceInfo: Optional function(code, s)
+   * @param {StateChangeHandler} settings.onStateChange
    */
   constructor(settings) {
-
+    this.stateChangeListners = [];
     this.settings = settings;
 
     if (!settings) { throw new Error('settings cannot be null'); }
@@ -39,6 +36,7 @@ class Auth {
     // -- First of all get the button 
     if (this.settings.spanButtonID) {
       this.loginButton = new LoginButton(this);
+      this.stateChangeListners.push(this.loginButton.onStateChange.bind(this.loginButton));
     } else {
       if (document) {
         console.log('WARNING: Pryv.Auth initialized with no spanButtonID');
@@ -47,16 +45,8 @@ class Auth {
 
     try { // Wrap all in a large try catch 
       // -- Check Error CallBack
-      if (!this.settings.callbacks) { throw new Error('Missing settings.callbacks'); }
-
-      // -- Set default Error handling if not specified -- //
-      if (!this.settings.callbacks.error) {
-        this.settings.callbacks.error = function (code, message) {
-          const text = 'Error code: ' + code + ' => ' + message;
-          console.error(text);
-          throw new Error(text)
-        }
-      };
+      if (! this.settings.onStateChange) { throw new Error('Missing settings.onStateChange'); }
+      this.stateChangeListners.push(this.settings.onStateChange);
 
       // -- settings 
       if (!this.settings.accessRequest) { throw new Error('Missing settings.accessRequest'); }
@@ -67,19 +57,13 @@ class Auth {
         throw new Error('Missing settings.accessRequest.requestedPermissions');
       }
 
-      // -- other callbacks
-      if (!this.settings.callbacks.accepted) { throw new Error('Missing settings.callbacks.accepted'); }
-      if (!this.settings.callbacks.refused) { throw new Error('Missing settings.callbacks.refused'); }
-
-
-
       // -- Extract service info from URL query params if nor specified -- //
       if (!this.settings.serviceInfoUrl) {
         // TODO
       }
     } catch (e) {
       this.state = {
-        id: 'ERROR', message: 'During initialization', details: e
+        id: States.ERROR, message: 'During initialization', error: e
       }
       throw (e);
     }
@@ -90,7 +74,7 @@ class Auth {
    * @private
    */
   async init() {
-    this.state = { id: 'INIT', action: null };
+    this.state = { id: States.LOADING };
     if (this.pryvService) {
       throw new Error('Auth service already initialized');
     }
@@ -99,9 +83,6 @@ class Auth {
     this.pryvService = new Service(this.settings.serviceInfoUrl);
 
     try {
-      /**
-       * @property {PryvServiceInfo}
-       */
       this.pryvServiceInfo = await this.pryvService.info();
     } catch (e) {
       this.state = {
@@ -111,13 +92,15 @@ class Auth {
       }
       throw e; // forward error
     }
+
     
     // 3. check autologin 
 
 
     // 4. Propose Login
     this.state = {
-      id: States.PROPOSE_LOGIN,
+      id: States.INITIALIZED,
+      serviceInfo: this.serviceInfo,
       action: this.openLoginPage
     }
   }
@@ -138,8 +121,6 @@ class Auth {
       this._processAccess(await this._postAccess());
     }
 
-
-
     // 3.a Open Popup (even if already opened)
     if (this.accessData.status === 'NEED_SIGNIN')
       window.open(this.accessData.url, "PryvLogin");
@@ -153,10 +134,7 @@ class Auth {
    * 
    */
   async logOut() {
-    // 2. Post access
-    // 3.a Open Popup
-    // 3.a.1 Poll Access
-    // 3.b Open url 
+    
   }
 
   /**
@@ -173,8 +151,7 @@ class Auth {
   * @private
   */
   async _getAccess() {
-    const res = await utils.superagent.get(this.accessData.poll)
-      .set('accept', 'json');
+    const res = await utils.superagent.get(this.accessData.poll).set('accept', 'json');
     return res.body;
   }
 
@@ -194,17 +171,20 @@ class Auth {
     this.accessData = accessData;
 
     switch (this.accessData.status) {
-      case 'NEED_SIGNIN':
-        // nothing to do
+      case 'ERROR':
+        this.state = {
+          id: States.ERROR,
+          message: 'Error on the backend'
+        };
         break;
       case 'ACCEPTED': 
-        console.log(this.pryvServiceInfo);
         const apiEndpoint = 
           Service.buildAPIEndpoint(this.pryvServiceInfo, this.accessData.username, this.accessData.token);
-        console.log('YEPEE!!! ', apiEndpoint);
+
         this.state = {
           id: States.AUTHORIZED,
-          apiEndpoint: apiEndpoint
+          apiEndpoint: apiEndpoint,
+          displayName: this.accessData.username
         };
         
         break;
@@ -226,52 +206,37 @@ class Auth {
 
   set state(newState) {
     console.log('State Changed:' + JSON.stringify(newState));
-
     this._state = newState;
-    try {
-      if (this.loginButton) {
-        this.loginButton.stateChanged();
-      } 
-    } catch (e) { console.log(e); //ignore 
-    }
-    try {
-      if (this.callbacks && this.callbacks.stateChanged) {
-        this.callbacks.stateChanged();
-      }
-    } catch (e) { console.log(e); //ignore
-    }
 
-    try {
-      switch (this._state.id) {
-        case States.ERROR:
-          this.settings.callbacks.error({
-            message: this._state.message,
-            details: this._state.details
-          });
-          break;
-        case States.INIT:
-          console.log('INIT');
-          // nothing to do
-          break;
-        case States.PROPOSE_LOGIN:
-          // nothing to do
-          break;
-        default:
-          //throw new Error('Unkown state.id: ' + this._state.id);
-      }
-    } catch (e) {  console.log(e); //ignore
-    }
-
+    this.stateChangeListners.map((listner) => { 
+      try { listner(this._state)} catch (e) { console.log(e); } });
   }
 
   get state() {
     return this._state;
   }
 
+  /**
+   * @return {AuthState}
+   */
   static get States() {
     return States;
   }
 
 }
+
+/**
+ * Notify the requesting code of all important changes  
+ * - ERROR => {message: <string>, error: <error>}  
+ * - LOADING => {}  
+ * - INITIALIZED => {serviceInfo: <PryvServiceInfo>, action: <Open Popup Function>}  
+ * - AUTHORIZED => {apiEndPoint: <PryvApiEndpoint>, serviceInfo: <PryvServiceInfo>, displayName: <string> action: <Open Logout Question>}
+ * - LOGOUT => {}
+ * @callback StateChangeHandler
+ * @memberof Pryv.Auth
+ * @param {Object} state
+ * @param {AuthState} state.id  one of ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
+ */
+
 
 module.exports = Auth;

@@ -1,23 +1,18 @@
-/** @module Pryv.Auth */
+
+
 /**
- * Error Status code, data: {message: string, error: Error}
- * @static
+ * Enum Possible states: ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
+ * @memberof Pryv.Auth
+ * @readonly
+ * @enum {string}
  */
-exports.ERROR = 'error';
-/**
-* Internal state
-* @static
-*/
-exports.INIT = 'init';
-/**
-* When it's time to propose login, data: {info: ServiceInfo}
-* @static
-*/
-exports.PROPOSE_LOGIN = 'propose'; // internal
-/**
-* Connection succed, data: {info: ServiceInfo}
-* @static
-*/
-exports.AUTHORIZED = 'loggedIn';
-exports.REFUSED = 'refused';
-exports.OPENURL = 'openURL'; 
+const AuthState = {
+  ERROR : 'error',
+  LOADING : 'loading',
+  INITIALIZED: 'initialized',
+  AUTHORIZED: 'authorized',
+  LOGOUT: 'logout'
+} 
+
+
+module.exports = AuthState 

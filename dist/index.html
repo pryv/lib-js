@@ -80,28 +80,24 @@
       }
     },
     spanButtonID: 'pryv-button',
-    callbacks: {
-      accepted: accepted,
-      refused: function (reason) {
-        logToConsole('# Auth refused: ' + reason);
-      },
-      error: function (code, message) {
-        logToConsole('# Auth error: ' + code + ' ' + message);
-      }
-    }
+    onStateChange: pryvAuthStateChanged
   };
 
   Pryv.Auth.setup(authSettings);
 
 
-  /**
-   * @param {Pryv.Connection} connection
-   */
-  function accepted(conn) {
-    connection = conn;
-    logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
-    //getLastEvents();
+
+  function pryvAuthStateChanged (state) {
+    if (state.id === Pryv.Auth.AUTHORIZED) {
+      connection = new Pryv.Connection(state.apiEndpoint);
+      logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
+    }
+    if (state.id === Pryv.Auth.LOGOUT) {
+      connection = null;
+      logToConsole('# Logout');
+    }
   }
+
 
   // Handle local user actions
 

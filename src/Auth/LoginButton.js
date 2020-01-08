@@ -27,19 +27,22 @@ class LogingButton {
     }
   }
 
-  stateChanged() {
-    switch (this.auth.state.id) {
+  onStateChange(state) {
+    switch (state.id) {
       case States.ERROR:
-        this.text = Messages.ERROR + ': ' + this.auth.state.message
+        this.text = Messages.ERROR + ': ' + state.message
       break;
-      case States.PROPOSE_LOGIN:
+      case States.LOADING:
+        this.text = Messages.LOADING;
+        break;
+      case States.INITIALIZED:
         this.text = Messages.LOGIN + ': ' + this.auth.pryvServiceInfo.name;
       break;
       case States.AUTHORIZED:
-        this.text =  'Y : ' + this.auth.state.apiEndpoint;
+        this.text =  'Y : ' + state.displayName;
         break;
       default:
-        console.log('Unhandled state for Login: ' + this.auth.state.id);
+        console.log('Unhandled state for Login: ' + state.id);
     }
     this.setText(this.text);
   }
