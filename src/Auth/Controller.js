@@ -34,12 +34,12 @@ class Controller {
       this.stateChangeListners.push(this.settings.onStateChange);
 
       // -- settings 
-      if (!this.settings.accessRequest) { throw new Error('Missing settings.accessRequest'); }
-      if (!this.settings.accessRequest.requestingAppId) {
-        throw new Error('Missing settings.accessRequest.requestingAppId');
+      if (!this.settings.authRequest) { throw new Error('Missing settings.authRequest'); }
+      if (!this.settings.authRequest.requestingAppId) {
+        throw new Error('Missing settings.authRequest.requestingAppId');
       }
-      if (!this.settings.accessRequest.requestedPermissions) {
-        throw new Error('Missing settings.accessRequest.requestedPermissions');
+      if (!this.settings.authRequest.requestedPermissions) {
+        throw new Error('Missing settings.authRequest.requestedPermissions');
       }
 
       // -- Extract service info from URL query params if nor specified -- //
@@ -121,7 +121,7 @@ class Controller {
   async postAccess() {
     const res = await utils.superagent.post(this.pryvServiceInfo.access)
       .set('accept', 'json')
-      .send(this.settings.accessRequest);
+      .send(this.settings.authRequest);
     return res.body;
   }
 

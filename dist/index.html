@@ -58,7 +58,9 @@
 
   var authSettings = {
     serviceInfoUrl: 'https://reg.pryv.me/service/info',
-    accessRequest: { // See: http://api.pryv.com/reference/#auth-request
+    spanButtonID: 'pryv-button',
+    onStateChange: pryvAuthStateChange,
+    authRequest: { // See: http://api.pryv.com/reference/#auth-request
       requestingAppId: 'test-value-notes',
       requestedPermissions: [
         {
@@ -72,9 +74,7 @@
           'type': 'note/txt', 'content': 'This is a consent message.'
         }
       }
-    },
-    spanButtonID: 'pryv-button',
-    onStateChange: pryvAuthStateChanged
+    }
   };
 
 
@@ -88,8 +88,8 @@
   })();
 
 
-  function pryvAuthStateChanged(state) {
-    console.log('##pryvAuthStateChanged', state);
+  function pryvAuthStateChange(state) {
+    console.log('##pryvAuthStateChange', state);
     if (state.id === Pryv.Auth.States.AUTHORIZED) {
       connection = new Pryv.Connection(state.apiEndpoint);
       logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);

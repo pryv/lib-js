@@ -12,10 +12,10 @@ const States = require('./States');
  * @memberof Pryv.Auth
  * @param {Object} settings
  * @param {string} settings.serviceInfoUrl
- * @param {Object} settings.accessRequest See https://api.pryv.com/reference/#data-structure-access
- * @param {string} settings.accessRequest.requestingAppId Application id, ex: 'my-app'
- * @param {Object} settings.accessRequest.requestedPermissions
- * @param {string | boolean} settings.accessRequest.returnURL : false, // set this if you don't want a popup
+ * @param {Object} settings.authRequest See https://api.pryv.com/reference/#data-structure-access
+ * @param {string} settings.authRequest.requestingAppId Application id, ex: 'my-app'
+ * @param {Object} settings.authRequest.requestedPermissions
+ * @param {string | boolean} settings.authRequest.returnURL : false, // set this if you don't want a popup
  * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
  * @param {module:Auth.AuthStateChangeHandler} settings.onStateChange
  * @returns {PryvServiceInfo}

@@ -1,50 +1,52 @@
 
 const should = chai.should();
+const expect = chai.expect;
 
 const testData = require('./test-data.js');
 
 function genSettings() {
+  function defaultStateChange(state) { 
+    console.log('Test unimplemented on state change', state); 
+  }
   return {
     serviceInfoUrl: testData.defaults.serviceInfoUrl,
-    accessRequest: {
+    authRequest: {
       requestingAppId: 'lib-js-test',
-      requestedPermissions: [{ streamId: '*', level: 'read' }]
+      requestedPermissions: [{ streamId: '*', level: 'read' }],
     },
-    on: function (key, data) { return true; }
+    onStateChange: defaultStateChange
   };
 }
 
 describe('Auth', function () {
-  it('init()', (done) => {
-    const auth = new Pryv.Auth(genSettings());
-    auth.init().then((res) => {
-      done();
+  this.timeout(5000); 
+  it('setup()', (done) => {
+    global.document = false;
+    const settings = genSettings();
+    
+    let AuthLoaded = false;
+    let ServiceInfoLoaded = false;
+    settings.onStateChange = function (state) {
+      should.exist(state.id);
+      if (state.id == Pryv.Auth.States.LOADING) {
+        AuthLoaded = true;
+      }
+      if (state.id == Pryv.Auth.States.INITIALIZED) {
+        expect(AuthLoaded).to.true;
+        done();
+      }
+    }
+
+    Pryv.Auth.setup(settings).then((res) => {
+      should.exist(res.access);
+      should.exist(res.serial);
     }).catch((error) =>  {
+      console.log(error);
       should.not.exist(error);
+      done();
     });
   });
 
-  it('init() Called Twice should throw an error', async  () => {
-    const auth = new Pryv.Auth(genSettings());
-    await auth.init();
-
-    let error;
-    try { 
-      await auth.init();
-    } catch (e) {
-      error = e;
-    }
-    should.exist(error);
-  });
-
-  it ('unit _postAccess() ', async () => { 
-    const auth = new Pryv.Auth(genSettings());
-    await auth.init();
-    const res = await auth._postAccess();
-    should.exist(res);
-    should.exist(res.status);
-    console.log(res);
-  });
 });
 
 
