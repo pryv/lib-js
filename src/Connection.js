@@ -1,6 +1,8 @@
 
 const utils = require('./utils.js');
 
+const jsonParser = require('./lib/json-parser');
+
 /**
  * @class Connection
  * Create an instance of Connection to Pryv API.
@@ -96,13 +98,31 @@ class Connection {
    * @param {string} path 
    * @returns {request.superagent}  Promise from superagent's get request
    */
-  async getRaw(path, queryParams) {
+  getRaw(path, queryParams) {
     path = path || '';
-    return await utils.superagent.get(this.endpoint + path)
+    return utils.superagent.get(this.endpoint + path)
       .set('Authorization', this.token)
       .set('accept', 'json')
       .query(queryParams);
   }
+
+  /**
+   * Streamed get Event 
+   * @see https://api.pryv.com/reference/#get-events
+   * @param {Object} queryParams See `events.get` parameters
+   * @param {Function} forEachEvent Function taking one event as parameter. Will be called for each event 
+   * @returns {Promise<Object>} Promise to result.body transformed with `eventsCount: {count}` replacing `events: [...]`
+   */
+   async streamedGetEvent(queryParams, forEachEvent) {
+    const now = Date.now() / 1000;
+    const res = await this.getRaw('events', queryParams)
+      .buffer(false)
+      .parse(jsonParser(forEachEvent));
+     this._handleMeta(res.body, now);
+     return res.body
+  }
+
+
 
   /**
    * Difference in second between the API and locatime

@@ -73,6 +73,45 @@ try {
 }
 ```
 
+### Get Events Streamed
+
+`events.get`  is streamed by Pryv.io. https://api.pryv.com/reference/#get-events
+
+Pryv.getEventStreamed will parse the received json as soon as possible and will `forEachEvent` each time an event object has been received.
+
+The result will be transformed and the `events: [..]` array property will be replaced by `eventsCount: {Number}`
+
+#### Example:
+
+``````  javascript
+const queryParams = { fromTime: 0, toTime: now};
+let eventsCount = 0;
+function forEachEvent(event) {
+  counter++; 
+}
+
+try {
+  const result = await conn.streamedGetEvent(queryParams, forEachEvent);
+} catch (e) {
+  // handle error
+}
+``````
+
+#### Result:
+
+```json
+{ "eventsCount": 10000,
+  "meta": 
+   { "apiVersion": "1.4.26",
+     serverTime: 1580728336.864,
+     serial: "2019061301" 
+   } 
+}
+```
+
+
+
+
 
 ### Auth
 

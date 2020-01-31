@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Pryv - Javascript Lib Stream Example</title>
+  <script src="./pryv.js"></script>
+</head>
+<style>
+  body {
+    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+
+  h3 {
+    margin: 1.5em 0 0;
+  }
+
+  h5 {
+    margin: 1em 0 0;
+  }
+
+  textarea {
+    width: 100%;
+    height: 20em;
+  }
+</style>
+
+<body>
+  <h1>Pryv stream events</h1>
+
+  <h5>Actions</h5>
+  <button onClick='getStreamEvents()'>StreamEvents</button>
+
+
+  <div class="clearfix"></div>
+  <h3>Console</h3>
+  <textarea id='console'></textarea>
+
+
+</body>
+
+<script>
+
+
+  var $console = document.getElementById('console');
+
+  // will handle the connection
+  var connection = new Pryv.Connection('https://ck60yn9yv00011hd3vu1ocpi7@jslibtest.pryv.me');;
+
+  function getStreamEvents() {
+    
+    var params = {
+        limit: 20
+      };
+
+    function foreachEvent(event) {
+      logToConsole(JSON.stringify(event));
+    }
+
+    connection.streamedGetEvent(params, foreachEvent).then(function (res, err) {
+      logToConsole('*** DONE ****: ' + JSON.stringify(res));
+    });
+  }
+
+  
+
+  function logToConsole(text) {
+    $console.value += text + '\n';
+    $console.scrollTop = $console.scrollHeight;
+  }
+
+  function display(obj, $textArea) {
+    $textArea.value = JSON.stringify(obj, null, 2);
+  }
+
+
+  
+
+</script>
+
+
+</html>

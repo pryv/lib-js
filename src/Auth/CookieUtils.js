@@ -15,7 +15,6 @@ function set(cookieKey, value, expireInDays) {
   var cookieStr = cookieKey + "=" + encodeURIComponent(JSON.stringify(value))
     + ";expires=" + myDate.toGMTString()
     + ';domain=.' + hostName + ';path=' + path;
-  console.log('Set Cookie:' + cookieStr);
   document.cookie = cookieStr;
 }
 exports.set = set;
