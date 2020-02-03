@@ -3,6 +3,8 @@ const utils = require('./utils.js');
 
 const jsonParser = require('./lib/json-parser');
 
+const browserGetEventStreamed = require('./lib/browser-getEventStreamed');
+
 /**
  * @class Connection
  * Create an instance of Connection to Pryv API.
@@ -86,10 +88,10 @@ class Connection {
    * @returns {Promise<Array|Object>}  Promise to result.body
    */
   async get(path, queryParams) {
-      const now = Date.now() / 1000;
-      const res = await this.getRaw(path, queryParams);
-      this._handleMeta(res.body, now);
-      return res.body
+    const now = Date.now() / 1000;
+    const res = await this.getRaw(path, queryParams);
+    this._handleMeta(res.body, now);
+    return res.body
   }
 
   /**
@@ -113,13 +115,24 @@ class Connection {
    * @param {Function} forEachEvent Function taking one event as parameter. Will be called for each event 
    * @returns {Promise<Object>} Promise to result.body transformed with `eventsCount: {count}` replacing `events: [...]`
    */
-   async streamedGetEvent(queryParams, forEachEvent) {
+  async streamedGetEvent(queryParams, forEachEvent) {
+    const myParser = jsonParser(forEachEvent);
+    let res = null;
+    if (typeof window === 'undefined') { // node
+      res = await this.getRaw('events', queryParams)
+        .buffer(false)
+        .parse(myParser);
+
+    } else if (typeof fetch !== 'undefined') { // browser supports fetch 
+      res = await browserGetEventStreamed(this, queryParams, myParser);
+
+    } else { // browser no fetch supports
+      throw new Error('Browser does not support fetch() required by Pryv.Connection.streamedGetEvent()');
+    }
+
     const now = Date.now() / 1000;
-    const res = await this.getRaw('events', queryParams)
-      .buffer(false)
-      .parse(jsonParser(forEachEvent));
-     this._handleMeta(res.body, now);
-     return res.body
+    this._handleMeta(res.body, now);
+    return res.body
   }
 
 
@@ -153,5 +166,6 @@ class Connection {
   }
 
 }
+
 
 module.exports = Connection;

@@ -97,7 +97,7 @@ try {
 }
 ``````
 
-#### Result:
+#### result:
 
 ```json
 { "eventsCount": 10000,

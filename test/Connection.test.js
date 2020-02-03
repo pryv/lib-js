@@ -83,7 +83,7 @@ describe('Connection', () => {
       expect(eventsCount).to.equal(res.eventsCount);
     });
 
-    it('no events ', async () => {
+    it('no-events ', async () => {
       const queryParams = { fromTime: 0, toTime: now, tags: ['RANDOM-123'] };
       function forEachEvent(event) {}
       const res = await conn.streamedGetEvent(queryParams, forEachEvent);
