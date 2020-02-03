@@ -3,7 +3,7 @@
 
 <head>
   <title>Pryv - Javascript Lib Stream Example</title>
-  <script src="./pryv.js"></script>
+  <script src="./tests/pryv-dev.js"></script>
 </head>
 <style>
   body {
@@ -43,17 +43,16 @@
 
   var $console = document.getElementById('console');
 
+  const apiEndpoint =  'https://ck60yn9yv00011hd3vu1ocpi7@jslibtest.pryv.me';
   // will handle the connection
-  var connection = new Pryv.Connection('https://ck60yn9yv00011hd3vu1ocpi7@jslibtest.pryv.me');;
+  var connection = new Pryv.Connection(apiEndpoint);;
 
   function getStreamEvents() {
-    
-    var params = {
-        limit: 20
-      };
+    var params = { limit: 10000 };
 
-    function foreachEvent(event) {
-      logToConsole(JSON.stringify(event));
+    function foreachEvent(event) { 
+      // logToConsole(JSON.stringify(event)); 
+      console.log('.');
     }
 
     connection.streamedGetEvent(params, foreachEvent).then(function (res, err) {
@@ -61,7 +60,7 @@
     });
   }
 
-  
+
 
   function logToConsole(text) {
     $console.value += text + '\n';
@@ -73,7 +72,7 @@
   }
 
 
-  
+
 
 </script>
 
