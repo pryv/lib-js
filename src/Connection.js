@@ -109,7 +109,8 @@ class Connection {
   }
 
   /**
-   * Streamed get Event 
+   * Streamed get Event. 
+   * Fallbacks to not streamed, for browsers that does not support `fetch()` API 
    * @see https://api.pryv.com/reference/#get-events
    * @param {Object} queryParams See `events.get` parameters
    * @param {Function} forEachEvent Function taking one event as parameter. Will be called for each event 
@@ -127,7 +128,14 @@ class Connection {
       res = await browserGetEventStreamed(this, queryParams, myParser);
 
     } else { // browser no fetch supports
-      throw new Error('Browser does not support fetch() required by Pryv.Connection.streamedGetEvent()');
+      console.warn('Browser does not support fetch() required by Pryv.Connection.streamedGetEvent()');
+      res = await this.getRaw('events', queryParams);
+      res.body.eventsCount = 0;
+      if (res.body.events) {
+        res.body.events.forEach(forEachEvent);
+        res.body.eventsCount = res.body.events.length;
+        delete res.body.events;
+      }
     }
 
     const now = Date.now() / 1000;

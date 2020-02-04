@@ -6,28 +6,35 @@
  */
 async function getEventStreamed(conn, queryParam, parser) {
 
+  /**
+   * Holds Parser's settings
+   */
   const parserSettings = {
-    onData: null,
-    onEnd: null,
+    ondata: null,
+    onend: null,
     encoding: 'utf8'
   }
 
+  /**
+   * Mock Response
+   */
   const fakeRes = {
     setEncoding : function(encoding) {
       parserSettings.encoding = encoding;
-    }, // dummy
+    }, // will receive 'data' and 'end' callbacks
     on: function(key, f) { 
-      if (key === 'data') {
-        parserSettings.onData = f;
-      }
-      if (key === 'end') {
-        parserSettings.onEnd = f;
-      }
+      parserSettings['on' + key] = f;
     }
   }
 
+  /**
+   * Holds results from the parser
+   */
   let errResult;
   let bodyObjectResult;
+  /**
+   * 
+   */
   parser(fakeRes, function (err, bodyObject) { 
     errResult = err;
     bodyObjectResult = bodyObject;
@@ -42,13 +49,11 @@ async function getEventStreamed(conn, queryParam, parser) {
 
   let response = await fetch(url,fetchParams);
   const reader = response.body.getReader();
-
   
-  //let chunks = []; // array of received binary chunks (comprises the body)
   while (true) {
     const { done, value } = await reader.read();
-    parserSettings.onData(new TextDecoder(parserSettings.encoding).decode(value));
-    if (done) { parserSettings.onEnd(); break; }
+    parserSettings.ondata(new TextDecoder(parserSettings.encoding).decode(value));
+    if (done) { parserSettings.onend(); break; }
   }
 
   if (errResult) {
@@ -62,7 +67,7 @@ async function getEventStreamed(conn, queryParam, parser) {
     statusCode: response.status,
     headers: {}
   }
-
+  // add headers to result
   for (var pair of response.headers.entries()) {
     result.headers[pair[0]] = pair[1];
   }
