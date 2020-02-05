@@ -77,14 +77,15 @@ try {
 
 `events.get`  is streamed by Pryv.io. https://api.pryv.com/reference/#get-events
 
-Pryv.getEventStreamed will parse the received json as soon as possible and will `forEachEvent` each time an event object has been received.
+Pryv.getEventStreamed parses the response json as soon as data is available and calls `forEachEvent` each time an event object is found.
 
-The result will be transformed and the `events: [..]` array property will be replaced by `eventsCount: {Number}`
+The result is transformed and  `events: [..]` array property is replaced by `eventsCount: {Number}`
 
 #### Example:
 
 ``````  javascript
-const queryParams = { fromTime: 0, toTime: now};
+const now = (new Date()).getTime() / 1000;
+const queryParams = { fromTime: 0, toTime: now, limit: 10000};
 let eventsCount = 0;
 function forEachEvent(event) {
   counter++; 

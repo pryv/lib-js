@@ -43,6 +43,9 @@ class Connection {
    * @returns {Promise<Array>} Promise to Array of results matching each method call in order
    */
   async api(arrayOfAPICalls) {
+    if (! Array.isArray(arrayOfAPICalls)) {
+      throw new Error('Pryv.api() takes an array as input');
+    }
     const res = [];
     for (let cursor = 0; arrayOfAPICalls.length >= cursor; cursor += this.options.chunkSize) {
       const thisBatch = arrayOfAPICalls.slice(cursor, cursor + this.options.chunkSize);
