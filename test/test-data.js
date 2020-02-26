@@ -3,6 +3,7 @@
  */
 const defaults = {
   user: 'jslibtest.pryv.me',
+  password: 'jslibtest',
   token: 'ck60yn9yv00011hd3vu1ocpi7',
   serviceInfoUrl: 'https://reg.pryv.me/service/info'
 }
