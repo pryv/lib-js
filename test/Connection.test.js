@@ -29,6 +29,23 @@ describe('Connection', () => {
 
     });
 
+    it('.api() events.get split in chunks and send percentages', async () => {
+      conn.options.chunkSize = 2;
+      const percentres = { 1: 67, 2: 100}
+      let count = 1;
+      const res = await conn.api(
+        [
+          { "method": "events.get", "params": {} },
+          { "method": "events.get", "params": {} },
+          { "method": "events.get", "params": {} }
+        ], function (percent) { 
+          percent.should.equal(percentres[count]);
+          count++;
+        });
+      res.length.should.equal(3);
+
+    });
+
     it('.api() with callbacks', (done) => {
       conn.api(
         [

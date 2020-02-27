@@ -40,17 +40,21 @@ class Connection {
    * arrayOfAPICalls will be splited in multiple calls if the size is > `conn.options.chunkSize` .
    * Default chunksize is 1000.
    * @param {Array.<MethodCall>} arrayOfAPICalls Array of Method Calls
+   * @param {Function} [progress] Return percentage of progress (0 - 100);
    * @returns {Promise<Array>} Promise to Array of results matching each method call in order
    */
-  async api(arrayOfAPICalls) {
+  async api(arrayOfAPICalls, progress) {
     if (! Array.isArray(arrayOfAPICalls)) {
       throw new Error('Pryv.api() takes an array as input');
     }
     const res = [];
+    let percent = 0;
     for (let cursor = 0; arrayOfAPICalls.length >= cursor; cursor += this.options.chunkSize) {
       const thisBatch = arrayOfAPICalls.slice(cursor, cursor + this.options.chunkSize);
       const resRequest = await this.post('', thisBatch);
       Array.prototype.push.apply(res, resRequest.results)
+      percent =  Math.round(100 * res.length / arrayOfAPICalls.length);
+      if (progress) { progress(percent, res); }
     }
     return res;
   }
