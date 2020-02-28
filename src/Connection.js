@@ -47,11 +47,32 @@ class Connection {
     if (! Array.isArray(arrayOfAPICalls)) {
       throw new Error('Pryv.api() takes an array as input');
     }
+    const handleResults = [];
     const res = [];
     let percent = 0;
     for (let cursor = 0; arrayOfAPICalls.length >= cursor; cursor += this.options.chunkSize) {
-      const thisBatch = arrayOfAPICalls.slice(cursor, cursor + this.options.chunkSize);
+      const thisBatch = [];
+      const cursorMax = Math.min(cursor + this.options.chunkSize, arrayOfAPICalls.length);
+      // copy only method and params into a back call to be exuted
+      for (let i = cursor; i < cursorMax ; i++) {      
+        thisBatch.push({ method: arrayOfAPICalls[i].method, params: arrayOfAPICalls[i].params});
+      }
       const resRequest = await this.post('', thisBatch);
+      // result checks
+      if (! resRequest || ! Array.isArray(resRequest.results)) {
+        throw new Error('API call result is not an Array: ' + JSON.stringify(resRequest));
+      }
+      if (resRequest.results.length != thisBatch.length) {
+        throw new Error('API call result Array does not match request: ' + JSON.stringify(resRequest));
+      }
+
+
+      // eventually call handleResult 
+      for (let i = 0; i < resRequest.results.length; i++) {
+        if (arrayOfAPICalls[i + cursor].handleResult) {
+          arrayOfAPICalls[i + cursor].handleResult.call(null, resRequest.results[i]);
+        }
+      }
       Array.prototype.push.apply(res, resRequest.results)
       percent =  Math.round(100 * res.length / arrayOfAPICalls.length);
       if (progress) { progress(percent, res); }

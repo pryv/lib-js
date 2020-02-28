@@ -10,8 +10,8 @@ describe('Connection', () => {
       const res = await conn.api(
         [
           {
-            "method": "events.get",
-            "params": {}
+            method: "events.get",
+            params: {}
           }
         ]);
       res.length.should.equal(1);
@@ -21,11 +21,32 @@ describe('Connection', () => {
       conn.options.chunkSize = 2;
       const res = await conn.api(
         [
-          { "method": "events.get", "params": {} },
-          { "method": "events.get", "params": {} },
-          { "method": "events.get", "params": {} }
+          { method: "events.get", params: {} },
+          { method: "events.get", params: {} },
+          { method: "events.get", params: {} }
         ]);
       res.length.should.equal(3);
+
+    });
+
+
+    it('.api() events.get with handleResult call', async () => {
+      conn.options.chunkSize = 2;
+
+      let resultsRecievedCount = 0;
+      function oneMoreResult (res) {
+        should.exist(res.events);
+        resultsRecievedCount ++;
+      }
+
+      const res = await conn.api(
+        [
+          { method: "events.get", params: {}, handleResult: oneMoreResult },
+          { method: "events.get", params: {}, handleResult: oneMoreResult },
+          { method: "events.get", params: {}, handleResult: oneMoreResult }
+        ]);
+      res.length.should.equal(3);
+      res.length.should.equal(resultsRecievedCount);
 
     });
 
@@ -35,9 +56,9 @@ describe('Connection', () => {
       let count = 1;
       const res = await conn.api(
         [
-          { "method": "events.get", "params": {} },
-          { "method": "events.get", "params": {} },
-          { "method": "events.get", "params": {} }
+          { method: "events.get", params: {} },
+          { method: "events.get", params: {} },
+          { method: "events.get", params: {} }
         ], function (percent) { 
           percent.should.equal(percentres[count]);
           count++;
@@ -49,7 +70,7 @@ describe('Connection', () => {
     it('.api() with callbacks', (done) => {
       conn.api(
         [
-          { "method": "events.get", "params": {} }
+          { method: "events.get", params: {} }
         ]).then((res) => {
           res.length.should.equal(1);
           done();
