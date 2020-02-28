@@ -47,7 +47,7 @@ class Connection {
     if (! Array.isArray(arrayOfAPICalls)) {
       throw new Error('Pryv.api() takes an array as input');
     }
-    const handleResults = [];
+
     const res = [];
     let percent = 0;
     for (let cursor = 0; arrayOfAPICalls.length >= cursor; cursor += this.options.chunkSize) {
@@ -70,7 +70,7 @@ class Connection {
       // eventually call handleResult 
       for (let i = 0; i < resRequest.results.length; i++) {
         if (arrayOfAPICalls[i + cursor].handleResult) {
-          arrayOfAPICalls[i + cursor].handleResult.call(null, resRequest.results[i]);
+          await arrayOfAPICalls[i + cursor].handleResult.call(null, resRequest.results[i]);
         }
       }
       Array.prototype.push.apply(res, resRequest.results)
@@ -82,7 +82,7 @@ class Connection {
 
   /**
    * Post to API return results  
-   * @param {Array | Object} data 
+   * @param {(Array | Object)} data 
    * @param {Object} queryParams
    * @param {string} path 
    * @returns {Promise<Array|Object>}  Promise to result.body
@@ -205,3 +205,11 @@ class Connection {
 
 
 module.exports = Connection;
+
+/**
+ * API Method call, for batch call https://api.pryv.com/reference/#call-batch
+ * @typedef {Object} MethodCall
+ * @property {string} method - The method id
+ * @property {(Object|Array)}  params - The call parameters as required by the method.
+ * @property {(Function|Promise)} [handleResult] - Will be called with the result corresponding to this specific call.
+ */

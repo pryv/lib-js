@@ -47,7 +47,31 @@ describe('Connection', () => {
         ]);
       res.length.should.equal(3);
       res.length.should.equal(resultsRecievedCount);
+    });
 
+    it('.api() events.get with async handleResult call', async () => {
+      conn.options.chunkSize = 2;
+
+      let resultsRecievedCount = 0;
+      async function oneMoreResult(res) {
+        should.exist(res.events);
+
+        let promise = new Promise((res, rej) => {
+          setTimeout(() => res("Now it's done!"), 100)
+        });
+        // wait until the promise returns us a value
+        await promise;
+        resultsRecievedCount++;
+      }
+
+      const res = await conn.api(
+        [
+          { method: "events.get", params: {}, handleResult: oneMoreResult },
+          { method: "events.get", params: {}, handleResult: oneMoreResult },
+          { method: "events.get", params: {}, handleResult: oneMoreResult }
+        ]);
+      res.length.should.equal(3);
+      res.length.should.equal(resultsRecievedCount);
     });
 
     it('.api() events.get split in chunks and send percentages', async () => {

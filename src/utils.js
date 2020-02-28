@@ -87,13 +87,7 @@ module.exports = utils;
 * @typedef {string} PryvApiEndpoint
 */
 
-/**
- * API Method call, for batch call https://api.pryv.com/reference/#call-batch
- * @typedef {Object} MethodCall
- * @property {string}  method The method id
- * @property {Object|Array}  params The call parameters as required by the method.
- * @property {Function} [handleResult] Will be called with the result corresponding to this specific call. 
- */
+
 
 /**
  * Common Meta are returned by each standard call on the API https://api.pryv.com/reference/#in-method-results
