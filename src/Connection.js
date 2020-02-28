@@ -102,7 +102,7 @@ class Connection {
    * @returns {request.superagent}  Promise from superagent's post request
    */
   async postRaw(path, data, queryParams) {
-    return await utils.superagent.post(this.endpoint + path)
+    return utils.superagent.post(this.endpoint + path)
       .set('Authorization', this.token)
       .set('accept', 'json')
       .query(queryParams)
@@ -134,6 +134,23 @@ class Connection {
       .set('Authorization', this.token)
       .set('accept', 'json')
       .query(queryParams);
+  }
+
+  /**
+   * ADD Data Points to HFEvent (flatJSON format)
+   * https://api.pryv.com/reference/#add-hf-series-data-points
+   */
+  async addPointsToHFEvent(eventId, fields, points) {
+    const res = await this.post('events/' + eventId + '/series',
+      {
+        format: 'flatJSON',
+        fields: fields,
+        points: points
+      });
+    if (!res.status === 'ok') {
+      throw new Error('Failed loading serie: ' + JSON.stringify(res.status));
+    }
+    return res;
   }
 
   /**
