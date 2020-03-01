@@ -37,9 +37,10 @@ describe('Auth', function () {
       }
     }
 
-    Pryv.Auth.setup(settings).then((res) => {
-      should.exist(res.access);
-      should.exist(res.serial);
+    Pryv.Auth.setup(settings).then((service) => {
+      serviceInfo = service.infoSync();
+      should.exist(serviceInfo.access);
+      should.exist(serviceInfo.serial);
     }).catch((error) =>  {
       console.log(error);
       should.not.exist(error);

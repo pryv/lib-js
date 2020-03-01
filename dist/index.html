@@ -57,7 +57,8 @@
   var connection = null;
 
   var authSettings = {
-    serviceInfoUrl: 'https://reg.pryv.me/service/info',
+    //serviceInfoUrl: 'https://reg.pryv.me/service/info',
+    serviceInfoUrl: 'https://l.rec.la:4443/tests/test-service-info.json',
     spanButtonID: 'pryv-button',
     onStateChange: pryvAuthStateChange,
     authRequest: { // See: http://api.pryv.com/reference/#auth-request
@@ -83,8 +84,11 @@
     $noteContent = document.getElementById('create-note'),
     $valueContent = document.getElementById('create-value');
 
-  (function () {
-    Pryv.Auth.setup(authSettings);
+  (async function () {
+    const service = await Pryv.Auth.setup(authSettings);
+    const assets = await service.assets();
+    await assets.setServiceFavicon();
+    await assets.setCSSForLogin();
   })();
 
 

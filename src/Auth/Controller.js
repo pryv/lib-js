@@ -55,7 +55,7 @@ class Controller {
   }
 
   /**
-   * @returns {PryvServiceInfo}
+   * @returns {PryvService}
    */
   async init() {
     this.state = { id: States.LOADING };
@@ -96,7 +96,7 @@ class Controller {
       this.readyAndClean();
     }
 
-    return this.pryvServiceInfo;
+    return this.pryvService;
   }
 
   /**

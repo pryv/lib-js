@@ -1,6 +1,7 @@
 
 const utils = require('./utils.js');
-const Connection = require('./Connection.js')
+const Connection = require('./Connection.js');
+const Assets = require('./ServiceAssets.js');
 
 /**
  * @class Service
@@ -19,6 +20,7 @@ class Service {
   constructor(pryvServiceInfoUrl) {
     this._pryvServiceInfoUrl = pryvServiceInfoUrl;
     this._pryvServiceInfo = null;
+    this._assets = null;
   }
 
   /**
@@ -38,6 +40,30 @@ class Service {
       return this._pryvServiceInfo;
     }
   }
+
+  /**
+   * Return assets property content
+   * @param {boolean?} forceFetch If true, will force fetching service info.
+   * @returns {Promise<ServiceAssets>} Promise to ServiceAssets 
+   */
+  async assets(forceFetch) {
+    if (!forceFetch && this._assets) {
+      return this._assets;
+    } else {
+      const serviceInfo = await this.info();
+      this._assets = await Assets.setup(serviceInfo.assets.definitions);
+      return this._assets;
+    }
+  }
+
+  /**
+     * Return service info parameters info known or null if not yet loaded
+     * @returns {PryvServiceInfo} Service Info definition
+     */
+  async infoSync() {
+    return this._pryvServiceInfo;
+  }
+
 
 /**
  * Return an API Endpoint from a username and token

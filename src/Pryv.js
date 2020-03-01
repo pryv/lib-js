@@ -4,6 +4,10 @@
  * @version 1.0
  * @exports Pryv
  * @namespace Pryv
+ * @property {Service} Service
+ * @property {Connection} Connection
+ * @property {Auth} Auth
+ * @property {utils} utils
  */
 module.exports = {
   Service: require('./Service'),

@@ -34,9 +34,9 @@ describe('Connection', () => {
       conn.options.chunkSize = 2;
 
       let resultsRecievedCount = 0;
-      function oneMoreResult (res) {
+      function oneMoreResult(res) {
         should.exist(res.events);
-        resultsRecievedCount ++;
+        resultsRecievedCount++;
       }
 
       const res = await conn.api(
@@ -76,14 +76,14 @@ describe('Connection', () => {
 
     it('.api() events.get split in chunks and send percentages', async () => {
       conn.options.chunkSize = 2;
-      const percentres = { 1: 67, 2: 100}
+      const percentres = { 1: 67, 2: 100 }
       let count = 1;
       const res = await conn.api(
         [
           { method: "events.get", params: {} },
           { method: "events.get", params: {} },
           { method: "events.get", params: {} }
-        ], function (percent) { 
+        ], function (percent) {
           percent.should.equal(percentres[count]);
           count++;
         });
@@ -104,6 +104,31 @@ describe('Connection', () => {
         });
 
     });
+  });
+
+  describe('HF events', () => {
+
+    it('Add data points to HF event', async () => {
+
+      const res = await conn.api([{
+        method: 'events.create',
+        params: {
+          type: 'series:mass/kg', streamId: 'data'
+        }}]);
+      should.exist(res);
+      should.exist(res[0]);
+      should.exist(res[0].id);
+      const event = res[0];
+
+      const res2 = conn.addPointsToHFEvent(
+        event.id, 
+        ['deltaTime', 'value'],
+        [[0,1],[1,1]]);
+
+      should.exist(res2);
+      'ok'.should.equal(res2.status);
+    });
+
   });
 
   describe('.get()', () => {

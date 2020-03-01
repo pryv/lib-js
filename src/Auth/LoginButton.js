@@ -18,7 +18,7 @@ class LogingButton {
   }
 
   setText(text) {
-    this.loginButtonSpan.innerHTML = '<button type = "button">' + text + '</button>';
+    this.loginButtonSpan.innerHTML = '<div id="pryv-access-btn" class="pryv-access-btn-signin"><a class="pryv-access-btn pryv-access-btn-pryv-access-color" href="#"><span class="logoSignin">Y</span></a><a class="pryv-access-btn pryv-access-btn-pryv-access-color" href="#"><span>' + text + '</span></a></div>';
   }
 
   onClick() {
