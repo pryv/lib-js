@@ -59,6 +59,7 @@
   var authSettings = {
     //serviceInfoUrl: 'https://reg.pryv.me/service/info',
     serviceInfoUrl: 'https://l.rec.la:4443/tests/test-service-info.json',
+    languageCode: 'fr',
     spanButtonID: 'pryv-button',
     onStateChange: pryvAuthStateChange,
     authRequest: { // See: http://api.pryv.com/reference/#auth-request
@@ -86,9 +87,6 @@
 
   (async function () {
     const service = await Pryv.Auth.setup(authSettings);
-    const assets = await service.assets();
-    await assets.setServiceFavicon();
-    await assets.setCSSForLogin();
   })();
 
 

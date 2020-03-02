@@ -3,24 +3,28 @@ const Messages = {
     'en': '...'
   },
   ERROR: {
-    'en': 'Error'
+    'en': 'Error',
+    'fr': 'Erreur',
   },
   LOGIN: {
-    'en': 'Login'
+    'en': 'Login',
+    'fr': 'Login'
   },
   LOGOUT_CONFIRM: {
-    'en': 'Logout ?'
+    'en': 'Logout ?',
+    'fr': 'Se deconnecter ?'
   }
 }
 
 
-
-function get(languageCode) { 
+function get(languageCode, definitions) {
+  const myMessages = definitions || Messages;
   const res = {};
-  Object.keys(Messages).map((key) => {
-    res[key] = Messages[key][languageCode] || Messages[key]['en'];
+  Object.keys(myMessages).map((key) => {
+    res[key] = myMessages[key][languageCode] || myMessages[key]['en'];
   });
   return res;
 }
+
 
 module.exports = get;

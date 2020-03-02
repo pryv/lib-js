@@ -1,7 +1,6 @@
 const utils = require('../utils');
 const Service = require('../Service');
 const LoginButton = require('./LoginButton');
-const LoginButtonMessages = require('./LoginButtonMessages')('en');
 const States = require('./States');
 const Cookies = require('./CookieUtils');
 
@@ -77,6 +76,10 @@ class Controller {
       throw e; // forward error
     }
 
+    // 2. setup button with assets
+    if (this.loginButton) {
+      this.loginButton.loadAssets(this.pryvService);
+    }
 
     // 3. check autologin 
     let loginCookie = null;
@@ -235,7 +238,8 @@ class Controller {
    * 
    */
   logOut() {
-    if (confirm(LoginButtonMessages.LOGOUT_CONFIRM)) {
+    const message = this.loginButton ? this.loginButton.myMessages.LOGOUT_CONFIRM : 'Logout ?';
+    if (confirm(message)) {
       this.readyAndClean();
     }
   }

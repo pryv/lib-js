@@ -1,10 +1,17 @@
 
-const Messages = require('./LoginButtonMessages')('en');
+const Messages = require('./LoginButtonMessages');
 const States = require('./States');
 
-class LogingButton {
+class LoginButton {
 
+  /**
+   * @param {Auth} auth 
+   */
   constructor(auth) {
+    // 1. get Language
+    this.languageCode = auth.settings.languageCode || 'en';
+    this.myMessages = Messages(this.languageCode);
+
     // 2. build button
     this.loginButtonSpan = document.getElementById(auth.settings.spanButtonID);
 
@@ -14,11 +21,33 @@ class LogingButton {
 
     this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
     this.auth = auth;
-    this.text = Messages.LOADING;
+
+
+    this.onStateChange({ id: States.LOADING });
   }
 
-  setText(text) {
-    this.loginButtonSpan.innerHTML = '<div id="pryv-access-btn" class="pryv-access-btn-signin"><a class="pryv-access-btn pryv-access-btn-pryv-access-color" href="#"><span class="logoSignin">Y</span></a><a class="pryv-access-btn pryv-access-btn-pryv-access-color" href="#"><span>' + text + '</span></a></div>';
+  /**
+   * @param {Service} pryvService 
+   */
+  async loadAssets(pryvService) {
+    const assets = await pryvService.assets();
+    assets.loginButtonLoadCSS(); // can be async 
+    this.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
+    this.loginButtonText = document.getElementById('pryv-access-btn-text');
+    const thisMessages = await assets.loginButtonGetMessages();
+    if (thisMessages.LOADING) {
+      this.myMessages = Messages(this.languageCode, thisMessages);
+    } else {
+      console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
+    }
+    this.onStateChange(); // refresh messages
+    this.refreshText();
+  }
+
+
+  refreshText() {
+    if (this.loginButtonText)
+     this.loginButtonText.innerHTML = this.text;
   }
 
   onClick() {
@@ -28,25 +57,30 @@ class LogingButton {
   }
 
   onStateChange(state) {
-    switch (state.id) {
+    if (state) {
+      this.lastState = state;
+    }
+    switch (this.lastState.id) {
       case States.ERROR:
-        this.text = Messages.ERROR + ': ' + state.message
+        this.text = this.myMessages.ERROR + ': ' + this.lastState.message
       break;
       case States.LOADING:
-        this.text = Messages.LOADING;
+        this.text = this.myMessages.LOADING;
         break;
       case States.INITIALIZED:
-        this.text = Messages.LOGIN + ': ' + this.auth.pryvServiceInfo.name;
+        this.text = this.myMessages.LOGIN + ': ' + this.auth.pryvServiceInfo.name;
       break;
       case States.AUTHORIZED:
-        this.text =  'Y : ' + state.displayName;
+        this.text = this.lastState.displayName;
         break;
       default:
-        console.log('Unhandled state for Login: ' + state.id);
+        console.log('Unhandled state for Login: ' + this.lastState.id);
     }
-    this.setText(this.text);
+    this.refreshText();
   }
+
+  
 }
 
 
-module.exports = LogingButton;
+module.exports = LoginButton;

@@ -11,6 +11,7 @@ const States = require('./States');
  * Start an authentication process
  * @memberof Pryv.Auth
  * @param {Object} settings
+ * @param {string} [settings.languageCode] Language code, as per LoginButton Messages: 'en', 'fr
  * @param {string} settings.serviceInfoUrl
  * @param {Object} settings.authRequest See https://api.pryv.com/reference/#data-structure-access
  * @param {string} settings.authRequest.requestingAppId Application id, ex: 'my-app'

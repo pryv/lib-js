@@ -40,18 +40,37 @@ class ServiceAssets {
     document.getElementsByTagName('head')[0].appendChild(link);
   }
 
-  /**
-   * Load CSS for Login button
-   */
-  async setCSSForLogin() {
-    loadCSS(this.relativeURL(this._assets.libJavascript.buttonSignIn.url));
-  }
-
+ 
   /**
    * get relativeUrl
    */
   relativeURL(url) {
     return relPathToAbs(this._assets.baseUrl || this._assetsURL, url);
+  }
+
+  // ---- Login
+
+  /**
+  * Load CSS for Login button
+  */
+  async loginButtonLoadCSS() {
+    loadCSS(this.relativeURL(this._assets.libJavascript.buttonSignIn.css));
+  }
+
+  /**
+  * Get HTML for Login Button
+  */
+  async loginButtonGetHTML() {
+    const res = await utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.html));
+    return res.text;
+  }
+
+ /**
+ * Get Messages strings for Login Button
+ */
+  async loginButtonGetMessages() {
+    const res = await utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.messages));
+    return res.body;
   }
 
 }
@@ -81,7 +100,6 @@ function loadCSS(url) {
   \*/
 
 function relPathToAbs(baseUrlString, sRelPath) {
-  console.log("****", baseUrlString, sRelPath);
   var baseLocation = location;
   if (baseUrlString) {
     baseLocation = document.createElement('a');
