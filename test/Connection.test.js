@@ -117,16 +117,18 @@ describe('Connection', () => {
         }}]);
       should.exist(res);
       should.exist(res[0]);
-      should.exist(res[0].id);
-      const event = res[0];
-
-      const res2 = conn.addPointsToHFEvent(
+      should.exist(res[0].event);
+      should.exist(res[0].event.id);
+      const event = res[0].event;
+     
+      const res2 = await conn.addPointsToHFEvent(
         event.id, 
         ['deltaTime', 'value'],
         [[0,1],[1,1]]);
 
       should.exist(res2);
       'ok'.should.equal(res2.status);
+    
     });
 
   });

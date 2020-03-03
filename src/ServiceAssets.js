@@ -3,7 +3,6 @@ const utils = require('./utils.js');
  * @class ServiceAssets
  * Holds Pryv Service informations
  *
- *
  * @property { TokenAndEndpoint } tokenAndApi
  * @memberof Pryv
  *
@@ -12,7 +11,6 @@ const utils = require('./utils.js');
  * @param { string } pryvServiceAssetsSourceUrl Url point to assets of the service of a Pryv platform: https://api.pryv.com/reference/#service-info property `assets.src`
  **/
 class ServiceAssets {
-
 
   constructor(assets, assetsURL) {
     this._assets = assets;
@@ -25,14 +23,31 @@ class ServiceAssets {
    * @returns {ServiceAssets}
    */
   static async setup(pryvServiceAssetsSourceUrl) {
-    const res = await utils.superagent.get(pryvServiceAssetsSourceUrl);
+    const res = await utils.superagent.get(pryvServiceAssetsSourceUrl).set('accept', 'json');
     return new ServiceAssets(res.body, pryvServiceAssetsSourceUrl);
+  }
+
+  /**
+   * get relativeUrl
+   */
+  relativeURL(url) {
+    return relPathToAbs(this._assets.baseUrl || this._assetsURL, url);
+  }
+
+  //----------------   Default service ressources
+  
+  /**
+   * Set all defaults Favicon, CSS
+   */
+  async setAllDefaults() {
+    this.setFavicon();
+    await this.loadCSS();
   }
 
   /**
    * Set service Favicon to Web Page
    */
-  async setServiceFavicon() {
+  setFavicon() {
     var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
     link.type = 'image/x-icon';
     link.rel = 'shortcut icon';
@@ -40,12 +55,11 @@ class ServiceAssets {
     document.getElementsByTagName('head')[0].appendChild(link);
   }
 
- 
   /**
-   * get relativeUrl
+   * Set default service CSS
    */
-  relativeURL(url) {
-    return relPathToAbs(this._assets.baseUrl || this._assetsURL, url);
+  async loadCSS() {
+    loadCSS(this.relativeURL(this._assets.css.default.url));
   }
 
   // ---- Login
@@ -61,7 +75,7 @@ class ServiceAssets {
   * Get HTML for Login Button
   */
   async loginButtonGetHTML() {
-    const res = await utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.html));
+    const res = await utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.html)).set('accept', 'html');
     return res.text;
   }
 
@@ -69,12 +83,11 @@ class ServiceAssets {
  * Get Messages strings for Login Button
  */
   async loginButtonGetMessages() {
-    const res = await utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.messages));
+    const res = await utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.messages)).set('accept', 'json');
     return res.body;
   }
 
 }
-
 
 
 function loadCSS(url) {

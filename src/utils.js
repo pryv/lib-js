@@ -83,10 +83,9 @@ module.exports = utils;
  */
 
 /**
-* A String url of the form http(s)://{token}@{apiEndpoint}
-* @typedef {string} PryvApiEndpoint
-*/
-
+ * A String url of the form http(s)://{token}@{apiEndpoint}
+ * @typedef {string} PryvApiEndpoint
+ */
 
 
 /**

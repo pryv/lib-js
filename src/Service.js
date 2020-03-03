@@ -34,7 +34,7 @@ class Service {
     } else {
       const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('accept', 'json');
       this._pryvServiceInfo = res.body;
-      if (! this._pryvServiceInfo.name) { 
+      if (!this._pryvServiceInfo.name) {
         throw new Error('Invalid data from service/info');
       }
       return this._pryvServiceInfo;
@@ -57,25 +57,24 @@ class Service {
   }
 
   /**
-     * Return service info parameters info known or null if not yet loaded
-     * @returns {PryvServiceInfo} Service Info definition
-     */
-  async infoSync() {
+   * Return service info parameters info known or null if not yet loaded
+   * @returns {PryvServiceInfo} Service Info definition
+   */
+  infoSync() {
     return this._pryvServiceInfo;
   }
 
 
-/**
- * Return an API Endpoint from a username and token
- * @param {string} username
- * @param {string} [token]
- * @return {PryvApiEndpoint}
- */
+  /**
+   * Return an API Endpoint from a username and token
+   * @param {string} username
+   * @param {string} [token]
+   * @return {PryvApiEndpoint}
+   */
   async apiEndpointFor(username, token) {
     const serviceInfo = await this.info();
     return Service.buildAPIEndpoint(serviceInfo, username, token);
   }
-  
 
   /**
    * Return an API Endpoint from a username and token and a PryvServiceInfo
@@ -86,7 +85,7 @@ class Service {
    */
   static buildAPIEndpoint(serviceInfo, username, token) {
     const endpoint = serviceInfo.api.replace('{username}', username);
-    return utils.buildPryvApiEndPoint({endpoint: endpoint, token: token});
+    return utils.buildPryvApiEndPoint({ endpoint: endpoint, token: token });
   }
 
   /**
@@ -105,9 +104,9 @@ class Service {
     const res = await utils.superagent.post(apiEndPoint + 'auth/login')
       .set('Origin', originHeader)
       .set('accept', 'json')
-      .send({username: username, password: password, appId: appId});
+      .send({ username: username, password: password, appId: appId });
 
-    if (! res.body.token) {
+    if (!res.body.token) {
       throw new Error('Failed login: ' + res.body);
     }
     return new Connection(
