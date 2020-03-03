@@ -18,7 +18,8 @@ const States = require('./States');
  * @param {Object} settings.authRequest.requestedPermissions
  * @param {string | boolean} settings.authRequest.returnURL : false, // set this if you don't want a popup
  * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
- * @param {module:Auth.AuthStateChangeHandler} settings.onStateChange
+ * @param {Auth.AuthStateChangeHandler} settings.onStateChange
+ * @param {string} [settings.returnURL=auto#]  Set to "self#" to disable popup and force using the same page. Set a custom url when process is finished (specific use cases). Should always end by # ? or &
  * @returns {PryvServiceInfo}
  */
 async function setup(settings) {
