@@ -6,32 +6,10 @@ const Controller = require('../src/Auth/Controller.js')
 
 
 describe('Auth.Controller', function () {
-  let myWindow;
-  let myNavigator;
 
-  this.beforeEach(async () => {
-    myWindow = global.window || null;
-    myNavigator = global.navigator || null;
-  });
-
-  this.afterEach(async () =>  {
-    if (!myWindow) {
-      delete global.window;
-    } else {
-      global.window = myWindow;
-    }
-    if (! myNavigator) {
-      delete global.navigator;
-    } else {
-      global.navigator = myNavigator;
-    }
-    
-  });
 
   it('getReturnURL()', async () => {
     const myUrl = 'https://mysite.com/bobby';
-
-    global.window = {location: {href: myUrl }}
 
     let error = null;
     try {
@@ -41,35 +19,33 @@ describe('Auth.Controller', function () {
     }
     expect(error).to.be.not.null;
 
-    global.navigator = { userAgent: 'android' };
-    expect(Controller.getReturnURL('auto#')).to.equal(myUrl + '#');
-    expect(Controller.getReturnURL('auto?')).to.equal(myUrl + '?');
-    expect(Controller.getReturnURL(false)).to.equal(myUrl + '#');
-    expect(Controller.getReturnURL('self?')).to.equal(myUrl + '?');
+    let fakeNavigator = { userAgent: 'android' };
+    expect(Controller.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(myUrl + '#');
+    expect(Controller.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+    expect(Controller.getReturnURL(false, myUrl, fakeNavigator)).to.equal(myUrl + '#');
+    expect(Controller.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
 
-    expect(Controller.getReturnURL('http://zou.zou/toto#')).to.equal('http://zou.zou/toto#');
+    expect(Controller.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
 
-    global.navigator = { userAgent: 'Safari' };
-    expect(Controller.getReturnURL('auto#')).to.equal(false);
-    expect(Controller.getReturnURL('auto?')).to.equal(false);
-    expect(Controller.getReturnURL(false)).to.equal(false);
-    expect(Controller.getReturnURL('self?')).to.equal(myUrl + '?');
+    fakeNavigator =  { userAgent: 'Safari' };
+    expect(Controller.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(false);
+    expect(Controller.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(false);
+    expect(Controller.getReturnURL(false, myUrl, fakeNavigator)).to.equal(false);
+    expect(Controller.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
 
-    expect(Controller.getReturnURL('http://zou.zou/toto#')).to.equal('http://zou.zou/toto#');
+    expect(Controller.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
 
 
     global.window = { location: { href: myUrl + '?prYvStatus=zouzou'} }
-    expect(Controller.getReturnURL('self?')).to.equal(myUrl);
+    expect(Controller.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
 
     
   });
 
   it('browserIsMobileOrTablet()', async () => {
-    global.navigator = {userAgent : 'android'};
-    expect(Controller.browserIsMobileOrTablet()).to.be.true;
+    expect(Controller.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
 
-    global.navigator = { userAgent: 'Safari' };
-    expect(Controller.browserIsMobileOrTablet()).to.be.false;
+    expect(Controller.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
   });
 
 

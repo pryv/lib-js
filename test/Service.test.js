@@ -4,7 +4,12 @@ const should = chai.should();
 const expect = chai.expect;
 const assert = chai.assert;
 
+const chaiAsPromised = require('chai-as-promised');
+chai.use(chaiAsPromised); 
+
 const testData = require('./test-data.js');
+
+
 
 describe('Service', function () {
   it('info()', async () => {

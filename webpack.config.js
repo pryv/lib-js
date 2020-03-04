@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 
 require("babel-core/register");
 require("babel-polyfill");
@@ -73,6 +74,9 @@ module.exports = [
 			libraryTarget: 'var',
 			library: 'browserTest'
 		},
+		plugins: [
+			new webpack.IgnorePlugin(/zombie/),
+		],
 		// Loaders
 		module: {
 			rules: [
@@ -87,7 +91,8 @@ module.exports = [
 					test: /\.css$/,
 					use: ['style-loader', 'css-loader'],
 				}
-			]
+			],
+			
 		},
 		devtool: 'source-map',
 	}

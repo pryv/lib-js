@@ -1,9 +1,8 @@
 /**
  * Loaded by .mocharc.js for node tests
  */
-const chai = require('chai');
-const chaiAsPromised = require('chai-as-promised');
-chai.use(chaiAsPromised);  
+const chai = require('chai'); 
 const Pryv = require('../src');
 global.chai = chai;
 global.Pryv = Pryv;
+global.Browser = require('zombie');

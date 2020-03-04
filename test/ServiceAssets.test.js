@@ -1,15 +1,12 @@
 const expect = chai.expect;
-const Browser = require('Zombie');
 
 const testData = require('./test-data.js');
 
 describe('ServiceAssets', function () {
   let removeZombie = false;
-
+  
   before(async () => {
-    console.log('A');
     if (typeof document !== 'undefined') return; // in browser
-    console.log('B');
     removeZombie = true;
     const browser = new Browser();
     browser.visit('./');
@@ -30,6 +27,13 @@ describe('ServiceAssets', function () {
     const assets = await pryvService.assets();
    
     expect(assets.relativeURL('./toto')).to.eql('https://pryv.github.io:/assets-pryv.me/toto');
+
+  });
+
+  it('setAllDefaults()', async () => {
+    const pryvService = new Pryv.Service(testData.defaults.serviceInfoSettings);
+    const assets = await pryvService.assets();
+    await assets.setAllDefaults();
 
   });
 

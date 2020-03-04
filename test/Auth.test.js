@@ -20,8 +20,28 @@ function genSettings() {
 
 describe('Auth', function () {
   this.timeout(5000); 
+
+  let removeZombie = false;
+
+  before(async () => {
+    if (typeof document !== 'undefined') return; // in browser
+    removeZombie = true;
+    const browser = new Browser();
+    browser.visit('./');
+    global.document = browser.document;
+    global.window = browser.window;
+    global.location = browser.location;
+    global.navigator = {userAgent: 'Safari'};
+  });
+
+  after(async () => {
+    if (!removeZombie) return; // in browser
+    delete global.document;
+    delete global.window;
+    delete global.location;
+  });
+
   it('setup()', (done) => {
-    global.document = false;
     const settings = genSettings();
     
     let AuthLoaded = false;
@@ -38,7 +58,7 @@ describe('Auth', function () {
     }
 
     Pryv.Auth.setup(settings).then((service) => {
-      serviceInfo = service.infoSync();
+      const serviceInfo = service.infoSync();
       should.exist(serviceInfo.access);
       should.exist(serviceInfo.serial);
     }).catch((error) =>  {
