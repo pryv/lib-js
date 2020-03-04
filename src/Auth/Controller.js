@@ -4,7 +4,7 @@ const LoginButton = require('./LoginButton');
 const States = require('./States');
 const Cookies = require('./CookieUtils');
 
-const COOKIE_STRING = 'pryv-local-auth';
+const COOKIE_STRING = 'pryv-libjs-';
 
 const statusRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
 
@@ -30,9 +30,7 @@ class Controller {
     }
 
     try { // Wrap all in a large try catch 
-      // -- Extract returnURL 
-      this.settings.returnURL = Controller.getReturnURL(this.settings.returnURL);
-
+      
 
       // -- Check Error CallBack
       if (!this.settings.onStateChange) { throw new Error('Missing settings.onStateChange'); }
@@ -40,9 +38,17 @@ class Controller {
 
       // -- settings 
       if (!this.settings.authRequest) { throw new Error('Missing settings.authRequest'); }
+
+      // -- Extract returnURL 
+      this.settings.authRequest.returnURL = 
+        Controller.getReturnURL(this.settings.returnURL);
+
+
+
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
       }
+      this.cookieKey = COOKIE_STRING + this.settings.authRequest.requestingAppId;
 
       if (!this.settings.authRequest.requestedPermissions) {
         throw new Error('Missing settings.authRequest.requestedPermissions');
@@ -91,8 +97,7 @@ class Controller {
     // 3. check autologin 
     let loginCookie = null;
     try {
-      loginCookie = Cookies.get(COOKIE_STRING + 
-        this.settings.authRequest.requestingAppId);
+      loginCookie = Cookies.get(this.cookieKey);
     } catch (e) { console.log(e); }
 
     if (loginCookie) {
@@ -114,7 +119,7 @@ class Controller {
    * Called at the end init() and when logging out()
    */
   readyAndClean() {
-    Cookies.del(COOKIE_STRING + this.settings.authRequest.requestingAppId)
+    Cookies.del(this.cookieKey)
     this.accessData = null;
     this.state = {
       id: States.INITIALIZED,
@@ -185,7 +190,7 @@ class Controller {
         const apiEndpoint =
           Service.buildAPIEndpoint(this.pryvServiceInfo, this.accessData.username, this.accessData.token);
 
-        Cookies.set(COOKIE_STRING + this.settings.authRequest.requestingAppId, 
+        Cookies.set(this.cookieKey, 
           { apiEndpoint: apiEndpoint, displayName: this.accessData.username });
 
         this.state = {
