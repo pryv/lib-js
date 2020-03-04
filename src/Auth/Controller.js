@@ -43,6 +43,7 @@ class Controller {
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
       }
+
       if (!this.settings.authRequest.requestedPermissions) {
         throw new Error('Missing settings.authRequest.requestedPermissions');
       }
@@ -90,7 +91,8 @@ class Controller {
     // 3. check autologin 
     let loginCookie = null;
     try {
-      loginCookie = Cookies.get(COOKIE_STRING);
+      loginCookie = Cookies.get(COOKIE_STRING + 
+        this.settings.authRequest.requestingAppId);
     } catch (e) { console.log(e); }
 
     if (loginCookie) {
@@ -112,7 +114,7 @@ class Controller {
    * Called at the end init() and when logging out()
    */
   readyAndClean() {
-    Cookies.del(COOKIE_STRING)
+    Cookies.del(COOKIE_STRING + this.settings.authRequest.requestingAppId)
     this.accessData = null;
     this.state = {
       id: States.INITIALIZED,
@@ -183,7 +185,8 @@ class Controller {
         const apiEndpoint =
           Service.buildAPIEndpoint(this.pryvServiceInfo, this.accessData.username, this.accessData.token);
 
-        Cookies.set(COOKIE_STRING, { apiEndpoint: apiEndpoint, displayName: this.accessData.username });
+        Cookies.set(COOKIE_STRING + this.settings.authRequest.requestingAppId, 
+          { apiEndpoint: apiEndpoint, displayName: this.accessData.username });
 
         this.state = {
           id: States.AUTHORIZED,

@@ -118,7 +118,7 @@ function relPathToAbs(baseUrlString, sRelPath) {
     baseLocation = document.createElement('a');
     baseLocation.href = baseUrlString;
   }
-  console.log(baseLocation, sRelPath);
+  
   var nUpLn, sDir = "", sPath = baseLocation.pathname.replace(/[^\/]*$/, sRelPath.replace(/(\/|^)(?:\.?\/+)+/g, "$1"));
   for (var nEnd, nStart = 0; nEnd = sPath.indexOf("/../", nStart), nEnd > -1; nStart = nEnd + nUpLn) {
     nUpLn = /^\/(?:\.\.\/)*/.exec(sPath.slice(nEnd))[0].length;

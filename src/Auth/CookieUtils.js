@@ -2,7 +2,7 @@
 
 
 function isBrowser() {
-  return typeof variable !== 'undefined';
+  return typeof window !== 'undefined';
 }
 
 function set(cookieKey, value, expireInDays) {
@@ -12,9 +12,10 @@ function set(cookieKey, value, expireInDays) {
   var hostName = window.location.hostname;
   var path = window.location.pathname;
   myDate.setDate(myDate.getDate() + expireInDays);
-  var cookieStr = cookieKey + "=" + encodeURIComponent(JSON.stringify(value))
-    + ";expires=" + myDate.toGMTString()
-    + ';domain=.' + hostName + ';path=' + path;
+  var cookieStr = cookieKey + '=' + encodeURIComponent(JSON.stringify(value))
+    + ';expires=' + myDate.toGMTString()
+    + ';domain=.' + hostName + ';path=' + path
+    + ';SameSite=Strict';
   document.cookie = cookieStr;
 }
 exports.set = set;
