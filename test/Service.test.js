@@ -1,6 +1,8 @@
 
+                   
 const should = chai.should();
 const expect = chai.expect;
+const assert = chai.assert;
 
 const testData = require('./test-data.js');
 
@@ -30,6 +32,47 @@ describe('Service', function () {
     should.exist(conn.token);
     should.exist(conn.endpoint);
     expect(conn.endpoint.includes(testData.defaults.user)).to.equal(true);
+  });
+
+
+  
+
+  it('assets()', async function() {
+    const pryvService = new Pryv.Service(testData.defaults.serviceInfoSettings);
+    const assets = await pryvService.assets();
+    should.exist(assets);
+
+    //assets should be cached
+    const assets2 = await pryvService.assets();
+    expect(assets).to.equal(assets2);
+  });
+
+  describe('Errors', async function () {
+    it ('cannot force fetch when initialize with definitions ', async () => {
+      const pryvService = new Pryv.Service(testData.defaults.serviceInfoSettings);
+      await pryvService.info();
+      await assert.isRejected(pryvService.info(true));
+    });
+
+    it('Throw error with invalid content', async () => {
+      assert.throws(() => { new Pryv.Service({}) }, Error, 'Invalid data from service/info');
+    });
+
+    it('Warn if no assets', async () => {
+      let serviceInfoCopy = Object.assign({}, testData.defaults.serviceInfoSettings);
+      delete serviceInfoCopy.assets;
+      const pryvService = new Pryv.Service(serviceInfoCopy);
+      const assets = await pryvService.assets();
+      expect(assets).to.be.null;
+    });
+
+    it('login() failed', async function () {
+      this.timeout(5000);
+      const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
+      await assert.isRejected(
+        pryvService.login(testData.defaults.user.split('.')[0], 'bobby', 'jslib-test'),'The given username/password pair is invalid.');
+    });
+
   });
 });
 
