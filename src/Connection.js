@@ -14,7 +14,7 @@ const browserGetEventStreamed = require('./lib/browser-getEventStreamed');
  *
  * @example
  * create a connection for the user 'tom' on 'pryv.me' backend with the token 'TTZycvBTiq'
- * var conn = new pryv.Connection('https://TTZycvBTiq@tom.pryv.me');
+ * const conn = new Pryv.Connection('https://TTZycvBTiq@tom.pryv.me');
  *
  * @property {string} [token]
  * @property {string} endpoint
