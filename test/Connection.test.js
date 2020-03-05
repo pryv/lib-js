@@ -107,6 +107,38 @@ describe('Connection', () => {
     });
   });
 
+  describe('Attachements', () => {
+    it('Create event with attachemnt', async () => {
+      let res = null;
+
+      if (typeof window === 'undefined') { // node
+
+         res = await conn.createEventWithFile({
+          type: 'picture/attached',
+          streamId: 'data'
+        }, './test/Y.png');
+
+      } else { // browser
+        const formData = new FormData();
+        var blob = new Blob(['Hello'], { type: "text/txt" });
+        formData.append("webmasterfile", blob);
+
+        res = await conn.createEventWithFormData({
+          type: 'file/attached',
+          streamId: 'data'
+        }, formData);
+
+      }
+
+
+      should.exist(res);
+      should.exist(res.event);
+      should.exist(res.event.attachments);
+      res.event.attachments.length.should.equal(1);
+
+    });
+  });
+
   describe('HF events', () => {
 
     it('Add data points to HF event', async () => {
@@ -115,21 +147,22 @@ describe('Connection', () => {
         method: 'events.create',
         params: {
           type: 'series:mass/kg', streamId: 'data'
-        }}]);
+        }
+      }]);
       should.exist(res);
       should.exist(res[0]);
       should.exist(res[0].event);
       should.exist(res[0].event.id);
       const event = res[0].event;
-     
+
       const res2 = await conn.addPointsToHFEvent(
-        event.id, 
+        event.id,
         ['deltaTime', 'value'],
-        [[0,1],[1,1]]);
+        [[0, 1], [1, 1]]);
 
       should.exist(res2);
       'ok'.should.equal(res2.status);
-    
+
     });
 
   });
@@ -199,7 +232,7 @@ describe('Connection', () => {
         afterEach(function () {
           delete global.document;
           delete global.window;
-          delete global.location; 
+          delete global.location;
           delete global.fetch;
           delete global.URL;
           delete global.URLSearchParams;

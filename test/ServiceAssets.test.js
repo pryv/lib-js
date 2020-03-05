@@ -22,23 +22,25 @@ describe('ServiceAssets', function () {
     delete global.location; 
   });
 
-  it('realativeURL()', async () => {
-    const pryvService = new Pryv.Service(testData.defaults.serviceInfoSettings);
+  it('relativeURL()', async () => {
+   
+    const pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
     const assets = await pryvService.assets();
    
     expect(assets.relativeURL('./toto')).to.eql('https://pryv.github.io:/assets-pryv.me/toto');
+   
 
   });
 
   it('setAllDefaults()', async () => {
-    const pryvService = new Pryv.Service(testData.defaults.serviceInfoSettings);
+    const pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
     const assets = await pryvService.assets();
     await assets.setAllDefaults();
 
   });
 
   it('Load all external elements', async () => {
-    const pryvService = new Pryv.Service(testData.defaults.serviceInfoSettings);
+    const pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
     const assets = await pryvService.assets();
     await assets.loginButtonLoadCSS();
     await assets.loginButtonGetHTML();

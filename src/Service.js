@@ -13,19 +13,24 @@ const Assets = require('./ServiceAssets.js');
  * 
  * @constructor
  * @this {Service} 
- * @param {string|PryvServiceInfo} serviceInfoUrlOrDefinition Url point to /service/info of a Pryv platform: https://api.pryv.com/reference/#service-info
+ * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform: https://api.pryv.com/reference/#service-info
  */
 class Service {
 
-  constructor(serviceInfoUrlOrDefinition) {
+  constructor(serviceInfoUrl) {
     this._pryvServiceInfo = null;
     this._assets = null;
+    this._pryvServiceInfoUrl = serviceInfoUrl;
+  }
 
-    if (typeof serviceInfoUrlOrDefinition === 'string') {
-      this._pryvServiceInfoUrl = serviceInfoUrlOrDefinition;
-    } else {
-      this.setSerivceInfo(serviceInfoUrlOrDefinition);
-    }
+  /**
+   * Create a service directly with a full definition sets
+   * @param {PryvServiceInfo} serviceInfo
+   */
+  static createWithDefinition(serviceInfo) {
+    const service = new Service();
+    service.setServiceInfo(serviceInfo);
+    return service;
   }
 
   /**
@@ -41,7 +46,7 @@ class Service {
         throw new Error('Service was not initialized with a serviceInfoURL');
       }
       const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('accept', 'json');
-      this.setSerivceInfo(res.body);
+      this.setServiceInfo(res.body);
       return this._pryvServiceInfo;
     }
   }
@@ -50,7 +55,7 @@ class Service {
    * @private
    * @param {PryvServiceInfo} serviceInfo
    */
-  setSerivceInfo(serviceInfo) {
+  setServiceInfo(serviceInfo) {
     if (!serviceInfo.name) {
       throw new Error('Invalid data from service/info');
     }
@@ -115,11 +120,11 @@ class Service {
    * @param {string} username 
    * @param {string} password 
    * @param {string} appId 
-   * @param {string} [forceOriginHeader=service-info.register] Only for Node.js. If not set will use the register value of service info. Exemple "sw.pryv.me"
+   * @param {string} [originHeader=service-info.register] Only for Node.js. If not set will use the register value of service info. In browsers this will overridden by current page location.
    * @throws {Error} on invalid login
    */
-  async login(username, password, appId, forceOriginHeader) {
-    let originHeader = forceOriginHeader || (await this.info()).register;
+  async login(username, password, appId, originHeader) {
+    originHeader = originHeader || (await this.info()).register;
     const apiEndPoint = await this.apiEndpointFor(username);
 
     try {
@@ -129,8 +134,7 @@ class Service {
         .send({ username: username, password: password, appId: appId });
 
       if (!res.body.token) {
-        throw new Error('Invalid login response: ' 
-        + res.body);
+        throw new Error('Invalid login response: ' + res.body);
       }
       return new Connection(
         Service.buildAPIEndpoint(await this.info(), username, res.body.token));

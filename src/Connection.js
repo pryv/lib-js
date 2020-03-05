@@ -102,11 +102,15 @@ class Connection {
    * @returns {request.superagent}  Promise from superagent's post request
    */
   async postRaw(path, data, queryParams) {
-    return utils.superagent.post(this.endpoint + path)
-      .set('Authorization', this.token)
-      .set('accept', 'json')
+    return this._post(path)
       .query(queryParams)
       .send(data);
+  }
+
+   _post(path) {
+    return utils.superagent.post(this.endpoint + path)
+      .set('Authorization', this.token)
+      .set('accept', 'json');
   }
 
   /**
@@ -188,7 +192,33 @@ class Connection {
     return res.body
   }
 
+  /**
+   * Create an event with attached file
+   * NODE.jS ONLY
+   * @param {Event} event
+   * @param {string} filePath
+   */
+  async createEventWithFile(event, filePath) {
+    const res = await this._post('events')
+      .field('event', JSON.stringify(event))
+      .attach('file', filePath);
 
+    const now = Date.now() / 1000;
+    this._handleMeta(res.body, now);
+    return res.body
+  }
+
+  /**
+ * Create an event with attached formData
+ * !! BROWSER ONLY
+ * @param {Event} event
+ * @param {FormData} formData https://developer.mozilla.org/en-US/docs/Web/API/FormData/FormData
+ */
+  async createEventWithFormData(event, formData) {
+    formData.append('event', JSON.stringify(event));
+    const res = await this._post('events').send(formData);
+    return res.body
+  }
 
   /**
    * Difference in second between the API and locatime
@@ -210,7 +240,7 @@ class Connection {
   }
 
   // private method that handle meta data parsing
-  _handleMeta(res, requestLocalTimestamp) {
+    _handleMeta(res, requestLocalTimestamp) {
     if (!res.meta) throw new Error('Cannot find .meta in response.');
     if (!res.meta.serverTime) throw new Error('Cannot find .meta.serverTime in response.');
 

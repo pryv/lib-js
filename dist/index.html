@@ -23,6 +23,10 @@
   <input type='text' id='create-value' placeholder='Content' value='' />
   <button onClick='createValueEvent()'>Save Value</button>
 
+  <h5>Upload File</h5>
+  <input type="file" id="create-file" >
+  <button onClick='uploadFile()'>Save Value</button>
+
   <h3>Events</h3>
   <textarea id='events'></textarea>
 
@@ -65,7 +69,10 @@
   var $console = document.getElementById('console'),
     $events = document.getElementById('events'),
     $noteContent = document.getElementById('create-note'),
-    $valueContent = document.getElementById('create-value');
+    $valueContent = document.getElementById('create-value'),
+    $fileContent = document.getElementById('create-file')
+    ;
+
 
   (async function () {
     const service = await Pryv.Auth.setup(authSettings);
@@ -102,6 +109,25 @@
       streamId: 'test',
       type: 'count/generic',
       content: $valueContent.value
+    });
+  }
+
+
+  function uploadFile() {
+    console.log($fileContent.files);
+    if (!$fileContent.files[0]) {
+      alert('Choose a file first');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file0', $fileContent.files[0]);
+    connection.createEventWithFormData(
+      { type: 'file/attached', streamId: 'test' },
+      formData
+    ).then(function (res, err) {
+      if (err) { return logToConsole('...error: ' + JSON.stringify(err)); }
+      logToConsole('...event created: ' + JSON.stringify(res));
+      getLastEvents();
     });
   }
 
@@ -144,7 +170,7 @@
   }
 
 
-  
+
 
 </script>
 
