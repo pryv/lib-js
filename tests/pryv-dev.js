@@ -15226,15 +15226,16 @@ function () {
                 throw new Error('Service was not initialized with a serviceInfoURL');
 
               case 6:
-                _context.next = 8;
-                return utils.superagent.get(this._pryvServiceInfoUrl).set('accept', 'json');
+                console.log('ZOZOU');
+                _context.next = 9;
+                return utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
 
-              case 8:
+              case 9:
                 res = _context.sent;
                 this.setServiceInfo(res.body);
                 return _context.abrupt("return", this._pryvServiceInfo);
 
-              case 11:
+              case 12:
               case "end":
                 return _context.stop();
             }
