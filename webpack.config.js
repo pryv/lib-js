@@ -1,5 +1,6 @@
 const path = require('path');
 const webpack = require('webpack');
+const CopyPlugin = require('copy-webpack-plugin');
 
 require("babel-core/register");
 require("babel-polyfill");
@@ -32,6 +33,10 @@ module.exports = [
 				}
 			]
 		},
+		plugins: [
+			new CopyPlugin([
+				{ from: 'web-demos', to: 'demos' },
+			])],
 		devtool: 'source-map',
 	},
 	{
@@ -76,6 +81,9 @@ module.exports = [
 		},
 		plugins: [
 			new webpack.IgnorePlugin(/zombie/),
+			new CopyPlugin([
+				{ from: 'test/browser-tests.html' },
+			])
 		],
 		// Loaders
 		module: {

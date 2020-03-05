@@ -13,7 +13,7 @@ At this date - This is a BETA version
 - Build documentation: `npm run doc` result is published in `./dist/doc` 
 - Node Tests: `npm run test`
 - Coverage: `npm run cover`result is visible in `./coverage`
-- Browser tests: **build**, then `npm run webserver` and open https://l.rec.la:4443/dist/browser-tests.html
+- Browser tests: **build**, then `npm run webserver` and open https://l.rec.la:4443/tests/browser-tests.html
 
 ## Usage
 
@@ -55,7 +55,7 @@ const apiEndpoint = Pryv.Service.buildAPIEndpoint(serviceInfo, username, token);
 #### Within a WebPage
 
 ```html
-!doctype html>
+<!doctype html>
 <html>
 <head>
   <title>Pryv - Javascript Lib</title>
@@ -67,7 +67,7 @@ const apiEndpoint = Pryv.Service.buildAPIEndpoint(serviceInfo, username, token);
   	var connection = null;
 
     var authSettings = {
-      serviceInfoUrl: 'https://l.rec.la:4443/tests/test-service-info.json',
+      serviceInfoUrl: 'https://api.pryv.com/lib-js/demos/service-info.json',
       languageCode: 'fr', // optional (default english)
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
       onStateChange: pryvAuthStateChange, // event Listener for Authentication steps

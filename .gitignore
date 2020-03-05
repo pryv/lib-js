@@ -1,4 +1,4 @@
 .nyc*
 node_modules/
-dist/docs/
+dist/
 coverage/

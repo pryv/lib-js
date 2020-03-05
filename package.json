@@ -24,7 +24,7 @@
     "test:browser": "npm run build; ",
     "cover": "nyc npm run test && npm run cover:report",
     "cover:report": "nyc report --reporter=lcov --reporter=html",
-    "webserver": "node node_modules/rec-la/webserver/main.js ./"
+    "webserver": "node node_modules/rec-la/webserver/main.js ./dist"
   },
   "contributors": [
     {
@@ -48,6 +48,7 @@
     "babel-preset-stage-0": "^6.24.1",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
+    "copy-webpack-plugin": "^5.1.1",
     "css-loader": "^3.4.2",
     "documentation": "^12.1.4",
     "mocha": "^6.2.2",
