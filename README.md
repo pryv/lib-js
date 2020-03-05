@@ -8,7 +8,7 @@ At this date - This is a BETA version
 
 *Prerequisites*: Node 12+
 
-- Install: `npm install`
+- Install: `./scripts/setup-environment-dev.sh`
 - Build pryv.js library for browsers: `npm run build` result is published in `./dist`
 - Build documentation: `npm run doc` result is published in `./dist/doc` 
 - Node Tests: `npm run test`
@@ -45,14 +45,15 @@ const apiEndpoint = 'https://TTZycvBTiq@tom.pryv.me';
 const connection = new Pryv.Connection(apiEndpoint);
 ```
 
-If **username** and **token** are known idependently an APIEndPoint can be constructed with:
+#### Whith a Username & Token (knowing the service-info)
 
 ```javascript
 const serviceInfo = 'https://reg.pryv.me/service/info';
 const apiEndpoint = Pryv.Service.buildAPIEndpoint(serviceInfo, username, token);
+const connection = new Pryv.Connection(apiEndpoint);
 ```
 
-#### Within a WebPage
+#### Within a WebPage with a login button
 
 ```html
 <!doctype html>
@@ -309,7 +310,7 @@ try {
 
 ```
 
-### Assets & untilites for apps. 
+### Assets & utilites for apps. 
 
 Platfrom specific ressources can be declared within `service/info` with the `assets` properties https://api.pryv.com/reference/#service-info
 
