@@ -37,6 +37,14 @@ describe('ServiceAssets', function () {
 
   });
 
+  it('Load all external elements', async () => {
+    const pryvService = new Pryv.Service(testData.defaults.serviceInfoSettings);
+    const assets = await pryvService.assets();
+    await assets.loginButtonLoadCSS();
+    await assets.loginButtonGetHTML();
+    await assets.loginButtonGetMessages();
+  });
+
 });
 
 

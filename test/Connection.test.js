@@ -2,6 +2,7 @@ const should = chai.should();
 const expect = chai.expect;
 const testData = require('./test-data.js');
 const conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);
+const { URL, URLSearchParams } = require('universal-url');
 
 describe('Connection', () => {
 
@@ -178,18 +179,42 @@ describe('Connection', () => {
     });
 
 
+
     if (typeof window === 'undefined') {
       describe('Browser mock', function () {
         beforeEach(function () {
-          delete global.window;
+          const browser = new Browser();
+          browser.visit('./');
+          global.document = browser.document;
+          global.window = browser.window;
+          global.location = browser.location;
+          function fetch(...args) {
+            return browser.fetch(...args);
+          }
+          global.fetch = fetch;
+          global.URL = URL;
+          global.URLSearchParams = URLSearchParams;
         });
 
         afterEach(function () {
+          delete global.document;
           delete global.window;
+          delete global.location; 
+          delete global.fetch;
+          delete global.URL;
+          delete global.URLSearchParams;
         });
 
         it(' without fetch', async () => {
-          global.window = true;
+          delete global.fetch;
+          const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
+          let eventsCount = 0;
+          function forEachEvent(event) { eventsCount++; }
+          const res = await conn.streamedGetEvent(queryParams, forEachEvent);
+          expect(eventsCount).to.equal(res.eventsCount);
+        });
+
+        xit(' with fetch', async () => {
           const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
           let eventsCount = 0;
           function forEachEvent(event) { eventsCount++; }
