@@ -13,9 +13,11 @@ const statusRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
  */
 class Controller {
 
-  constructor(settings) {
+  constructor(settings, serviceInfoUrl, serviceCustomizations) {
     this.stateChangeListners = [];
     this.settings = settings;
+    this.serviceInfoUrl = serviceInfoUrl;
+    this.serviceCustomizations = serviceCustomizations;
 
     if (!settings) { throw new Error('settings cannot be null'); }
 
@@ -55,7 +57,7 @@ class Controller {
       }
 
       // -- Extract service info from URL query params if nor specified -- //
-      if (!this.settings.serviceInfoUrl) {
+      if (!this.serviceInfoUrl) {
         // TODO
       }
     } catch (e) {
@@ -75,8 +77,9 @@ class Controller {
       throw new Error('Auth service already initialized');
     }
 
+ 
     // 1. fetch service-info
-    this.pryvService = new Service(this.settings.serviceInfoUrl);
+    this.pryvService = new Service(this.serviceInfoUrl, this.serviceCustomizations);
 
     try {
       this.pryvServiceInfo = await this.pryvService.info();
@@ -135,10 +138,19 @@ class Controller {
    * @private
    */
   async postAccess() {
-    const res = await utils.superagent.post(this.pryvServiceInfo.access)
-      .set('accept', 'json')
-      .send(this.settings.authRequest);
-    return res.body;
+    try {
+      const res = await utils.superagent.post(this.pryvServiceInfo.access)
+        .set('accept', 'json')
+        .send(this.settings.authRequest);
+      return res.body;
+    } catch (e) {
+      this.state = {
+        id: States.ERROR,
+        message: 'Requesting access',
+        error: e
+      }
+      throw e; // forward error
+    }
   }
 
   /**

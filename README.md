@@ -49,8 +49,8 @@ const connection = new Pryv.Connection(apiEndpoint);
 #### Using a Username & Token (knowing the service information URL)
 
 ```javascript
-const serviceInfo = 'https://reg.pryv.me/service/info';
-const apiEndpoint = Pryv.Service.buildAPIEndpoint(serviceInfo, username, token);
+const service = new Service('https://reg.pryv.me/service/info');
+const apiEndpoint = await service.apiEndpointFor(username, token);
 const connection = new Pryv.Connection(apiEndpoint);
 ```
 
@@ -69,12 +69,11 @@ const connection = new Pryv.Connection(apiEndpoint);
     var connection = null;
 
     var authSettings = {
-      serviceInfoUrl: 'https://api.pryv.com/lib-js/demos/service-info.json',
-      languageCode: 'fr', // optional (default english)
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
       onStateChange: pryvAuthStateChange, // event Listener for Authentication steps
       authRequest: { // See: https://api.pryv.com/reference/#auth-request
         requestingAppId: 'lib-js-test',
+        languageCode: 'fr', // optional (default english)
         requestedPermissions: [
           {
             streamId: 'test',
@@ -101,9 +100,9 @@ const connection = new Pryv.Connection(apiEndpoint);
         logToConsole('# Logout');
       }
   }
-    
+    var serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
     (async function () {
-      var service = await Pryv.Auth.setup(authSettings);
+      var service = await Pryv.Auth.setup(authSettings, serviceInfoUrl);
     })();
   </script>
 </body>
@@ -338,16 +337,52 @@ try {
 
 ```
 
-### Assets & utilites for apps
+### Assets & Visual Usage and Customization
 
-Platfrom-specific ressources can be declared within `service/info` with the `assets` properties https://api.pryv.com/reference/#service-info
+To customize assets and visual  refer to: https://github.com/pryv/assets-pryv.me
+
+To customize the Login Button to https://github.com/pryv/assets-pryv.me/tree/master/lib-js/
+
+#### Platfrom-specific ressources 
+
+can be used in a browser with `setAllDefaults()`
 
 ```javascript
 (async function () {
-  const service = await Pryv.Auth.setup(authSettings);
+  const service = await Pryv.Auth.setup(authSettings, serviceInfoUrl);
   (await service.assets()).setAllDefaults(); // will load the default Favicon and CSS for this platform
 })();
 ```
 
+#### Customize service info 
 
+Service infos properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
+
+##### Pryv.Service
+
+At creation of an instance:
+
+```javascript
+const serviceInfoUrl = 'https://reg.pryv.me/service/info';
+const serviceCustomizations = {
+  name: 'Pryv Lab 2', 
+  assets: {
+    definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
+  }
+}
+const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
+```
+
+##### Pryv.Auth
+
+```javascript
+var serviceInfoUrl = 'https://reg.pryv.me/service/info';
+var serviceCustomizations = {
+  name: 'Pryv Lab 2', 
+  assets: {
+    definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
+  }
+}
+var service = await Pryv.Auth.setup(authSettings, serviceInfoUrl, serviceCustomizations);
+```
 

@@ -43,7 +43,7 @@ describe('Service', function () {
   
 
   it('assets()', async function() {
-    const pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
     const assets = await pryvService.assets();
     should.exist(assets);
 
@@ -53,20 +53,17 @@ describe('Service', function () {
   });
 
   describe('Errors', async function () {
-    it ('cannot force fetch when initialize with definitions ', async () => {
-      const pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
-      await pryvService.info();
-      await assert.isRejected(pryvService.info(true));
-    });
 
     it('Throw error with invalid content', async () => {
-      assert.throws(() => { Pryv.Service.createWithDefinition({}) }, Error, 'Invalid data from service/info');
+      const service = new Pryv.Service(null, {});
+      await assert.isRejected(service.info(), 
+      'Invalid data from service/info');
     });
 
     it('Warn if no assets', async () => {
       let serviceInfoCopy = Object.assign({}, testData.defaults.serviceInfoSettings);
       delete serviceInfoCopy.assets;
-      const pryvService = Pryv.Service.createWithDefinition(serviceInfoCopy);
+      const pryvService = new Pryv.Service(null, serviceInfoCopy);
       const assets = await pryvService.assets();
       expect(assets).to.be.null;
     });

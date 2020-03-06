@@ -9,9 +9,9 @@ class LoginButton {
    */
   constructor(auth) {
     // 1. get Language
-    this.languageCode = auth.settings.languageCode || 'en';
+    
+    this.languageCode = auth.settings.authRequest.languageCode || 'en';
     this.myMessages = Messages(this.languageCode);
-
     // 2. build button
     this.loginButtonSpan = document.getElementById(auth.settings.spanButtonID);
 
@@ -60,6 +60,7 @@ class LoginButton {
     if (state) {
       this.lastState = state;
     }
+
     switch (this.lastState.id) {
       case States.ERROR:
         this.text = this.myMessages.ERROR + ': ' + this.lastState.message

@@ -46,11 +46,10 @@
   const serviceInfoUrl = isDevevelopment ? 'https://l.rec.la:4443/demos/service-info.json' : 'https://pryv.github.io/lib-js/demos/service-info.json';
 
   var authSettings = {
-    serviceInfoUrl: serviceInfoUrl,
-    languageCode: 'fr',
     spanButtonID: 'pryv-button',
     onStateChange: pryvAuthStateChange,
     authRequest: { // See: http://api.pryv.com/reference/#auth-request
+      languageCode: 'fr',
       requestingAppId: 'test-value-notes',
       requestedPermissions: [
         {
@@ -77,7 +76,7 @@
 
 
   (async function () {
-    const service = await Pryv.Auth.setup(authSettings);
+    const service = await Pryv.Auth.setup(authSettings, serviceInfoUrl);
     (await service.assets()).setAllDefaults();
   })();
 

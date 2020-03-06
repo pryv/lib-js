@@ -9,7 +9,6 @@ function genSettings() {
     console.log('Test unimplemented on state change', state); 
   }
   return {
-    serviceInfoUrl: testData.defaults.serviceInfoUrl,
     authRequest: {
       requestingAppId: 'lib-js-test',
       requestedPermissions: [{ streamId: '*', level: 'read' }],
@@ -57,7 +56,7 @@ describe('Auth', function () {
       }
     }
 
-    Pryv.Auth.setup(settings).then((service) => {
+    Pryv.Auth.setup(settings, testData.defaults.serviceInfoUrl).then((service) => {
       const serviceInfo = service.infoSync();
       should.exist(serviceInfo.access);
       should.exist(serviceInfo.serial);
