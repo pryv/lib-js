@@ -165,7 +165,7 @@ class Connection {
    * @param {Function} forEachEvent Function taking one event as parameter. Will be called for each event 
    * @returns {Promise<Object>} Promise to result.body transformed with `eventsCount: {count}` replacing `events: [...]`
    */
-  async streamedGetEvent(queryParams, forEachEvent) {
+  async getEventsStreamed(queryParams, forEachEvent) {
     const myParser = jsonParser(forEachEvent);
     let res = null;
     if (typeof window === 'undefined') { // node
@@ -177,7 +177,7 @@ class Connection {
       res = await browserGetEventStreamed(this, queryParams, myParser);
 
     } else { // browser no fetch supports
-      console.warn('Browser does not support fetch() required by Pryv.Connection.streamedGetEvent()');
+      console.warn('Browser does not support fetch() required by Pryv.Connection.getEventsStreamed()');
       res = await this.getRaw('events', queryParams);
       res.body.eventsCount = 0;
       if (res.body.events) {

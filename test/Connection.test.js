@@ -199,14 +199,14 @@ describe('Connection', () => {
         const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
         let eventsCount = 0;
         function forEachEvent(event) { eventsCount++; }
-        const res = await conn.streamedGetEvent(queryParams, forEachEvent);
+        const res = await conn.getEventsStreamed(queryParams, forEachEvent);
         expect(eventsCount).to.equal(res.eventsCount);
       });
 
       it('no-events ', async () => {
         const queryParams = { fromTime: 0, toTime: now, tags: ['RANDOM-123'] };
         function forEachEvent(event) { }
-        const res = await conn.streamedGetEvent(queryParams, forEachEvent);
+        const res = await conn.getEventsStreamed(queryParams, forEachEvent);
         expect(0).to.equal(res.eventsCount);
       });
     });
@@ -243,7 +243,7 @@ describe('Connection', () => {
           const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
           let eventsCount = 0;
           function forEachEvent(event) { eventsCount++; }
-          const res = await conn.streamedGetEvent(queryParams, forEachEvent);
+          const res = await conn.getEventsStreamed(queryParams, forEachEvent);
           expect(eventsCount).to.equal(res.eventsCount);
         });
 
@@ -251,7 +251,7 @@ describe('Connection', () => {
           const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
           let eventsCount = 0;
           function forEachEvent(event) { eventsCount++; }
-          const res = await conn.streamedGetEvent(queryParams, forEachEvent);
+          const res = await conn.getEventsStreamed(queryParams, forEachEvent);
           expect(eventsCount).to.equal(res.eventsCount);
         });
       });

@@ -45,7 +45,6 @@ class Service {
       if (!this._pryvServiceInfoUrl) {
         throw new Error('Service was not initialized with a serviceInfoURL');
       }
-      console.log('ZOZOU');
       const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
       this.setServiceInfo(res.body);
       return this._pryvServiceInfo;

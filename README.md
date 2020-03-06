@@ -149,11 +149,11 @@ try {
 }
 ```
 
-### Advanced usage of API calls with intermediate result and progress callbacks
+### Advanced usage of API calls with optional individual result and progress callbacks
 
 ```javascript
 let count = 0;
-// the following will be called after each API method call it was provided for
+// the following will be called on each API method result it was provided for
 function handleResult(result) { console.log('Got result ' + count++ + ': ' + JSON.stringify(result)); }
 
 function progress(percentage) { console.log('Processed: ' + percentage + '%'); }
@@ -186,22 +186,23 @@ try {
 
 When `events.get` will provide a large result set, it is recommended to use a method that streams the result instead of the batch API call.
 
-`Pryv.Connection.streamedGetEvent()` parses the response JSON as soon as data is available and calls the `forEachEvent()` callback on each event object.
+`Pryv.Connection.getEventsStreamed()` parses the response JSON as soon as data is available and calls the `forEachEvent()` callback on each event object.
 
-The result is transformed and  `events: [..]` array property is replaced by `eventsCount: {Number}`
+The callback is meant to store the events data, as the function does not return the API call result, which could overflow memory in case of very large data set.
+Instead, the function returns an events count as well as the [common metadata](https://api.pryv.com/reference/#common-metadata).
 
 #### Example:
 
 ``````  javascript
 const now = (new Date()).getTime() / 1000;
-const queryParams = { fromTime: 0, toTime: now, limit: 100000};
-let eventsCount = 0;
+const queryParams = { fromTime: 0, toTime: now, limit: 10000};
+const events = [];
 function forEachEvent(event) {
-  counter++;
+  events.push(JSON.parse(event));
 }
 
 try {
-  const result = await connection.streamedGetEvent(queryParams, forEachEvent);
+  const result = await connection.getEventsStreamed(queryParams, forEachEvent);
 } catch (e) {
   // handle error
 }
