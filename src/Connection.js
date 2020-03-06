@@ -177,7 +177,7 @@ class Connection {
       res = await browserGetEventStreamed(this, queryParams, myParser);
 
     } else { // browser no fetch supports
-      console.warn('Browser does not support fetch() required by Pryv.Connection.getEventsStreamed()');
+      console.log('WARNING: Browser does not support fetch() required by Pryv.Connection.getEventsStreamed()');
       res = await this.getRaw('events', queryParams);
       res.body.eventsCount = 0;
       if (res.body.events) {

@@ -188,7 +188,7 @@ When `events.get` will provide a large result set, it is recommended to use a me
 
 `Pryv.Connection.getEventsStreamed()` parses the response JSON as soon as data is available and calls the `forEachEvent()` callback on each event object.
 
-The callback is meant to store the events data, as the function does not return the API call result, which could overflow memory in case of very large data set.
+The callback is meant to store the events data, as the function does not return the API call result, which could overflow memory in case of JSON deserialization of a very large data set.
 Instead, the function returns an events count as well as the [common metadata](https://api.pryv.com/reference/#common-metadata).
 
 #### Example:
