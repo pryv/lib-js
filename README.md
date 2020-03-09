@@ -56,6 +56,8 @@ const connection = new Pryv.Connection(apiEndpoint);
 
 #### Within a WebPage with a login button
 
+The following code is an implementation of the [Pryv.io Authorization process](https://api.pryv.com/reference/#authorizing-your-app). 
+
 ```html
 <!doctype html>
 <html>
@@ -109,21 +111,20 @@ const connection = new Pryv.Connection(apiEndpoint);
 </html>
 ```
 
-#### Using Service.login(); *trusted apps only*  https://api.pryv.com/reference-full/#login-user
+#### Using Service.login() *(trusted apps only)*
+
+[auth.login reference](https://api.pryv.com/reference-full/#login-user)
 
 ```javascript
-const serviceInfo = 'https://reg.pryv.me/service/info';
-const appIdCode = 'lib-js-sample';
-const connection = await (new Pryv.Service(serviceInfo)).login(
-  username,
-  password,
-  appIdCode
-);
+const serviceInfoUrl = 'https://reg.pryv.me/service/info';
+const appId = 'lib-js-sample';
+const service = new Pryv.Service(serviceInfoUrl);
+const connection = await service.login(username, password, appId);
 ```
 
 ### API calls
 
-Api calls are based on the `batch`call specifications: https://api.pryv.com/reference/#call-batch
+Api calls are based on the `batch` call specifications: https://api.pryv.com/reference/#call-batch
 
 ```javascript
 const apiCalls = [
@@ -347,7 +348,7 @@ To customize the Login Button to https://github.com/pryv/assets-pryv.me/tree/mas
 
 can be used in a browser with `setAllDefaults()`
 
-This will load the `css`and `favicon`properties of assets definitions.
+This will load the `css` and `favicon` properties of assets definitions.
 
 ```javascript
 (async function () {
@@ -358,7 +359,7 @@ This will load the `css`and `favicon`properties of assets definitions.
 
 #### Customize service info 
 
-Service infos properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
+Service information properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
 
 ##### Pryv.Service
 
@@ -388,11 +389,11 @@ var serviceCustomizations = {
 var service = await Pryv.Auth.setup(authSettings, serviceInfoUrl, serviceCustomizations);
 ```
 
-#### Pryv.Auth specify service/info from URL query parameters
+#### Pryv.Auth - specify Service Information from URL query parameters
 
-A single Web App might need to be  run on different Pryv.io platform. This is the case of most of Pryv demonstrators. 
+A single Web App might need to be run on different Pryv.io platforms. This is the case of most Pryv.io demonstrators.
 
-**service info URL** can be extracted from the URL query parameter `pryvServiceInfoUrl` with `Pryv.Auth.serviceInfoFromUrl()`. See [Pryv Guidelines](https://api.pryv.com/guides/app-guidelines/)
+The **Service Information URL** can be extracted from the URL query parameter `pryvServiceInfoUrl` with `Pryv.Auth.serviceInfoFromUrl()` as per the [Pryv App Guidelines](https://api.pryv.com/guides/app-guidelines/).
 
 Example of usage for web App with the url https://mydomain.com/my-web-app/index.html?pryvServiceInfoUrl=https://my.domain.com/service/info
 
