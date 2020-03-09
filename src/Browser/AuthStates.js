@@ -4,7 +4,7 @@
  * Enum Possible states: ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
  * @readonly
  * @enum {string}
- * @memberof Pryv.Auth
+ * @memberof Pryv.Browser
  */
 const AuthState = {
   ERROR : 'error',

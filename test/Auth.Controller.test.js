@@ -2,10 +2,10 @@
 const should = chai.should();
 const expect = chai.expect;
 
-const Controller = require('../src/Auth/Controller.js')
+const Controller = require('../src/Browser/Controller.js')
 
 
-describe('Auth.Controller', function () {
+describe('Browser.Controller', function () {
 
 
   it('getReturnURL()', async () => {

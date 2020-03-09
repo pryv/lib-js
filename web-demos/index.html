@@ -50,7 +50,7 @@
 
   let serviceInfoUrl = 'https://reg.pryv.me/service/infos';
   // override serviceInfo if provided in the url. 
-  serviceInfoUrl = Pryv.Auth.serviceInfoFromUrl() || serviceInfoUrl;
+  serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || serviceInfoUrl;
 
   var authSettings = {
     spanButtonID: 'pryv-button',
@@ -83,18 +83,18 @@
 
 
   (async function () {
-    const service = await Pryv.Auth.setup(authSettings, serviceInfoUrl, serviceCustomizations);
+    const service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
     (await service.assets()).setAllDefaults();
   })();
 
 
   function pryvAuthStateChange(state) {
     console.log('##pryvAuthStateChange', state);
-    if (state.id === Pryv.Auth.States.AUTHORIZED) {
+    if (state.id === Pryv.Browser.authStates.AUTHORIZED) {
       connection = new Pryv.Connection(state.apiEndpoint);
-      logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
+      logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
     }
-    if (state.id === Pryv.Auth.States.LOGOUT) {
+    if (state.id === Pryv.Browser.authStates.LOGOUT) {
       connection = null;
       logToConsole('# Logout');
     }

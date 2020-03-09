@@ -1,7 +1,7 @@
 const utils = require('../utils');
 const Service = require('../Service');
 const LoginButton = require('./LoginButton');
-const States = require('./States');
+const States = require('./AuthStates');
 const Cookies = require('./CookieUtils');
 
 const COOKIE_STRING = 'pryv-libjs-';
@@ -30,7 +30,7 @@ class Controller {
       this.stateChangeListners.push(this.loginButton.onStateChange.bind(this.loginButton));
     } else {
       if (document) {
-        console.log('WARNING: Pryv.Auth initialized with no spanButtonID');
+        console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
       }
     }
 
@@ -63,7 +63,7 @@ class Controller {
       }
     } catch (e) {
       this.state = {
-        id: States.ERROR, message: 'During initialization', error: e
+        id: AuthStates.ERROR, message: 'During initialization', error: e
       }
       throw (e);
     }
@@ -73,9 +73,9 @@ class Controller {
    * @returns {PryvService}
    */
   async init() {
-    this.state = { id: States.LOADING };
+    this.state = { id: AuthStates.LOADING };
     if (this.pryvService) {
-      throw new Error('Auth service already initialized');
+      throw new Error('Browser service already initialized');
     }
 
  
@@ -86,7 +86,7 @@ class Controller {
       this.pryvServiceInfo = await this.pryvService.info();
     } catch (e) {
       this.state = {
-        id: States.ERROR,
+        id: AuthStates.ERROR,
         message: 'Cannot fetch service/info',
         error: e
       }
@@ -99,7 +99,7 @@ class Controller {
         await this.loginButton.loadAssets(this.pryvService);
       } catch (e) {
         this.state = {
-          id: States.ERROR,
+          id: AuthStates.ERROR,
           message: 'Cannot fetch button visuals',
           error: e
         }
@@ -116,7 +116,7 @@ class Controller {
         this.processAccess(res.body);
       } catch (e) {
         this.state = {
-          id: States.ERROR,
+          id: AuthStates.ERROR,
           message: 'Cannot fetch result',
           error: e
         }
@@ -132,7 +132,7 @@ class Controller {
 
     if (loginCookie) {
       this.state = {
-        id: States.AUTHORIZED,
+        id: AuthStates.AUTHORIZED,
         apiEndpoint: loginCookie.apiEndpoint,
         displayName: loginCookie.displayName,
         action: this.logOut
@@ -152,7 +152,7 @@ class Controller {
     Cookies.del(this.cookieKey)
     this.accessData = null;
     this.state = {
-      id: States.INITIALIZED,
+      id: AuthStates.INITIALIZED,
       serviceInfo: this.serviceInfo,
       action: this.openLoginPage
     }
@@ -172,7 +172,7 @@ class Controller {
       return res.body;
     } catch (e) {
       this.state = {
-        id: States.ERROR,
+        id: AuthStates.ERROR,
         message: 'Requesting access',
         error: e
       }
@@ -213,7 +213,7 @@ class Controller {
     console.log('_processAccess :', accessData);
     if (!accessData || !accessData.status) {
       this.state = {
-        id: States.ERROR,
+        id: AuthStates.ERROR,
         message: 'Invalid Access data response',
         error: new Error('Invalid Access data response')
       };
@@ -224,7 +224,7 @@ class Controller {
     switch (this.accessData.status) {
       case 'ERROR':
         this.state = {
-          id: States.ERROR,
+          id: AuthStates.ERROR,
           message: 'Error on the backend'
         };
         break;
@@ -236,7 +236,7 @@ class Controller {
           { apiEndpoint: apiEndpoint, displayName: this.accessData.username });
 
         this.state = {
-          id: States.AUTHORIZED,
+          id: AuthStates.AUTHORIZED,
           apiEndpoint: apiEndpoint,
           displayName: this.accessData.username,
           action: this.logOut
@@ -266,14 +266,14 @@ class Controller {
   // ------------------ ACTIONS  ----------- //
 
   /**
-   * Follow Auth Process and 
+   * Follow Browser Process and 
    * Open Login Page.
    */
   async openLoginPage() {
     console.log('OpenLogin', this);
-    // 1. Make sure Auth is initialized
+    // 1. Make sure Browser is initialized
     if (!this.pryvServiceInfo) {
-      throw new Error('Auth service must be initialized first');
+      throw new Error('Browser service must be initialized first');
     }
 
     // 2. Post access if needed
@@ -302,7 +302,7 @@ class Controller {
 
   popupLogin() {
     if (!this.accessData || !this.accessData.url) {
-      throw new Error('Pryv Sign-In Error: NO SETUP. Please call Auth.setup() first.');
+      throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
     }
 
     if (this.settings.authRequest.returnURL) { // open on same page (no Popup) 

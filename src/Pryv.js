@@ -6,12 +6,12 @@
  * @namespace Pryv
  * @property {Service} Service
  * @property {Connection} Connection
- * @property {Auth} Auth
+ * @property {Browser} Browser
  * @property {utils} utils
  */
 module.exports = {
   Service: require('./Service'),
   Connection: require('./Connection'),
-  Auth: require('./Auth'),
+  Browser: require('./Browser'),
   utils: require('./utils')
 }

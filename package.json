@@ -17,6 +17,7 @@
     "name": "Pryv S.A."
   },
   "main": "src/index.js",
+  "license": "BSD-3-Clause",
   "scripts": {
     "build": "webpack --config webpack.config.js",
     "doc": "documentation build src/** -f html -o dist/docs",

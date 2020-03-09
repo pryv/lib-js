@@ -93,18 +93,18 @@ The following code is an implementation of the [Pryv.io Authorization process](h
     
     function pryvAuthStateChange(state) { // called each time the authentication state changed
       console.log('##pryvAuthStateChange', state);
-      if (state.id === Pryv.Auth.States.AUTHORIZED) {
+      if (state.id === Pryv.Browser.authStates.AUTHORIZED) {
         connection = new Pryv.Connection(state.apiEndpoint);
-        logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
+        logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
       }
-      if (state.id === Pryv.Auth.States.LOGOUT) {
+      if (state.id === Pryv.Browser.authStates.LOGOUT) {
         connection = null;
         logToConsole('# Logout');
       }
   }
     var serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
     (async function () {
-      var service = await Pryv.Auth.setup(authSettings, serviceInfoUrl);
+      var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
     })();
   </script>
 </body>
@@ -352,7 +352,7 @@ This will load the `css` and `favicon` properties of assets definitions.
 
 ```javascript
 (async function () {
-  const service = await Pryv.Auth.setup(authSettings, serviceInfoUrl);
+  const service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
   (await service.assets()).setAllDefaults(); // will load the default Favicon and CSS for this platform
 })();
 ```
@@ -376,7 +376,7 @@ const serviceCustomizations = {
 const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
 ```
 
-##### Pryv.Auth
+##### Pryv.Browser
 
 ```javascript
 var serviceInfoUrl = 'https://reg.pryv.me/service/info';
@@ -386,22 +386,22 @@ var serviceCustomizations = {
     definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
   }
 }
-var service = await Pryv.Auth.setup(authSettings, serviceInfoUrl, serviceCustomizations);
+var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
 ```
 
-#### Pryv.Auth - specify Service Information from URL query parameters
+#### Pryv.Browser - specify Service Information from URL query parameters
 
 A single Web App might need to be run on different Pryv.io platforms. This is the case of most Pryv.io demonstrators.
 
-The **Service Information URL** can be extracted from the URL query parameter `pryvServiceInfoUrl` with `Pryv.Auth.serviceInfoFromUrl()` as per the [Pryv App Guidelines](https://api.pryv.com/guides/app-guidelines/).
+The **Service Information URL** can be extracted from the URL query parameter `pryvServiceInfoUrl` with `Pryv.Browser.serviceInfoFromUrl()` as per the [Pryv App Guidelines](https://api.pryv.com/guides/app-guidelines/).
 
 Example of usage for web App with the url https://mydomain.com/my-web-app/index.html?pryvServiceInfoUrl=https://my.domain.com/service/info
 
 ```javascript
-console.log(Pryv.Auth.serviceInfoFromUrl());
+console.log(Pryv.Browser.serviceInfoFromUrl());
 
 let serviceInfoUrl = 'https://reg.pryv.me/service/info';
 // the following will override serviceInfoUrl by https://my.domain.com/service/info
-serviceInfoUrl = Pryv.Auth.serviceInfoFromUrl() || serviceInfoUrl;
+serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || serviceInfoUrl;
 ```
 

@@ -17,7 +17,7 @@ function genSettings() {
   };
 }
 
-describe('Auth', function () {
+describe('Browser', function () {
   this.timeout(5000); 
 
   let removeZombie = false;
@@ -40,23 +40,23 @@ describe('Auth', function () {
     delete global.location;
   });
 
-  it('setup()', (done) => {
+  it('setupAuth()', (done) => {
     const settings = genSettings();
     
     let AuthLoaded = false;
     let ServiceInfoLoaded = false;
     settings.onStateChange = function (state) {
       should.exist(state.id);
-      if (state.id == Pryv.Auth.States.LOADING) {
+      if (state.id == Pryv.Browser.authStates.LOADING) {
         AuthLoaded = true;
       }
-      if (state.id == Pryv.Auth.States.INITIALIZED) {
+      if (state.id == Pryv.Browser.authStates.INITIALIZED) {
         expect(AuthLoaded).to.true;
         done();
       }
     }
 
-    Pryv.Auth.setup(settings, testData.defaults.serviceInfoUrl).then((service) => {
+    Pryv.Browser.setupAuth(settings, testData.defaults.serviceInfoUrl).then((service) => {
       const serviceInfo = service.infoSync();
       should.exist(serviceInfo.access);
       should.exist(serviceInfo.serial);
@@ -69,7 +69,7 @@ describe('Auth', function () {
 
 
   it ('serviceInfoFromUrl()', async () => {
-    expect('https://zouzou.com/service/info').to.equal(Pryv.Auth.serviceInfoFromUrl());
+    expect('https://zouzou.com/service/info').to.equal(Pryv.Browser.serviceInfoFromUrl());
   });
 
 });

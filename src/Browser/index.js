@@ -1,15 +1,15 @@
 const Controller = require('./Controller');
-const States = require('./States');
+const AuthStates = require('./AuthStates');
 
 /**
- * @module Auth 
+ * @module Browser 
  * @memberof Pryv
  */
 
 
 /**
  * Start an authentication process
- * @memberof Pryv.Auth
+ * @memberof Pryv.Browser
  * @param {Object} settings
  * @param {Object} settings.authRequest See https://api.pryv.com/reference/#data-structure-access
  * @param {string} [settings.authRequest.languageCode] Language code, as per LoginButton Messages: 'en', 'fr
@@ -17,7 +17,7 @@ const States = require('./States');
  * @param {Object} settings.authRequest.requestedPermissions
  * @param {string | boolean} settings.authRequest.returnURL : false, // set this if you don't want a popup
  * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
- * @param {Auth.AuthStateChangeHandler} settings.onStateChange
+ * @param {Browser.AuthStateChangeHandler} settings.onStateChange
  * @param {string} [settings.returnURL=auto#]  Set to "self#" to disable popup and force using the same page. Set a custom url when process is finished (specific use cases). Should always end by # ? or &
  * @param {string} serviceInfoUrl
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
@@ -30,8 +30,8 @@ async function setup(settings, serviceInfoUrl, serviceCustomizations) {
 
 
 module.exports = {
-  setup: setup,
-  States: States,
+  setupAuth: setupAuth,
+  AuthStates: AuthStates,
   serviceInfoFromUrl: Controller.getServiceInfoFromURL
 }
 
@@ -46,5 +46,5 @@ module.exports = {
  * - LOGOUT => {}
  * @callback AuthStateChangeHandler
  * @param {Object} state
- * @param {Pryv.Auth.AuthState} state.id  one of ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
+ * @param {Pryv.Browser.AuthState} state.id  one of ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
  */
