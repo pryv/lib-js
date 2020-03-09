@@ -1,4 +1,4 @@
-const Controller = require('./Controller');
+const AuthController = require('./AuthController');
 const AuthStates = require('./AuthStates');
 
 /**
@@ -24,7 +24,7 @@ const AuthStates = require('./AuthStates');
  * @returns {PryvServiceInfo}
  */
 async function setupAuth(settings, serviceInfoUrl, serviceCustomizations) {
-  return (new Controller(settings, 
+  return (new AuthController(settings, 
     serviceInfoUrl, serviceCustomizations)).init();
 }
 
@@ -32,7 +32,7 @@ async function setupAuth(settings, serviceInfoUrl, serviceCustomizations) {
 module.exports = {
   setupAuth: setupAuth,
   AuthStates: AuthStates,
-  serviceInfoFromUrl: Controller.getServiceInfoFromURL
+  serviceInfoFromUrl: AuthController.getServiceInfoFromURL
 }
 
 

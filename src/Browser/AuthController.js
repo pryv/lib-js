@@ -12,7 +12,7 @@ const prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/g;
 /**
  * @private
  */
-class Controller {
+class AuthController {
 
 
   constructor(settings, serviceInfoUrl, serviceCustomizations) {
@@ -46,7 +46,7 @@ class Controller {
 
       // -- Extract returnURL 
       this.settings.authRequest.returnURL = 
-        Controller.getReturnURL(this.settings.authRequest.returnURL);
+        AuthController.getReturnURL(this.settings.authRequest.returnURL);
 
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
@@ -108,7 +108,7 @@ class Controller {
     }
 
     // 3. Check if there is a prYvkey as result of "out of page login"
-    const params = Controller.getQueryParamsFromURL();
+    const params = AuthController.getQueryParamsFromURL();
     if (params.prYvkey) {
       try {
         const res = await utils.superagent.get(
@@ -362,19 +362,19 @@ class Controller {
     }
 
     // is Popup ? (not mobile && auto#)
-    if (returnURL.indexOf('auto') === 0 && !Controller.browserIsMobileOrTablet(navigatorForTests)) {
+    if (returnURL.indexOf('auto') === 0 && !AuthController.browserIsMobileOrTablet(navigatorForTests)) {
       return false;
     }
 
     // set self as return url?
-    if ((returnURL.indexOf('auto') === 0 && Controller.browserIsMobileOrTablet(navigatorForTests)) ||
+    if ((returnURL.indexOf('auto') === 0 && AuthController.browserIsMobileOrTablet(navigatorForTests)) ||
       (returnURL.indexOf('self') === 0)) { // 
 
       // eventually clean-up current url from previous pryv returnURL
       returnURL = locationHref + returnURL.substring(4);;
     }
     
-    return Controller.cleanURLFromPrYvParams(returnURL);
+    return AuthController.cleanURLFromPrYvParams(returnURL);
   }
 
   /**
@@ -401,15 +401,15 @@ class Controller {
 
   //util to grab parameters from url query string
   static getServiceInfoFromURL(url) {
-    const vars = Controller.getQueryParamsFromURL(url);
+    const vars = AuthController.getQueryParamsFromURL(url);
     //TODO check validity of status
-    return vars[Controller.options.serviceInfoQueryParamKey];
+    return vars[AuthController.options.serviceInfoQueryParamKey];
   };
 
 
   //util to grab parameters from url query string
   static getStatusFromURL(url) {
-    const vars = Controller.getQueryParamsFromURL(url);
+    const vars = AuthController.getQueryParamsFromURL(url);
     //TODO check validity of status
     return vars.prYvstatus;
   };
@@ -420,8 +420,8 @@ class Controller {
   };
 }
 
-Controller.options = {
+AuthController.options = {
   serviceInfoQueryParamKey: 'pryvServiceInfoUrl'
 }
 
-module.exports = Controller;
+module.exports = AuthController;

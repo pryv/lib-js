@@ -8,4 +8,4 @@ require('./Connection.test.js');
 require('./Service.test.js');
 require('./ServiceAssets.test.js');
 require('./Browser.test.js');
-require('./Browser.Controller.test.js');
+require('./Browser.AuthController.test.js');
