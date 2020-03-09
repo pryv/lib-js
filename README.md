@@ -347,6 +347,8 @@ To customize the Login Button to https://github.com/pryv/assets-pryv.me/tree/mas
 
 can be used in a browser with `setAllDefaults()`
 
+This will load the `css`and `favicon`properties of assets definitions.
+
 ```javascript
 (async function () {
   const service = await Pryv.Auth.setup(authSettings, serviceInfoUrl);
@@ -384,5 +386,21 @@ var serviceCustomizations = {
   }
 }
 var service = await Pryv.Auth.setup(authSettings, serviceInfoUrl, serviceCustomizations);
+```
+
+#### Pryv.Auth specify service/info from URL query parameters
+
+A single Web App might need to be  run on different Pryv.io platform. This is the case of most of Pryv demonstrators. 
+
+**service info URL** can be extracted from the URL query parameter `service-info` with `Pryv.Auth.serviceInfoFromUrl()`
+
+Example of usage for web App with the url https://mydomain.com/my-web-app/index.html?service-info=https://my.domain.com/service/info
+
+```javascript
+console.log(Pryv.Auth.serviceInfoFromUrl());
+
+let serviceInfoUrl = 'https://reg.pryv.me/service/info';
+// the following will override serviceInfoUrl by https://my.domain.com/service/info
+serviceInfoUrl = Pryv.Auth.serviceInfoFromUrl() || serviceInfoUrl;
 ```
 

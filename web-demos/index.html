@@ -42,8 +42,14 @@
   // will handle the connection
   var connection = null;
 
-  const isDevevelopment = window.location.hostname.indexOf('rec.la') >= 0;
-  const serviceInfoUrl = isDevevelopment ? 'https://l.rec.la:4443/demos/service-info.json' : 'https://pryv.github.io/lib-js/demos/service-info.json';
+  var serviceCustomizations = {
+      assets: {
+        definitions:  'https://pryv.github.io/assets-pryv.me/index.json'
+      }
+    };
+
+  // override serviceInfo if provided in the url. 
+  serviceInfoUrl = Pryv.Auth.serviceInfoFromUrl() || serviceInfoUrl;
 
   var authSettings = {
     spanButtonID: 'pryv-button',
@@ -76,7 +82,7 @@
 
 
   (async function () {
-    const service = await Pryv.Auth.setup(authSettings, serviceInfoUrl);
+    const service = await Pryv.Auth.setup(authSettings, serviceInfoUrl, serviceCustomizations);
     (await service.assets()).setAllDefaults();
   })();
 

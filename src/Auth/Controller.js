@@ -6,18 +6,21 @@ const Cookies = require('./CookieUtils');
 
 const COOKIE_STRING = 'pryv-libjs-';
 
-const statusRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
+const queryRegexp = /[?#&]+([^=&]+)=([^&]*)/gi;
+const prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
 
 /**
  * @private
  */
 class Controller {
 
+
   constructor(settings, serviceInfoUrl, serviceCustomizations) {
     this.stateChangeListners = [];
     this.settings = settings;
     this.serviceInfoUrl = serviceInfoUrl;
     this.serviceCustomizations = serviceCustomizations;
+    
 
     if (!settings) { throw new Error('settings cannot be null'); }
 
@@ -94,7 +97,16 @@ class Controller {
 
     // 2. setup button with assets
     if (this.loginButton) {
-      this.loginButton.loadAssets(this.pryvService);
+      try {
+        await this.loginButton.loadAssets(this.pryvService);
+      } catch (e) {
+        this.state = {
+          id: States.ERROR,
+          message: 'Cannot fetch button visuals',
+          error: e
+        }
+        throw e; // forward error
+      }
     }
 
     // 3. check autologin 
@@ -343,7 +355,7 @@ class Controller {
       // eventually clean-up current url from previous pryv returnURL
       returnURL = locationHref + returnURL.substring(4);;
     }
-    return Controller.cleanStatusFromURL(returnURL);
+    return Controller.cleanURLFromPrYvParams(returnURL);
   }
 
   /**
@@ -358,30 +370,39 @@ class Controller {
   };
 
 
-
-  //util to grab parameters from url query string
-  static getStatusFromURL() {
+  static getQueryParamsFromURL(url) { 
+    url = url || window.location.href;
     var vars = {};
-    window.location.href.replace(statusRegexp,
+    url.replace(queryRegexp,
       function (m, key, value) {
-        vars[key] = value;
+        vars[key] = decodeURIComponent(value);
       });
+    return vars;
+  }
 
+  //util to grab parameters from url query string
+  static getServiceInfoFromURL(url) {
+    const vars = Controller.getQueryParamsFromURL(url);
     //TODO check validity of status
+    return vars[Controller.options.serviceInfoQueryParamKey];
+  };
 
-    return (vars.status) ? vars : false;
+
+  //util to grab parameters from url query string
+  static getStatusFromURL(url) {
+    const vars = Controller.getQueryParamsFromURL(url);
+    //TODO check validity of status
+    return vars.prYvstatus;
   };
 
   //util to grab parameters from url query string
-  static cleanStatusFromURL(url) {
-    return url.replace(statusRegexp, '');
+  static cleanURLFromPrYvParams(url) {
+    return url.replace(prYvRegexp, '');
   };
-
-
-
-
 }
 
-
+Controller.options = {
+  serviceInfoQueryParamKey: 'service-info'
+}
 
 module.exports = Controller;

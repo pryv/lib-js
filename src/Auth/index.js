@@ -31,7 +31,8 @@ async function setup(settings, serviceInfoUrl, serviceCustomizations) {
 
 module.exports = {
   setup: setup,
-  States: States
+  States: States,
+  serviceInfoFromUrl: Controller.getServiceInfoFromURL
 }
 
 

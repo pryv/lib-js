@@ -26,7 +26,7 @@ describe('Auth', function () {
     if (typeof document !== 'undefined') return; // in browser
     removeZombie = true;
     const browser = new Browser();
-    browser.visit('./');
+    browser.visit('./?service-info=https://zouzou.com/service/info');
     global.document = browser.document;
     global.window = browser.window;
     global.location = browser.location;
@@ -65,6 +65,11 @@ describe('Auth', function () {
       should.not.exist(error);
       done();
     });
+  });
+
+
+  it ('serviceInfoFromUrl()', async () => {
+    expect('https://zouzou.com/service/info').to.equal(Pryv.Auth.serviceInfoFromUrl());
   });
 
 });

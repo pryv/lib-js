@@ -19,6 +19,9 @@ class LoginButton {
       throw new Error('No Cannot find SpanId: ' + auth.settings.spanButtonID + ' in DOM');
     }
 
+    // up to the time the button is loaded use the Span to dsiplay eventual error messages
+    this.loginButtonText = this.loginButtonSpan;
+
     this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
     this.auth = auth;
 
