@@ -402,7 +402,7 @@ class Controller {
 }
 
 Controller.options = {
-  serviceInfoQueryParamKey: 'service-info'
+  serviceInfoQueryParamKey: 'pryvServiceInfoUrl'
 }
 
 module.exports = Controller;

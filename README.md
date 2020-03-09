@@ -392,9 +392,9 @@ var service = await Pryv.Auth.setup(authSettings, serviceInfoUrl, serviceCustomi
 
 A single Web App might need to be  run on different Pryv.io platform. This is the case of most of Pryv demonstrators. 
 
-**service info URL** can be extracted from the URL query parameter `service-info` with `Pryv.Auth.serviceInfoFromUrl()`
+**service info URL** can be extracted from the URL query parameter `pryvServiceInfoUrl` with `Pryv.Auth.serviceInfoFromUrl()`. See [Pryv Guidelines](https://api.pryv.com/guides/app-guidelines/)
 
-Example of usage for web App with the url https://mydomain.com/my-web-app/index.html?service-info=https://my.domain.com/service/info
+Example of usage for web App with the url https://mydomain.com/my-web-app/index.html?pryvServiceInfoUrl=https://my.domain.com/service/info
 
 ```javascript
 console.log(Pryv.Auth.serviceInfoFromUrl());

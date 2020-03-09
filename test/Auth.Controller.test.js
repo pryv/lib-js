@@ -55,8 +55,8 @@ describe('Auth.Controller', function () {
 
   it('getServiceInfoFromURL()', async () => {
     const serviceInfoUrl = Controller.getServiceInfoFromURL(
-      'https://my.Url.com/?bobby=2&prYvZoutOu=1&service-info=' + encodeURIComponent('https://reg.pryv.me/service/infos'));
-      
+      'https://my.Url.com/?bobby=2&prYvZoutOu=1&pryvServiceInfoUrl=' + encodeURIComponent('https://reg.pryv.me/service/infos'));
+
     expect('https://reg.pryv.me/service/infos').to.equal(serviceInfoUrl);
   });
 
