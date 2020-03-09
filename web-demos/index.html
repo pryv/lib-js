@@ -90,11 +90,11 @@
 
   function pryvAuthStateChange(state) {
     console.log('##pryvAuthStateChange', state);
-    if (state.id === Pryv.Browser.authStates.AUTHORIZED) {
+    if (state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
       connection = new Pryv.Connection(state.apiEndpoint);
       logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
     }
-    if (state.id === Pryv.Browser.authStates.LOGOUT) {
+    if (state.id === Pryv.Browser.AuthStates.LOGOUT) {
       connection = null;
       logToConsole('# Logout');
     }

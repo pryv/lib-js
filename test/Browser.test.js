@@ -47,10 +47,10 @@ describe('Browser', function () {
     let ServiceInfoLoaded = false;
     settings.onStateChange = function (state) {
       should.exist(state.id);
-      if (state.id == Pryv.Browser.authStates.LOADING) {
+      if (state.id == Pryv.Browser.AuthStates.LOADING) {
         AuthLoaded = true;
       }
-      if (state.id == Pryv.Browser.authStates.INITIALIZED) {
+      if (state.id == Pryv.Browser.AuthStates.INITIALIZED) {
         expect(AuthLoaded).to.true;
         done();
       }

@@ -23,7 +23,7 @@ const AuthStates = require('./AuthStates');
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
  * @returns {PryvServiceInfo}
  */
-async function setup(settings, serviceInfoUrl, serviceCustomizations) {
+async function setupAuth(settings, serviceInfoUrl, serviceCustomizations) {
   return (new Controller(settings, 
     serviceInfoUrl, serviceCustomizations)).init();
 }

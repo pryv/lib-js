@@ -1,7 +1,7 @@
 const utils = require('../utils');
 const Service = require('../Service');
 const LoginButton = require('./LoginButton');
-const States = require('./AuthStates');
+const AuthStates = require('./AuthStates');
 const Cookies = require('./CookieUtils');
 
 const COOKIE_STRING = 'pryv-libjs-';
@@ -210,7 +210,6 @@ class Controller {
    * @private 
    */
   processAccess(accessData) {
-    console.log('_processAccess :', accessData);
     if (!accessData || !accessData.status) {
       this.state = {
         id: AuthStates.ERROR,
@@ -404,7 +403,6 @@ class Controller {
   static getServiceInfoFromURL(url) {
     const vars = Controller.getQueryParamsFromURL(url);
     //TODO check validity of status
-    console.log(vars);
     return vars[Controller.options.serviceInfoQueryParamKey];
   };
 

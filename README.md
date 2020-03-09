@@ -93,11 +93,11 @@ The following code is an implementation of the [Pryv.io Authorization process](h
     
     function pryvAuthStateChange(state) { // called each time the authentication state changed
       console.log('##pryvAuthStateChange', state);
-      if (state.id === Pryv.Browser.authStates.AUTHORIZED) {
+      if (state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
         connection = new Pryv.Connection(state.apiEndpoint);
         logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
       }
-      if (state.id === Pryv.Browser.authStates.LOGOUT) {
+      if (state.id === Pryv.Browser.AuthStates.LOGOUT) {
         connection = null;
         logToConsole('# Logout');
       }

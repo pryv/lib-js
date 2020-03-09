@@ -1,6 +1,6 @@
 
 const Messages = require('./LoginButtonMessages');
-const States = require('./AuthStates');
+const AuthStates = require('./AuthStates');
 
 class LoginButton {
 
@@ -78,7 +78,7 @@ class LoginButton {
         this.text = this.lastState.displayName;
         break;
       default:
-        console.log('Unhandled state for Login: ' + this.lastState.id);
+        console.log('WARNING Unhandled state for Login: ' + this.lastState.id);
     }
     this.refreshText();
   }
