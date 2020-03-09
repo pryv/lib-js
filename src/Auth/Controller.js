@@ -196,6 +196,9 @@ class Controller {
       this.polling = false;
       return;
     }
+    if (this.settings.authRequest.returnURL) { // no popup
+      return;
+    }
     this.polling = true;
     this.processAccess(await this.getAccess());
     setTimeout(this.poll.bind(this), this.accessData.poll_rate_ms);
