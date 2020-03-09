@@ -46,7 +46,7 @@ class Controller {
 
       // -- Extract returnURL 
       this.settings.authRequest.returnURL = 
-        Controller.getReturnURL(this.settings.returnURL);
+        Controller.getReturnURL(this.settings.authRequest.returnURL);
 
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
@@ -370,9 +370,11 @@ class Controller {
     // set self as return url?
     if ((returnURL.indexOf('auto') === 0 && Controller.browserIsMobileOrTablet(navigatorForTests)) ||
       (returnURL.indexOf('self') === 0)) { // 
+
       // eventually clean-up current url from previous pryv returnURL
       returnURL = locationHref + returnURL.substring(4);;
     }
+    
     return Controller.cleanURLFromPrYvParams(returnURL);
   }
 
