@@ -6,8 +6,8 @@ const Cookies = require('./CookieUtils');
 
 const COOKIE_STRING = 'pryv-libjs-';
 
-const queryRegexp = /[?#&]+([^=&]+)=([^&]*)/gi;
-const prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
+const queryRegexp = /[?#&]+([^=&]+)=([^&]*)/g;
+const prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/g;
 
 /**
  * @private
@@ -47,8 +47,6 @@ class Controller {
       // -- Extract returnURL 
       this.settings.authRequest.returnURL = 
         Controller.getReturnURL(this.settings.returnURL);
-
-
 
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
@@ -109,7 +107,24 @@ class Controller {
       }
     }
 
-    // 3. check autologin 
+    // 3. Check if there is a prYvkey as result of "out of page login"
+    const params = Controller.getQueryParamsFromURL();
+    if (params.prYvkey) {
+      try {
+        const res = await utils.superagent.get(
+          this.pryvServiceInfo.access + '/' + params.prYvkey);
+        this.processAccess(res.body);
+      } catch (e) {
+        this.state = {
+          id: States.ERROR,
+          message: 'Cannot fetch result',
+          error: e
+        }
+      }
+      return this.pryvService;
+    }
+
+    // 4. check autologin 
     let loginCookie = null;
     try {
       loginCookie = Cookies.get(this.cookieKey);
@@ -123,7 +138,7 @@ class Controller {
         action: this.logOut
       };
     } else {
-      // 4. Propose Login
+      // 5. Propose Login
       this.readyAndClean();
     }
 
@@ -287,7 +302,7 @@ class Controller {
       throw new Error('Pryv Sign-In Error: NO SETUP. Please call Auth.setup() first.');
     }
 
-    if (this.settings.returnURL) { // open on same page (no Popup) 
+    if (this.settings.authRequest.returnURL) { // open on same page (no Popup) 
       location.href = this.accessData.url;
       return;
     }
@@ -384,6 +399,7 @@ class Controller {
   static getServiceInfoFromURL(url) {
     const vars = Controller.getQueryParamsFromURL(url);
     //TODO check validity of status
+    console.log(vars);
     return vars[Controller.options.serviceInfoQueryParamKey];
   };
 

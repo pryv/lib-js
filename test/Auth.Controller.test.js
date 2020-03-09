@@ -66,6 +66,9 @@ describe('Auth.Controller', function () {
     expect('https://my.Url.com/?bobby=2').to.equal(Controller.cleanURLFromPrYvParams(
       'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 
+    expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(Controller.cleanURLFromPrYvParams(
+      'https://my.Url.com/?pryvServiceInfoUrl=zzz#prYvZoutOu=1&prYvstatus=2jsadh'));
+
     expect('https://my.Url.com/').to.equal(Controller.cleanURLFromPrYvParams(
       'https://my.Url.com/?prYvstatus=2jsadh'));
 
