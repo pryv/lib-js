@@ -6,16 +6,21 @@ const Cookies = require('./CookieUtils');
 
 const COOKIE_STRING = 'pryv-libjs-';
 
-const statusRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
+const queryRegexp = /[?#&]+([^=&]+)=([^&]*)/g;
+const prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/g;
 
 /**
  * @private
  */
 class Controller {
 
-  constructor(settings) {
+
+  constructor(settings, serviceInfoUrl, serviceCustomizations) {
     this.stateChangeListners = [];
     this.settings = settings;
+    this.serviceInfoUrl = serviceInfoUrl;
+    this.serviceCustomizations = serviceCustomizations;
+    
 
     if (!settings) { throw new Error('settings cannot be null'); }
 
@@ -43,8 +48,6 @@ class Controller {
       this.settings.authRequest.returnURL = 
         Controller.getReturnURL(this.settings.returnURL);
 
-
-
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
       }
@@ -55,7 +58,7 @@ class Controller {
       }
 
       // -- Extract service info from URL query params if nor specified -- //
-      if (!this.settings.serviceInfoUrl) {
+      if (!this.serviceInfoUrl) {
         // TODO
       }
     } catch (e) {
@@ -75,8 +78,9 @@ class Controller {
       throw new Error('Auth service already initialized');
     }
 
+ 
     // 1. fetch service-info
-    this.pryvService = new Service(this.settings.serviceInfoUrl);
+    this.pryvService = new Service(this.serviceInfoUrl, this.serviceCustomizations);
 
     try {
       this.pryvServiceInfo = await this.pryvService.info();
@@ -91,10 +95,36 @@ class Controller {
 
     // 2. setup button with assets
     if (this.loginButton) {
-      this.loginButton.loadAssets(this.pryvService);
+      try {
+        await this.loginButton.loadAssets(this.pryvService);
+      } catch (e) {
+        this.state = {
+          id: States.ERROR,
+          message: 'Cannot fetch button visuals',
+          error: e
+        }
+        throw e; // forward error
+      }
     }
 
-    // 3. check autologin 
+    // 3. Check if there is a prYvkey as result of "out of page login"
+    const params = Controller.getQueryParamsFromURL();
+    if (params.prYvkey) {
+      try {
+        const res = await utils.superagent.get(
+          this.pryvServiceInfo.access + '/' + params.prYvkey);
+        this.processAccess(res.body);
+      } catch (e) {
+        this.state = {
+          id: States.ERROR,
+          message: 'Cannot fetch result',
+          error: e
+        }
+      }
+      return this.pryvService;
+    }
+
+    // 4. check autologin 
     let loginCookie = null;
     try {
       loginCookie = Cookies.get(this.cookieKey);
@@ -108,7 +138,7 @@ class Controller {
         action: this.logOut
       };
     } else {
-      // 4. Propose Login
+      // 5. Propose Login
       this.readyAndClean();
     }
 
@@ -135,10 +165,19 @@ class Controller {
    * @private
    */
   async postAccess() {
-    const res = await utils.superagent.post(this.pryvServiceInfo.access)
-      .set('accept', 'json')
-      .send(this.settings.authRequest);
-    return res.body;
+    try {
+      const res = await utils.superagent.post(this.pryvServiceInfo.access)
+        .set('accept', 'json')
+        .send(this.settings.authRequest);
+      return res.body;
+    } catch (e) {
+      this.state = {
+        id: States.ERROR,
+        message: 'Requesting access',
+        error: e
+      }
+      throw e; // forward error
+    }
   }
 
   /**
@@ -155,6 +194,9 @@ class Controller {
   async poll() {
     if (this.accessData.status !== 'NEED_SIGNIN') {
       this.polling = false;
+      return;
+    }
+    if (this.settings.authRequest.returnURL) { // no popup
       return;
     }
     this.polling = true;
@@ -263,7 +305,7 @@ class Controller {
       throw new Error('Pryv Sign-In Error: NO SETUP. Please call Auth.setup() first.');
     }
 
-    if (this.settings.returnURL) { // open on same page (no Popup) 
+    if (this.settings.authRequest.returnURL) { // open on same page (no Popup) 
       location.href = this.accessData.url;
       return;
     }
@@ -331,7 +373,7 @@ class Controller {
       // eventually clean-up current url from previous pryv returnURL
       returnURL = locationHref + returnURL.substring(4);;
     }
-    return Controller.cleanStatusFromURL(returnURL);
+    return Controller.cleanURLFromPrYvParams(returnURL);
   }
 
   /**
@@ -346,30 +388,40 @@ class Controller {
   };
 
 
-
-  //util to grab parameters from url query string
-  static getStatusFromURL() {
+  static getQueryParamsFromURL(url) { 
+    url = url || window.location.href;
     var vars = {};
-    window.location.href.replace(statusRegexp,
+    url.replace(queryRegexp,
       function (m, key, value) {
-        vars[key] = value;
+        vars[key] = decodeURIComponent(value);
       });
+    return vars;
+  }
 
+  //util to grab parameters from url query string
+  static getServiceInfoFromURL(url) {
+    const vars = Controller.getQueryParamsFromURL(url);
     //TODO check validity of status
+    console.log(vars);
+    return vars[Controller.options.serviceInfoQueryParamKey];
+  };
 
-    return (vars.status) ? vars : false;
+
+  //util to grab parameters from url query string
+  static getStatusFromURL(url) {
+    const vars = Controller.getQueryParamsFromURL(url);
+    //TODO check validity of status
+    return vars.prYvstatus;
   };
 
   //util to grab parameters from url query string
-  static cleanStatusFromURL(url) {
-    return url.replace(statusRegexp, '');
+  static cleanURLFromPrYvParams(url) {
+    return url.replace(prYvRegexp, '');
   };
-
-
-
-
 }
 
-
+Controller.options = {
+  serviceInfoQueryParamKey: 'pryvServiceInfoUrl'
+}
 
 module.exports = Controller;

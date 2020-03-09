@@ -9,15 +9,18 @@ class LoginButton {
    */
   constructor(auth) {
     // 1. get Language
-    this.languageCode = auth.settings.languageCode || 'en';
+    
+    this.languageCode = auth.settings.authRequest.languageCode || 'en';
     this.myMessages = Messages(this.languageCode);
-
     // 2. build button
     this.loginButtonSpan = document.getElementById(auth.settings.spanButtonID);
 
     if (!this.loginButtonSpan) {
       throw new Error('No Cannot find SpanId: ' + auth.settings.spanButtonID + ' in DOM');
     }
+
+    // up to the time the button is loaded use the Span to dsiplay eventual error messages
+    this.loginButtonText = this.loginButtonSpan;
 
     this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
     this.auth = auth;
@@ -60,6 +63,7 @@ class LoginButton {
     if (state) {
       this.lastState = state;
     }
+
     switch (this.lastState.id) {
       case States.ERROR:
         this.text = this.myMessages.ERROR + ': ' + this.lastState.message

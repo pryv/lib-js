@@ -36,7 +36,7 @@ describe('Auth.Controller', function () {
     expect(Controller.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
 
 
-    global.window = { location: { href: myUrl + '?prYvStatus=zouzou'} }
+    global.window = { location: { href: myUrl + '?prYvstatus=zouzou'} }
     expect(Controller.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
 
     
@@ -48,21 +48,35 @@ describe('Auth.Controller', function () {
     expect(Controller.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
   });
 
+  it('getStatusFromURL()', async () => {
+    expect('2jsadh').to.equal(Controller.getStatusFromURL(
+      'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
+  });
+
+  it('getServiceInfoFromURL()', async () => {
+    const serviceInfoUrl = Controller.getServiceInfoFromURL(
+      'https://my.Url.com/?bobby=2&prYvZoutOu=1&pryvServiceInfoUrl=' + encodeURIComponent('https://reg.pryv.me/service/infos'));
+
+    expect('https://reg.pryv.me/service/infos').to.equal(serviceInfoUrl);
+  });
 
 
-  it('cleanStatusFromURL()', async () => {
+  it('cleanURLFromPrYvParams()', async () => {
 
-    expect('https://my.Url.com/?bobby=2').to.equal(Controller.cleanStatusFromURL(
-      'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvStatus=2jsadh'));
+    expect('https://my.Url.com/?bobby=2').to.equal(Controller.cleanURLFromPrYvParams(
+      'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/').to.equal(Controller.cleanStatusFromURL(
-      'https://my.Url.com/?prYvStatus=2jsadh'));
+    expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(Controller.cleanURLFromPrYvParams(
+      'https://my.Url.com/?pryvServiceInfoUrl=zzz#prYvZoutOu=1&prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/').to.equal(Controller.cleanStatusFromURL(
-      'https://my.Url.com/#prYvStatus=2jsadh'));
+    expect('https://my.Url.com/').to.equal(Controller.cleanURLFromPrYvParams(
+      'https://my.Url.com/?prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/#bobby=2').to.equal(Controller.cleanStatusFromURL(
-      'https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvStatus=2jsadh'));
+    expect('https://my.Url.com/').to.equal(Controller.cleanURLFromPrYvParams(
+      'https://my.Url.com/#prYvstatus=2jsadh'));
+
+    expect('https://my.Url.com/#bobby=2').to.equal(Controller.cleanURLFromPrYvParams(
+      'https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
     
   });
 

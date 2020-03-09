@@ -17,20 +17,11 @@ const Assets = require('./ServiceAssets.js');
  */
 class Service {
 
-  constructor(serviceInfoUrl) {
+  constructor(serviceInfoUrl, serviceCustomizations) {
     this._pryvServiceInfo = null;
     this._assets = null;
     this._pryvServiceInfoUrl = serviceInfoUrl;
-  }
-
-  /**
-   * Create a service directly with a full definition sets
-   * @param {PryvServiceInfo} serviceInfo
-   */
-  static createWithDefinition(serviceInfo) {
-    const service = new Service();
-    service.setServiceInfo(serviceInfo);
-    return service;
+    this._pryvServiceCustomizations = serviceCustomizations;
   }
 
   /**
@@ -39,17 +30,16 @@ class Service {
    * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
    */
   async info(forceFetch) {
-    if (!forceFetch && this._pryvServiceInfo) {
-      return this._pryvServiceInfo;
-    } else {
-      if (!this._pryvServiceInfoUrl) {
-        throw new Error('Service was not initialized with a serviceInfoURL');
+    if (forceFetch || ! this._pryvServiceInfo) {
+      let baseServiceInfo = {};
+      if (this._pryvServiceInfoUrl) {
+        const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
+        baseServiceInfo = res.body;
       }
-      console.log('ZOZOU');
-      const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
-      this.setServiceInfo(res.body);
-      return this._pryvServiceInfo;
+      Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
+      this.setServiceInfo(baseServiceInfo);
     }
+    return this._pryvServiceInfo;
   }
 
   /**

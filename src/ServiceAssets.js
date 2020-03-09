@@ -68,14 +68,14 @@ class ServiceAssets {
   * Load CSS for Login button
   */
   async loginButtonLoadCSS() {
-    loadCSS(this.relativeURL(this._assets.libJavascript.buttonSignIn.css));
+    loadCSS(this.relativeURL(this._assets['lib-js'].buttonSignIn.css));
   }
 
   /**
   * Get HTML for Login Button
   */
   async loginButtonGetHTML() {
-    const res = await utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.html)).set('accept', 'html');
+    const res = await utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.html)).set('accept', 'html');
     return res.text;
   }
 
@@ -83,7 +83,7 @@ class ServiceAssets {
  * Get Messages strings for Login Button
  */
   async loginButtonGetMessages() {
-    const res = await utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.messages)).set('accept', 'json');
+    const res = await utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.messages)).set('accept', 'json');
     return res.body;
   }
 

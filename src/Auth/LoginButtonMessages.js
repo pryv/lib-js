@@ -7,7 +7,7 @@ const Messages = {
     'fr': 'Erreur',
   },
   LOGIN: {
-    'en': 'Login',
+    'en': 'Signin',
     'fr': 'Login'
   },
   LOGOUT_CONFIRM: {
