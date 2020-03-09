@@ -55,7 +55,7 @@
       console.log('.');
     }
 
-    connection.streamedGetEvent(params, foreachEvent).then(function (res, err) {
+    connection.getEventsStreamed(params, foreachEvent).then(function (res, err) {
       logToConsole('*** DONE ****: ' + JSON.stringify(res));
     });
   }

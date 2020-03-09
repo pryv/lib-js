@@ -13648,7 +13648,8 @@ var States = __webpack_require__(/*! ./States */ "./src/Auth/States.js");
 var Cookies = __webpack_require__(/*! ./CookieUtils */ "./src/Auth/CookieUtils.js");
 
 var COOKIE_STRING = 'pryv-libjs-';
-var statusRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
+var queryRegexp = /[?#&]+([^=&]+)=([^&]*)/g;
+var prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/g;
 /**
  * @private
  */
@@ -13656,11 +13657,14 @@ var statusRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
 var Controller =
 /*#__PURE__*/
 function () {
-  function Controller(settings) {
+  function Controller(settings, serviceInfoUrl, serviceCustomizations) {
     _classCallCheck(this, Controller);
 
+    console.log('AAAA', serviceInfoUrl);
     this.stateChangeListners = [];
     this.settings = settings;
+    this.serviceInfoUrl = serviceInfoUrl;
+    this.serviceCustomizations = serviceCustomizations;
 
     if (!settings) {
       throw new Error('settings cannot be null');
@@ -13691,6 +13695,7 @@ function () {
 
 
       this.settings.authRequest.returnURL = Controller.getReturnURL(this.settings.returnURL);
+      console.log('BBBBB', this.settings.authRequest.returnURL);
 
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
@@ -13703,7 +13708,7 @@ function () {
       } // -- Extract service info from URL query params if nor specified -- //
 
 
-      if (!this.settings.serviceInfoUrl) {// TODO
+      if (!this.serviceInfoUrl) {// TODO
       }
     } catch (e) {
       this.state = {
@@ -13725,7 +13730,7 @@ function () {
       var _init = _asyncToGenerator(
       /*#__PURE__*/
       regeneratorRuntime.mark(function _callee() {
-        var loginCookie;
+        var params, res, loginCookie;
         return regeneratorRuntime.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
@@ -13743,7 +13748,7 @@ function () {
 
               case 3:
                 // 1. fetch service-info
-                this.pryvService = new Service(this.settings.serviceInfoUrl);
+                this.pryvService = new Service(this.serviceInfoUrl, this.serviceCustomizations);
                 _context.prev = 4;
                 _context.next = 7;
                 return this.pryvService.info();
@@ -13764,12 +13769,62 @@ function () {
                 throw _context.t0;
 
               case 14:
-                // 2. setup button with assets
-                if (this.loginButton) {
-                  this.loginButton.loadAssets(this.pryvService);
-                } // 3. check autologin 
+                if (!this.loginButton) {
+                  _context.next = 24;
+                  break;
+                }
 
+                _context.prev = 15;
+                _context.next = 18;
+                return this.loginButton.loadAssets(this.pryvService);
 
+              case 18:
+                _context.next = 24;
+                break;
+
+              case 20:
+                _context.prev = 20;
+                _context.t1 = _context["catch"](15);
+                this.state = {
+                  id: States.ERROR,
+                  message: 'Cannot fetch button visuals',
+                  error: _context.t1
+                };
+                throw _context.t1;
+
+              case 24:
+                // 3. Check if there is a prYvkey as result of "out of page login"
+                params = Controller.getQueryParamsFromURL();
+
+                if (!params.prYvkey) {
+                  _context.next = 37;
+                  break;
+                }
+
+                _context.prev = 26;
+                _context.next = 29;
+                return utils.superagent.get(this.pryvServiceInfo.access + '/' + params.prYvkey);
+
+              case 29:
+                res = _context.sent;
+                this.processAccess(res.body);
+                _context.next = 36;
+                break;
+
+              case 33:
+                _context.prev = 33;
+                _context.t2 = _context["catch"](26);
+                this.state = {
+                  id: States.ERROR,
+                  message: 'Cannot fetch result',
+                  error: _context.t2
+                };
+
+              case 36:
+                return _context.abrupt("return", this.pryvService);
+
+              case 37:
+                // 4. check autologin 
                 loginCookie = null;
 
                 try {
@@ -13786,18 +13841,18 @@ function () {
                     action: this.logOut
                   };
                 } else {
-                  // 4. Propose Login
+                  // 5. Propose Login
                   this.readyAndClean();
                 }
 
                 return _context.abrupt("return", this.pryvService);
 
-              case 19:
+              case 41:
               case "end":
                 return _context.stop();
             }
           }
-        }, _callee, this, [[4, 10]]);
+        }, _callee, this, [[4, 10], [15, 20], [26, 33]]);
       }));
 
       function init() {
@@ -13837,19 +13892,30 @@ function () {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                _context2.next = 2;
+                _context2.prev = 0;
+                _context2.next = 3;
                 return utils.superagent.post(this.pryvServiceInfo.access).set('accept', 'json').send(this.settings.authRequest);
 
-              case 2:
+              case 3:
                 res = _context2.sent;
                 return _context2.abrupt("return", res.body);
 
-              case 4:
+              case 7:
+                _context2.prev = 7;
+                _context2.t0 = _context2["catch"](0);
+                this.state = {
+                  id: States.ERROR,
+                  message: 'Requesting access',
+                  error: _context2.t0
+                };
+                throw _context2.t0;
+
+              case 11:
               case "end":
                 return _context2.stop();
             }
           }
-        }, _callee2, this);
+        }, _callee2, this, [[0, 7]]);
       }));
 
       function postAccess() {
@@ -14068,7 +14134,7 @@ function () {
         throw new Error('Pryv Sign-In Error: NO SETUP. Please call Auth.setup() first.');
       }
 
-      if (this.settings.returnURL) {
+      if (this.settings.authRequest.returnURL) {
         // open on same page (no Popup) 
         location.href = this.accessData.url;
         return;
@@ -14145,7 +14211,7 @@ function () {
         ;
       }
 
-      return Controller.cleanStatusFromURL(returnURL);
+      return Controller.cleanURLFromPrYvParams(returnURL);
     }
     /**
      * 
@@ -14165,27 +14231,46 @@ function () {
       return check;
     }
   }, {
-    key: "getStatusFromURL",
-    //util to grab parameters from url query string
-    value: function getStatusFromURL() {
+    key: "getQueryParamsFromURL",
+    value: function getQueryParamsFromURL(url) {
+      url = url || window.location.href;
       var vars = {};
-      window.location.href.replace(statusRegexp, function (m, key, value) {
-        vars[key] = value;
-      }); //TODO check validity of status
+      url.replace(queryRegexp, function (m, key, value) {
+        vars[key] = decodeURIComponent(value);
+      });
+      return vars;
+    } //util to grab parameters from url query string
 
-      return vars.status ? vars : false;
+  }, {
+    key: "getServiceInfoFromURL",
+    value: function getServiceInfoFromURL(url) {
+      var vars = Controller.getQueryParamsFromURL(url); //TODO check validity of status
+
+      console.log(vars);
+      return vars[Controller.options.serviceInfoQueryParamKey];
     }
   }, {
-    key: "cleanStatusFromURL",
+    key: "getStatusFromURL",
     //util to grab parameters from url query string
-    value: function cleanStatusFromURL(url) {
-      return url.replace(statusRegexp, '');
+    value: function getStatusFromURL(url) {
+      var vars = Controller.getQueryParamsFromURL(url); //TODO check validity of status
+
+      return vars.prYvstatus;
+    }
+  }, {
+    key: "cleanURLFromPrYvParams",
+    //util to grab parameters from url query string
+    value: function cleanURLFromPrYvParams(url) {
+      return url.replace(prYvRegexp, '');
     }
   }]);
 
   return Controller;
 }();
 
+Controller.options = {
+  serviceInfoQueryParamKey: 'pryvServiceInfoUrl'
+};
 module.exports = Controller;
 
 /***/ }),
@@ -14258,15 +14343,17 @@ function () {
     _classCallCheck(this, LoginButton);
 
     // 1. get Language
-    this.languageCode = auth.settings.languageCode || 'en';
+    this.languageCode = auth.settings.authRequest.languageCode || 'en';
     this.myMessages = Messages(this.languageCode); // 2. build button
 
     this.loginButtonSpan = document.getElementById(auth.settings.spanButtonID);
 
     if (!this.loginButtonSpan) {
       throw new Error('No Cannot find SpanId: ' + auth.settings.spanButtonID + ' in DOM');
-    }
+    } // up to the time the button is loaded use the Span to dsiplay eventual error messages
 
+
+    this.loginButtonText = this.loginButtonSpan;
     this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
     this.auth = auth;
     this.onStateChange({
@@ -14399,7 +14486,7 @@ var Messages = {
     'fr': 'Erreur'
   },
   LOGIN: {
-    'en': 'Login',
+    'en': 'Signin',
     'fr': 'Login'
   },
   LOGOUT_CONFIRM: {
@@ -14468,32 +14555,33 @@ var States = __webpack_require__(/*! ./States */ "./src/Auth/States.js");
  * Start an authentication process
  * @memberof Pryv.Auth
  * @param {Object} settings
- * @param {string} [settings.languageCode] Language code, as per LoginButton Messages: 'en', 'fr
- * @param {string} settings.serviceInfoUrl
  * @param {Object} settings.authRequest See https://api.pryv.com/reference/#data-structure-access
+ * @param {string} [settings.authRequest.languageCode] Language code, as per LoginButton Messages: 'en', 'fr
  * @param {string} settings.authRequest.requestingAppId Application id, ex: 'my-app'
  * @param {Object} settings.authRequest.requestedPermissions
  * @param {string | boolean} settings.authRequest.returnURL : false, // set this if you don't want a popup
  * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
  * @param {Auth.AuthStateChangeHandler} settings.onStateChange
  * @param {string} [settings.returnURL=auto#]  Set to "self#" to disable popup and force using the same page. Set a custom url when process is finished (specific use cases). Should always end by # ? or &
+ * @param {string} serviceInfoUrl
+ * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
  * @returns {PryvServiceInfo}
  */
 
 
-function setup(_x) {
+function setup(_x, _x2, _x3) {
   return _setup.apply(this, arguments);
 }
 
 function _setup() {
   _setup = _asyncToGenerator(
   /*#__PURE__*/
-  regeneratorRuntime.mark(function _callee(settings) {
+  regeneratorRuntime.mark(function _callee(settings, serviceInfoUrl, serviceCustomizations) {
     return regeneratorRuntime.wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            return _context.abrupt("return", new Controller(settings).init());
+            return _context.abrupt("return", new Controller(settings, serviceInfoUrl, serviceCustomizations).init());
 
           case 1:
           case "end":
@@ -14507,7 +14595,8 @@ function _setup() {
 
 module.exports = {
   setup: setup,
-  States: States
+  States: States,
+  serviceInfoFromUrl: Controller.getServiceInfoFromURL
 };
 /**
  * Notify the requesting code of all important changes
@@ -14907,9 +14996,9 @@ function () {
      */
 
   }, {
-    key: "streamedGetEvent",
+    key: "getEventsStreamed",
     value: function () {
-      var _streamedGetEvent = _asyncToGenerator(
+      var _getEventsStreamed = _asyncToGenerator(
       /*#__PURE__*/
       regeneratorRuntime.mark(function _callee6(queryParams, forEachEvent) {
         var myParser, res, now;
@@ -14949,7 +15038,7 @@ function () {
 
               case 14:
                 // browser no fetch supports
-                console.warn('Browser does not support fetch() required by Pryv.Connection.streamedGetEvent()');
+                console.log('WARNING: Browser does not support fetch() required by Pryv.Connection.getEventsStreamed()');
                 _context6.next = 17;
                 return this.getRaw('events', queryParams);
 
@@ -14978,11 +15067,11 @@ function () {
         }, _callee6, this);
       }));
 
-      function streamedGetEvent(_x14, _x15) {
-        return _streamedGetEvent.apply(this, arguments);
+      function getEventsStreamed(_x14, _x15) {
+        return _getEventsStreamed.apply(this, arguments);
       }
 
-      return streamedGetEvent;
+      return getEventsStreamed;
     }()
     /**
      * Create an event with attached file
@@ -15180,62 +15269,59 @@ var Assets = __webpack_require__(/*! ./ServiceAssets.js */ "./src/ServiceAssets.
 var Service =
 /*#__PURE__*/
 function () {
-  function Service(serviceInfoUrl) {
+  function Service(serviceInfoUrl, serviceCustomizations) {
     _classCallCheck(this, Service);
 
     this._pryvServiceInfo = null;
     this._assets = null;
     this._pryvServiceInfoUrl = serviceInfoUrl;
+    this._pryvServiceCustomizations = serviceCustomizations;
   }
   /**
-   * Create a service directly with a full definition sets
-   * @param {PryvServiceInfo} serviceInfo
+   * Return service info parameters info known of fetch it if needed.
+   * @param {boolean?} forceFetch If true, will force fetching service info.
+   * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
    */
 
 
   _createClass(Service, [{
     key: "info",
-
-    /**
-     * Return service info parameters info known of fetch it if needed.
-     * @param {boolean?} forceFetch If true, will force fetching service info.
-     * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
-     */
     value: function () {
       var _info = _asyncToGenerator(
       /*#__PURE__*/
       regeneratorRuntime.mark(function _callee(forceFetch) {
-        var res;
+        var baseServiceInfo, res;
         return regeneratorRuntime.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                if (!(!forceFetch && this._pryvServiceInfo)) {
-                  _context.next = 4;
+                if (!(forceFetch || !this._pryvServiceInfo)) {
+                  _context.next = 9;
                   break;
                 }
 
-                return _context.abrupt("return", this._pryvServiceInfo);
+                baseServiceInfo = {};
 
-              case 4:
-                if (this._pryvServiceInfoUrl) {
-                  _context.next = 6;
+                if (!this._pryvServiceInfoUrl) {
+                  _context.next = 7;
                   break;
                 }
 
-                throw new Error('Service was not initialized with a serviceInfoURL');
-
-              case 6:
-                console.log('ZOZOU');
-                _context.next = 9;
+                _context.next = 5;
                 return utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
 
-              case 9:
+              case 5:
                 res = _context.sent;
-                this.setServiceInfo(res.body);
+                baseServiceInfo = res.body;
+
+              case 7:
+                Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
+                this.setServiceInfo(baseServiceInfo);
+
+              case 9:
                 return _context.abrupt("return", this._pryvServiceInfo);
 
-              case 12:
+              case 10:
               case "end":
                 return _context.stop();
             }
@@ -15480,13 +15566,6 @@ function () {
       return login;
     }()
   }], [{
-    key: "createWithDefinition",
-    value: function createWithDefinition(serviceInfo) {
-      var service = new Service();
-      service.setServiceInfo(serviceInfo);
-      return service;
-    }
-  }, {
     key: "buildAPIEndpoint",
     value: function buildAPIEndpoint(serviceInfo, username, token) {
       var endpoint = serviceInfo.api.replace('{username}', username);
@@ -15665,7 +15744,7 @@ function () {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                _loadCSS(this.relativeURL(this._assets.libJavascript.buttonSignIn.css));
+                _loadCSS(this.relativeURL(this._assets['lib-js'].buttonSignIn.css));
 
               case 1:
               case "end":
@@ -15697,7 +15776,7 @@ function () {
             switch (_context4.prev = _context4.next) {
               case 0:
                 _context4.next = 2;
-                return utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.html)).set('accept', 'html');
+                return utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.html)).set('accept', 'html');
 
               case 2:
                 res = _context4.sent;
@@ -15733,7 +15812,7 @@ function () {
             switch (_context5.prev = _context5.next) {
               case 0:
                 _context5.next = 2;
-                return utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.messages)).set('accept', 'json');
+                return utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.messages)).set('accept', 'json');
 
               case 2:
                 res = _context5.sent;

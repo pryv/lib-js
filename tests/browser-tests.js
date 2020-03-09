@@ -12035,7 +12035,8 @@ var States = __webpack_require__(/*! ./States */ "./src/Auth/States.js");
 var Cookies = __webpack_require__(/*! ./CookieUtils */ "./src/Auth/CookieUtils.js");
 
 var COOKIE_STRING = 'pryv-libjs-';
-var statusRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
+var queryRegexp = /[?#&]+([^=&]+)=([^&]*)/g;
+var prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/g;
 /**
  * @private
  */
@@ -12043,11 +12044,14 @@ var statusRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/gi;
 var Controller =
 /*#__PURE__*/
 function () {
-  function Controller(settings) {
+  function Controller(settings, serviceInfoUrl, serviceCustomizations) {
     _classCallCheck(this, Controller);
 
+    console.log('AAAA', serviceInfoUrl);
     this.stateChangeListners = [];
     this.settings = settings;
+    this.serviceInfoUrl = serviceInfoUrl;
+    this.serviceCustomizations = serviceCustomizations;
 
     if (!settings) {
       throw new Error('settings cannot be null');
@@ -12078,6 +12082,7 @@ function () {
 
 
       this.settings.authRequest.returnURL = Controller.getReturnURL(this.settings.returnURL);
+      console.log('BBBBB', this.settings.authRequest.returnURL);
 
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
@@ -12090,7 +12095,7 @@ function () {
       } // -- Extract service info from URL query params if nor specified -- //
 
 
-      if (!this.settings.serviceInfoUrl) {// TODO
+      if (!this.serviceInfoUrl) {// TODO
       }
     } catch (e) {
       this.state = {
@@ -12112,7 +12117,7 @@ function () {
       var _init = _asyncToGenerator(
       /*#__PURE__*/
       regeneratorRuntime.mark(function _callee() {
-        var loginCookie;
+        var params, res, loginCookie;
         return regeneratorRuntime.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
@@ -12130,7 +12135,7 @@ function () {
 
               case 3:
                 // 1. fetch service-info
-                this.pryvService = new Service(this.settings.serviceInfoUrl);
+                this.pryvService = new Service(this.serviceInfoUrl, this.serviceCustomizations);
                 _context.prev = 4;
                 _context.next = 7;
                 return this.pryvService.info();
@@ -12151,12 +12156,62 @@ function () {
                 throw _context.t0;
 
               case 14:
-                // 2. setup button with assets
-                if (this.loginButton) {
-                  this.loginButton.loadAssets(this.pryvService);
-                } // 3. check autologin 
+                if (!this.loginButton) {
+                  _context.next = 24;
+                  break;
+                }
 
+                _context.prev = 15;
+                _context.next = 18;
+                return this.loginButton.loadAssets(this.pryvService);
 
+              case 18:
+                _context.next = 24;
+                break;
+
+              case 20:
+                _context.prev = 20;
+                _context.t1 = _context["catch"](15);
+                this.state = {
+                  id: States.ERROR,
+                  message: 'Cannot fetch button visuals',
+                  error: _context.t1
+                };
+                throw _context.t1;
+
+              case 24:
+                // 3. Check if there is a prYvkey as result of "out of page login"
+                params = Controller.getQueryParamsFromURL();
+
+                if (!params.prYvkey) {
+                  _context.next = 37;
+                  break;
+                }
+
+                _context.prev = 26;
+                _context.next = 29;
+                return utils.superagent.get(this.pryvServiceInfo.access + '/' + params.prYvkey);
+
+              case 29:
+                res = _context.sent;
+                this.processAccess(res.body);
+                _context.next = 36;
+                break;
+
+              case 33:
+                _context.prev = 33;
+                _context.t2 = _context["catch"](26);
+                this.state = {
+                  id: States.ERROR,
+                  message: 'Cannot fetch result',
+                  error: _context.t2
+                };
+
+              case 36:
+                return _context.abrupt("return", this.pryvService);
+
+              case 37:
+                // 4. check autologin 
                 loginCookie = null;
 
                 try {
@@ -12173,18 +12228,18 @@ function () {
                     action: this.logOut
                   };
                 } else {
-                  // 4. Propose Login
+                  // 5. Propose Login
                   this.readyAndClean();
                 }
 
                 return _context.abrupt("return", this.pryvService);
 
-              case 19:
+              case 41:
               case "end":
                 return _context.stop();
             }
           }
-        }, _callee, this, [[4, 10]]);
+        }, _callee, this, [[4, 10], [15, 20], [26, 33]]);
       }));
 
       function init() {
@@ -12224,19 +12279,30 @@ function () {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                _context2.next = 2;
+                _context2.prev = 0;
+                _context2.next = 3;
                 return utils.superagent.post(this.pryvServiceInfo.access).set('accept', 'json').send(this.settings.authRequest);
 
-              case 2:
+              case 3:
                 res = _context2.sent;
                 return _context2.abrupt("return", res.body);
 
-              case 4:
+              case 7:
+                _context2.prev = 7;
+                _context2.t0 = _context2["catch"](0);
+                this.state = {
+                  id: States.ERROR,
+                  message: 'Requesting access',
+                  error: _context2.t0
+                };
+                throw _context2.t0;
+
+              case 11:
               case "end":
                 return _context2.stop();
             }
           }
-        }, _callee2, this);
+        }, _callee2, this, [[0, 7]]);
       }));
 
       function postAccess() {
@@ -12455,7 +12521,7 @@ function () {
         throw new Error('Pryv Sign-In Error: NO SETUP. Please call Auth.setup() first.');
       }
 
-      if (this.settings.returnURL) {
+      if (this.settings.authRequest.returnURL) {
         // open on same page (no Popup) 
         location.href = this.accessData.url;
         return;
@@ -12532,7 +12598,7 @@ function () {
         ;
       }
 
-      return Controller.cleanStatusFromURL(returnURL);
+      return Controller.cleanURLFromPrYvParams(returnURL);
     }
     /**
      * 
@@ -12552,27 +12618,46 @@ function () {
       return check;
     }
   }, {
-    key: "getStatusFromURL",
-    //util to grab parameters from url query string
-    value: function getStatusFromURL() {
+    key: "getQueryParamsFromURL",
+    value: function getQueryParamsFromURL(url) {
+      url = url || window.location.href;
       var vars = {};
-      window.location.href.replace(statusRegexp, function (m, key, value) {
-        vars[key] = value;
-      }); //TODO check validity of status
+      url.replace(queryRegexp, function (m, key, value) {
+        vars[key] = decodeURIComponent(value);
+      });
+      return vars;
+    } //util to grab parameters from url query string
 
-      return vars.status ? vars : false;
+  }, {
+    key: "getServiceInfoFromURL",
+    value: function getServiceInfoFromURL(url) {
+      var vars = Controller.getQueryParamsFromURL(url); //TODO check validity of status
+
+      console.log(vars);
+      return vars[Controller.options.serviceInfoQueryParamKey];
     }
   }, {
-    key: "cleanStatusFromURL",
+    key: "getStatusFromURL",
     //util to grab parameters from url query string
-    value: function cleanStatusFromURL(url) {
-      return url.replace(statusRegexp, '');
+    value: function getStatusFromURL(url) {
+      var vars = Controller.getQueryParamsFromURL(url); //TODO check validity of status
+
+      return vars.prYvstatus;
+    }
+  }, {
+    key: "cleanURLFromPrYvParams",
+    //util to grab parameters from url query string
+    value: function cleanURLFromPrYvParams(url) {
+      return url.replace(prYvRegexp, '');
     }
   }]);
 
   return Controller;
 }();
 
+Controller.options = {
+  serviceInfoQueryParamKey: 'pryvServiceInfoUrl'
+};
 module.exports = Controller;
 
 /***/ }),
@@ -12645,15 +12730,17 @@ function () {
     _classCallCheck(this, LoginButton);
 
     // 1. get Language
-    this.languageCode = auth.settings.languageCode || 'en';
+    this.languageCode = auth.settings.authRequest.languageCode || 'en';
     this.myMessages = Messages(this.languageCode); // 2. build button
 
     this.loginButtonSpan = document.getElementById(auth.settings.spanButtonID);
 
     if (!this.loginButtonSpan) {
       throw new Error('No Cannot find SpanId: ' + auth.settings.spanButtonID + ' in DOM');
-    }
+    } // up to the time the button is loaded use the Span to dsiplay eventual error messages
 
+
+    this.loginButtonText = this.loginButtonSpan;
     this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
     this.auth = auth;
     this.onStateChange({
@@ -12786,7 +12873,7 @@ var Messages = {
     'fr': 'Erreur'
   },
   LOGIN: {
-    'en': 'Login',
+    'en': 'Signin',
     'fr': 'Login'
   },
   LOGOUT_CONFIRM: {
@@ -13216,9 +13303,9 @@ function () {
      */
 
   }, {
-    key: "streamedGetEvent",
+    key: "getEventsStreamed",
     value: function () {
-      var _streamedGetEvent = _asyncToGenerator(
+      var _getEventsStreamed = _asyncToGenerator(
       /*#__PURE__*/
       regeneratorRuntime.mark(function _callee6(queryParams, forEachEvent) {
         var myParser, res, now;
@@ -13258,7 +13345,7 @@ function () {
 
               case 14:
                 // browser no fetch supports
-                console.warn('Browser does not support fetch() required by Pryv.Connection.streamedGetEvent()');
+                console.log('WARNING: Browser does not support fetch() required by Pryv.Connection.getEventsStreamed()');
                 _context6.next = 17;
                 return this.getRaw('events', queryParams);
 
@@ -13287,11 +13374,11 @@ function () {
         }, _callee6, this);
       }));
 
-      function streamedGetEvent(_x14, _x15) {
-        return _streamedGetEvent.apply(this, arguments);
+      function getEventsStreamed(_x14, _x15) {
+        return _getEventsStreamed.apply(this, arguments);
       }
 
-      return streamedGetEvent;
+      return getEventsStreamed;
     }()
     /**
      * Create an event with attached file
@@ -13463,62 +13550,59 @@ var Assets = __webpack_require__(/*! ./ServiceAssets.js */ "./src/ServiceAssets.
 var Service =
 /*#__PURE__*/
 function () {
-  function Service(serviceInfoUrl) {
+  function Service(serviceInfoUrl, serviceCustomizations) {
     _classCallCheck(this, Service);
 
     this._pryvServiceInfo = null;
     this._assets = null;
     this._pryvServiceInfoUrl = serviceInfoUrl;
+    this._pryvServiceCustomizations = serviceCustomizations;
   }
   /**
-   * Create a service directly with a full definition sets
-   * @param {PryvServiceInfo} serviceInfo
+   * Return service info parameters info known of fetch it if needed.
+   * @param {boolean?} forceFetch If true, will force fetching service info.
+   * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
    */
 
 
   _createClass(Service, [{
     key: "info",
-
-    /**
-     * Return service info parameters info known of fetch it if needed.
-     * @param {boolean?} forceFetch If true, will force fetching service info.
-     * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
-     */
     value: function () {
       var _info = _asyncToGenerator(
       /*#__PURE__*/
       regeneratorRuntime.mark(function _callee(forceFetch) {
-        var res;
+        var baseServiceInfo, res;
         return regeneratorRuntime.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                if (!(!forceFetch && this._pryvServiceInfo)) {
-                  _context.next = 4;
+                if (!(forceFetch || !this._pryvServiceInfo)) {
+                  _context.next = 9;
                   break;
                 }
 
-                return _context.abrupt("return", this._pryvServiceInfo);
+                baseServiceInfo = {};
 
-              case 4:
-                if (this._pryvServiceInfoUrl) {
-                  _context.next = 6;
+                if (!this._pryvServiceInfoUrl) {
+                  _context.next = 7;
                   break;
                 }
 
-                throw new Error('Service was not initialized with a serviceInfoURL');
-
-              case 6:
-                console.log('ZOZOU');
-                _context.next = 9;
+                _context.next = 5;
                 return utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
 
-              case 9:
+              case 5:
                 res = _context.sent;
-                this.setServiceInfo(res.body);
+                baseServiceInfo = res.body;
+
+              case 7:
+                Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
+                this.setServiceInfo(baseServiceInfo);
+
+              case 9:
                 return _context.abrupt("return", this._pryvServiceInfo);
 
-              case 12:
+              case 10:
               case "end":
                 return _context.stop();
             }
@@ -13763,13 +13847,6 @@ function () {
       return login;
     }()
   }], [{
-    key: "createWithDefinition",
-    value: function createWithDefinition(serviceInfo) {
-      var service = new Service();
-      service.setServiceInfo(serviceInfo);
-      return service;
-    }
-  }, {
     key: "buildAPIEndpoint",
     value: function buildAPIEndpoint(serviceInfo, username, token) {
       var endpoint = serviceInfo.api.replace('{username}', username);
@@ -13948,7 +14025,7 @@ function () {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                _loadCSS(this.relativeURL(this._assets.libJavascript.buttonSignIn.css));
+                _loadCSS(this.relativeURL(this._assets['lib-js'].buttonSignIn.css));
 
               case 1:
               case "end":
@@ -13980,7 +14057,7 @@ function () {
             switch (_context4.prev = _context4.next) {
               case 0:
                 _context4.next = 2;
-                return utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.html)).set('accept', 'html');
+                return utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.html)).set('accept', 'html');
 
               case 2:
                 res = _context4.sent;
@@ -14016,7 +14093,7 @@ function () {
             switch (_context5.prev = _context5.next) {
               case 0:
                 _context5.next = 2;
-                return utils.superagent.get(this.relativeURL(this._assets.libJavascript.buttonSignIn.messages)).set('accept', 'json');
+                return utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.messages)).set('accept', 'json');
 
               case 2:
                 res = _context5.sent;
@@ -14638,7 +14715,7 @@ describe('Auth.Controller', function () {
             expect(Controller.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
             global.window = {
               location: {
-                href: myUrl + '?prYvStatus=zouzou'
+                href: myUrl + '?prYvstatus=zouzou'
               }
             };
             expect(Controller.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
@@ -14673,7 +14750,7 @@ describe('Auth.Controller', function () {
       }
     }, _callee2);
   })));
-  it('cleanStatusFromURL()',
+  it('getStatusFromURL()',
   /*#__PURE__*/
   _asyncToGenerator(
   /*#__PURE__*/
@@ -14682,17 +14759,56 @@ describe('Auth.Controller', function () {
       while (1) {
         switch (_context3.prev = _context3.next) {
           case 0:
-            expect('https://my.Url.com/?bobby=2').to.equal(Controller.cleanStatusFromURL('https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvStatus=2jsadh'));
-            expect('https://my.Url.com/').to.equal(Controller.cleanStatusFromURL('https://my.Url.com/?prYvStatus=2jsadh'));
-            expect('https://my.Url.com/').to.equal(Controller.cleanStatusFromURL('https://my.Url.com/#prYvStatus=2jsadh'));
-            expect('https://my.Url.com/#bobby=2').to.equal(Controller.cleanStatusFromURL('https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvStatus=2jsadh'));
+            expect('2jsadh').to.equal(Controller.getStatusFromURL('https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 
-          case 4:
+          case 1:
           case "end":
             return _context3.stop();
         }
       }
     }, _callee3);
+  })));
+  it('getServiceInfoFromURL()',
+  /*#__PURE__*/
+  _asyncToGenerator(
+  /*#__PURE__*/
+  regeneratorRuntime.mark(function _callee4() {
+    var serviceInfoUrl;
+    return regeneratorRuntime.wrap(function _callee4$(_context4) {
+      while (1) {
+        switch (_context4.prev = _context4.next) {
+          case 0:
+            serviceInfoUrl = Controller.getServiceInfoFromURL('https://my.Url.com/?bobby=2&prYvZoutOu=1&pryvServiceInfoUrl=' + encodeURIComponent('https://reg.pryv.me/service/infos'));
+            expect('https://reg.pryv.me/service/infos').to.equal(serviceInfoUrl);
+
+          case 2:
+          case "end":
+            return _context4.stop();
+        }
+      }
+    }, _callee4);
+  })));
+  it('cleanURLFromPrYvParams()',
+  /*#__PURE__*/
+  _asyncToGenerator(
+  /*#__PURE__*/
+  regeneratorRuntime.mark(function _callee5() {
+    return regeneratorRuntime.wrap(function _callee5$(_context5) {
+      while (1) {
+        switch (_context5.prev = _context5.next) {
+          case 0:
+            expect('https://my.Url.com/?bobby=2').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
+            expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/?pryvServiceInfoUrl=zzz#prYvZoutOu=1&prYvstatus=2jsadh'));
+            expect('https://my.Url.com/').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/?prYvstatus=2jsadh'));
+            expect('https://my.Url.com/').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/#prYvstatus=2jsadh'));
+            expect('https://my.Url.com/#bobby=2').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
+
+          case 5:
+          case "end":
+            return _context5.stop();
+        }
+      }
+    }, _callee5);
   })));
 });
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../node_modules/webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
@@ -14721,7 +14837,6 @@ function genSettings() {
   }
 
   return {
-    serviceInfoUrl: testData.defaults.serviceInfoUrl,
     authRequest: {
       requestingAppId: 'lib-js-test',
       requestedPermissions: [{
@@ -14757,7 +14872,7 @@ describe('Auth', function () {
             // in browser
             removeZombie = true;
             browser = new Browser();
-            browser.visit('./');
+            browser.visit('./?pryvServiceInfoUrl=https://zouzou.com/service/info');
             global.document = browser.document;
             global.window = browser.window;
             global.location = browser.location;
@@ -14819,7 +14934,7 @@ describe('Auth', function () {
       }
     };
 
-    Pryv.Auth.setup(settings).then(function (service) {
+    Pryv.Auth.setup(settings, testData.defaults.serviceInfoUrl).then(function (service) {
       var serviceInfo = service.infoSync();
       should.exist(serviceInfo.access);
       should.exist(serviceInfo.serial);
@@ -14829,6 +14944,24 @@ describe('Auth', function () {
       done();
     });
   });
+  it('serviceInfoFromUrl()',
+  /*#__PURE__*/
+  _asyncToGenerator(
+  /*#__PURE__*/
+  regeneratorRuntime.mark(function _callee3() {
+    return regeneratorRuntime.wrap(function _callee3$(_context3) {
+      while (1) {
+        switch (_context3.prev = _context3.next) {
+          case 0:
+            expect('https://zouzou.com/service/info').to.equal(Pryv.Auth.serviceInfoFromUrl());
+
+          case 1:
+          case "end":
+            return _context3.stop();
+        }
+      }
+    }, _callee3);
+  })));
 });
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../node_modules/webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
 
@@ -15299,7 +15432,7 @@ describe('Connection', function () {
                 };
                 eventsCount = 0;
                 _context12.next = 5;
-                return conn.streamedGetEvent(queryParams, forEachEvent);
+                return conn.getEventsStreamed(queryParams, forEachEvent);
 
               case 5:
                 res = _context12.sent;
@@ -15330,7 +15463,7 @@ describe('Connection', function () {
                   tags: ['RANDOM-123']
                 };
                 _context13.next = 4;
-                return conn.streamedGetEvent(queryParams, forEachEvent);
+                return conn.getEventsStreamed(queryParams, forEachEvent);
 
               case 4:
                 res = _context13.sent;
@@ -15392,7 +15525,7 @@ describe('Connection', function () {
                   };
                   eventsCount = 0;
                   _context14.next = 6;
-                  return conn.streamedGetEvent(queryParams, forEachEvent);
+                  return conn.getEventsStreamed(queryParams, forEachEvent);
 
                 case 6:
                   res = _context14.sent;
@@ -15426,7 +15559,7 @@ describe('Connection', function () {
                   };
                   eventsCount = 0;
                   _context15.next = 5;
-                  return conn.streamedGetEvent(queryParams, forEachEvent);
+                  return conn.getEventsStreamed(queryParams, forEachEvent);
 
                 case 5:
                   res = _context15.sent;
@@ -15567,7 +15700,7 @@ describe('Service', function () {
       while (1) {
         switch (_context4.prev = _context4.next) {
           case 0:
-            pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
+            pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
             _context4.next = 3;
             return pryvService.assets();
 
@@ -15593,112 +15726,88 @@ describe('Service', function () {
   /*#__PURE__*/
   _asyncToGenerator(
   /*#__PURE__*/
-  regeneratorRuntime.mark(function _callee9() {
-    return regeneratorRuntime.wrap(function _callee9$(_context9) {
+  regeneratorRuntime.mark(function _callee8() {
+    return regeneratorRuntime.wrap(function _callee8$(_context8) {
       while (1) {
-        switch (_context9.prev = _context9.next) {
+        switch (_context8.prev = _context8.next) {
           case 0:
-            it('cannot force fetch when initialize with definitions ',
+            it('Throw error with invalid content',
             /*#__PURE__*/
             _asyncToGenerator(
             /*#__PURE__*/
             regeneratorRuntime.mark(function _callee5() {
-              var pryvService;
+              var service;
               return regeneratorRuntime.wrap(function _callee5$(_context5) {
                 while (1) {
                   switch (_context5.prev = _context5.next) {
                     case 0:
-                      pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
+                      service = new Pryv.Service(null, {});
                       _context5.next = 3;
-                      return pryvService.info();
+                      return assert.isRejected(service.info(), 'Invalid data from service/info');
 
                     case 3:
-                      _context5.next = 5;
-                      return assert.isRejected(pryvService.info(true));
-
-                    case 5:
                     case "end":
                       return _context5.stop();
                   }
                 }
               }, _callee5);
             })));
-            it('Throw error with invalid content',
+            it('Warn if no assets',
             /*#__PURE__*/
             _asyncToGenerator(
             /*#__PURE__*/
             regeneratorRuntime.mark(function _callee6() {
+              var serviceInfoCopy, pryvService, assets;
               return regeneratorRuntime.wrap(function _callee6$(_context6) {
                 while (1) {
                   switch (_context6.prev = _context6.next) {
                     case 0:
-                      assert["throws"](function () {
-                        Pryv.Service.createWithDefinition({});
-                      }, Error, 'Invalid data from service/info');
+                      serviceInfoCopy = Object.assign({}, testData.defaults.serviceInfoSettings);
+                      delete serviceInfoCopy.assets;
+                      pryvService = new Pryv.Service(null, serviceInfoCopy);
+                      _context6.next = 5;
+                      return pryvService.assets();
 
-                    case 1:
+                    case 5:
+                      assets = _context6.sent;
+                      expect(assets).to.be["null"];
+
+                    case 7:
                     case "end":
                       return _context6.stop();
                   }
                 }
               }, _callee6);
             })));
-            it('Warn if no assets',
-            /*#__PURE__*/
-            _asyncToGenerator(
-            /*#__PURE__*/
-            regeneratorRuntime.mark(function _callee7() {
-              var serviceInfoCopy, pryvService, assets;
-              return regeneratorRuntime.wrap(function _callee7$(_context7) {
-                while (1) {
-                  switch (_context7.prev = _context7.next) {
-                    case 0:
-                      serviceInfoCopy = Object.assign({}, testData.defaults.serviceInfoSettings);
-                      delete serviceInfoCopy.assets;
-                      pryvService = Pryv.Service.createWithDefinition(serviceInfoCopy);
-                      _context7.next = 5;
-                      return pryvService.assets();
-
-                    case 5:
-                      assets = _context7.sent;
-                      expect(assets).to.be["null"];
-
-                    case 7:
-                    case "end":
-                      return _context7.stop();
-                  }
-                }
-              }, _callee7);
-            })));
             it('login() failed',
             /*#__PURE__*/
             _asyncToGenerator(
             /*#__PURE__*/
-            regeneratorRuntime.mark(function _callee8() {
+            regeneratorRuntime.mark(function _callee7() {
               var pryvService;
-              return regeneratorRuntime.wrap(function _callee8$(_context8) {
+              return regeneratorRuntime.wrap(function _callee7$(_context7) {
                 while (1) {
-                  switch (_context8.prev = _context8.next) {
+                  switch (_context7.prev = _context7.next) {
                     case 0:
                       this.timeout(5000);
                       pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
-                      _context8.next = 4;
+                      _context7.next = 4;
                       return assert.isRejected(pryvService.login(testData.defaults.user.split('.')[0], 'bobby', 'jslib-test'), 'The given username/password pair is invalid.');
 
                     case 4:
                     case "end":
-                      return _context8.stop();
+                      return _context7.stop();
                   }
                 }
-              }, _callee8, this);
+              }, _callee7, this);
             })));
 
-          case 4:
+          case 3:
           case "end":
-            return _context9.stop();
+            return _context8.stop();
         }
       }
-    }, _callee9);
+    }, _callee8);
   })));
 });
 
@@ -15793,7 +15902,7 @@ describe('ServiceAssets', function () {
       while (1) {
         switch (_context3.prev = _context3.next) {
           case 0:
-            pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
+            pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
             _context3.next = 3;
             return pryvService.assets();
 
@@ -15818,7 +15927,7 @@ describe('ServiceAssets', function () {
       while (1) {
         switch (_context4.prev = _context4.next) {
           case 0:
-            pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
+            pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
             _context4.next = 3;
             return pryvService.assets();
 
@@ -15844,7 +15953,7 @@ describe('ServiceAssets', function () {
       while (1) {
         switch (_context5.prev = _context5.next) {
           case 0:
-            pryvService = Pryv.Service.createWithDefinition(testData.defaults.serviceInfoSettings);
+            pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
             _context5.next = 3;
             return pryvService.assets();
 
