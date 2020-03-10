@@ -12007,10 +12007,10 @@ module.exports = function(module) {
 
 /***/ }),
 
-/***/ "./src/Auth/Controller.js":
-/*!********************************!*\
-  !*** ./src/Auth/Controller.js ***!
-  \********************************/
+/***/ "./src/Browser/AuthController.js":
+/*!***************************************!*\
+  !*** ./src/Browser/AuthController.js ***!
+  \***************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -12028,11 +12028,11 @@ var utils = __webpack_require__(/*! ../utils */ "./src/utils.js");
 
 var Service = __webpack_require__(/*! ../Service */ "./src/Service.js");
 
-var LoginButton = __webpack_require__(/*! ./LoginButton */ "./src/Auth/LoginButton.js");
+var LoginButton = __webpack_require__(/*! ./LoginButton */ "./src/Browser/LoginButton.js");
 
-var States = __webpack_require__(/*! ./States */ "./src/Auth/States.js");
+var AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Browser/AuthStates.js");
 
-var Cookies = __webpack_require__(/*! ./CookieUtils */ "./src/Auth/CookieUtils.js");
+var Cookies = __webpack_require__(/*! ./CookieUtils */ "./src/Browser/CookieUtils.js");
 
 var COOKIE_STRING = 'pryv-libjs-';
 var queryRegexp = /[?#&]+([^=&]+)=([^&]*)/g;
@@ -12041,13 +12041,12 @@ var prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/g;
  * @private
  */
 
-var Controller =
+var AuthController =
 /*#__PURE__*/
 function () {
-  function Controller(settings, serviceInfoUrl, serviceCustomizations) {
-    _classCallCheck(this, Controller);
+  function AuthController(settings, serviceInfoUrl, serviceCustomizations) {
+    _classCallCheck(this, AuthController);
 
-    console.log('AAAA', serviceInfoUrl);
     this.stateChangeListners = [];
     this.settings = settings;
     this.serviceInfoUrl = serviceInfoUrl;
@@ -12063,7 +12062,7 @@ function () {
       this.stateChangeListners.push(this.loginButton.onStateChange.bind(this.loginButton));
     } else {
       if (document) {
-        console.log('WARNING: Pryv.Auth initialized with no spanButtonID');
+        console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
       }
     }
 
@@ -12081,8 +12080,7 @@ function () {
       } // -- Extract returnURL 
 
 
-      this.settings.authRequest.returnURL = Controller.getReturnURL(this.settings.returnURL);
-      console.log('BBBBB', this.settings.authRequest.returnURL);
+      this.settings.authRequest.returnURL = AuthController.getReturnURL(this.settings.authRequest.returnURL);
 
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
@@ -12099,7 +12097,7 @@ function () {
       }
     } catch (e) {
       this.state = {
-        id: States.ERROR,
+        id: AuthStates.ERROR,
         message: 'During initialization',
         error: e
       };
@@ -12111,7 +12109,7 @@ function () {
    */
 
 
-  _createClass(Controller, [{
+  _createClass(AuthController, [{
     key: "init",
     value: function () {
       var _init = _asyncToGenerator(
@@ -12123,7 +12121,7 @@ function () {
             switch (_context.prev = _context.next) {
               case 0:
                 this.state = {
-                  id: States.LOADING
+                  id: AuthStates.LOADING
                 };
 
                 if (!this.pryvService) {
@@ -12131,7 +12129,7 @@ function () {
                   break;
                 }
 
-                throw new Error('Auth service already initialized');
+                throw new Error('Browser service already initialized');
 
               case 3:
                 // 1. fetch service-info
@@ -12149,7 +12147,7 @@ function () {
                 _context.prev = 10;
                 _context.t0 = _context["catch"](4);
                 this.state = {
-                  id: States.ERROR,
+                  id: AuthStates.ERROR,
                   message: 'Cannot fetch service/info',
                   error: _context.t0
                 };
@@ -12173,7 +12171,7 @@ function () {
                 _context.prev = 20;
                 _context.t1 = _context["catch"](15);
                 this.state = {
-                  id: States.ERROR,
+                  id: AuthStates.ERROR,
                   message: 'Cannot fetch button visuals',
                   error: _context.t1
                 };
@@ -12181,7 +12179,7 @@ function () {
 
               case 24:
                 // 3. Check if there is a prYvkey as result of "out of page login"
-                params = Controller.getQueryParamsFromURL();
+                params = AuthController.getQueryParamsFromURL();
 
                 if (!params.prYvkey) {
                   _context.next = 37;
@@ -12202,7 +12200,7 @@ function () {
                 _context.prev = 33;
                 _context.t2 = _context["catch"](26);
                 this.state = {
-                  id: States.ERROR,
+                  id: AuthStates.ERROR,
                   message: 'Cannot fetch result',
                   error: _context.t2
                 };
@@ -12222,7 +12220,7 @@ function () {
 
                 if (loginCookie) {
                   this.state = {
-                    id: States.AUTHORIZED,
+                    id: AuthStates.AUTHORIZED,
                     apiEndpoint: loginCookie.apiEndpoint,
                     displayName: loginCookie.displayName,
                     action: this.logOut
@@ -12258,7 +12256,7 @@ function () {
       Cookies.del(this.cookieKey);
       this.accessData = null;
       this.state = {
-        id: States.INITIALIZED,
+        id: AuthStates.INITIALIZED,
         serviceInfo: this.serviceInfo,
         action: this.openLoginPage
       };
@@ -12291,7 +12289,7 @@ function () {
                 _context2.prev = 7;
                 _context2.t0 = _context2["catch"](0);
                 this.state = {
-                  id: States.ERROR,
+                  id: AuthStates.ERROR,
                   message: 'Requesting access',
                   error: _context2.t0
                 };
@@ -12370,19 +12368,27 @@ function () {
                 return _context4.abrupt("return");
 
               case 3:
+                if (!this.settings.authRequest.returnURL) {
+                  _context4.next = 5;
+                  break;
+                }
+
+                return _context4.abrupt("return");
+
+              case 5:
                 this.polling = true;
                 _context4.t0 = this;
-                _context4.next = 7;
+                _context4.next = 9;
                 return this.getAccess();
 
-              case 7:
+              case 9:
                 _context4.t1 = _context4.sent;
 
                 _context4.t0.processAccess.call(_context4.t0, _context4.t1);
 
                 setTimeout(this.poll.bind(this), this.accessData.poll_rate_ms);
 
-              case 10:
+              case 12:
               case "end":
                 return _context4.stop();
             }
@@ -12403,11 +12409,9 @@ function () {
   }, {
     key: "processAccess",
     value: function processAccess(accessData) {
-      console.log('_processAccess :', accessData);
-
       if (!accessData || !accessData.status) {
         this.state = {
-          id: States.ERROR,
+          id: AuthStates.ERROR,
           message: 'Invalid Access data response',
           error: new Error('Invalid Access data response')
         };
@@ -12419,7 +12423,7 @@ function () {
       switch (this.accessData.status) {
         case 'ERROR':
           this.state = {
-            id: States.ERROR,
+            id: AuthStates.ERROR,
             message: 'Error on the backend'
           };
           break;
@@ -12431,7 +12435,7 @@ function () {
             displayName: this.accessData.username
           });
           this.state = {
-            id: States.AUTHORIZED,
+            id: AuthStates.AUTHORIZED,
             apiEndpoint: apiEndpoint,
             displayName: this.accessData.username,
             action: this.logOut
@@ -12445,7 +12449,7 @@ function () {
     // ------------------ ACTIONS  ----------- //
 
     /**
-     * Follow Auth Process and 
+     * Follow Browser Process and 
      * Open Login Page.
      */
     value: function () {
@@ -12456,14 +12460,14 @@ function () {
           while (1) {
             switch (_context5.prev = _context5.next) {
               case 0:
-                console.log('OpenLogin', this); // 1. Make sure Auth is initialized
+                console.log('OpenLogin', this); // 1. Make sure Browser is initialized
 
                 if (this.pryvServiceInfo) {
                   _context5.next = 3;
                   break;
                 }
 
-                throw new Error('Auth service must be initialized first');
+                throw new Error('Browser service must be initialized first');
 
               case 3:
                 if (this.accessData) {
@@ -12518,7 +12522,7 @@ function () {
     key: "popupLogin",
     value: function popupLogin() {
       if (!this.accessData || !this.accessData.url) {
-        throw new Error('Pryv Sign-In Error: NO SETUP. Please call Auth.setup() first.');
+        throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
       }
 
       if (this.settings.authRequest.returnURL) {
@@ -12586,19 +12590,19 @@ function () {
       } // is Popup ? (not mobile && auto#)
 
 
-      if (returnURL.indexOf('auto') === 0 && !Controller.browserIsMobileOrTablet(navigatorForTests)) {
+      if (returnURL.indexOf('auto') === 0 && !AuthController.browserIsMobileOrTablet(navigatorForTests)) {
         return false;
       } // set self as return url?
 
 
-      if (returnURL.indexOf('auto') === 0 && Controller.browserIsMobileOrTablet(navigatorForTests) || returnURL.indexOf('self') === 0) {
+      if (returnURL.indexOf('auto') === 0 && AuthController.browserIsMobileOrTablet(navigatorForTests) || returnURL.indexOf('self') === 0) {
         // 
         // eventually clean-up current url from previous pryv returnURL
         returnURL = locationHref + returnURL.substring(4);
         ;
       }
 
-      return Controller.cleanURLFromPrYvParams(returnURL);
+      return AuthController.cleanURLFromPrYvParams(returnURL);
     }
     /**
      * 
@@ -12631,16 +12635,15 @@ function () {
   }, {
     key: "getServiceInfoFromURL",
     value: function getServiceInfoFromURL(url) {
-      var vars = Controller.getQueryParamsFromURL(url); //TODO check validity of status
+      var vars = AuthController.getQueryParamsFromURL(url); //TODO check validity of status
 
-      console.log(vars);
-      return vars[Controller.options.serviceInfoQueryParamKey];
+      return vars[AuthController.options.serviceInfoQueryParamKey];
     }
   }, {
     key: "getStatusFromURL",
     //util to grab parameters from url query string
     value: function getStatusFromURL(url) {
-      var vars = Controller.getQueryParamsFromURL(url); //TODO check validity of status
+      var vars = AuthController.getQueryParamsFromURL(url); //TODO check validity of status
 
       return vars.prYvstatus;
     }
@@ -12652,20 +12655,44 @@ function () {
     }
   }]);
 
-  return Controller;
+  return AuthController;
 }();
 
-Controller.options = {
+AuthController.options = {
   serviceInfoQueryParamKey: 'pryvServiceInfoUrl'
 };
-module.exports = Controller;
+module.exports = AuthController;
 
 /***/ }),
 
-/***/ "./src/Auth/CookieUtils.js":
-/*!*********************************!*\
-  !*** ./src/Auth/CookieUtils.js ***!
-  \*********************************/
+/***/ "./src/Browser/AuthStates.js":
+/*!***********************************!*\
+  !*** ./src/Browser/AuthStates.js ***!
+  \***********************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+/**
+ * Enum Possible states: ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
+ * @readonly
+ * @enum {string}
+ * @memberof Pryv.Browser
+ */
+var AuthState = {
+  ERROR: 'error',
+  LOADING: 'loading',
+  INITIALIZED: 'initialized',
+  AUTHORIZED: 'authorized',
+  LOGOUT: 'logout'
+};
+module.exports = AuthState;
+
+/***/ }),
+
+/***/ "./src/Browser/CookieUtils.js":
+/*!************************************!*\
+  !*** ./src/Browser/CookieUtils.js ***!
+  \************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -12699,10 +12726,10 @@ exports.del = function del(name) {
 
 /***/ }),
 
-/***/ "./src/Auth/LoginButton.js":
-/*!*********************************!*\
-  !*** ./src/Auth/LoginButton.js ***!
-  \*********************************/
+/***/ "./src/Browser/LoginButton.js":
+/*!************************************!*\
+  !*** ./src/Browser/LoginButton.js ***!
+  \************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -12716,15 +12743,15 @@ function _defineProperties(target, props) { for (var i = 0; i < props.length; i+
 
 function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
 
-var Messages = __webpack_require__(/*! ./LoginButtonMessages */ "./src/Auth/LoginButtonMessages.js");
+var Messages = __webpack_require__(/*! ./LoginButtonMessages */ "./src/Browser/LoginButtonMessages.js");
 
-var States = __webpack_require__(/*! ./States */ "./src/Auth/States.js");
+var AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Browser/AuthStates.js");
 
 var LoginButton =
 /*#__PURE__*/
 function () {
   /**
-   * @param {Auth} auth 
+   * @param {Browser} auth 
    */
   function LoginButton(auth) {
     _classCallCheck(this, LoginButton);
@@ -12744,7 +12771,7 @@ function () {
     this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
     this.auth = auth;
     this.onStateChange({
-      id: States.LOADING
+      id: AuthStates.LOADING
     });
   }
   /**
@@ -12826,24 +12853,24 @@ function () {
       }
 
       switch (this.lastState.id) {
-        case States.ERROR:
+        case AuthStates.ERROR:
           this.text = this.myMessages.ERROR + ': ' + this.lastState.message;
           break;
 
-        case States.LOADING:
+        case AuthStates.LOADING:
           this.text = this.myMessages.LOADING;
           break;
 
-        case States.INITIALIZED:
+        case AuthStates.INITIALIZED:
           this.text = this.myMessages.LOGIN + ': ' + this.auth.pryvServiceInfo.name;
           break;
 
-        case States.AUTHORIZED:
+        case AuthStates.AUTHORIZED:
           this.text = this.lastState.displayName;
           break;
 
         default:
-          console.log('Unhandled state for Login: ' + this.lastState.id);
+          console.log('WARNING Unhandled state for Login: ' + this.lastState.id);
       }
 
       this.refreshText();
@@ -12857,10 +12884,10 @@ module.exports = LoginButton;
 
 /***/ }),
 
-/***/ "./src/Auth/LoginButtonMessages.js":
-/*!*****************************************!*\
-  !*** ./src/Auth/LoginButtonMessages.js ***!
-  \*****************************************/
+/***/ "./src/Browser/LoginButtonMessages.js":
+/*!********************************************!*\
+  !*** ./src/Browser/LoginButtonMessages.js ***!
+  \********************************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -12892,30 +12919,6 @@ function get(languageCode, definitions) {
 }
 
 module.exports = get;
-
-/***/ }),
-
-/***/ "./src/Auth/States.js":
-/*!****************************!*\
-  !*** ./src/Auth/States.js ***!
-  \****************************/
-/*! no static exports found */
-/***/ (function(module, exports) {
-
-/**
- * Enum Possible states: ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
- * @readonly
- * @enum {string}
- * @memberof Pryv.Auth
- */
-var AuthState = {
-  ERROR: 'error',
-  LOADING: 'loading',
-  INITIALIZED: 'initialized',
-  AUTHORIZED: 'authorized',
-  LOGOUT: 'logout'
-};
-module.exports = AuthState;
 
 /***/ }),
 
@@ -14660,10 +14663,10 @@ module.exports = utils; // --------------- typedfs -----------------------------
 
 /***/ }),
 
-/***/ "./test/Auth.Controller.test.js":
-/*!**************************************!*\
-  !*** ./test/Auth.Controller.test.js ***!
-  \**************************************/
+/***/ "./test/Browser.AuthController.test.js":
+/*!*********************************************!*\
+  !*** ./test/Browser.AuthController.test.js ***!
+  \*********************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -14674,9 +14677,9 @@ function _asyncToGenerator(fn) { return function () { var self = this, args = ar
 var should = chai.should();
 var expect = chai.expect;
 
-var Controller = __webpack_require__(/*! ../src/Auth/Controller.js */ "./src/Auth/Controller.js");
+var AuthController = __webpack_require__(/*! ../src/Browser/AuthController.js */ "./src/Browser/AuthController.js");
 
-describe('Auth.Controller', function () {
+describe('Browser.AuthController', function () {
   it('getReturnURL()',
   /*#__PURE__*/
   _asyncToGenerator(
@@ -14691,7 +14694,7 @@ describe('Auth.Controller', function () {
             error = null;
 
             try {
-              Controller.getReturnURL('auto');
+              AuthController.getReturnURL('auto');
             } catch (e) {
               error = e;
             }
@@ -14700,25 +14703,25 @@ describe('Auth.Controller', function () {
             fakeNavigator = {
               userAgent: 'android'
             };
-            expect(Controller.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(myUrl + '#');
-            expect(Controller.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
-            expect(Controller.getReturnURL(false, myUrl, fakeNavigator)).to.equal(myUrl + '#');
-            expect(Controller.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
-            expect(Controller.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
+            expect(AuthController.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(myUrl + '#');
+            expect(AuthController.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+            expect(AuthController.getReturnURL(false, myUrl, fakeNavigator)).to.equal(myUrl + '#');
+            expect(AuthController.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+            expect(AuthController.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
             fakeNavigator = {
               userAgent: 'Safari'
             };
-            expect(Controller.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(false);
-            expect(Controller.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(false);
-            expect(Controller.getReturnURL(false, myUrl, fakeNavigator)).to.equal(false);
-            expect(Controller.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
-            expect(Controller.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
+            expect(AuthController.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(false);
+            expect(AuthController.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(false);
+            expect(AuthController.getReturnURL(false, myUrl, fakeNavigator)).to.equal(false);
+            expect(AuthController.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+            expect(AuthController.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
             global.window = {
               location: {
                 href: myUrl + '?prYvstatus=zouzou'
               }
             };
-            expect(Controller.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+            expect(AuthController.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
 
           case 18:
           case "end":
@@ -14736,10 +14739,10 @@ describe('Auth.Controller', function () {
       while (1) {
         switch (_context2.prev = _context2.next) {
           case 0:
-            expect(Controller.browserIsMobileOrTablet({
+            expect(AuthController.browserIsMobileOrTablet({
               userAgent: 'android'
             })).to.be["true"];
-            expect(Controller.browserIsMobileOrTablet({
+            expect(AuthController.browserIsMobileOrTablet({
               userAgent: 'Safari'
             })).to.be["false"];
 
@@ -14759,7 +14762,7 @@ describe('Auth.Controller', function () {
       while (1) {
         switch (_context3.prev = _context3.next) {
           case 0:
-            expect('2jsadh').to.equal(Controller.getStatusFromURL('https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
+            expect('2jsadh').to.equal(AuthController.getStatusFromURL('https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 
           case 1:
           case "end":
@@ -14778,7 +14781,7 @@ describe('Auth.Controller', function () {
       while (1) {
         switch (_context4.prev = _context4.next) {
           case 0:
-            serviceInfoUrl = Controller.getServiceInfoFromURL('https://my.Url.com/?bobby=2&prYvZoutOu=1&pryvServiceInfoUrl=' + encodeURIComponent('https://reg.pryv.me/service/infos'));
+            serviceInfoUrl = AuthController.getServiceInfoFromURL('https://my.Url.com/?bobby=2&prYvZoutOu=1&pryvServiceInfoUrl=' + encodeURIComponent('https://reg.pryv.me/service/infos'));
             expect('https://reg.pryv.me/service/infos').to.equal(serviceInfoUrl);
 
           case 2:
@@ -14797,11 +14800,11 @@ describe('Auth.Controller', function () {
       while (1) {
         switch (_context5.prev = _context5.next) {
           case 0:
-            expect('https://my.Url.com/?bobby=2').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
-            expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/?pryvServiceInfoUrl=zzz#prYvZoutOu=1&prYvstatus=2jsadh'));
-            expect('https://my.Url.com/').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/?prYvstatus=2jsadh'));
-            expect('https://my.Url.com/').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/#prYvstatus=2jsadh'));
-            expect('https://my.Url.com/#bobby=2').to.equal(Controller.cleanURLFromPrYvParams('https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
+            expect('https://my.Url.com/?bobby=2').to.equal(AuthController.cleanURLFromPrYvParams('https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
+            expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(AuthController.cleanURLFromPrYvParams('https://my.Url.com/?pryvServiceInfoUrl=zzz#prYvZoutOu=1&prYvstatus=2jsadh'));
+            expect('https://my.Url.com/').to.equal(AuthController.cleanURLFromPrYvParams('https://my.Url.com/?prYvstatus=2jsadh'));
+            expect('https://my.Url.com/').to.equal(AuthController.cleanURLFromPrYvParams('https://my.Url.com/#prYvstatus=2jsadh'));
+            expect('https://my.Url.com/#bobby=2').to.equal(AuthController.cleanURLFromPrYvParams('https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 
           case 5:
           case "end":
@@ -14815,10 +14818,10 @@ describe('Auth.Controller', function () {
 
 /***/ }),
 
-/***/ "./test/Auth.test.js":
-/*!***************************!*\
-  !*** ./test/Auth.test.js ***!
-  \***************************/
+/***/ "./test/Browser.test.js":
+/*!******************************!*\
+  !*** ./test/Browser.test.js ***!
+  \******************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -14848,7 +14851,7 @@ function genSettings() {
   };
 }
 
-describe('Auth', function () {
+describe('Browser', function () {
   this.timeout(5000);
   var removeZombie = false;
   before(
@@ -14916,7 +14919,7 @@ describe('Auth', function () {
       }
     }, _callee2);
   })));
-  it('setup()', function (done) {
+  it('setupAuth()', function (done) {
     var settings = genSettings();
     var AuthLoaded = false;
     var ServiceInfoLoaded = false;
@@ -14924,17 +14927,17 @@ describe('Auth', function () {
     settings.onStateChange = function (state) {
       should.exist(state.id);
 
-      if (state.id == Pryv.Auth.States.LOADING) {
+      if (state.id == Pryv.Browser.AuthStates.LOADING) {
         AuthLoaded = true;
       }
 
-      if (state.id == Pryv.Auth.States.INITIALIZED) {
+      if (state.id == Pryv.Browser.AuthStates.INITIALIZED) {
         expect(AuthLoaded).to["true"];
         done();
       }
     };
 
-    Pryv.Auth.setup(settings, testData.defaults.serviceInfoUrl).then(function (service) {
+    Pryv.Browser.setupAuth(settings, testData.defaults.serviceInfoUrl).then(function (service) {
       var serviceInfo = service.infoSync();
       should.exist(serviceInfo.access);
       should.exist(serviceInfo.serial);
@@ -14953,7 +14956,7 @@ describe('Auth', function () {
       while (1) {
         switch (_context3.prev = _context3.next) {
           case 0:
-            expect('https://zouzou.com/service/info').to.equal(Pryv.Auth.serviceInfoFromUrl());
+            expect('https://zouzou.com/service/info').to.equal(Pryv.Browser.serviceInfoFromUrl());
 
           case 1:
           case "end":
@@ -16004,9 +16007,9 @@ __webpack_require__(/*! ./Service.test.js */ "./test/Service.test.js");
 
 __webpack_require__(/*! ./ServiceAssets.test.js */ "./test/ServiceAssets.test.js");
 
-__webpack_require__(/*! ./Auth.test.js */ "./test/Auth.test.js");
+__webpack_require__(/*! ./Browser.test.js */ "./test/Browser.test.js");
 
-__webpack_require__(/*! ./Auth.Controller.test.js */ "./test/Auth.Controller.test.js");
+__webpack_require__(/*! ./Browser.AuthController.test.js */ "./test/Browser.AuthController.test.js");
 
 /***/ }),
 
