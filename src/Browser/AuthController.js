@@ -1,7 +1,7 @@
 const utils = require('../utils');
 const Service = require('../Service');
 const LoginButton = require('./LoginButton');
-const States = require('./States');
+const AuthStates = require('./AuthStates');
 const Cookies = require('./CookieUtils');
 
 const COOKIE_STRING = 'pryv-libjs-';
@@ -12,7 +12,7 @@ const prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/g;
 /**
  * @private
  */
-class Controller {
+class AuthController {
 
 
   constructor(settings, serviceInfoUrl, serviceCustomizations) {
@@ -30,7 +30,7 @@ class Controller {
       this.stateChangeListners.push(this.loginButton.onStateChange.bind(this.loginButton));
     } else {
       if (document) {
-        console.log('WARNING: Pryv.Auth initialized with no spanButtonID');
+        console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
       }
     }
 
@@ -46,7 +46,7 @@ class Controller {
 
       // -- Extract returnURL 
       this.settings.authRequest.returnURL = 
-        Controller.getReturnURL(this.settings.authRequest.returnURL);
+        AuthController.getReturnURL(this.settings.authRequest.returnURL);
 
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
@@ -63,7 +63,7 @@ class Controller {
       }
     } catch (e) {
       this.state = {
-        id: States.ERROR, message: 'During initialization', error: e
+        id: AuthStates.ERROR, message: 'During initialization', error: e
       }
       throw (e);
     }
@@ -73,9 +73,9 @@ class Controller {
    * @returns {PryvService}
    */
   async init() {
-    this.state = { id: States.LOADING };
+    this.state = { id: AuthStates.LOADING };
     if (this.pryvService) {
-      throw new Error('Auth service already initialized');
+      throw new Error('Browser service already initialized');
     }
 
  
@@ -86,7 +86,7 @@ class Controller {
       this.pryvServiceInfo = await this.pryvService.info();
     } catch (e) {
       this.state = {
-        id: States.ERROR,
+        id: AuthStates.ERROR,
         message: 'Cannot fetch service/info',
         error: e
       }
@@ -99,7 +99,7 @@ class Controller {
         await this.loginButton.loadAssets(this.pryvService);
       } catch (e) {
         this.state = {
-          id: States.ERROR,
+          id: AuthStates.ERROR,
           message: 'Cannot fetch button visuals',
           error: e
         }
@@ -108,7 +108,7 @@ class Controller {
     }
 
     // 3. Check if there is a prYvkey as result of "out of page login"
-    const params = Controller.getQueryParamsFromURL();
+    const params = AuthController.getQueryParamsFromURL();
     if (params.prYvkey) {
       try {
         const res = await utils.superagent.get(
@@ -116,7 +116,7 @@ class Controller {
         this.processAccess(res.body);
       } catch (e) {
         this.state = {
-          id: States.ERROR,
+          id: AuthStates.ERROR,
           message: 'Cannot fetch result',
           error: e
         }
@@ -132,7 +132,7 @@ class Controller {
 
     if (loginCookie) {
       this.state = {
-        id: States.AUTHORIZED,
+        id: AuthStates.AUTHORIZED,
         apiEndpoint: loginCookie.apiEndpoint,
         displayName: loginCookie.displayName,
         action: this.logOut
@@ -152,7 +152,7 @@ class Controller {
     Cookies.del(this.cookieKey)
     this.accessData = null;
     this.state = {
-      id: States.INITIALIZED,
+      id: AuthStates.INITIALIZED,
       serviceInfo: this.serviceInfo,
       action: this.openLoginPage
     }
@@ -172,7 +172,7 @@ class Controller {
       return res.body;
     } catch (e) {
       this.state = {
-        id: States.ERROR,
+        id: AuthStates.ERROR,
         message: 'Requesting access',
         error: e
       }
@@ -210,10 +210,9 @@ class Controller {
    * @private 
    */
   processAccess(accessData) {
-    console.log('_processAccess :', accessData);
     if (!accessData || !accessData.status) {
       this.state = {
-        id: States.ERROR,
+        id: AuthStates.ERROR,
         message: 'Invalid Access data response',
         error: new Error('Invalid Access data response')
       };
@@ -224,7 +223,7 @@ class Controller {
     switch (this.accessData.status) {
       case 'ERROR':
         this.state = {
-          id: States.ERROR,
+          id: AuthStates.ERROR,
           message: 'Error on the backend'
         };
         break;
@@ -236,7 +235,7 @@ class Controller {
           { apiEndpoint: apiEndpoint, displayName: this.accessData.username });
 
         this.state = {
-          id: States.AUTHORIZED,
+          id: AuthStates.AUTHORIZED,
           apiEndpoint: apiEndpoint,
           displayName: this.accessData.username,
           action: this.logOut
@@ -266,14 +265,14 @@ class Controller {
   // ------------------ ACTIONS  ----------- //
 
   /**
-   * Follow Auth Process and 
+   * Follow Browser Process and 
    * Open Login Page.
    */
   async openLoginPage() {
     console.log('OpenLogin', this);
-    // 1. Make sure Auth is initialized
+    // 1. Make sure Browser is initialized
     if (!this.pryvServiceInfo) {
-      throw new Error('Auth service must be initialized first');
+      throw new Error('Browser service must be initialized first');
     }
 
     // 2. Post access if needed
@@ -302,7 +301,7 @@ class Controller {
 
   popupLogin() {
     if (!this.accessData || !this.accessData.url) {
-      throw new Error('Pryv Sign-In Error: NO SETUP. Please call Auth.setup() first.');
+      throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
     }
 
     if (this.settings.authRequest.returnURL) { // open on same page (no Popup) 
@@ -363,19 +362,19 @@ class Controller {
     }
 
     // is Popup ? (not mobile && auto#)
-    if (returnURL.indexOf('auto') === 0 && !Controller.browserIsMobileOrTablet(navigatorForTests)) {
+    if (returnURL.indexOf('auto') === 0 && !AuthController.browserIsMobileOrTablet(navigatorForTests)) {
       return false;
     }
 
     // set self as return url?
-    if ((returnURL.indexOf('auto') === 0 && Controller.browserIsMobileOrTablet(navigatorForTests)) ||
+    if ((returnURL.indexOf('auto') === 0 && AuthController.browserIsMobileOrTablet(navigatorForTests)) ||
       (returnURL.indexOf('self') === 0)) { // 
 
       // eventually clean-up current url from previous pryv returnURL
       returnURL = locationHref + returnURL.substring(4);;
     }
     
-    return Controller.cleanURLFromPrYvParams(returnURL);
+    return AuthController.cleanURLFromPrYvParams(returnURL);
   }
 
   /**
@@ -402,16 +401,15 @@ class Controller {
 
   //util to grab parameters from url query string
   static getServiceInfoFromURL(url) {
-    const vars = Controller.getQueryParamsFromURL(url);
+    const vars = AuthController.getQueryParamsFromURL(url);
     //TODO check validity of status
-    console.log(vars);
-    return vars[Controller.options.serviceInfoQueryParamKey];
+    return vars[AuthController.options.serviceInfoQueryParamKey];
   };
 
 
   //util to grab parameters from url query string
   static getStatusFromURL(url) {
-    const vars = Controller.getQueryParamsFromURL(url);
+    const vars = AuthController.getQueryParamsFromURL(url);
     //TODO check validity of status
     return vars.prYvstatus;
   };
@@ -422,8 +420,8 @@ class Controller {
   };
 }
 
-Controller.options = {
+AuthController.options = {
   serviceInfoQueryParamKey: 'pryvServiceInfoUrl'
 }
 
-module.exports = Controller;
+module.exports = AuthController;

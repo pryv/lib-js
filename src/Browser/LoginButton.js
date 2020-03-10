@@ -1,11 +1,11 @@
 
 const Messages = require('./LoginButtonMessages');
-const States = require('./States');
+const AuthStates = require('./AuthStates');
 
 class LoginButton {
 
   /**
-   * @param {Auth} auth 
+   * @param {Browser} auth 
    */
   constructor(auth) {
     // 1. get Language
@@ -26,7 +26,7 @@ class LoginButton {
     this.auth = auth;
 
 
-    this.onStateChange({ id: States.LOADING });
+    this.onStateChange({ id: AuthStates.LOADING });
   }
 
   /**
@@ -65,20 +65,20 @@ class LoginButton {
     }
 
     switch (this.lastState.id) {
-      case States.ERROR:
+      case AuthStates.ERROR:
         this.text = this.myMessages.ERROR + ': ' + this.lastState.message
       break;
-      case States.LOADING:
+      case AuthStates.LOADING:
         this.text = this.myMessages.LOADING;
         break;
-      case States.INITIALIZED:
+      case AuthStates.INITIALIZED:
         this.text = this.myMessages.LOGIN + ': ' + this.auth.pryvServiceInfo.name;
       break;
-      case States.AUTHORIZED:
+      case AuthStates.AUTHORIZED:
         this.text = this.lastState.displayName;
         break;
       default:
-        console.log('Unhandled state for Login: ' + this.lastState.id);
+        console.log('WARNING Unhandled state for Login: ' + this.lastState.id);
     }
     this.refreshText();
   }
