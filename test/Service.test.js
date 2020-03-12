@@ -16,7 +16,12 @@ describe('Service', function () {
     const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
     const res = await pryvService.info();
     should.exist(res);
-    should.exist(res.access);
+    
+    ['access', 'api', 'register'].forEach((key) => {
+      should.exist(res[key]);
+      // all API endpoints should end with a '/';
+      res[key].slice(-1).should.equal('/');
+    });
   });
 
   it('info() 2x ', async () => {

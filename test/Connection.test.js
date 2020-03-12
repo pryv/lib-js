@@ -6,7 +6,8 @@ const { URL, URLSearchParams } = require('universal-url');
 
 describe('Connection', () => {
 
-  describe('.api()', () => {
+  describe('.api()', function () {
+    this.timeout(5000);
     it('.api() events.get', async () => {
       const res = await conn.api(
         [

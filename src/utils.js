@@ -33,7 +33,7 @@ const utils = {
       }
       return { endpoint: res[1] + '://' + res[3], token: res[2] }
     }
-    // else check if valud url
+    // else check if valid url
     regexSchemaAndPath.lastIndex = 0;
     const res2 = regexSchemaAndPath.exec(pryvApiEndpoint);
     if (res2 === null) {
@@ -43,6 +43,7 @@ const utils = {
     if (!res2[2].endsWith('/')) {
       res2[2] += '/';
     }
+
     return { endpoint: res2[1] + '://' + res2[2] , token: null }
   },
 

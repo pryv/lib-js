@@ -50,6 +50,13 @@ class Service {
     if (!serviceInfo.name) {
       throw new Error('Invalid data from service/info');
     }
+    // cleanup serviceInfo for eventual url not finishing by "/" 
+    // code will be obsolete with next version of register
+    ['access', 'api', 'register'].forEach((key) => {
+      if (serviceInfo[key].slice(-1) !== '/') {
+        serviceInfo[key] += '/';
+      }
+    });
     this._pryvServiceInfo = serviceInfo;
   }
 

@@ -112,7 +112,7 @@ class AuthController {
     if (params.prYvkey) {
       try {
         const res = await utils.superagent.get(
-          this.pryvServiceInfo.access + '/' + params.prYvkey);
+          this.pryvServiceInfo.access + params.prYvkey);
         this.processAccess(res.body);
       } catch (e) {
         this.state = {
