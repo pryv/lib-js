@@ -49,7 +49,7 @@ const connection = new Pryv.Connection(apiEndpoint);
 #### Using a Username & Token (knowing the service information URL)
 
 ```javascript
-const service = new Service('https://reg.pryv.me/service/info');
+const service = new Pryv.Service('https://reg.pryv.me/service/info');
 const apiEndpoint = await service.apiEndpointFor(username, token);
 const connection = new Pryv.Connection(apiEndpoint);
 ```

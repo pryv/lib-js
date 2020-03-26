@@ -22,6 +22,7 @@
     "build": "webpack --config webpack.config.js",
     "doc": "documentation build src/** -f html -o dist/docs",
     "test": "mocha --reporter spec  test/**/*.test.js",
+    "test-debug": "mocha --inpect-brk=40000 --reporter spec  test/**/*.test.js ",
     "test:browser": "npm run build; ",
     "cover": "nyc npm run test && npm run cover:report",
     "cover:report": "nyc report --reporter=lcov --reporter=html",
@@ -62,6 +63,5 @@
     "webpack-cli": "^3.3.10",
     "webpack-dev-server": "^3.10.2",
     "zombie": "^6.1.4"
-  },
-  "license": "BSD-3-Clause"
+  }
 }
