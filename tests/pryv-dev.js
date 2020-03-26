@@ -13801,7 +13801,7 @@ function () {
 
                 _context.prev = 26;
                 _context.next = 29;
-                return utils.superagent.get(this.pryvServiceInfo.access + '/' + params.prYvkey);
+                return utils.superagent.get(this.pryvServiceInfo.access + params.prYvkey);
 
               case 29:
                 res = _context.sent;
@@ -14320,21 +14320,26 @@ function set(cookieKey, value, expireInDays) {
   var hostName = window.location.hostname;
   var path = window.location.pathname;
   myDate.setDate(myDate.getDate() + expireInDays);
-  var cookieStr = cookieKey + '=' + encodeURIComponent(JSON.stringify(value)) + ';expires=' + myDate.toGMTString() + ';domain=.' + hostName + ';path=' + path + ';SameSite=Strict';
+  var cookieStr = encodeURIComponent(cookieKey) + '=' + encodeURIComponent(JSON.stringify(value)) + ';expires=' + myDate.toGMTString() + ';domain=.' + hostName + ';path=' + path; // do not add SameSite when removing a cookie
+
+  if (expireInDays >= 0) cookieStr += ';SameSite=Strict';
   document.cookie = cookieStr;
 }
 
 exports.set = set;
 
-exports.get = function get(name) {
+exports.get = function get(cookieKey) {
+  var name = encodeURIComponent(cookieKey);
   if (!isBrowser()) return;
   var value = "; " + document.cookie;
   var parts = value.split("; " + name + "=");
   if (parts.length == 2) return JSON.parse(decodeURIComponent(parts.pop().split(";").shift()));
 };
 
-exports.del = function del(name) {
-  set(name, '', -1);
+exports.del = function del(cookieKey) {
+  set(cookieKey, {
+    deleted: true
+  }, -1);
 };
 
 /***/ }),
@@ -15348,8 +15353,15 @@ function () {
     value: function setServiceInfo(serviceInfo) {
       if (!serviceInfo.name) {
         throw new Error('Invalid data from service/info');
-      }
+      } // cleanup serviceInfo for eventual url not finishing by "/" 
+      // code will be obsolete with next version of register
 
+
+      ['access', 'api', 'register'].forEach(function (key) {
+        if (serviceInfo[key].slice(-1) !== '/') {
+          serviceInfo[key] += '/';
+        }
+      });
       this._pryvServiceInfo = serviceInfo;
     }
     /**
@@ -16323,7 +16335,7 @@ var utils = {
         endpoint: res[1] + '://' + res[3],
         token: res[2]
       };
-    } // else check if valud url
+    } // else check if valid url
 
 
     regexSchemaAndPath.lastIndex = 0;
