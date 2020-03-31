@@ -327,7 +327,7 @@ class AuthController {
         ',scrollbars=yes'
       );
 
-      // 
+    // Keep "url" for retro-compatibility for Pryv.io before v1.0.4 
     const authUrl = this.accessData.authUrl || this.accessData.url;
 
     this.popup = window.open(authUrl, 'prYv Sign-in', features);
