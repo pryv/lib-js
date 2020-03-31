@@ -19,6 +19,7 @@
   "main": "src/index.js",
   "license": "BSD-3-Clause",
   "scripts": {
+    "setup": "./scripts/setup-environment-dev.sh",
     "build": "webpack --config webpack.config.js",
     "doc": "documentation build src/** -f html -o dist/docs",
     "test": "mocha --reporter spec  test/**/*.test.js",
@@ -26,7 +27,9 @@
     "test:browser": "npm run build; ",
     "cover": "nyc npm run test && npm run cover:report",
     "cover:report": "nyc report --reporter=lcov --reporter=html",
-    "webserver": "node node_modules/rec-la/webserver/main.js ./dist"
+    "webserver": "node node_modules/rec-la/webserver/main.js ./dist",
+    "publish": "./scripts/upload.sh",
+    "clear": "rm -r dist/ && npm run setup"
   },
   "contributors": [
     {

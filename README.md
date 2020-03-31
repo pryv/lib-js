@@ -6,14 +6,15 @@ At this date - This is a BETA version
 
 ## Contribute
 
-*Prerequisites*: Node 12+
+*Prerequisites*: Node 12
 
-- Install: `./scripts/setup-environment-dev.sh`
+- Setup: `npm run setup`
 - Build pryv.js library for browsers: `npm run build`, the result is published in `./dist`
 - Build documentation: `npm run doc`, the result is published in `./dist/doc`
 - Node Tests: `npm run test`
 - Coverage: `npm run cover`, the result is visible in `./coverage`
-- Browser tests: **build**, then `npm run webserver` and open https://l.rec.la:4443/tests/browser-tests.html
+- Browser tests: **build**, then `npm run webserver` and open https://l.rec.la:4443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info
+- Update on CDN: After running **setup** and **build** scripts, run `npm run publish ${COMMIT_MESSAGE}`. If this fails, run `npm run clear` to rebuild a fresh `dist/` folder
 
 ## Usage
 
@@ -37,9 +38,9 @@ const Pryv = require('pryv');
 
 A connection is an authenticated link to a Pryv.io account.
 
-#### Using an API endPoint
+#### Using an API endpoint
 
-Format of an API endpoint: `https://{token}@{api-endpoint}`
+The format of the API endpoint can be found in your platform's [service information](https://api.pryv.com/reference/#service-info) under the `api` property. The most frequent one has the following format: `https://{token}@{api-endpoint}`
 
 ```javascript
 const apiEndpoint = 'https://ck6bwmcar00041ep87c8ujf90@drtom.pryv.me';
@@ -198,7 +199,7 @@ const now = (new Date()).getTime() / 1000;
 const queryParams = { fromTime: 0, toTime: now, limit: 10000};
 const events = [];
 function forEachEvent(event) {
-  events.push(JSON.parse(event));
+  events.push(event);
 }
 
 try {
