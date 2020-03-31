@@ -198,7 +198,7 @@ const now = (new Date()).getTime() / 1000;
 const queryParams = { fromTime: 0, toTime: now, limit: 10000};
 const events = [];
 function forEachEvent(event) {
-  events.push(JSON.parse(event));
+  events.push(event);
 }
 
 try {
