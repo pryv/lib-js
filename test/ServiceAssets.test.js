@@ -64,6 +64,13 @@ describe('ServiceAssets', function () {
     expect(faviconUrl).to.eql('favicon.ico');
   });
 
+  it('.getUrl(keyPath) ', async () => {
+    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const assets = await pryvService.assets();
+    const faviconUrl = await assets.getUrl('favicon:default:url');
+    expect(faviconUrl).to.eql('https://pryv.github.io:/assets-pryv.me/favicon.ico');
+  });
+
 });
 
 

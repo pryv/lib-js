@@ -44,6 +44,20 @@ class ServiceAssets {
   }
 
   /**
+   * get an Url from path separated by `:`
+   * identical to doing assets.relativeURL(assets.get(keyPath))
+   * exemple of key `lib-js:buttonSignIn`
+   * @param {string} [keyPath] if null, will return the all assets  
+   */
+  getUrl(keyPath) {
+    const url = this.get(keyPath);
+    if (typeof url !== 'string') {
+      throw new Error(url + ' returned ' + value); 
+    }
+    return this.relativeURL(url);
+  }
+
+  /**
    * get relativeUrl
    */
   relativeURL(url) {
