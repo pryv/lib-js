@@ -37,7 +37,7 @@ const Pryv = require('pryv');
 
 A connection is an authenticated link to a Pryv.io account.
 
-#### Using an API endPoint
+#### Using an API endpoint
 
 Format of an API endpoint: `https://{token}@{api-endpoint}`
 
