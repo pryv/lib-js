@@ -327,8 +327,10 @@ class AuthController {
         ',scrollbars=yes'
       );
 
+      // 
+    const authUrl = this.accessData.authUrl || this.accessData.url;
 
-    this.popup = window.open(this.accessData.url, 'prYv Sign-in', features);
+    this.popup = window.open(authUrl, 'prYv Sign-in', features);
 
     if (!this.popup) {
       // TODO try to fall back on access
