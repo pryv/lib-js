@@ -39,7 +39,7 @@ A connection is an authenticated link to a Pryv.io account.
 
 #### Using an API endpoint
 
-Format of an API endpoint: `https://{token}@{api-endpoint}`
+The format of the API endpoint can be found in your platform's [service information](https://api.pryv.com/reference/#service-info) under the `api` property. The most frequent one has the following format: `https://{token}@{api-endpoint}`
 
 ```javascript
 const apiEndpoint = 'https://ck6bwmcar00041ep87c8ujf90@drtom.pryv.me';
