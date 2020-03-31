@@ -13648,8 +13648,8 @@ var AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Browser/AuthStat
 var Cookies = __webpack_require__(/*! ./CookieUtils */ "./src/Browser/CookieUtils.js");
 
 var COOKIE_STRING = 'pryv-libjs-';
-var queryRegexp = /[?#&]+([^=&]+)=([^&]*)/g;
-var prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/g;
+var QUERY_REGEXP = /[?#&]+([^=&]+)=([^&]*)/g;
+var PRYV_REGEXP = /[?#&]+prYv([^=&]+)=([^&]*)/g;
 /**
  * @private
  */
@@ -14239,7 +14239,7 @@ function () {
     value: function getQueryParamsFromURL(url) {
       url = url || window.location.href;
       var vars = {};
-      url.replace(queryRegexp, function (m, key, value) {
+      url.replace(QUERY_REGEXP, function (m, key, value) {
         vars[key] = decodeURIComponent(value);
       });
       return vars;
@@ -14250,7 +14250,7 @@ function () {
     value: function getServiceInfoFromURL(url) {
       var vars = AuthController.getQueryParamsFromURL(url); //TODO check validity of status
 
-      return vars[AuthController.options.serviceInfoQueryParamKey];
+      return vars[AuthController.options.SERVICE_INFO_QUERY_PARAM_KEY];
     }
   }, {
     key: "getStatusFromURL",
@@ -14264,7 +14264,7 @@ function () {
     key: "cleanURLFromPrYvParams",
     //util to grab parameters from url query string
     value: function cleanURLFromPrYvParams(url) {
-      return url.replace(prYvRegexp, '');
+      return url.replace(PRYV_REGEXP, '');
     }
   }]);
 
@@ -14272,7 +14272,7 @@ function () {
 }();
 
 AuthController.options = {
-  serviceInfoQueryParamKey: 'pryvServiceInfoUrl'
+  SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl'
 };
 module.exports = AuthController;
 
