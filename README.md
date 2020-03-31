@@ -8,12 +8,13 @@ At this date - This is a BETA version
 
 *Prerequisites*: Node 12
 
-- Install: `npm run setup`
+- Setup: `npm run setup`
 - Build pryv.js library for browsers: `npm run build`, the result is published in `./dist`
 - Build documentation: `npm run doc`, the result is published in `./dist/doc`
 - Node Tests: `npm run test`
 - Coverage: `npm run cover`, the result is visible in `./coverage`
 - Browser tests: **build**, then `npm run webserver` and open https://l.rec.la:4443/tests/browser-tests.html
+- Update on CDN: After running **setup** and **build** scripts, run `npm run publish ${COMMIT_MESSAGE}`
 
 ## Usage
 
