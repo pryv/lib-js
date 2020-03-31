@@ -28,7 +28,8 @@
     "cover": "nyc npm run test && npm run cover:report",
     "cover:report": "nyc report --reporter=lcov --reporter=html",
     "webserver": "node node_modules/rec-la/webserver/main.js ./dist",
-    "publish": "./scripts/upload.sh"
+    "publish": "./scripts/upload.sh",
+    "clear": "rm -r dist/ && npm run setup"
   },
   "contributors": [
     {

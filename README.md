@@ -14,7 +14,7 @@ At this date - This is a BETA version
 - Node Tests: `npm run test`
 - Coverage: `npm run cover`, the result is visible in `./coverage`
 - Browser tests: **build**, then `npm run webserver` and open https://l.rec.la:4443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info
-- Update on CDN: After running **setup** and **build** scripts, run `npm run publish ${COMMIT_MESSAGE}`
+- Update on CDN: After running **setup** and **build** scripts, run `npm run publish ${COMMIT_MESSAGE}`. If this fails, run `npm run clear` to rebuild a fresh `dist/` folder
 
 ## Usage
 
