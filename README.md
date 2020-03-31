@@ -6,9 +6,9 @@ At this date - This is a BETA version
 
 ## Contribute
 
-*Prerequisites*: Node 12+
+*Prerequisites*: Node 12
 
-- Install: `./scripts/setup-environment-dev.sh`
+- Install: `npm run setup`
 - Build pryv.js library for browsers: `npm run build`, the result is published in `./dist`
 - Build documentation: `npm run doc`, the result is published in `./dist/doc`
 - Node Tests: `npm run test`

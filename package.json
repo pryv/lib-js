@@ -19,6 +19,7 @@
   "main": "src/index.js",
   "license": "BSD-3-Clause",
   "scripts": {
+    "setup": "./scripts/setup-environment-dev.sh",
     "build": "webpack --config webpack.config.js",
     "doc": "documentation build src/** -f html -o dist/docs",
     "test": "mocha --reporter spec  test/**/*.test.js",
