@@ -6,8 +6,8 @@ const Cookies = require('./CookieUtils');
 
 const COOKIE_STRING = 'pryv-libjs-';
 
-const queryRegexp = /[?#&]+([^=&]+)=([^&]*)/g;
-const prYvRegexp = /[?#&]+prYv([^=&]+)=([^&]*)/g;
+const QUERY_REGEXP = /[?#&]+([^=&]+)=([^&]*)/g;
+const PRYV_REGEXP = /[?#&]+prYv([^=&]+)=([^&]*)/g;
 
 /**
  * @private
@@ -392,7 +392,7 @@ class AuthController {
   static getQueryParamsFromURL(url) { 
     url = url || window.location.href;
     var vars = {};
-    url.replace(queryRegexp,
+    url.replace(QUERY_REGEXP,
       function (m, key, value) {
         vars[key] = decodeURIComponent(value);
       });
@@ -403,7 +403,7 @@ class AuthController {
   static getServiceInfoFromURL(url) {
     const vars = AuthController.getQueryParamsFromURL(url);
     //TODO check validity of status
-    return vars[AuthController.options.serviceInfoQueryParamKey];
+    return vars[AuthController.options.SERVICE_INFO_QUERY_PARAM_KEY];
   };
 
 
@@ -416,12 +416,12 @@ class AuthController {
 
   //util to grab parameters from url query string
   static cleanURLFromPrYvParams(url) {
-    return url.replace(prYvRegexp, '');
+    return url.replace(PRYV_REGEXP, '');
   };
 }
 
 AuthController.options = {
-  serviceInfoQueryParamKey: 'pryvServiceInfoUrl'
+  SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl'
 }
 
 module.exports = AuthController;
