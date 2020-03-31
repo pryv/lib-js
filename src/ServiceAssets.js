@@ -28,6 +28,36 @@ class ServiceAssets {
   }
 
   /**
+   * get a value from path separated by `:`
+   * exemple of key `lib-js:buttonSignIn`
+   * @param {string} [keyPath] if null, will return the all assets  
+   */
+  get(keyPath) {
+    let result = Object.assign({}, this._assets);
+    if (keyPath) {
+      keyPath.split(':').forEach((key) => {
+        result = result[key];
+        if (typeof result === 'undefined') return result;
+      });
+    }
+    return result;
+  }
+
+  /**
+   * get an Url from path separated by `:`
+   * identical to doing assets.relativeURL(assets.get(keyPath))
+   * exemple of key `lib-js:buttonSignIn`
+   * @param {string} [keyPath] if null, will return the all assets  
+   */
+  getUrl(keyPath) {
+    const url = this.get(keyPath);
+    if (typeof url !== 'string') {
+      throw new Error(url + ' returned ' + value); 
+    }
+    return this.relativeURL(url);
+  }
+
+  /**
    * get relativeUrl
    */
   relativeURL(url) {
