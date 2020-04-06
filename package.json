@@ -1,17 +1,17 @@
 {
   "name": "pryv-javascript-light",
   "version": "2.0.1",
-  "homepage": "https://github.com/pryv/lib-javascript-light",
+  "homepage": "https://github.com/pryv/lib-js",
   "description": "Pryv Javascript Library",
   "keywords": [
     "Pryv"
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/pryv/lib-javascript-light"
+    "url": "git://github.com/pryv/lib-js"
   },
   "bugs": {
-    "url": "https://github.com/pryv/lib-javascript-light/issues"
+    "url": "https://github.com/pryv/lib-js/issues"
   },
   "author": {
     "name": "Pryv S.A."
