@@ -1,4 +1,4 @@
-# Light JavaScript library for Pryv.io
+# JavaScript library for Pryv.io
 
 This JavaScript library is meant to facilitate writing NodeJS and browser apps for a Pryv.io platform, it follows the [Pryv.io App Guidelines](https://api.pryv.com/guides/app-guidelines/).
 
