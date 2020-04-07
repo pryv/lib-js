@@ -7,8 +7,7 @@ const browserGetEventStreamed = require('./lib/browser-getEventStreamed');
 
 /**
  * @class Connection
- * Create an instance of Connection to Pryv API.
- * The connection will be opened on
+ * A connection is an authenticated link to a Pryv.io account.
  * 
  * @type {TokenAndEndpoint}
  *
