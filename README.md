@@ -1,8 +1,6 @@
-# Light JavaScript library for Pryv.io
+JavaScript library for Pryv.io
 
 This JavaScript library is meant to facilitate writing NodeJS and browser apps for a Pryv.io platform, it follows the [Pryv.io App Guidelines](https://api.pryv.com/guides/app-guidelines/).
-
-At this date - This is a BETA version 
 
 ## Contribute
 
@@ -10,10 +8,10 @@ At this date - This is a BETA version
 
 - Setup: `npm run setup`
 - Build pryv.js library for browsers: `npm run build`, the result is published in `./dist`
-- Build documentation: `npm run doc`, the result is published in `./dist/doc`
+- Build documentation: `npm run doc`, the result is published in `./dist/docs`
 - Node Tests: `npm run test`
 - Coverage: `npm run cover`, the result is visible in `./coverage`
-- Browser tests: **build**, then `npm run webserver` and open https://l.rec.la:4443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info
+- Browser tests: **build**, then `npm run webserver` and open [https://l.rec.la:4443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/](https://l.rec.la:4443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info)
 - Update on CDN: After running **setup** and **build** scripts, run `npm run publish ${COMMIT_MESSAGE}`. If this fails, run `npm run clear` to rebuild a fresh `dist/` folder
 
 ## Usage
@@ -125,7 +123,7 @@ const connection = await service.login(username, password, appId);
 
 ### API calls
 
-Api calls are based on the `batch` call specifications: https://api.pryv.com/reference/#call-batch
+Api calls are based on the `batch` call specifications: [Call batch on API doc](https://api.pryv.com/reference/#call-batch)
 
 ```javascript
 const apiCalls = [
@@ -339,11 +337,57 @@ try {
 
 ```
 
-### Assets & Visual Usage and Customization
+### Service Information and assets
 
-To customize assets and visual  refer to: https://github.com/pryv/assets-pryv.me
+A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a service, deployed with the domain name **pryv.me**.
 
-To customize the Login Button to https://github.com/pryv/assets-pryv.me/tree/master/lib-js/
+It relies on the content of a **service-info** configuration, See: [Service-Info API doc](https://api.pryv.com/reference/#service-info)
+
+#### Pryv.Service 
+
+Exposes tools to interact with Pryv.io at a "Platform" level. 
+
+##### Initizalization with a service info URL
+
+```javascript
+const service = new Pryv.Service('https://reg.pryv.me/service/info');
+```
+
+- With the content of a serviceInfo configuration
+
+Service information properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
+
+```javascript
+const serviceInfoUrl = 'https://reg.pryv.me/service/info';
+const serviceCustomizations = {
+  name: 'Pryv Lab 2', 
+  assets: {
+    definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
+  }
+}
+const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
+```
+
+##### Usage of Pryv.Service.
+
+See: [Pryv.Service](https://pryv.github.io/js-lib/docs/Pryv.Service.html) for more details
+
+- (async) `service.info()` - retruns the content of the serviceInfo 
+
+  ```javascript
+  // example: get the name of the platform
+  const serviceName = await service.info().name
+  ```
+
+- `service.infoSync()` - Service caches the content of service/info. Once `service.info`has been called once, service.infoSync() can be used. 
+
+- `service.apiEndpointFor(username, token)` Will return the corresponding API end point for this username and token. `token` can be omitted
+
+##### Assets & Visual Usage 
+
+To customize assets and visual  refer to: [pryv.me assets github](https://github.com/pryv/assets-pryv.me)
+
+To customize the Login Button refer to: [Login sources on github](https://github.com/pryv/assets-pryv.me/tree/master/lib-js/)
 
 #### Platfrom-specific ressources 
 
@@ -356,25 +400,6 @@ This will load the `css` and `favicon` properties of assets definitions.
   const service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
   (await service.assets()).setAllDefaults(); // will load the default Favicon and CSS for this platform
 })();
-```
-
-#### Customize service info 
-
-Service information properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
-
-##### Pryv.Service
-
-At creation of an instance:
-
-```javascript
-const serviceInfoUrl = 'https://reg.pryv.me/service/info';
-const serviceCustomizations = {
-  name: 'Pryv Lab 2', 
-  assets: {
-    definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
-  }
-}
-const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
 ```
 
 ##### Pryv.Browser

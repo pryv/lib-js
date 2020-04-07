@@ -1,5 +1,6 @@
 
 /**
+ * @private
  * Replacement for getEventStreamed for Browser
  * To be used as long as superagent does not propose it.
  * 

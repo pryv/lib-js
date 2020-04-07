@@ -1,17 +1,17 @@
 const utils = require('./utils.js');
 /**
- * @class ServiceAssets
- * Holds Pryv Service informations
+ * Holds Pryv Service informations.
+ * 
+ * It's returned by `service.assets()`
  *
- * @property { TokenAndEndpoint } tokenAndApi
  * @memberof Pryv
- *
- * @constructor
- * @this { ServiceAssets }
- * @param { string } pryvServiceAssetsSourceUrl Url point to assets of the service of a Pryv platform: https://api.pryv.com/reference/#service-info property `assets.src`
  **/
 class ServiceAssets {
-
+  /**
+   * Private => use ServiceAssets.setup()
+   * @param { object} assets The content of service/info.assets properties.
+   * @param { string } pryvServiceAssetsSourceUrl Url point to assets of the service of a Pryv platform: https://api.pryv.com/reference/#service-info property `assets.src`
+   */
   constructor(assets, assetsURL) {
     this._assets = assets;
     this._assetsURL = assetsURL;

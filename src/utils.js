@@ -3,9 +3,10 @@ const regexAPIandToken = /(.+):\/\/(.+)@(.+)/gm;
 const regexSchemaAndPath = /(.+):\/\/(.+)/gm;
 
 /**
- * Utilities to access Pryv API
- * @namespace utils
+ * Utilities to access Pryv API.
+ * Exposes superagent and methods to manipulate Pryv's api endpoints 
  * @memberof Pryv
+ * @namespace Pryv.utils
  */
 const utils = {
 

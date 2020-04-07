@@ -21,7 +21,7 @@
   "scripts": {
     "setup": "./scripts/setup-environment-dev.sh",
     "build": "webpack --config webpack.config.js",
-    "doc": "documentation build src/** -f html -o dist/docs",
+    "doc": "node node_modules/jsdoc/jsdoc.js -c .jsdoc-conf.json",
     "test": "mocha --reporter spec  test/**/*.test.js",
     "test-debug": "mocha --inpect-brk=40000 --reporter spec  test/**/*.test.js ",
     "test:browser": "npm run build; ",
@@ -55,7 +55,7 @@
     "chai-as-promised": "^7.1.1",
     "copy-webpack-plugin": "^5.1.1",
     "css-loader": "^3.4.2",
-    "documentation": "^12.1.4",
+    "jsdoc": "^3.6.4",
     "mocha": "^6.2.2",
     "node-fetch": "^2.6.0",
     "nyc": "^14.1.1",

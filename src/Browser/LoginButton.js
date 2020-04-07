@@ -2,6 +2,9 @@
 const Messages = require('./LoginButtonMessages');
 const AuthStates = require('./AuthStates');
 
+/**
+ * @memberof Pryv.Browser
+ */
 class LoginButton {
 
   /**

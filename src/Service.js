@@ -4,16 +4,35 @@ const Connection = require('./Connection.js');
 const Assets = require('./ServiceAssets.js');
 
 /**
- * @class Service
- * Holds Pryv Service informations
+ * @class Pryv.Service
+ * A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a service, deployed with the domain name **pryv.me**.
+ * 
+ * `Pryv.Service` exposes tools to interact with Pryv.io at a "Platform" level. 
  *
- *
- * @property {TokenAndEndpoint} tokenAndApi
+ *  ##### Initizalization with a service info URL
+```javascript
+const service = new Pryv.Service('https://reg.pryv.me/service/info');
+```
+
+- With the content of a serviceInfo configuration
+
+Service information properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
+
+```javascript
+const serviceInfoUrl = 'https://reg.pryv.me/service/info';
+const serviceCustomizations = {
+  name: 'Pryv Lab 2',
+  assets: {
+    definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
+  }
+}
+const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
+``` 
+
  * @memberof Pryv
  * 
  * @constructor
- * @this {Service} 
- * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform: https://api.pryv.com/reference/#service-info
+ * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform see: {@link https://api.pryv.com/reference/#service-info}
  */
 class Service {
 
@@ -26,6 +45,10 @@ class Service {
 
   /**
    * Return service info parameters info known of fetch it if needed.
+   * Example   
+   *  - name of a platform   
+   *    `const serviceName = await service.info().name` 
+   * @see PryvServiceInfo For details on available properties.
    * @param {boolean?} forceFetch If true, will force fetching service info.
    * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
    */
@@ -87,7 +110,6 @@ class Service {
     return this._pryvServiceInfo;
   }
 
-
   /**
    * Return an API Endpoint from a username and token
    * @param {string} username
@@ -100,7 +122,8 @@ class Service {
   }
 
   /**
-   * Return an API Endpoint from a username and token and a PryvServiceInfo
+   * Return an API Endpoint from a username and token and a PryvServiceInfo. 
+   * This is method is rarely used. See **apiEndPointFor** as an alternative.
    * @param {PryvServiceInfo} serviceInfo
    * @param {string} username
    * @param {string} [token]
@@ -112,8 +135,8 @@ class Service {
   }
 
   /**
-   * Issue a "login call on the Service" return a Connection on success
-   * ! Warning the token of the connection will be a "Personal" token that expires
+   * Issue a "login call on the Service" return a Connection on success  
+   * **! Warning**: the token of the connection will be a "Personal" token that expires
    * @see https://api.pryv.com/reference-full/#login-user
    * @param {string} username 
    * @param {string} password 

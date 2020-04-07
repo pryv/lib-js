@@ -2,8 +2,8 @@ const AuthController = require('./AuthController');
 const AuthStates = require('./AuthStates');
 
 /**
- * @module Browser 
  * @memberof Pryv
+ * @namespace Pryv.Browser
  */
 
 
