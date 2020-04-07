@@ -2,8 +2,6 @@
 
 This JavaScript library is meant to facilitate writing NodeJS and browser apps for a Pryv.io platform, it follows the [Pryv.io App Guidelines](https://api.pryv.com/guides/app-guidelines/).
 
-At this date - This is a BETA version 
-
 ## Contribute
 
 *Prerequisites*: Node 12
