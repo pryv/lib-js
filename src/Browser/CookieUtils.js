@@ -1,12 +1,27 @@
 
+/**
+ * @memberof Pryv.Browser
+ * @namespace Pryv.Browser.CookieUtils
+ */
 
 
+ /**
+  * Returns true is run in a browser
+  * @memberof Pryv.Browser.CookieUtils
+  * @returns {boolean}
+  */
 function isBrowser() {
   return typeof window !== 'undefined';
 }
 
 
-
+/**
+  * Set a Local cookier
+  * @memberof Pryv.Browser.CookieUtils
+  * @param {string} cookieKey - The key for the cookie
+  * @param {mixed} value - The Value 
+  * @param {number} expireInDays - Expiration date in days from now
+  */
 function set(cookieKey, value, expireInDays) {
   if (! isBrowser()) return;
   expireInDays = expireInDays || 365;
@@ -23,6 +38,11 @@ function set(cookieKey, value, expireInDays) {
 }
 exports.set = set;
 
+/**
+ * returns the value of a local cookie
+ * @memberof Pryv.Browser.CookieUtils
+ * @param cookieKey - The key
+ */
 exports.get = function get(cookieKey) {
   const name = encodeURIComponent(cookieKey);
   if (!isBrowser()) return;
@@ -31,6 +51,11 @@ exports.get = function get(cookieKey) {
   if (parts.length == 2) return JSON.parse(decodeURIComponent(parts.pop().split(";").shift()));
 }
 
+/**
+ * delete a local cookie
+ * @memberof Pryv.Browser.CookieUtils
+ * @param cookieKey - The key
+ */
 exports.del = function del(cookieKey) {
   set(cookieKey, {deleted: true}, -1);
 }
