@@ -2,6 +2,8 @@
 
 This JavaScript library is meant to facilitate writing NodeJS and browser apps for a Pryv.io platform, it follows the [Pryv.io App Guidelines](https://api.pryv.com/guides/app-guidelines/).
 
+## Table of Contents
+
 ## Contribute
 
 *Prerequisites*: Node 12
@@ -16,6 +18,32 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 
 ## Usage
 
++ [Import](#import)
+  - [Browser](#browser)
+  - [Node.js](#nodejs)
++ [Obtaining a Pryv.Connection](#obtaining-a-pryvconnection)
+  - [Using an API endpoint](#using-an-api-endpoint)
+  - [Using a Username & Token (knowing the service information URL)](#using-a-username--token-knowing-the-service-information-url)
+  - [Within a WebPage with a login button](#within-a-webpage-with-a-login-button)
+  - [Using Service.login() *(trusted apps only)*](#using-servicelogin-trusted-apps-only)
++ [API calls](#api-calls)
++ [Advanced usage of API calls with optional individual result and progress callbacks](#advanced-usage-of-api-calls-with-optional-individual-result-and-progress-callbacks)
++ [Get Events Streamed](#get-events-streamed)
+  - [Example:](#example)
+  - [result:](#result)
++ [Events with Attachments](#events-with-attachments)
+  - [Node.js](#nodejs-1)
+  - [Browser](#browser-1)
++ [High Frequency Events](#high-frequency-events)
++ [Service Information and assets](#service-information-and-assets)
+  - [Pryv.Service](#pryvservice)
+    * [Initizalization with a service info URL](#initizalization-with-a-service-info-url)
+    * [Usage of Pryv.Service.](#usage-of-pryvservice)
++ [Pryv.Browser & Visual assets](#pryvbrowser--visual-assets)
+  - [Pryv.Browser - serviceInfo customization](#pryvbrowser---serviceinfo-customization)
+  - [Assets & Visuals](#assets--visuals)
+    * [Platform-specific resources](#platform-specific-resources)
+
 ### Import
 
 #### Browser
@@ -23,6 +51,10 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 ```html
 <script src="https://api.pryv.com/lib-js/pryv.js"></script>
 ```
+
+#### Example on code pen:
+
+- Save notes and measure simple form: [Example on codepen.io](https://codepen.io/pryv/pen/ExVYemE)
 
 #### Node.js
 
@@ -221,7 +253,7 @@ try {
 }
 ```
 
-### Events with Attachements
+### Events with Attachments
 
 This shortcut allows to create an event with an attachment in a single API call.
 
@@ -355,7 +387,7 @@ const service = new Pryv.Service('https://reg.pryv.me/service/info');
 
 - With the content of a serviceInfo configuration
 
-Service information properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
+Service information properties can be overridden with specific values. This might be useful to test new designs on production platforms.
 
 ```javascript
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
@@ -372,7 +404,7 @@ const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
 
 See: [Pryv.Service](https://pryv.github.io/js-lib/docs/Pryv.Service.html) for more details
 
-- (async) `service.info()` - retruns the content of the serviceInfo 
+- (async) `service.info()` - returns the content of the serviceInfo 
 
   ```javascript
   // example: get the name of the platform
@@ -383,13 +415,33 @@ See: [Pryv.Service](https://pryv.github.io/js-lib/docs/Pryv.Service.html) for mo
 
 - `service.apiEndpointFor(username, token)` Will return the corresponding API end point for this username and token. `token` can be omitted
 
-##### Assets & Visual Usage 
+### Pryv.Browser & Visual assets
 
-To customize assets and visual  refer to: [pryv.me assets github](https://github.com/pryv/assets-pryv.me)
+#### Pryv.Browser - serviceInfo from query URL
+
+A single Web App might need to be run on different Pryv.io platforms. This is the case of most Pryv.io demonstrators.
+
+The **Service Information URL** can be extracted from the URL query parameter `pryvServiceInfoUrl` with `Pryv.Browser.serviceInfoFromUrl()` as per the [Pryv App Guidelines](https://api.pryv.com/guides/app-guidelines/).
+
+Example of usage for web App with the url https://mydomain.com/my-web-app/index.html?pryvServiceInfoUrl=https://my.domain.com/service/info
+
+```javascript
+let serviceInfoUrl = 'https://reg.pryv.me/service/info';
+// if present override serviceInfoURL from URL query param "?pryvServiceInfoUrl=.." 
+serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || serviceInfoUrl;
+
+(async function () {
+	var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
+})();
+```
+
+#### Assets & Visuals 
+
+To customize assets and visuals refer to: [pryv.me assets github](https://github.com/pryv/assets-pryv.me)
 
 To customize the Login Button refer to: [Login sources on github](https://github.com/pryv/assets-pryv.me/tree/master/lib-js/)
 
-#### Platfrom-specific ressources 
+##### Platform-specific resources 
 
 can be used in a browser with `setAllDefaults()`
 
@@ -402,32 +454,4 @@ This will load the `css` and `favicon` properties of assets definitions.
 })();
 ```
 
-##### Pryv.Browser
-
-```javascript
-var serviceInfoUrl = 'https://reg.pryv.me/service/info';
-var serviceCustomizations = {
-  name: 'Pryv Lab 2', 
-  assets: {
-    definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
-  }
-}
-var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
-```
-
-#### Pryv.Browser - specify Service Information from URL query parameters
-
-A single Web App might need to be run on different Pryv.io platforms. This is the case of most Pryv.io demonstrators.
-
-The **Service Information URL** can be extracted from the URL query parameter `pryvServiceInfoUrl` with `Pryv.Browser.serviceInfoFromUrl()` as per the [Pryv App Guidelines](https://api.pryv.com/guides/app-guidelines/).
-
-Example of usage for web App with the url https://mydomain.com/my-web-app/index.html?pryvServiceInfoUrl=https://my.domain.com/service/info
-
-```javascript
-console.log(Pryv.Browser.serviceInfoFromUrl());
-
-let serviceInfoUrl = 'https://reg.pryv.me/service/info';
-// the following will override serviceInfoUrl by https://my.domain.com/service/info
-serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || serviceInfoUrl;
-```
-
+### 
