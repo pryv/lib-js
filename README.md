@@ -155,7 +155,7 @@ const connection = await service.login(username, password, appId);
 
 ### API calls
 
-Api calls are based on the `batch` call specifications: [Call batch on API doc](https://api.pryv.com/reference/#call-batch)
+Api calls are based on the `batch` call specifications: [Call batch API reference](https://api.pryv.com/reference/#call-batch)
 
 ```javascript
 const apiCalls = [
@@ -371,9 +371,9 @@ try {
 
 ### Service Information and assets
 
-A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a service, deployed with the domain name **pryv.me**.
+A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a service, deployed on the **pryv.me** domain name.
 
-It relies on the content of a **service-info** configuration, See: [Service-Info API doc](https://api.pryv.com/reference/#service-info)
+It relies on the content of a **service information** configuration, See: [Service Information API reference](https://api.pryv.com/reference/#service-info)
 
 #### Pryv.Service 
 
@@ -385,9 +385,9 @@ Exposes tools to interact with Pryv.io at a "Platform" level.
 const service = new Pryv.Service('https://reg.pryv.me/service/info');
 ```
 
-- With the content of a serviceInfo configuration
+##### Initialization with the content of a service info configuration
 
-Service information properties can be overridden with specific values. This might be useful to test new designs on production platforms.
+Service information properties can be overriden with specific values. This might be useful to test new designs on production platforms.
 
 ```javascript
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
@@ -404,16 +404,16 @@ const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
 
 See: [Pryv.Service](https://pryv.github.io/js-lib/docs/Pryv.Service.html) for more details
 
-- (async) `service.info()` - returns the content of the serviceInfo 
+- `service.info()` - returns the content of the serviceInfo in a Promise 
 
   ```javascript
   // example: get the name of the platform
   const serviceName = await service.info().name
   ```
 
-- `service.infoSync()` - Service caches the content of service/info. Once `service.info`has been called once, service.infoSync() can be used. 
+- `service.infoSync()` - returns the cached content of the serviceInfo, requires `service.info()` to be called first.
 
-- `service.apiEndpointFor(username, token)` Will return the corresponding API end point for this username and token. `token` can be omitted
+- `service.apiEndpointFor(username, token)` Will return the corresponding API endpoint for the provided credentials, `token` can be omitted.
 
 ### Pryv.Browser & Visual assets
 
