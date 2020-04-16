@@ -29,8 +29,8 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 + [API calls](#api-calls)
 + [Advanced usage of API calls with optional individual result and progress callbacks](#advanced-usage-of-api-calls-with-optional-individual-result-and-progress-callbacks)
 + [Get Events Streamed](#get-events-streamed)
-  - [Example:](#example)
-  - [result:](#result)
+  - [Example](#example)
+  - [result](#result)
 + [Events with Attachments](#events-with-attachments)
   - [Node.js](#nodejs-1)
   - [Browser](#browser-1)
@@ -40,9 +40,8 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
     * [Initizalization with a service info URL](#initizalization-with-a-service-info-url)
     * [Usage of Pryv.Service.](#usage-of-pryvservice)
 + [Pryv.Browser & Visual assets](#pryvbrowser--visual-assets)
-  - [Pryv.Browser - serviceInfo customization](#pryvbrowser---serviceinfo-customization)
-  - [Assets & Visuals](#assets--visuals)
-    * [Platform-specific resources](#platform-specific-resources)
+  - [Pryv.Browser - retrieve serviceInfo from query URL](#pryvbrowser---retrieve-serviceinfo-from-query-url)
+  - [Visual assets](#visual-assets)
 
 ### Import
 
