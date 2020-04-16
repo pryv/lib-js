@@ -165,7 +165,7 @@ class Connection {
    * @returns {Promise<Object>} Promise to result.body transformed with `eventsCount: {count}` replacing `events: [...]`
    */
   async getEventsStreamed(queryParams, forEachEvent) {
-    const myParser = jsonParser(forEachEvent);
+    const myParser = jsonParser(forEachEvent, queryParams.includeDeletions);
     let res = null;
     if (typeof window === 'undefined') { // node
       res = await this.getRaw('events', queryParams)
@@ -181,8 +181,13 @@ class Connection {
       res.body.eventsCount = 0;
       if (res.body.events) {
         res.body.events.forEach(forEachEvent);
-        res.body.eventsCount = res.body.events.length;
+        res.body.eventsCount += res.body.events.length;
         delete res.body.events;
+      }
+      if (res.body.eventDeletions) { // deletions are in a seprated Array 
+        res.body.eventDeletions.forEach(forEachEvent);
+        res.body.eventsCount += res.body.eventDeletions.length;
+        delete res.body.eventDeletions;
       }
     }
 
