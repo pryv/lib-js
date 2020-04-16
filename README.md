@@ -2,8 +2,6 @@
 
 This JavaScript library is meant to facilitate writing NodeJS and browser apps for a Pryv.io platform, it follows the [Pryv.io App Guidelines](https://api.pryv.com/guides/app-guidelines/).
 
-## Table of Contents
-
 ## Contribute
 
 *Prerequisites*: Node 12
@@ -17,6 +15,8 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 - Update on CDN: After running **setup** and **build** scripts, run `npm run gh-pages ${COMMIT_MESSAGE}`. If this fails, run `npm run clear` to rebuild a fresh `dist/` folder
 
 ## Usage
+
+### Table of Contents
 
 + [Import](#import)
   - [Browser](#browser)
@@ -411,41 +411,37 @@ See: [Pryv.Service](https://pryv.github.io/js-lib/docs/Pryv.Service.html) for mo
   const serviceName = await service.info().name
   ```
 
-- `service.infoSync()` - returns the cached content of the serviceInfo, requires `service.info()` to be called first.
+- `service.infoSync()`: returns the cached content of the serviceInfo, requires `service.info()` to be called first.
 
 - `service.apiEndpointFor(username, token)` Will return the corresponding API endpoint for the provided credentials, `token` can be omitted.
 
 ### Pryv.Browser & Visual assets
 
-#### Pryv.Browser - serviceInfo from query URL
+#### Pryv.Browser - retrieve serviceInfo from query URL
 
-A single Web App might need to be run on different Pryv.io platforms. This is the case of most Pryv.io demonstrators.
+A single Web App might need to be run on different Pryv.io platforms. This is the case of most Pryv.io demonstrators.  
 
-The **Service Information URL** can be extracted from the URL query parameter `pryvServiceInfoUrl` with `Pryv.Browser.serviceInfoFromUrl()` as per the [Pryv App Guidelines](https://api.pryv.com/guides/app-guidelines/).
+The corresponding Pryv.io platform can be specified by providing the Service Information URL as query parameter `pryvServiceInfoUrl` as per the [Pryv App Guidelines](https://api.pryv.com/guides/app-guidelines/). It can be extracted using `Pryv.Browser.serviceInfoFromUrl()` .
 
-Example of usage for web App with the url https://mydomain.com/my-web-app/index.html?pryvServiceInfoUrl=https://my.domain.com/service/info
+Example of usage for web App with the url https://api.pryv.com/app-web-access/?pryvServiceInfoUrl=https://reg.pryv.me/service/info
 
 ```javascript
-let serviceInfoUrl = 'https://reg.pryv.me/service/info';
+let defaultServiceInfoUrl = 'https://reg.pryv.me/service/info';
 // if present override serviceInfoURL from URL query param "?pryvServiceInfoUrl=.." 
-serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || serviceInfoUrl;
+serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || defaultServiceInfoUrl;
 
 (async function () {
 	var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
 })();
 ```
 
-#### Assets & Visuals 
+#### Visual assets
 
 To customize assets and visuals refer to: [pryv.me assets github](https://github.com/pryv/assets-pryv.me)
 
-To customize the Login Button refer to: [Login sources on github](https://github.com/pryv/assets-pryv.me/tree/master/lib-js/)
+To customize the Sign in Button refer to: [sign in button in pryv.me assets](https://github.com/pryv/assets-pryv.me/tree/master/lib-js/)
 
-##### Platform-specific resources 
-
-can be used in a browser with `setAllDefaults()`
-
-This will load the `css` and `favicon` properties of assets definitions.
+`(service.assets()).setAllDefaults()`: loads the `css` and `favicon` properties of assets definitions.
 
 ```javascript
 (async function () {
