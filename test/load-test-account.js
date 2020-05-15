@@ -3,7 +3,7 @@ const Pryv = require('../src');
 
 const conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);
 
-const TEST_DATA_VERSION = "v0";
+const TEST_DATA_VERSION = "v1";
 
 
 // -- check if account is already loaded 
@@ -70,7 +70,6 @@ function doLoad() {
   const now = (new Date()).getTime() / 1000;
   const steps = 60 * 60 ; // 1 hours
   for (let i = 0; i < 10000; i++) {
-    
     query.push(
       {
         "method": "events.create",
@@ -85,6 +84,25 @@ function doLoad() {
   }
 
   const res = conn.api(query).then((res, err) => {
-    console.log(res);
+    trashFirst200DeleteFirst100(res).then((res2, err2) => { 
+      console.log(res2);
+    });
   });
+}
+
+async function trashFirst200DeleteFirst100(res) {
+  const query = [];
+  for (let i = 5; i < 205; i++) {
+    const k = (i < 105) ? 2 : 1;
+    for (j = 0; j < k; j++) { // do twice for the firsts 100
+      console.log(res[i]);
+      query.push({
+        "method": "events.delete",
+        "params": {
+          "id": res[i].event.id
+        }
+      });
+    }
+  }
+  return await conn.api(query);
 }

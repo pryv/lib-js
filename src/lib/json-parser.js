@@ -1,10 +1,12 @@
-const EVENTMARKER = '"events":[';
+// there two steps 1 find events, then eventDeletions
+const EVENTMARKERS = ['"events":[', '"eventDeletions":['];
 
 /**
  * Customize superagent parser
- * Work only for 'node'
+ * Work on 'node.js' and use by browser-getEventStreamed
  */
-module.exports = function (foreachEvent) {
+module.exports = function (foreachEvent, includeDeletions) {
+  let eventOrEventDeletions = 0; // start with event
   let buffer = ''; // temp data
   let body = null; // to be returned
 
@@ -16,6 +18,7 @@ module.exports = function (foreachEvent) {
 
   // counters
   let eventsCount = 0;
+  let eventDeletionsCount = 0;
 
   const states = {
     A_BEFORE_EVENTS: 0,
@@ -42,10 +45,12 @@ module.exports = function (foreachEvent) {
 
   function searchStartEvents() {
     // search for "events": and happend any info before to the body 
-    var n = buffer.indexOf(EVENTMARKER);
+    var n = buffer.indexOf(EVENTMARKERS[eventOrEventDeletions]);
     if (n > 0) {
-      body = buffer.substring(0, n);
-      buffer = buffer.substr(n + EVENTMARKER.length);
+      if (eventOrEventDeletions === 0) { // do only once
+        body = buffer.substring(0, n);
+      }
+      buffer = buffer.substr(n + EVENTMARKERS[eventOrEventDeletions].length);
       state = states.B_IN_EVENTS;
       processEvents();
     }
@@ -63,11 +68,21 @@ module.exports = function (foreachEvent) {
       switch (buffer.charCodeAt(cursorPos)) {
         case 93:  // ]
           if (depth === 0) { // end of events
-            state = states.D_AFTER_EVENTS;
             if (cursorPos !== 0) {
               throw new Error('Found trailling ] in mid-course');
             }
-            buffer = '"eventsCount":' + eventsCount + '' + buffer.substr(1);
+            if (eventOrEventDeletions === 0 && includeDeletions) {
+              state = states.A_BEFORE_EVENTS;
+              eventOrEventDeletions = 1; // now look for eventDeletions
+              return;
+            } else { // done 
+              state = states.D_AFTER_EVENTS;
+              let eventsOrDeletionMsg = '';
+              if (eventOrEventDeletions === 1) {
+                eventsOrDeletionMsg = '"eventDeletionsCount":' + eventDeletionsCount + ','
+              }
+              buffer = eventsOrDeletionMsg + '"eventsCount":' + eventsCount + '' + buffer.substr(1);
+            }
           }
           break;
         case 92:  // \
@@ -86,7 +101,11 @@ module.exports = function (foreachEvent) {
             const ignoreComa = (buffer.charCodeAt(0) === 44) ? 1 : 0;
             const eventStr = buffer.substring(ignoreComa, cursorPos + 1);
             
-            eventsCount++;
+            if (eventOrEventDeletions === 0) {
+              eventsCount++;
+            } else {
+              eventDeletionsCount++;
+            }
             buffer = buffer.substr(cursorPos + 1 );
             addEvent(eventStr);
             cursorPos = -1;

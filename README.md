@@ -220,7 +220,7 @@ When `events.get` will provide a large result set, it is recommended to use a me
 `Pryv.Connection.getEventsStreamed()` parses the response JSON as soon as data is available and calls the `forEachEvent()` callback on each event object.
 
 The callback is meant to store the events data, as the function does not return the API call result, which could overflow memory in case of JSON deserialization of a very large data set.
-Instead, the function returns an events count as well as the [common metadata](https://api.pryv.com/reference/#common-metadata).
+Instead, the function returns an events count and eventually event deletions count as well as the [common metadata](https://api.pryv.com/reference/#common-metadata).
 
 #### Example:
 
@@ -252,6 +252,43 @@ try {
   }
 }
 ```
+
+#### Example with Includes deletion:
+
+``````  javascript
+const now = (new Date()).getTime() / 1000;
+const queryParams = { fromTime: 0, toTime: now, includeDeletions: true, modifiedSince: 0};
+const events = [];
+function forEachEvent(event) {
+  events.push(event);
+  // events with .deleted or/and .trashed properties can be tracked here
+}
+
+try {
+  const result = await connection.getEventsStreamed(queryParams, forEachEvent);
+} catch (e) {
+  // handle error
+}
+``````
+
+#### result:
+
+```javascript
+{ 
+  eventDeletionsCount: 150,
+  eventsCount: 10000,
+  meta:
+  {
+      apiVersion: '1.4.26',
+      serverTime: 1580728336.864,
+      serial: '2019061301'
+  }
+}
+```
+
+
+
+
 
 ### Events with Attachments
 

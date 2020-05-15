@@ -204,11 +204,42 @@ describe('Connection', () => {
         expect(eventsCount).to.equal(res.eventsCount);
       });
 
+
+      it('streaming includesDeletion', async () => {
+        const queryParams = { fromTime: 0, toTime: now, limit: 10000, includeDeletions: true, modifiedSince: 0};
+        let eventsCount = 0;
+        let trashedCount = 0;
+        let deletedCount = 0;
+        function forEachEvent(event) { 
+          if (event.trashed) {
+            trashedCount++;
+          } else if (event.deleted) {
+            deletedCount++;
+          } else {
+            eventsCount++;
+          }
+        }
+        const res = await conn.getEventsStreamed(queryParams, forEachEvent);
+        expect(eventsCount).to.equal(res.eventsCount);
+        expect(trashedCount + deletedCount).to.equal(res.eventDeletionsCount);
+        expect(eventsCount).to.be.gt(1);
+        expect(deletedCount).to.be.gt(1);
+        expect(trashedCount).to.be.gt(1);
+      });
+
       it('no-events ', async () => {
         const queryParams = { fromTime: 0, toTime: now, tags: ['RANDOM-123'] };
         function forEachEvent(event) { }
         const res = await conn.getEventsStreamed(queryParams, forEachEvent);
         expect(0).to.equal(res.eventsCount);
+      });
+
+      it('no-events includeDeletions', async () => {
+        const queryParams = { fromTime: 0, toTime: now, tags: ['RANDOM-123'], includeDeletions: true, modifiedSince: 0};
+        function forEachEvent(event) { }
+        const res = await conn.getEventsStreamed(queryParams, forEachEvent);
+        expect(0).to.equal(res.eventsCount);
+        expect(res.eventDeletionsCount).to.be.gte(0);
       });
     });
 
