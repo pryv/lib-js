@@ -117,7 +117,8 @@ The following code is an implementation of the [Pryv.io Authorization process](h
           'app-web-auth:description': {
             'type': 'note/txt', 'content': 'This is a consent message.'
           }
-        }
+        },
+        // referer: 'my test with lib-js', // optional string to track registration source
       }
     };
     
