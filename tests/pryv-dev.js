@@ -14152,8 +14152,10 @@ function () {
           height = 420,
           left = parseInt(screenX + (outerWidth - width) / 2, 10),
           top = parseInt(screenY + (outerHeight - height) / 2.5, 10),
-          features = 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',scrollbars=yes';
-      this.popup = window.open(this.accessData.url, 'prYv Sign-in', features);
+          features = 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',scrollbars=yes'; // Keep "url" for retro-compatibility for Pryv.io before v1.0.4 
+
+      var authUrl = this.accessData.authUrl || this.accessData.url;
+      this.popup = window.open(authUrl, 'prYv Sign-in', features);
 
       if (!this.popup) {
         // TODO try to fall back on access
@@ -14309,9 +14311,27 @@ module.exports = AuthState;
 /*! no static exports found */
 /***/ (function(module, exports) {
 
+/**
+ * @memberof Pryv.Browser
+ * @namespace Pryv.Browser.CookieUtils
+ */
+
+/**
+ * Returns true is run in a browser
+ * @memberof Pryv.Browser.CookieUtils
+ * @returns {boolean}
+ */
 function isBrowser() {
   return typeof window !== 'undefined';
 }
+/**
+  * Set a Local cookier
+  * @memberof Pryv.Browser.CookieUtils
+  * @param {string} cookieKey - The key for the cookie
+  * @param {mixed} value - The Value 
+  * @param {number} expireInDays - Expiration date in days from now
+  */
+
 
 function set(cookieKey, value, expireInDays) {
   if (!isBrowser()) return;
@@ -14327,6 +14347,11 @@ function set(cookieKey, value, expireInDays) {
 }
 
 exports.set = set;
+/**
+ * returns the value of a local cookie
+ * @memberof Pryv.Browser.CookieUtils
+ * @param cookieKey - The key
+ */
 
 exports.get = function get(cookieKey) {
   var name = encodeURIComponent(cookieKey);
@@ -14335,6 +14360,12 @@ exports.get = function get(cookieKey) {
   var parts = value.split("; " + name + "=");
   if (parts.length == 2) return JSON.parse(decodeURIComponent(parts.pop().split(";").shift()));
 };
+/**
+ * delete a local cookie
+ * @memberof Pryv.Browser.CookieUtils
+ * @param cookieKey - The key
+ */
+
 
 exports.del = function del(cookieKey) {
   set(cookieKey, {
@@ -14364,6 +14395,10 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 var Messages = __webpack_require__(/*! ./LoginButtonMessages */ "./src/Browser/LoginButtonMessages.js");
 
 var AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Browser/AuthStates.js");
+/**
+ * @memberof Pryv.Browser
+ */
+
 
 var LoginButton =
 /*#__PURE__*/
@@ -14555,8 +14590,8 @@ var AuthController = __webpack_require__(/*! ./AuthController */ "./src/Browser/
 
 var AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Browser/AuthStates.js");
 /**
- * @module Browser 
  * @memberof Pryv
+ * @namespace Pryv.Browser
  */
 
 /**
@@ -14568,6 +14603,7 @@ var AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Browser/AuthStat
  * @param {string} settings.authRequest.requestingAppId Application id, ex: 'my-app'
  * @param {Object} settings.authRequest.requestedPermissions
  * @param {string | boolean} settings.authRequest.returnURL : false, // set this if you don't want a popup
+ * @param {string} [settings.authRequest.referer] To track registration source 
  * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
  * @param {Browser.AuthStateChangeHandler} settings.onStateChange
  * @param {string} [settings.returnURL=auto#]  Set to "self#" to disable popup and force using the same page. Set a custom url when process is finished (specific use cases). Should always end by # ? or &
@@ -14644,8 +14680,7 @@ var jsonParser = __webpack_require__(/*! ./lib/json-parser */ "./src/lib/json-pa
 var browserGetEventStreamed = __webpack_require__(/*! ./lib/browser-getEventStreamed */ "./src/lib/browser-getEventStreamed.js");
 /**
  * @class Connection
- * Create an instance of Connection to Pryv API.
- * The connection will be opened on
+ * A connection is an authenticated link to a Pryv.io account.
  * 
  * @type {TokenAndEndpoint}
  *
@@ -15014,7 +15049,7 @@ function () {
           while (1) {
             switch (_context6.prev = _context6.next) {
               case 0:
-                myParser = jsonParser(forEachEvent);
+                myParser = jsonParser(forEachEvent, queryParams.includeDeletions);
                 res = null;
 
                 if (!(typeof window === 'undefined')) {
@@ -15027,7 +15062,7 @@ function () {
 
               case 5:
                 res = _context6.sent;
-                _context6.next = 20;
+                _context6.next = 21;
                 break;
 
               case 8:
@@ -15041,7 +15076,7 @@ function () {
 
               case 11:
                 res = _context6.sent;
-                _context6.next = 20;
+                _context6.next = 21;
                 break;
 
               case 14:
@@ -15056,18 +15091,25 @@ function () {
 
                 if (res.body.events) {
                   res.body.events.forEach(forEachEvent);
-                  res.body.eventsCount = res.body.events.length;
+                  res.body.eventsCount += res.body.events.length;
                   delete res.body.events;
                 }
 
-              case 20:
+                if (res.body.eventDeletions) {
+                  // deletions are in a seprated Array 
+                  res.body.eventDeletions.forEach(forEachEvent);
+                  res.body.eventsCount += res.body.eventDeletions.length;
+                  delete res.body.eventDeletions;
+                }
+
+              case 21:
                 now = Date.now() / 1000;
 
                 this._handleMeta(res.body, now);
 
                 return _context6.abrupt("return", res.body);
 
-              case 23:
+              case 24:
               case "end":
                 return _context6.stop();
             }
@@ -15223,11 +15265,10 @@ module.exports = Connection;
  * Pryv library
  * @version 1.0
  * @exports Pryv
- * @namespace Pryv
- * @property {Service} Service
- * @property {Connection} Connection
- * @property {Browser} Browser
- * @property {utils} utils
+ * @property {Pryv.Service} Service - To interact with Pryv.io at a "Platform level"
+ * @property {Pryv.Connection} Connection - To interact with an individual's (user) data set
+ * @property {Pryv.Browser} Browser - Browser Tools - Access request helpers and visuals (button)
+ * @property {Pryv.utils} utils - Exposes **superagent** for HTTP calls and tools to manipulate Pryv's Api Endpoints
  */
 module.exports = {
   Service: __webpack_require__(/*! ./Service */ "./src/Service.js"),
@@ -15261,16 +15302,35 @@ var Connection = __webpack_require__(/*! ./Connection.js */ "./src/Connection.js
 
 var Assets = __webpack_require__(/*! ./ServiceAssets.js */ "./src/ServiceAssets.js");
 /**
- * @class Service
- * Holds Pryv Service informations
+ * @class Pryv.Service
+ * A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a service, deployed with the domain name **pryv.me**.
+ * 
+ * `Pryv.Service` exposes tools to interact with Pryv.io at a "Platform" level. 
  *
- *
- * @property {TokenAndEndpoint} tokenAndApi
+ *  ##### Initizalization with a service info URL
+```javascript
+const service = new Pryv.Service('https://reg.pryv.me/service/info');
+```
+
+- With the content of a serviceInfo configuration
+
+Service information properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
+
+```javascript
+const serviceInfoUrl = 'https://reg.pryv.me/service/info';
+const serviceCustomizations = {
+  name: 'Pryv Lab 2',
+  assets: {
+    definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
+  }
+}
+const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
+``` 
+
  * @memberof Pryv
  * 
  * @constructor
- * @this {Service} 
- * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform: https://api.pryv.com/reference/#service-info
+ * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform see: {@link https://api.pryv.com/reference/#service-info}
  */
 
 
@@ -15287,6 +15347,10 @@ function () {
   }
   /**
    * Return service info parameters info known of fetch it if needed.
+   * Example   
+   *  - name of a platform   
+   *    `const serviceName = await service.info().name` 
+   * @see PryvServiceInfo For details on available properties.
    * @param {boolean?} forceFetch If true, will force fetching service info.
    * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
    */
@@ -15475,7 +15539,8 @@ function () {
       return apiEndpointFor;
     }()
     /**
-     * Return an API Endpoint from a username and token and a PryvServiceInfo
+     * Return an API Endpoint from a username and token and a PryvServiceInfo. 
+     * This is method is rarely used. See **apiEndPointFor** as an alternative.
      * @param {PryvServiceInfo} serviceInfo
      * @param {string} username
      * @param {string} [token]
@@ -15486,8 +15551,8 @@ function () {
     key: "login",
 
     /**
-     * Issue a "login call on the Service" return a Connection on success
-     * ! Warning the token of the connection will be a "Personal" token that expires
+     * Issue a "login call on the Service" return a Connection on success  
+     * **! Warning**: the token of the connection will be a "Personal" token that expires
      * @see https://api.pryv.com/reference-full/#login-user
      * @param {string} username 
      * @param {string} password 
@@ -15631,21 +15696,22 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 
 var utils = __webpack_require__(/*! ./utils.js */ "./src/utils.js");
 /**
- * @class ServiceAssets
- * Holds Pryv Service informations
+ * Holds Pryv Service informations.
+ * 
+ * It's returned by `service.assets()`
  *
- * @property { TokenAndEndpoint } tokenAndApi
  * @memberof Pryv
- *
- * @constructor
- * @this { ServiceAssets }
- * @param { string } pryvServiceAssetsSourceUrl Url point to assets of the service of a Pryv platform: https://api.pryv.com/reference/#service-info property `assets.src`
  **/
 
 
 var ServiceAssets =
 /*#__PURE__*/
 function () {
+  /**
+   * Private => use ServiceAssets.setup()
+   * @param { object} assets The content of service/info.assets properties.
+   * @param { string } pryvServiceAssetsSourceUrl Url point to assets of the service of a Pryv platform: https://api.pryv.com/reference/#service-info property `assets.src`
+   */
   function ServiceAssets(assets, assetsURL) {
     _classCallCheck(this, ServiceAssets);
 
@@ -15660,11 +15726,49 @@ function () {
 
 
   _createClass(ServiceAssets, [{
-    key: "relativeURL",
+    key: "get",
 
+    /**
+     * get a value from path separated by `:`
+     * exemple of key `lib-js:buttonSignIn`
+     * @param {string} [keyPath] if null, will return the all assets  
+     */
+    value: function get(keyPath) {
+      var result = Object.assign({}, this._assets);
+
+      if (keyPath) {
+        keyPath.split(':').forEach(function (key) {
+          result = result[key];
+          if (typeof result === 'undefined') return result;
+        });
+      }
+
+      return result;
+    }
+    /**
+     * get an Url from path separated by `:`
+     * identical to doing assets.relativeURL(assets.get(keyPath))
+     * exemple of key `lib-js:buttonSignIn`
+     * @param {string} [keyPath] if null, will return the all assets  
+     */
+
+  }, {
+    key: "getUrl",
+    value: function getUrl(keyPath) {
+      var url = this.get(keyPath);
+
+      if (typeof url !== 'string') {
+        throw new Error(url + ' returned ' + value);
+      }
+
+      return this.relativeURL(url);
+    }
     /**
      * get relativeUrl
      */
+
+  }, {
+    key: "relativeURL",
     value: function relativeURL(url) {
       return relPathToAbs(this._assets.baseUrl || this._assetsURL, url);
     } //----------------   Default service ressources
@@ -15955,6 +16059,7 @@ function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try
 function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 
 /**
+ * @private
  * Replacement for getEventStreamed for Browser
  * To be used as long as superagent does not propose it.
  * 
@@ -16132,13 +16237,16 @@ module.exports = getEventStreamed;
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-var EVENTMARKER = '"events":[';
+// there two steps 1 find events, then eventDeletions
+var EVENTMARKERS = ['"events":[', '"eventDeletions":['];
 /**
  * Customize superagent parser
- * Work only for 'node'
+ * Work on 'node.js' and use by browser-getEventStreamed
  */
 
-module.exports = function (foreachEvent) {
+module.exports = function (foreachEvent, includeDeletions) {
+  var eventOrEventDeletions = 0; // start with event
+
   var buffer = ''; // temp data
 
   var body = null; // to be returned
@@ -16154,6 +16262,7 @@ module.exports = function (foreachEvent) {
   // counters
 
   var eventsCount = 0;
+  var eventDeletionsCount = 0;
   var states = {
     A_BEFORE_EVENTS: 0,
     B_IN_EVENTS: 1,
@@ -16179,11 +16288,15 @@ module.exports = function (foreachEvent) {
 
   function searchStartEvents() {
     // search for "events": and happend any info before to the body 
-    var n = buffer.indexOf(EVENTMARKER);
+    var n = buffer.indexOf(EVENTMARKERS[eventOrEventDeletions]);
 
     if (n > 0) {
-      body = buffer.substring(0, n);
-      buffer = buffer.substr(n + EVENTMARKER.length);
+      if (eventOrEventDeletions === 0) {
+        // do only once
+        body = buffer.substring(0, n);
+      }
+
+      buffer = buffer.substr(n + EVENTMARKERS[eventOrEventDeletions].length);
       state = states.B_IN_EVENTS;
       processEvents();
     }
@@ -16204,13 +16317,26 @@ module.exports = function (foreachEvent) {
           // ]
           if (depth === 0) {
             // end of events
-            state = states.D_AFTER_EVENTS;
-
             if (cursorPos !== 0) {
               throw new Error('Found trailling ] in mid-course');
             }
 
-            buffer = '"eventsCount":' + eventsCount + '' + buffer.substr(1);
+            if (eventOrEventDeletions === 0 && includeDeletions) {
+              state = states.A_BEFORE_EVENTS;
+              eventOrEventDeletions = 1; // now look for eventDeletions
+
+              return;
+            } else {
+              // done 
+              state = states.D_AFTER_EVENTS;
+              var eventsOrDeletionMsg = '';
+
+              if (eventOrEventDeletions === 1) {
+                eventsOrDeletionMsg = '"eventDeletionsCount":' + eventDeletionsCount + ',';
+              }
+
+              buffer = eventsOrDeletionMsg + '"eventsCount":' + eventsCount + '' + buffer.substr(1);
+            }
           }
 
           break;
@@ -16238,7 +16364,13 @@ module.exports = function (foreachEvent) {
             // ignore possible coma ',' if first char
             var ignoreComa = buffer.charCodeAt(0) === 44 ? 1 : 0;
             var eventStr = buffer.substring(ignoreComa, cursorPos + 1);
-            eventsCount++;
+
+            if (eventOrEventDeletions === 0) {
+              eventsCount++;
+            } else {
+              eventDeletionsCount++;
+            }
+
             buffer = buffer.substr(cursorPos + 1);
             addEvent(eventStr);
             cursorPos = -1;
@@ -16301,9 +16433,10 @@ module.exports = function (foreachEvent) {
 var regexAPIandToken = /(.+):\/\/(.+)@(.+)/gm;
 var regexSchemaAndPath = /(.+):\/\/(.+)/gm;
 /**
- * Utilities to access Pryv API
- * @namespace utils
+ * Utilities to access Pryv API.
+ * Exposes superagent and methods to manipulate Pryv's api endpoints 
  * @memberof Pryv
+ * @namespace Pryv.utils
  */
 
 var utils = {

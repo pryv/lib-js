@@ -12539,8 +12539,10 @@ function () {
           height = 420,
           left = parseInt(screenX + (outerWidth - width) / 2, 10),
           top = parseInt(screenY + (outerHeight - height) / 2.5, 10),
-          features = 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',scrollbars=yes';
-      this.popup = window.open(this.accessData.url, 'prYv Sign-in', features);
+          features = 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',scrollbars=yes'; // Keep "url" for retro-compatibility for Pryv.io before v1.0.4 
+
+      var authUrl = this.accessData.authUrl || this.accessData.url;
+      this.popup = window.open(authUrl, 'prYv Sign-in', features);
 
       if (!this.popup) {
         // TODO try to fall back on access
@@ -12696,9 +12698,27 @@ module.exports = AuthState;
 /*! no static exports found */
 /***/ (function(module, exports) {
 
+/**
+ * @memberof Pryv.Browser
+ * @namespace Pryv.Browser.CookieUtils
+ */
+
+/**
+ * Returns true is run in a browser
+ * @memberof Pryv.Browser.CookieUtils
+ * @returns {boolean}
+ */
 function isBrowser() {
   return typeof window !== 'undefined';
 }
+/**
+  * Set a Local cookier
+  * @memberof Pryv.Browser.CookieUtils
+  * @param {string} cookieKey - The key for the cookie
+  * @param {mixed} value - The Value 
+  * @param {number} expireInDays - Expiration date in days from now
+  */
+
 
 function set(cookieKey, value, expireInDays) {
   if (!isBrowser()) return;
@@ -12714,6 +12734,11 @@ function set(cookieKey, value, expireInDays) {
 }
 
 exports.set = set;
+/**
+ * returns the value of a local cookie
+ * @memberof Pryv.Browser.CookieUtils
+ * @param cookieKey - The key
+ */
 
 exports.get = function get(cookieKey) {
   var name = encodeURIComponent(cookieKey);
@@ -12722,6 +12747,12 @@ exports.get = function get(cookieKey) {
   var parts = value.split("; " + name + "=");
   if (parts.length == 2) return JSON.parse(decodeURIComponent(parts.pop().split(";").shift()));
 };
+/**
+ * delete a local cookie
+ * @memberof Pryv.Browser.CookieUtils
+ * @param cookieKey - The key
+ */
+
 
 exports.del = function del(cookieKey) {
   set(cookieKey, {
@@ -12751,6 +12782,10 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 var Messages = __webpack_require__(/*! ./LoginButtonMessages */ "./src/Browser/LoginButtonMessages.js");
 
 var AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Browser/AuthStates.js");
+/**
+ * @memberof Pryv.Browser
+ */
+
 
 var LoginButton =
 /*#__PURE__*/
@@ -12951,8 +12986,7 @@ var jsonParser = __webpack_require__(/*! ./lib/json-parser */ "./src/lib/json-pa
 var browserGetEventStreamed = __webpack_require__(/*! ./lib/browser-getEventStreamed */ "./src/lib/browser-getEventStreamed.js");
 /**
  * @class Connection
- * Create an instance of Connection to Pryv API.
- * The connection will be opened on
+ * A connection is an authenticated link to a Pryv.io account.
  * 
  * @type {TokenAndEndpoint}
  *
@@ -13321,7 +13355,7 @@ function () {
           while (1) {
             switch (_context6.prev = _context6.next) {
               case 0:
-                myParser = jsonParser(forEachEvent);
+                myParser = jsonParser(forEachEvent, queryParams.includeDeletions);
                 res = null;
 
                 if (!(typeof window === 'undefined')) {
@@ -13334,7 +13368,7 @@ function () {
 
               case 5:
                 res = _context6.sent;
-                _context6.next = 20;
+                _context6.next = 21;
                 break;
 
               case 8:
@@ -13348,7 +13382,7 @@ function () {
 
               case 11:
                 res = _context6.sent;
-                _context6.next = 20;
+                _context6.next = 21;
                 break;
 
               case 14:
@@ -13363,18 +13397,25 @@ function () {
 
                 if (res.body.events) {
                   res.body.events.forEach(forEachEvent);
-                  res.body.eventsCount = res.body.events.length;
+                  res.body.eventsCount += res.body.events.length;
                   delete res.body.events;
                 }
 
-              case 20:
+                if (res.body.eventDeletions) {
+                  // deletions are in a seprated Array 
+                  res.body.eventDeletions.forEach(forEachEvent);
+                  res.body.eventsCount += res.body.eventDeletions.length;
+                  delete res.body.eventDeletions;
+                }
+
+              case 21:
                 now = Date.now() / 1000;
 
                 this._handleMeta(res.body, now);
 
                 return _context6.abrupt("return", res.body);
 
-              case 23:
+              case 24:
               case "end":
                 return _context6.stop();
             }
@@ -13542,16 +13583,35 @@ var Connection = __webpack_require__(/*! ./Connection.js */ "./src/Connection.js
 
 var Assets = __webpack_require__(/*! ./ServiceAssets.js */ "./src/ServiceAssets.js");
 /**
- * @class Service
- * Holds Pryv Service informations
+ * @class Pryv.Service
+ * A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a service, deployed with the domain name **pryv.me**.
+ * 
+ * `Pryv.Service` exposes tools to interact with Pryv.io at a "Platform" level. 
  *
- *
- * @property {TokenAndEndpoint} tokenAndApi
+ *  ##### Initizalization with a service info URL
+```javascript
+const service = new Pryv.Service('https://reg.pryv.me/service/info');
+```
+
+- With the content of a serviceInfo configuration
+
+Service information properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
+
+```javascript
+const serviceInfoUrl = 'https://reg.pryv.me/service/info';
+const serviceCustomizations = {
+  name: 'Pryv Lab 2',
+  assets: {
+    definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
+  }
+}
+const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
+``` 
+
  * @memberof Pryv
  * 
  * @constructor
- * @this {Service} 
- * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform: https://api.pryv.com/reference/#service-info
+ * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform see: {@link https://api.pryv.com/reference/#service-info}
  */
 
 
@@ -13568,6 +13628,10 @@ function () {
   }
   /**
    * Return service info parameters info known of fetch it if needed.
+   * Example   
+   *  - name of a platform   
+   *    `const serviceName = await service.info().name` 
+   * @see PryvServiceInfo For details on available properties.
    * @param {boolean?} forceFetch If true, will force fetching service info.
    * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
    */
@@ -13756,7 +13820,8 @@ function () {
       return apiEndpointFor;
     }()
     /**
-     * Return an API Endpoint from a username and token and a PryvServiceInfo
+     * Return an API Endpoint from a username and token and a PryvServiceInfo. 
+     * This is method is rarely used. See **apiEndPointFor** as an alternative.
      * @param {PryvServiceInfo} serviceInfo
      * @param {string} username
      * @param {string} [token]
@@ -13767,8 +13832,8 @@ function () {
     key: "login",
 
     /**
-     * Issue a "login call on the Service" return a Connection on success
-     * ! Warning the token of the connection will be a "Personal" token that expires
+     * Issue a "login call on the Service" return a Connection on success  
+     * **! Warning**: the token of the connection will be a "Personal" token that expires
      * @see https://api.pryv.com/reference-full/#login-user
      * @param {string} username 
      * @param {string} password 
@@ -13912,21 +13977,22 @@ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _d
 
 var utils = __webpack_require__(/*! ./utils.js */ "./src/utils.js");
 /**
- * @class ServiceAssets
- * Holds Pryv Service informations
+ * Holds Pryv Service informations.
+ * 
+ * It's returned by `service.assets()`
  *
- * @property { TokenAndEndpoint } tokenAndApi
  * @memberof Pryv
- *
- * @constructor
- * @this { ServiceAssets }
- * @param { string } pryvServiceAssetsSourceUrl Url point to assets of the service of a Pryv platform: https://api.pryv.com/reference/#service-info property `assets.src`
  **/
 
 
 var ServiceAssets =
 /*#__PURE__*/
 function () {
+  /**
+   * Private => use ServiceAssets.setup()
+   * @param { object} assets The content of service/info.assets properties.
+   * @param { string } pryvServiceAssetsSourceUrl Url point to assets of the service of a Pryv platform: https://api.pryv.com/reference/#service-info property `assets.src`
+   */
   function ServiceAssets(assets, assetsURL) {
     _classCallCheck(this, ServiceAssets);
 
@@ -13941,11 +14007,49 @@ function () {
 
 
   _createClass(ServiceAssets, [{
-    key: "relativeURL",
+    key: "get",
 
+    /**
+     * get a value from path separated by `:`
+     * exemple of key `lib-js:buttonSignIn`
+     * @param {string} [keyPath] if null, will return the all assets  
+     */
+    value: function get(keyPath) {
+      var result = Object.assign({}, this._assets);
+
+      if (keyPath) {
+        keyPath.split(':').forEach(function (key) {
+          result = result[key];
+          if (typeof result === 'undefined') return result;
+        });
+      }
+
+      return result;
+    }
+    /**
+     * get an Url from path separated by `:`
+     * identical to doing assets.relativeURL(assets.get(keyPath))
+     * exemple of key `lib-js:buttonSignIn`
+     * @param {string} [keyPath] if null, will return the all assets  
+     */
+
+  }, {
+    key: "getUrl",
+    value: function getUrl(keyPath) {
+      var url = this.get(keyPath);
+
+      if (typeof url !== 'string') {
+        throw new Error(url + ' returned ' + value);
+      }
+
+      return this.relativeURL(url);
+    }
     /**
      * get relativeUrl
      */
+
+  }, {
+    key: "relativeURL",
     value: function relativeURL(url) {
       return relPathToAbs(this._assets.baseUrl || this._assetsURL, url);
     } //----------------   Default service ressources
@@ -14223,6 +14327,7 @@ function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try
 function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 
 /**
+ * @private
  * Replacement for getEventStreamed for Browser
  * To be used as long as superagent does not propose it.
  * 
@@ -14400,13 +14505,16 @@ module.exports = getEventStreamed;
 /*! no static exports found */
 /***/ (function(module, exports) {
 
-var EVENTMARKER = '"events":[';
+// there two steps 1 find events, then eventDeletions
+var EVENTMARKERS = ['"events":[', '"eventDeletions":['];
 /**
  * Customize superagent parser
- * Work only for 'node'
+ * Work on 'node.js' and use by browser-getEventStreamed
  */
 
-module.exports = function (foreachEvent) {
+module.exports = function (foreachEvent, includeDeletions) {
+  var eventOrEventDeletions = 0; // start with event
+
   var buffer = ''; // temp data
 
   var body = null; // to be returned
@@ -14422,6 +14530,7 @@ module.exports = function (foreachEvent) {
   // counters
 
   var eventsCount = 0;
+  var eventDeletionsCount = 0;
   var states = {
     A_BEFORE_EVENTS: 0,
     B_IN_EVENTS: 1,
@@ -14447,11 +14556,15 @@ module.exports = function (foreachEvent) {
 
   function searchStartEvents() {
     // search for "events": and happend any info before to the body 
-    var n = buffer.indexOf(EVENTMARKER);
+    var n = buffer.indexOf(EVENTMARKERS[eventOrEventDeletions]);
 
     if (n > 0) {
-      body = buffer.substring(0, n);
-      buffer = buffer.substr(n + EVENTMARKER.length);
+      if (eventOrEventDeletions === 0) {
+        // do only once
+        body = buffer.substring(0, n);
+      }
+
+      buffer = buffer.substr(n + EVENTMARKERS[eventOrEventDeletions].length);
       state = states.B_IN_EVENTS;
       processEvents();
     }
@@ -14472,13 +14585,26 @@ module.exports = function (foreachEvent) {
           // ]
           if (depth === 0) {
             // end of events
-            state = states.D_AFTER_EVENTS;
-
             if (cursorPos !== 0) {
               throw new Error('Found trailling ] in mid-course');
             }
 
-            buffer = '"eventsCount":' + eventsCount + '' + buffer.substr(1);
+            if (eventOrEventDeletions === 0 && includeDeletions) {
+              state = states.A_BEFORE_EVENTS;
+              eventOrEventDeletions = 1; // now look for eventDeletions
+
+              return;
+            } else {
+              // done 
+              state = states.D_AFTER_EVENTS;
+              var eventsOrDeletionMsg = '';
+
+              if (eventOrEventDeletions === 1) {
+                eventsOrDeletionMsg = '"eventDeletionsCount":' + eventDeletionsCount + ',';
+              }
+
+              buffer = eventsOrDeletionMsg + '"eventsCount":' + eventsCount + '' + buffer.substr(1);
+            }
           }
 
           break;
@@ -14506,7 +14632,13 @@ module.exports = function (foreachEvent) {
             // ignore possible coma ',' if first char
             var ignoreComa = buffer.charCodeAt(0) === 44 ? 1 : 0;
             var eventStr = buffer.substring(ignoreComa, cursorPos + 1);
-            eventsCount++;
+
+            if (eventOrEventDeletions === 0) {
+              eventsCount++;
+            } else {
+              eventDeletionsCount++;
+            }
+
             buffer = buffer.substr(cursorPos + 1);
             addEvent(eventStr);
             cursorPos = -1;
@@ -14569,9 +14701,10 @@ module.exports = function (foreachEvent) {
 var regexAPIandToken = /(.+):\/\/(.+)@(.+)/gm;
 var regexSchemaAndPath = /(.+):\/\/(.+)/gm;
 /**
- * Utilities to access Pryv API
- * @namespace utils
+ * Utilities to access Pryv API.
+ * Exposes superagent and methods to manipulate Pryv's api endpoints 
  * @memberof Pryv
+ * @namespace Pryv.utils
  */
 
 var utils = {
@@ -15461,36 +15594,118 @@ describe('Connection', function () {
           }
         }, _callee12);
       })));
-      it('no-events ',
+      it('streaming includesDeletion',
       /*#__PURE__*/
       _asyncToGenerator(
       /*#__PURE__*/
       regeneratorRuntime.mark(function _callee13() {
-        var queryParams, forEachEvent, res;
+        var queryParams, eventsCount, trashedCount, deletedCount, forEachEvent, res;
         return regeneratorRuntime.wrap(function _callee13$(_context13) {
           while (1) {
             switch (_context13.prev = _context13.next) {
               case 0:
-                forEachEvent = function _ref17(event) {};
+                forEachEvent = function _ref17(event) {
+                  if (event.trashed) {
+                    trashedCount++;
+                  } else if (event.deleted) {
+                    deletedCount++;
+                  } else {
+                    eventsCount++;
+                  }
+                };
+
+                queryParams = {
+                  fromTime: 0,
+                  toTime: now,
+                  limit: 10000,
+                  includeDeletions: true,
+                  modifiedSince: 0
+                };
+                eventsCount = 0;
+                trashedCount = 0;
+                deletedCount = 0;
+                _context13.next = 7;
+                return conn.getEventsStreamed(queryParams, forEachEvent);
+
+              case 7:
+                res = _context13.sent;
+                expect(eventsCount).to.equal(res.eventsCount);
+                expect(trashedCount + deletedCount).to.equal(res.eventDeletionsCount);
+                expect(eventsCount).to.be.gt(1);
+                expect(deletedCount).to.be.gt(1);
+                expect(trashedCount).to.be.gt(1);
+
+              case 13:
+              case "end":
+                return _context13.stop();
+            }
+          }
+        }, _callee13);
+      })));
+      it('no-events ',
+      /*#__PURE__*/
+      _asyncToGenerator(
+      /*#__PURE__*/
+      regeneratorRuntime.mark(function _callee14() {
+        var queryParams, forEachEvent, res;
+        return regeneratorRuntime.wrap(function _callee14$(_context14) {
+          while (1) {
+            switch (_context14.prev = _context14.next) {
+              case 0:
+                forEachEvent = function _ref19(event) {};
 
                 queryParams = {
                   fromTime: 0,
                   toTime: now,
                   tags: ['RANDOM-123']
                 };
-                _context13.next = 4;
+                _context14.next = 4;
                 return conn.getEventsStreamed(queryParams, forEachEvent);
 
               case 4:
-                res = _context13.sent;
+                res = _context14.sent;
                 expect(0).to.equal(res.eventsCount);
 
               case 6:
               case "end":
-                return _context13.stop();
+                return _context14.stop();
             }
           }
-        }, _callee13);
+        }, _callee14);
+      })));
+      it('no-events includeDeletions',
+      /*#__PURE__*/
+      _asyncToGenerator(
+      /*#__PURE__*/
+      regeneratorRuntime.mark(function _callee15() {
+        var queryParams, forEachEvent, res;
+        return regeneratorRuntime.wrap(function _callee15$(_context15) {
+          while (1) {
+            switch (_context15.prev = _context15.next) {
+              case 0:
+                forEachEvent = function _ref21(event) {};
+
+                queryParams = {
+                  fromTime: 0,
+                  toTime: now,
+                  tags: ['RANDOM-123'],
+                  includeDeletions: true,
+                  modifiedSince: 0
+                };
+                _context15.next = 4;
+                return conn.getEventsStreamed(queryParams, forEachEvent);
+
+              case 4:
+                res = _context15.sent;
+                expect(0).to.equal(res.eventsCount);
+                expect(res.eventDeletionsCount).to.be.gte(0);
+
+              case 7:
+              case "end":
+                return _context15.stop();
+            }
+          }
+        }, _callee15);
       })));
     });
 
@@ -15523,13 +15738,13 @@ describe('Connection', function () {
         /*#__PURE__*/
         _asyncToGenerator(
         /*#__PURE__*/
-        regeneratorRuntime.mark(function _callee14() {
+        regeneratorRuntime.mark(function _callee16() {
           var queryParams, eventsCount, forEachEvent, res;
-          return regeneratorRuntime.wrap(function _callee14$(_context14) {
+          return regeneratorRuntime.wrap(function _callee16$(_context16) {
             while (1) {
-              switch (_context14.prev = _context14.next) {
+              switch (_context16.prev = _context16.next) {
                 case 0:
-                  forEachEvent = function _ref19(event) {
+                  forEachEvent = function _ref23(event) {
                     eventsCount++;
                   };
 
@@ -15540,31 +15755,31 @@ describe('Connection', function () {
                     limit: 10000
                   };
                   eventsCount = 0;
-                  _context14.next = 6;
+                  _context16.next = 6;
                   return conn.getEventsStreamed(queryParams, forEachEvent);
 
                 case 6:
-                  res = _context14.sent;
+                  res = _context16.sent;
                   expect(eventsCount).to.equal(res.eventsCount);
 
                 case 8:
                 case "end":
-                  return _context14.stop();
+                  return _context16.stop();
               }
             }
-          }, _callee14);
+          }, _callee16);
         })));
         xit(' with fetch',
         /*#__PURE__*/
         _asyncToGenerator(
         /*#__PURE__*/
-        regeneratorRuntime.mark(function _callee15() {
+        regeneratorRuntime.mark(function _callee17() {
           var queryParams, eventsCount, forEachEvent, res;
-          return regeneratorRuntime.wrap(function _callee15$(_context15) {
+          return regeneratorRuntime.wrap(function _callee17$(_context17) {
             while (1) {
-              switch (_context15.prev = _context15.next) {
+              switch (_context17.prev = _context17.next) {
                 case 0:
-                  forEachEvent = function _ref21(event) {
+                  forEachEvent = function _ref25(event) {
                     eventsCount++;
                   };
 
@@ -15574,19 +15789,19 @@ describe('Connection', function () {
                     limit: 10000
                   };
                   eventsCount = 0;
-                  _context15.next = 5;
+                  _context17.next = 5;
                   return conn.getEventsStreamed(queryParams, forEachEvent);
 
                 case 5:
-                  res = _context15.sent;
+                  res = _context17.sent;
                   expect(eventsCount).to.equal(res.eventsCount);
 
                 case 7:
                 case "end":
-                  return _context15.stop();
+                  return _context17.stop();
               }
             }
-          }, _callee15);
+          }, _callee17);
         })));
       });
     }
@@ -15996,6 +16211,96 @@ describe('ServiceAssets', function () {
         }
       }
     }, _callee5);
+  })));
+  it('.get() returns all assets',
+  /*#__PURE__*/
+  _asyncToGenerator(
+  /*#__PURE__*/
+  regeneratorRuntime.mark(function _callee6() {
+    var pryvService, assets, allAssets;
+    return regeneratorRuntime.wrap(function _callee6$(_context6) {
+      while (1) {
+        switch (_context6.prev = _context6.next) {
+          case 0:
+            pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+            _context6.next = 3;
+            return pryvService.assets();
+
+          case 3:
+            assets = _context6.sent;
+            _context6.next = 6;
+            return assets.get();
+
+          case 6:
+            allAssets = _context6.sent;
+            expect(allAssets.favicon["default"].url).to.eql('favicon.ico');
+
+          case 8:
+          case "end":
+            return _context6.stop();
+        }
+      }
+    }, _callee6);
+  })));
+  it('.get(keyPath) ',
+  /*#__PURE__*/
+  _asyncToGenerator(
+  /*#__PURE__*/
+  regeneratorRuntime.mark(function _callee7() {
+    var pryvService, assets, faviconUrl;
+    return regeneratorRuntime.wrap(function _callee7$(_context7) {
+      while (1) {
+        switch (_context7.prev = _context7.next) {
+          case 0:
+            pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+            _context7.next = 3;
+            return pryvService.assets();
+
+          case 3:
+            assets = _context7.sent;
+            _context7.next = 6;
+            return assets.get('favicon:default:url');
+
+          case 6:
+            faviconUrl = _context7.sent;
+            expect(faviconUrl).to.eql('favicon.ico');
+
+          case 8:
+          case "end":
+            return _context7.stop();
+        }
+      }
+    }, _callee7);
+  })));
+  it('.getUrl(keyPath) ',
+  /*#__PURE__*/
+  _asyncToGenerator(
+  /*#__PURE__*/
+  regeneratorRuntime.mark(function _callee8() {
+    var pryvService, assets, faviconUrl;
+    return regeneratorRuntime.wrap(function _callee8$(_context8) {
+      while (1) {
+        switch (_context8.prev = _context8.next) {
+          case 0:
+            pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+            _context8.next = 3;
+            return pryvService.assets();
+
+          case 3:
+            assets = _context8.sent;
+            _context8.next = 6;
+            return assets.getUrl('favicon:default:url');
+
+          case 6:
+            faviconUrl = _context8.sent;
+            expect(faviconUrl).to.eql('https://pryv.github.io:/assets-pryv.me/favicon.ico');
+
+          case 8:
+          case "end":
+            return _context8.stop();
+        }
+      }
+    }, _callee8);
   })));
 });
 /* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(/*! ./../node_modules/webpack/buildin/global.js */ "./node_modules/webpack/buildin/global.js")))
