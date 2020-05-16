@@ -12696,21 +12696,14 @@ module.exports = AuthState;
   !*** ./src/Browser/CookieUtils.js ***!
   \************************************/
 /*! no static exports found */
-/***/ (function(module, exports) {
+/***/ (function(module, exports, __webpack_require__) {
 
+var utils = __webpack_require__(/*! ../utils */ "./src/utils.js");
 /**
  * @memberof Pryv.Browser
  * @namespace Pryv.Browser.CookieUtils
  */
 
-/**
- * Returns true is run in a browser
- * @memberof Pryv.Browser.CookieUtils
- * @returns {boolean}
- */
-function isBrowser() {
-  return typeof window !== 'undefined';
-}
 /**
   * Set a Local cookier
   * @memberof Pryv.Browser.CookieUtils
@@ -12721,7 +12714,7 @@ function isBrowser() {
 
 
 function set(cookieKey, value, expireInDays) {
-  if (!isBrowser()) return;
+  if (!utils.isBrowser()) return;
   expireInDays = expireInDays || 365;
   var myDate = new Date();
   var hostName = window.location.hostname;
@@ -12742,7 +12735,7 @@ exports.set = set;
 
 exports.get = function get(cookieKey) {
   var name = encodeURIComponent(cookieKey);
-  if (!isBrowser()) return;
+  if (!utils.isBrowser()) return;
   var value = "; " + document.cookie;
   var parts = value.split("; " + name + "=");
   if (parts.length == 2) return JSON.parse(decodeURIComponent(parts.pop().split(";").shift()));
@@ -13845,79 +13838,87 @@ function () {
       var _login = _asyncToGenerator(
       /*#__PURE__*/
       regeneratorRuntime.mark(function _callee4(username, password, appId, originHeader) {
-        var apiEndPoint, res;
+        var apiEndPoint, headers, res;
         return regeneratorRuntime.wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
+                _context4.next = 2;
+                return this.apiEndpointFor(username);
+
+              case 2:
+                apiEndPoint = _context4.sent;
+                _context4.prev = 3;
+                headers = {
+                  accept: 'json'
+                };
                 _context4.t0 = originHeader;
 
                 if (_context4.t0) {
-                  _context4.next = 5;
+                  _context4.next = 10;
                   break;
                 }
 
-                _context4.next = 4;
+                _context4.next = 9;
                 return this.info();
 
-              case 4:
+              case 9:
                 _context4.t0 = _context4.sent.register;
 
-              case 5:
+              case 10:
                 originHeader = _context4.t0;
-                _context4.next = 8;
-                return this.apiEndpointFor(username);
 
-              case 8:
-                apiEndPoint = _context4.sent;
-                _context4.prev = 9;
-                _context4.next = 12;
-                return utils.superagent.post(apiEndPoint + 'auth/login').set('Origin', originHeader).set('accept', 'json').send({
+                if (!utils.isBrowser()) {
+                  headers.Origin = originHeader;
+                }
+
+                _context4.next = 14;
+                return utils.superagent.post(apiEndPoint + 'auth/login').set(headers).send({
                   username: username,
                   password: password,
                   appId: appId
                 });
 
-              case 12:
+              case 14:
                 res = _context4.sent;
 
                 if (res.body.token) {
-                  _context4.next = 15;
+                  _context4.next = 17;
                   break;
                 }
 
                 throw new Error('Invalid login response: ' + res.body);
 
-              case 15:
+              case 17:
                 _context4.t1 = Connection;
                 _context4.t2 = Service;
-                _context4.next = 19;
+                _context4.next = 21;
                 return this.info();
 
-              case 19:
+              case 21:
                 _context4.t3 = _context4.sent;
                 _context4.t4 = username;
                 _context4.t5 = res.body.token;
                 _context4.t6 = _context4.t2.buildAPIEndpoint.call(_context4.t2, _context4.t3, _context4.t4, _context4.t5);
                 return _context4.abrupt("return", new _context4.t1(_context4.t6));
 
-              case 26:
-                _context4.prev = 26;
-                _context4.t7 = _context4["catch"](9);
+              case 28:
+                _context4.prev = 28;
+                _context4.t7 = _context4["catch"](3);
 
                 if (!(_context4.t7.response && _context4.t7.response.body && _context4.t7.response.body.error && _context4.t7.response.body.error.message)) {
-                  _context4.next = 30;
+                  _context4.next = 32;
                   break;
                 }
 
                 throw new Error(_context4.t7.response.body.error.message);
 
-              case 30:
+              case 32:
               case "end":
                 return _context4.stop();
             }
           }
-        }, _callee4, this, [[9, 26]]);
+        }, _callee4, this, [[3, 28]]);
       }));
 
       function login(_x5, _x6, _x7, _x8) {
@@ -14714,6 +14715,15 @@ var utils = {
    * @property {Superagent} superagent 
    */
   superagent: __webpack_require__(/*! superagent */ "./node_modules/superagent/lib/client.js"),
+
+  /**
+   * Returns true is run in a browser
+   * @memberof Pryv.utils
+   * @returns {boolean}
+   */
+  isBrowser: function isBrowser() {
+    return typeof window !== 'undefined';
+  },
 
   /**
    * From a PryvApiEndpoint URL, return an object (TokenAndAPI) with two properties
