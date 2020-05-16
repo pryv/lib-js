@@ -1,19 +1,9 @@
 
+const utils = require('../utils');
 /**
  * @memberof Pryv.Browser
  * @namespace Pryv.Browser.CookieUtils
  */
-
-
- /**
-  * Returns true is run in a browser
-  * @memberof Pryv.Browser.CookieUtils
-  * @returns {boolean}
-  */
-function isBrowser() {
-  return typeof window !== 'undefined';
-}
-
 
 /**
   * Set a Local cookier
@@ -23,7 +13,7 @@ function isBrowser() {
   * @param {number} expireInDays - Expiration date in days from now
   */
 function set(cookieKey, value, expireInDays) {
-  if (! isBrowser()) return;
+  if (! utils.isBrowser()) return;
   expireInDays = expireInDays || 365;
   var myDate = new Date();
   var hostName = window.location.hostname;
@@ -45,7 +35,7 @@ exports.set = set;
  */
 exports.get = function get(cookieKey) {
   const name = encodeURIComponent(cookieKey);
-  if (!isBrowser()) return;
+  if (! utils.isBrowser()) return;
   var value = "; " + document.cookie;
   var parts = value.split("; " + name + "=");
   if (parts.length == 2) return JSON.parse(decodeURIComponent(parts.pop().split(";").shift()));

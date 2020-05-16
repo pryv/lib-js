@@ -18,6 +18,16 @@ const utils = {
   superagent: require('superagent'),
 
   /**
+   * Returns true is run in a browser
+   * @memberof Pryv.utils
+   * @returns {boolean}
+   */
+  isBrowser: function() {
+      return typeof window !== 'undefined';
+  },
+
+
+  /**
    * From a PryvApiEndpoint URL, return an object (TokenAndAPI) with two properties
    * @memberof Pryv.utils
    * @param {PryvApiEndpoint} pryvApiEndpoint

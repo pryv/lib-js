@@ -145,13 +145,16 @@ class Service {
    * @throws {Error} on invalid login
    */
   async login(username, password, appId, originHeader) {
-    originHeader = originHeader || (await this.info()).register;
     const apiEndPoint = await this.apiEndpointFor(username);
 
     try {
+      const headers = {accept: 'json'};
+      originHeader = originHeader || (await this.info()).register;
+      if (! utils.isBrowser()) {
+        headers.Origin = originHeader;
+      }
       const res = await utils.superagent.post(apiEndPoint + 'auth/login')
-        .set('Origin', originHeader)
-        .set('accept', 'json')
+        .set(headers)
         .send({ username: username, password: password, appId: appId });
 
       if (!res.body.token) {
