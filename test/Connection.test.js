@@ -6,6 +6,23 @@ const { URL, URLSearchParams } = require('universal-url');
 
 describe('Connection', () => {
 
+  describe('.service', function () {
+    it('return a Pryv.Service object', async () =>  {
+      const service = conn.service;
+      expect(service instanceof Pryv.Service).to.equal(true);
+    });
+
+  });
+
+  describe('.username() ', function () {
+    it('return the username of this connection', async () => {
+      const username = await conn.username();
+      expect(username).to.equals(testData.defaults.username);
+    });
+
+  });
+
+
   describe('.api()', function () {
     this.timeout(5000);
     it('.api() events.get', async () => {

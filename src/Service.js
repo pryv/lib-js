@@ -1,6 +1,6 @@
 
 const utils = require('./utils.js');
-const Connection = require('./Connection.js');
+// Connection is required at the end of this file to allow circular requires.
 const Assets = require('./ServiceAssets.js');
 
 /**
@@ -161,7 +161,9 @@ class Service {
         throw new Error('Invalid login response: ' + res.body);
       }
       return new Connection(
-        Service.buildAPIEndpoint(await this.info(), username, res.body.token));
+        Service.buildAPIEndpoint(await this.info(), username, res.body.token),
+        this // Pre load Connection with service
+        );
     } catch (e) {
       if (e.response && e.response.body 
         && e.response.body.error
@@ -174,6 +176,9 @@ class Service {
 }
 
 module.exports = Service;
+
+// Require is done after exports to allow circular references
+const Connection = require('./Connection');
 
 /**
  * Object to handle Pryv Service Informations https://api.pryv.com/reference/#service-info

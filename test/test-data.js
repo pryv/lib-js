@@ -1,8 +1,10 @@
+const username = 'jslibtest';
 /**
  * Data used for tests
  */
 const defaults = {
-  user: 'jslibtest.pryv.me',
+  username: username,
+  user: username + '.pryv.me',
   password: 'jslibtest',
   token: 'ck60yn9yv00011hd3vu1ocpi7',
   serviceInfoUrl: 'https://reg.pryv.me/service/info',

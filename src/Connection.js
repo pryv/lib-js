@@ -5,6 +5,7 @@ const jsonParser = require('./lib/json-parser');
 
 const browserGetEventStreamed = require('./lib/browser-getEventStreamed');
 
+
 /**
  * @class Connection
  * A connection is an authenticated link to a Pryv.io account.
@@ -22,16 +23,42 @@ const browserGetEventStreamed = require('./lib/browser-getEventStreamed');
  * @constructor
  * @this {Connection} 
  * @param {PryvApiEndpoint} pryvApiEndpoint
+ * @param {Pryv.Service} [service] - eventually initialize Connection with a Service
  */
 class Connection {
 
-  constructor(pryvApiEndpoint) {
+  constructor(pryvApiEndpoint, service) {
     const { token, endpoint } = utils.extractTokenAndApiEndpoint(pryvApiEndpoint);
     this.token = token;
     this.endpoint = endpoint;
     this.options = {};
     this.options.chunkSize = 1000;
     this._deltaTime = { value: 0, weight: 0 };
+    if (! service instanceof Pryv.Service) { throw new Error('Invalid service param'); }
+    this._service = service;
+  }
+
+  /**
+   * get Pryv.Service object relative to this connection
+   * @readonly
+   * @property {Pryv.Service} service
+   */
+  get service() {
+    if (this._service) return this._service;
+    this._service = new Service(this.endpoint + 'service/info');
+    return this._service;
+  }
+
+  /**
+   * get username. 
+   * It's async as in it constructed from service info "api" property and 
+   * endpoint URL.
+   * @param {*} arrayOfAPICalls 
+   * @param {*} progress 
+   */
+  async username() {
+    const info = await this.service.info();
+    return utils.extractUsernameFromAPIAndEndpoint(info.api, this.endpoint);
   }
 
   /**
@@ -256,6 +283,9 @@ class Connection {
 
 
 module.exports = Connection;
+
+// service is require "after" to allow circular require
+const Service = require('./Service');
 
 /**
  * API Method call, for batch call https://api.pryv.com/reference/#call-batch
