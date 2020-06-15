@@ -34,7 +34,7 @@ class Connection {
     this.options = {};
     this.options.chunkSize = 1000;
     this._deltaTime = { value: 0, weight: 0 };
-    if (! service instanceof Pryv.Service) { throw new Error('Invalid service param'); }
+    if (! service instanceof Service) { throw new Error('Invalid service param'); }
     this._service = service;
   }
 
