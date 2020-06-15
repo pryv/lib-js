@@ -70,6 +70,16 @@ class Connection {
    * @returns {Promise<Array>} Promise to Array of results matching each method call in order
    */
   async api(arrayOfAPICalls, progress) {
+    function httpHandler(batchCall) {
+      return this.post('', batchCall);
+    };
+    return await this._chunkedBatchCall(arrayOfAPICalls, progress, httpHandler.bind(this));
+  }
+
+  /**
+   * @private
+   */
+  async _chunkedBatchCall(arrayOfAPICalls, progress, callHandler) {
     if (! Array.isArray(arrayOfAPICalls)) {
       throw new Error('Pryv.api() takes an array as input');
     }
@@ -83,7 +93,8 @@ class Connection {
       for (let i = cursor; i < cursorMax ; i++) {      
         thisBatch.push({ method: arrayOfAPICalls[i].method, params: arrayOfAPICalls[i].params});
       }
-      const resRequest = await this.post('', thisBatch);
+      const resRequest = await callHandler(thisBatch);
+      
       // result checks
       if (! resRequest || ! Array.isArray(resRequest.results)) {
         throw new Error('API call result is not an Array: ' + JSON.stringify(resRequest));
