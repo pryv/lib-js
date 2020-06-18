@@ -22,7 +22,7 @@ const AuthStates = require('./AuthStates');
  * @param {string} [settings.returnURL=auto#]  Set to "self#" to disable popup and force using the same page. Set a custom url when process is finished (specific use cases). Should always end by # ? or &
  * @param {string} serviceInfoUrl
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
- * @returns {PryvServiceInfo}
+ * @returns {Pryv.Service}
  */
 async function setupAuth(settings, serviceInfoUrl, serviceCustomizations) {
   return (new AuthController(settings, 

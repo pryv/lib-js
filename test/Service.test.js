@@ -12,6 +12,12 @@ const testData = require('./test-data.js');
 
 
 describe('Service', function () {
+
+  before(async function () {
+    this.timeout(5000);
+    await testData.prepare();
+  });
+
   it('info()', async () => {
     const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
     const res = await pryvService.info();
@@ -37,11 +43,10 @@ describe('Service', function () {
   it('login()', async function () {
     this.timeout(5000);
     const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
-    const conn = await pryvService.login(testData.defaults.user.split('.')[0], testData.defaults.password, 'jslib-test');
+    const conn = await pryvService.login(testData.defaults.username, testData.defaults.password, 'jslib-test');
     should.exist(conn);
     should.exist(conn.token);
     should.exist(conn.endpoint);
-    expect(conn.endpoint.includes(testData.defaults.user)).to.equal(true);
   });
 
 
@@ -77,7 +82,7 @@ describe('Service', function () {
       this.timeout(5000);
       const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
       await assert.isRejected(
-        pryvService.login(testData.defaults.user.split('.')[0], 'bobby', 'jslib-test'),'The given username/password pair is invalid.');
+        pryvService.login(testData.defaults.username, 'bobby', 'jslib-test'),'The given username/password pair is invalid.');
     });
 
   });

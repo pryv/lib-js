@@ -20,6 +20,11 @@ function genSettings() {
 describe('Browser', function () {
   this.timeout(5000); 
 
+  before(async function () {
+    this.timeout(5000);
+    await testData.prepare();
+  });
+
   let removeZombie = false;
 
   before(async () => {

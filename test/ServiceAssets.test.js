@@ -4,6 +4,11 @@ const testData = require('./test-data.js');
 
 describe('ServiceAssets', function () {
   let removeZombie = false;
+
+  before(async function () {
+    this.timeout(5000);
+    await testData.prepare();
+  });
   
   before(async () => {
     if (typeof document !== 'undefined') return; // in browser

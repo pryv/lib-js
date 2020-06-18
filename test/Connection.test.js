@@ -1,10 +1,16 @@
 const should = chai.should();
 const expect = chai.expect;
 const testData = require('./test-data.js');
-const conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);
+let conn = null;
 const { URL, URLSearchParams } = require('universal-url');
 
 describe('Connection', () => {
+
+  before(async function() { 
+    this.timeout(5000);
+    await testData.prepare();
+    conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);
+  });
 
   describe('.service', function () {
     it('return a Pryv.Service object', async () =>  {
