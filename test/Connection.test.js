@@ -9,7 +9,7 @@ describe('Connection', () => {
   before(async function() { 
     this.timeout(5000);
     await testData.prepare();
-    conn = new Pryv.Connection(testData.pryvApiEndPoints[0]);
+    conn = new Pryv.Connection(testData.apiEndPointWithToken);
   });
 
   describe('.service', function () {
@@ -23,7 +23,7 @@ describe('Connection', () => {
   describe('.username() ', function () {
     it('return the username of this connection', async () => {
       const username = await conn.username();
-      expect(username).to.equals(testData.defaults.username);
+      expect(username).to.equals(testData.username);
     });
 
   });

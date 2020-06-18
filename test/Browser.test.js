@@ -61,7 +61,7 @@ describe('Browser', function () {
       }
     }
 
-    Pryv.Browser.setupAuth(settings, testData.defaults.serviceInfoUrl).then((service) => {
+    Pryv.Browser.setupAuth(settings, testData.serviceInfoUrl).then((service) => {
       const serviceInfo = service.infoSync();
       should.exist(serviceInfo.access);
       should.exist(serviceInfo.serial);

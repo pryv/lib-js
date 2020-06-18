@@ -29,7 +29,7 @@ describe('ServiceAssets', function () {
 
   it('relativeURL()', async () => {
    
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
    
     expect(assets.relativeURL('./toto')).to.eql('https://pryv.github.io:/assets-pryv.me/toto');
@@ -38,14 +38,14 @@ describe('ServiceAssets', function () {
   });
 
   it('setAllDefaults()', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     await assets.setAllDefaults();
 
   });
 
   it('Load all external elements', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
    
    
@@ -56,21 +56,21 @@ describe('ServiceAssets', function () {
   });
 
   it('.get() returns all assets', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const allAssets = await assets.get();
     expect(allAssets.favicon.default.url).to.eql('favicon.ico');
   });
 
   it('.get(keyPath) ', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const faviconUrl = await assets.get('favicon:default:url');
     expect(faviconUrl).to.eql('favicon.ico');
   });
 
   it('.getUrl(keyPath) ', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const faviconUrl = await assets.getUrl('favicon:default:url');
     expect(faviconUrl).to.eql('https://pryv.github.io:/assets-pryv.me/favicon.ico');

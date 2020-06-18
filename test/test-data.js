@@ -7,38 +7,22 @@ const serviceInfoUrl = 'https://reg.pryv.me/service/info';
 /**
  * Data used for tests
  */
-const defaults = {
+const testData = {
   username: username,
   password: username,
-  token: 'ck60yn9yv00011hd3vu1ocpi7',
   serviceInfoUrl: serviceInfoUrl,
-  serviceInfoSettings: {
-    "register": "https://reg.pryv.me",
-    "access": "https://access.pryv.me/access",
-    "api": "https://{username}.pryv.me/",
-    "name": "Pryv Lab",
-    "home": "https://www.pryv.com",
-    "support": "https://pryv.com/helpdesk",
-    "terms": "https://pryv.com/pryv-lab-terms-of-use/",
-    "eventTypes": "https://api.pryv.com/event-types/flat.json",
-    "assets": {
-      "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
-    }
-  }
+  token: null,
+  serviceInfo: null,
+  apiEndPoint: null,
+  apiEndPointWithToken: null
 }
 
-const pryvApiEndPoints = [
-  'https://' + defaults.token + '@' + defaults.user,
-  'https://' + defaults.user
-];
-
-
-let testData = null;
 
 async function prepare() {
-  if (testData) return testData;
+  if (testData.token) return testData;
   console.log('Preparing test Data..');
   // fetch serviceInfo
+
   const serviceInfo = (await superagent.get(serviceInfoUrl)).body;
   if (!serviceInfo.api) throw 'Invalid service Info ' + JSON.stringify(serviceInfo);
   // test if user exists
@@ -75,20 +59,16 @@ async function prepare() {
     .set('Origin', 'https://l.rec.la')
     .send({ username: username, password: username, appId: 'js-lib-test' });
   if (! loginRes.body || ! loginRes.body.token) throw 'Failed login process during testData prepare' + loginRes.text;
-  defaults.serviceInfoSettings = serviceInfo;
-  defaults.token = loginRes.body.token;
+  testData.serviceInfo = serviceInfo;
+  testData.token = loginRes.body.token;
 
   const regexAPIandToken = /(.+):\/\/(.+)/gm;
   const res = regexAPIandToken.exec(apiEndPoint);
-  pryvApiEndPoints[0] = res[1] + '://' + defaults.token + '@' + res[2];
-  pryvApiEndPoints[1] = apiEndPoint;
+  testData.apiEndPointWithToken = res[1] + '://' + testData.token + '@' + res[2];
+  testData.apiEndPoint = apiEndPoint;
 }
 
+testData.prepare = prepare;
 
 
-
-module.exports = {
-  defaults: defaults,
-  pryvApiEndPoints : pryvApiEndPoints,
-  prepare: prepare
-}
+module.exports = testData;

@@ -13,20 +13,20 @@ describe('utils', function () {
 
   it('extractTokenAndApiEndpoint', function (done) {
     const tokenAndAPI = Pryv.utils
-      .extractTokenAndApiEndpoint(testData.pryvApiEndPoints[0]);
-    testData.defaults.token.should.equals(tokenAndAPI.token);
+      .extractTokenAndApiEndpoint(testData.apiEndPointWithToken);
+    testData.token.should.equals(tokenAndAPI.token);
   
-    (testData.pryvApiEndPoints[1]).should.equals(tokenAndAPI.endpoint);
+    (testData.apiEndPoint).should.equals(tokenAndAPI.endpoint);
     done();
   });
 
   it('extractTokenAndApiEndpoint should work without token', function (done) {
     const tokenAndAPI = Pryv.utils
-      .extractTokenAndApiEndpoint(testData.pryvApiEndPoints[1]);
+      .extractTokenAndApiEndpoint(testData.apiEndPoint);
       
     should.not.exist(tokenAndAPI.token);
 
-    (testData.pryvApiEndPoints[1]).should.equals(tokenAndAPI.endpoint);
+    (testData.apiEndPoint).should.equals(tokenAndAPI.endpoint);
     done();
   });
 
@@ -47,9 +47,9 @@ describe('utils', function () {
   it('buildAPIEndpoint with token', function (done) {
     const apiEndPoint = Pryv.utils
       .buildPryvApiEndPoint({ 
-        token: testData.defaults.token, 
-        endpoint: testData.pryvApiEndPoints[1]});   
-    apiEndPoint.should.equals(testData.pryvApiEndPoints[0]);
+        token: testData.token, 
+        endpoint: testData.apiEndPoint});   
+    apiEndPoint.should.equals(testData.apiEndPointWithToken);
     done();
   });
 
@@ -57,34 +57,34 @@ describe('utils', function () {
     const apiEndPoint = Pryv.utils
       .buildPryvApiEndPoint({
         token: null,
-        endpoint: testData.pryvApiEndPoints[1]
+        endpoint: testData.apiEndPoint
       });
-    apiEndPoint.should.equals(testData.pryvApiEndPoints[1]);
+    apiEndPoint.should.equals(testData.apiEndPoint);
     done();
   });
 
   it('extractUsernameFromAPIAndEndpoint should retrieve username without token', async () => {
     const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
-      testData.defaults.serviceInfoSettings.api,
-      testData.pryvApiEndPoints[1]
+      testData.serviceInfo.api,
+      testData.apiEndPoint
     );
-    expect(username).to.equals(testData.defaults.username);
+    expect(username).to.equals(testData.username);
   });
 
   it('extractUsernameFromAPIAndEndpoint should retrieve username with token', async () => {
     const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
-      testData.defaults.serviceInfoSettings.api,
-      testData.pryvApiEndPoints[0]
+      testData.serviceInfo.api,
+      testData.apiEndPointWithToken
     );
-    expect(username).to.equals(testData.defaults.username);
+    expect(username).to.equals(testData.username);
   });
 
   it('extractUsernameFromAPIAndEndpoint should work with DNSLess api schema', async () => {
     const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
       'https://test.pryv.me/{username}/',
-      'https://' + testData.defaults.token + '@test.pryv.me/' + testData.defaults.username 
+      'https://' + testData.token + '@test.pryv.me/' + testData.username 
     );
-    expect(username).to.equals(testData.defaults.username);
+    expect(username).to.equals(testData.username);
   });
 
   it('extractUsernameFromAPIAndEndpoint should fail with invalid api URL', async () => {
@@ -92,7 +92,7 @@ describe('utils', function () {
     try { 
       const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
         'http://no-username.com/',
-        testData.pryvApiEndPoints[0]
+        testData.apiEndPointWithToken
       );
     } catch (e) {
       error = e;
@@ -106,13 +106,13 @@ describe('utils', function () {
     try {
       const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
         'http://pryv.me/{username}',
-        testData.pryvApiEndPoints[0]
+        testData.apiEndPointWithToken
       );
     } catch (e) {
       error = e;
     }
     expect(error).to.exist;
-    expect(error.message).to.equal('serviceInfoApi http://pryv.me/{username} schema does not match apiEndpoint: ' + testData.pryvApiEndPoints[0]);
+    expect(error.message).to.equal('serviceInfoApi http://pryv.me/{username} schema does not match apiEndpoint: ' + testData.apiEndPointWithToken);
   });
 
 });
