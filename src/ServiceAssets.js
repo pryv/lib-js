@@ -155,8 +155,8 @@ function relPathToAbs(baseUrlString, sRelPath) {
     sDir = (sDir + sPath.substring(nStart, nEnd)).replace(new RegExp("(?:\\\/+[^\\\/]*){0," + ((nUpLn - 1) / 3) + "}$"),
       "/");
   }
-  return baseLocation.protocol + '//' + baseLocation.hostname + ':' +
-    baseLocation.port + sDir + sPath.substr(nStart);
+  let portStr = baseLocation.port ? ':' + baseLocation.port : '';
+  return baseLocation.protocol + '//' + baseLocation.hostname + portStr + sDir + sPath.substr(nStart);
 }
 
 

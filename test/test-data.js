@@ -3,6 +3,8 @@ const superagent = require('superagent');
 const username = 'jslibtest4';
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
 
+//const serviceInfoUrl = 'https://l.rec.la:4443/reg/service/info';
+
 //const username = 'jslibtest';
 /**
  * Data used for tests

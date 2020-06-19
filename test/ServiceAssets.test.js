@@ -31,7 +31,6 @@ describe('ServiceAssets', function () {
    
     const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
-    console.log(testData.serviceInfo, assets, testData.serviceInfo.assets);
     expect(assets.relativeURL('./toto')).to.eql(testData.serviceInfo.assets.definitions.replace('index.json', 'toto'));
    
   });
