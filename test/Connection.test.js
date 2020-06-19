@@ -3,6 +3,7 @@ const expect = chai.expect;
 const testData = require('./test-data.js');
 let conn = null;
 const { URL, URLSearchParams } = require('universal-url');
+const cuid = require('cuid');
 
 describe('Connection', () => {
 
@@ -10,6 +11,56 @@ describe('Connection', () => {
     this.timeout(5000);
     await testData.prepare();
     conn = new Pryv.Connection(testData.apiEndPointWithToken);
+
+    // create some events
+    const toBeDeletedId = cuid();
+    const toBeTrashed = cuid();
+    const resSetup = await conn.api([
+      {
+        method: 'events.create',
+        params: {
+          streamIds: ['data'],
+          type: 'note/txt',
+          content: 'Hello test ' + new Date()
+        }
+      },
+      {
+        method: 'events.create',
+        params: {
+          streamIds: ['data'],
+          type: 'note/txt',
+          content: 'Hello test ' + new Date(),
+          id: toBeTrashed
+        }
+      },
+      {
+        method: 'events.create',
+        params: {
+          id: toBeDeletedId,
+          streamIds: ['data'],
+          type: 'note/txt',
+          content: 'To be Deleted ' + new Date(),
+        }
+      },
+      {
+        method: 'events.delete',
+        params: {
+          id: toBeTrashed
+        }
+      },
+      {
+        method: 'events.delete',
+        params: {
+          id: toBeDeletedId
+        }
+      },
+      {
+        method: 'events.delete',
+        params: {
+          id: toBeDeletedId
+        }
+      }
+    ]);
   });
 
   describe('.service', function () {
@@ -216,7 +267,7 @@ describe('Connection', () => {
 
   describe('Streamed event get', function () {
     this.timeout(5000);
-    const now = (new Date()).getTime() / 1000;
+    const now = (new Date()).getTime() / 1000 + 1000;
 
     describe('Node & Browser', function () {
       it('streaming ', async () => {
@@ -229,25 +280,25 @@ describe('Connection', () => {
 
 
       it('streaming includesDeletion', async () => {
-        const queryParams = { fromTime: 0, toTime: now, limit: 10000, includeDeletions: true, modifiedSince: 0};
+        const queryParams = { fromTime: 0, toTime: now, limit: 10000, includeDeletions: true, modifiedSince: 0, state: 'all'};
         let eventsCount = 0;
         let trashedCount = 0;
         let deletedCount = 0;
         function forEachEvent(event) { 
-          if (event.trashed) {
-            trashedCount++;
-          } else if (event.deleted) {
+          if (event.deleted) {
             deletedCount++;
+          } else if (event.trashed) {
+            trashedCount++;
           } else {
             eventsCount++;
           }
         }
         const res = await conn.getEventsStreamed(queryParams, forEachEvent);
-        expect(eventsCount).to.equal(res.eventsCount);
-        expect(trashedCount + deletedCount).to.equal(res.eventDeletionsCount);
-        expect(eventsCount).to.be.gt(1);
-        expect(deletedCount).to.be.gt(1);
-        expect(trashedCount).to.be.gt(1);
+        expect(trashedCount + eventsCount).to.equal(res.eventsCount);
+        expect(deletedCount).to.equal(res.eventDeletionsCount);
+        expect(eventsCount).to.be.gt(0);
+        expect(deletedCount).to.be.gt(0);
+        expect(trashedCount).to.be.gt(0);
       });
 
       it('no-events ', async () => {

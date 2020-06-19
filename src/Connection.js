@@ -45,7 +45,6 @@ class Connection {
    */
   get service() {
     if (this._service) return this._service;
-    console.log(this.endpoint + 'service/info');
     this._service = new Service(this.endpoint + 'service/info');
     return this._service;
   }

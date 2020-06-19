@@ -1,6 +1,6 @@
 const superagent = require('superagent');
 
-const username = 'jslibtest';
+const username = 'jslibtest4';
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
 
 //const username = 'jslibtest';
@@ -28,20 +28,27 @@ async function prepare() {
   // test if user exists
   const userExists = (await superagent.get(serviceInfo.register + username + '/check_username')).body;
   if (typeof userExists.reserved === 'undefined') throw 'Invalid user exists ' + JSON.stringify(userExists);
+
+  let hostingCandidate = null;
   if (!userExists.reserved) { // create user
     // get available hosting
-    const hostings = (await superagent.get(serviceInfo.register + '/hostings')).body;
-    let hostingCandidate = null;
-    function findOneHostingKey(o, nextOneIsHosting) {
-      hostingCandidate = Object.keys(o)[0];
-      if (nextOneIsHosting || hostingCandidate === null) return;
-      findOneHostingKey(o[hosting], hostingCandidate === 'hostings');
-    } (hostings, false);
+    const hostings = (await superagent.get(serviceInfo.register + 'hostings').set('accept', 'json')).body;
+    function findOneHostingKey(o, parentKey) {      
+      for (const key of Object.keys(o)) {
+        if (parentKey === 'hostings') {
+          hostingCandidate = key;
+          return key;
+        }
+        if (typeof o[key] !== 'string')
+             findOneHostingKey(o[key], key);
+      }
+    };
+    findOneHostingKey(hostings, 'N');
     if (!hostingCandidate) throw 'Cannot find hosting in: ' + JSON.stringify(hostings);
     const hosting = hostingCandidate;
 
     // create user
-    await superagent.post(serviceInfo.register + '/user')
+    await superagent.post(serviceInfo.register + 'user')
       .send({
         appid: 'js-lib-test',
         hosting: hosting,
@@ -58,6 +65,17 @@ async function prepare() {
   const loginRes = await superagent.post(apiEndPoint + 'auth/login')
     .set('Origin', 'https://l.rec.la')
     .send({ username: username, password: username, appId: 'js-lib-test' });
+
+  // create data stream
+  try {
+    const streamId = await superagent.post(apiEndPoint + 'streams').set('authorization', loginRes.body.token).send(
+      {
+        id: 'data',
+        name: 'Data'
+      }
+    )
+  } catch (e) {
+  }
   if (! loginRes.body || ! loginRes.body.token) throw 'Failed login process during testData prepare' + loginRes.text;
   testData.serviceInfo = serviceInfo;
   testData.token = loginRes.body.token;
