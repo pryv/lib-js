@@ -1,7 +1,7 @@
 const testData = require('./test-data.js');
 const Pryv = require('../src');
 
-const conn = new Pryv.Connection(testData.apiEndPointWithToken);
+const conn = new Pryv.Connection(testData.apiEndpointWithToken);
 
 const TEST_DATA_VERSION = "v1";
 

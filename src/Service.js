@@ -123,7 +123,7 @@ class Service {
 
   /**
    * Return an API Endpoint from a username and token and a PryvServiceInfo. 
-   * This is method is rarely used. See **apiEndPointFor** as an alternative.
+   * This is method is rarely used. See **apiEndpointFor** as an alternative.
    * @param {PryvServiceInfo} serviceInfo
    * @param {string} username
    * @param {string} [token]
@@ -131,7 +131,7 @@ class Service {
    */
   static buildAPIEndpoint(serviceInfo, username, token) {
     const endpoint = serviceInfo.api.replace('{username}', username);
-    return utils.buildPryvApiEndPoint({ endpoint: endpoint, token: token });
+    return utils.buildPryvApiEndpoint({ endpoint: endpoint, token: token });
   }
 
   /**
@@ -145,7 +145,7 @@ class Service {
    * @throws {Error} on invalid login
    */
   async login(username, password, appId, originHeader) {
-    const apiEndPoint = await this.apiEndpointFor(username);
+    const apiEndpoint = await this.apiEndpointFor(username);
 
     try {
       const headers = {accept: 'json'};
@@ -153,7 +153,7 @@ class Service {
       if (! utils.isBrowser()) {
         headers.Origin = originHeader;
       }
-      const res = await utils.superagent.post(apiEndPoint + 'auth/login')
+      const res = await utils.superagent.post(apiEndpoint + 'auth/login')
         .set(headers)
         .send({ username: username, password: password, appId: appId });
 

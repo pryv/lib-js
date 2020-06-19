@@ -10,7 +10,7 @@ describe('Connection', () => {
   before(async function() { 
     this.timeout(5000);
     await testData.prepare();
-    conn = new Pryv.Connection(testData.apiEndPointWithToken);
+    conn = new Pryv.Connection(testData.apiEndpointWithToken);
 
     // create some events
     const toBeDeletedId = cuid();

@@ -13,8 +13,8 @@ const testData = {
   serviceInfoUrl: serviceInfoUrl,
   token: null,
   serviceInfo: null,
-  apiEndPoint: null,
-  apiEndPointWithToken: null
+  apiEndpoint: null,
+  apiEndpointWithToken: null
 }
 
 
@@ -60,15 +60,15 @@ async function prepare() {
         referer: 'test-suite'
       });
   }
-  const apiEndPoint = serviceInfo.api.replace('{username}', username);
+  const apiEndpoint = serviceInfo.api.replace('{username}', username);
   // login user
-  const loginRes = await superagent.post(apiEndPoint + 'auth/login')
+  const loginRes = await superagent.post(apiEndpoint + 'auth/login')
     .set('Origin', 'https://l.rec.la')
     .send({ username: username, password: username, appId: 'js-lib-test' });
 
   // create data stream
   try {
-    const streamId = await superagent.post(apiEndPoint + 'streams').set('authorization', loginRes.body.token).send(
+    const streamId = await superagent.post(apiEndpoint + 'streams').set('authorization', loginRes.body.token).send(
       {
         id: 'data',
         name: 'Data'
@@ -81,9 +81,9 @@ async function prepare() {
   testData.token = loginRes.body.token;
 
   const regexAPIandToken = /(.+):\/\/(.+)/gm;
-  const res = regexAPIandToken.exec(apiEndPoint);
-  testData.apiEndPointWithToken = res[1] + '://' + testData.token + '@' + res[2];
-  testData.apiEndPoint = apiEndPoint;
+  const res = regexAPIandToken.exec(apiEndpoint);
+  testData.apiEndpointWithToken = res[1] + '://' + testData.token + '@' + res[2];
+  testData.apiEndpoint = apiEndpoint;
 }
 
 testData.prepare = prepare;

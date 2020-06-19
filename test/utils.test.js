@@ -13,20 +13,20 @@ describe('utils', function () {
 
   it('extractTokenAndApiEndpoint', function (done) {
     const tokenAndAPI = Pryv.utils
-      .extractTokenAndApiEndpoint(testData.apiEndPointWithToken);
+      .extractTokenAndApiEndpoint(testData.apiEndpointWithToken);
     testData.token.should.equals(tokenAndAPI.token);
   
-    (testData.apiEndPoint).should.equals(tokenAndAPI.endpoint);
+    (testData.apiEndpoint).should.equals(tokenAndAPI.endpoint);
     done();
   });
 
   it('extractTokenAndApiEndpoint should work without token', function (done) {
     const tokenAndAPI = Pryv.utils
-      .extractTokenAndApiEndpoint(testData.apiEndPoint);
+      .extractTokenAndApiEndpoint(testData.apiEndpoint);
       
     should.not.exist(tokenAndAPI.token);
 
-    (testData.apiEndPoint).should.equals(tokenAndAPI.endpoint);
+    (testData.apiEndpoint).should.equals(tokenAndAPI.endpoint);
     done();
   });
 
@@ -45,28 +45,28 @@ describe('utils', function () {
   });
 
   it('buildAPIEndpoint with token', function (done) {
-    const apiEndPoint = Pryv.utils
-      .buildPryvApiEndPoint({ 
+    const apiEndpoint = Pryv.utils
+      .buildPryvApiEndpoint({ 
         token: testData.token, 
-        endpoint: testData.apiEndPoint});   
-    apiEndPoint.should.equals(testData.apiEndPointWithToken);
+        endpoint: testData.apiEndpoint});   
+    apiEndpoint.should.equals(testData.apiEndpointWithToken);
     done();
   });
 
   it('buildAPIEndpoint without token', function (done) {
-    const apiEndPoint = Pryv.utils
-      .buildPryvApiEndPoint({
+    const apiEndpoint = Pryv.utils
+      .buildPryvApiEndpoint({
         token: null,
-        endpoint: testData.apiEndPoint
+        endpoint: testData.apiEndpoint
       });
-    apiEndPoint.should.equals(testData.apiEndPoint);
+    apiEndpoint.should.equals(testData.apiEndpoint);
     done();
   });
 
   it('extractUsernameFromAPIAndEndpoint should retrieve username without token', async () => {
     const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
       testData.serviceInfo.api,
-      testData.apiEndPoint
+      testData.apiEndpoint
     );
     expect(username).to.equals(testData.username);
   });
@@ -74,7 +74,7 @@ describe('utils', function () {
   it('extractUsernameFromAPIAndEndpoint should retrieve username with token', async () => {
     const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
       testData.serviceInfo.api,
-      testData.apiEndPointWithToken
+      testData.apiEndpointWithToken
     );
     expect(username).to.equals(testData.username);
   });
@@ -92,7 +92,7 @@ describe('utils', function () {
     try { 
       const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
         'http://no-username.com/',
-        testData.apiEndPointWithToken
+        testData.apiEndpointWithToken
       );
     } catch (e) {
       error = e;
@@ -106,13 +106,13 @@ describe('utils', function () {
     try {
       const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
         'http://pryv.me/{username}',
-        testData.apiEndPointWithToken
+        testData.apiEndpointWithToken
       );
     } catch (e) {
       error = e;
     }
     expect(error).to.exist;
-    expect(error.message).to.equal('serviceInfoApi http://pryv.me/{username} schema does not match apiEndpoint: ' + testData.apiEndPointWithToken);
+    expect(error.message).to.equal('serviceInfoApi http://pryv.me/{username} schema does not match apiEndpoint: ' + testData.apiEndpointWithToken);
   });
 
 });

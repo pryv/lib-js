@@ -64,7 +64,7 @@ const utils = {
    * @param {TokenAndEndpoint} tokenAndApi
    * @returns {PryvApiEndpoint}
    */
-  buildPryvApiEndPoint: function (tokenAndApi) {
+  buildPryvApiEndpoint: function (tokenAndApi) {
     if (! tokenAndApi.token) { 
       let res = tokenAndApi.endpoint + '';
       if (!tokenAndApi.endpoint.endsWith('/')) {

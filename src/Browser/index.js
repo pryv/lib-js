@@ -43,7 +43,7 @@ module.exports = {
  * - ERROR => {message: <string>, error: <error>}
  * - LOADING => {}
  * - INITIALIZED => {serviceInfo: <PryvServiceInfo>, action: <Open Popup Function>}
- * - AUTHORIZED => {apiEndPoint: <PryvApiEndpoint>, serviceInfo: <PryvServiceInfo>, displayName: <string> action: <Open Logout Question>}
+ * - AUTHORIZED => {apiEndpoint: <PryvApiEndpoint>, serviceInfo: <PryvServiceInfo>, displayName: <string> action: <Open Logout Question>}
  * - LOGOUT => {}
  * @callback AuthStateChangeHandler
  * @param {Object} state
