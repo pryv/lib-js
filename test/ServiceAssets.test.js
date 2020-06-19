@@ -31,10 +31,8 @@ describe('ServiceAssets', function () {
    
     const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
+    expect(assets.relativeURL('./toto')).to.eql(testData.serviceInfo.assets.definitions.replace('index.json', 'toto'));
    
-    expect(assets.relativeURL('./toto')).to.eql('https://pryv.github.io:/assets-pryv.me/toto');
-   
-
   });
 
   it('setAllDefaults()', async () => {
@@ -73,7 +71,7 @@ describe('ServiceAssets', function () {
     const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const faviconUrl = await assets.getUrl('favicon:default:url');
-    expect(faviconUrl).to.eql('https://pryv.github.io:/assets-pryv.me/favicon.ico');
+    expect(faviconUrl).to.eql(testData.serviceInfo.assets.definitions.replace('index.json', 'favicon.ico'));
   });
 
 });
