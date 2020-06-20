@@ -487,4 +487,12 @@ To customize the Sign in Button refer to: [sign in button in pryv.me assets](htt
 })();
 ```
 
-### 
+# Change Log
+
+## 2.0.3 
+
+- Added Connection.username() 
+- Various dependencies upgrades
+- Fixing Origin header in Browser distribution
+
+## 2.0.1 Initial Release 
