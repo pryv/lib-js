@@ -1,11 +1,9 @@
 const superagent = require('superagent');
 
-const username = 'jslibtest4';
+const username = 'jslibtest5';
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
-
 //const serviceInfoUrl = 'https://l.rec.la:4443/reg/service/info';
 
-//const username = 'jslibtest';
 /**
  * Data used for tests
  */
@@ -21,20 +19,21 @@ const testData = {
 
 
 async function prepare() {
-  if (testData.token) return testData;
+  if (testData.token != null) return testData;
   console.log('Preparing test Data..');
   // fetch serviceInfo
 
   const serviceInfo = (await superagent.get(serviceInfoUrl)).body;
-  if (!serviceInfo.api) throw 'Invalid service Info ' + JSON.stringify(serviceInfo);
+  if (serviceInfo.api == null) throw 'Invalid service Info ' + JSON.stringify(serviceInfo);
   // test if user exists
   const userExists = (await superagent.get(serviceInfo.register + username + '/check_username')).body;
   if (typeof userExists.reserved === 'undefined') throw 'Invalid user exists ' + JSON.stringify(userExists);
 
   let hostingCandidate = null;
-  if (!userExists.reserved) { // create user
+  if (! userExists.reserved) { // create user
     // get available hosting
     const hostings = (await superagent.get(serviceInfo.register + 'hostings').set('accept', 'json')).body;
+    findOneHostingKey(hostings, 'N');
     function findOneHostingKey(o, parentKey) {      
       for (const key of Object.keys(o)) {
         if (parentKey === 'hostings') {
@@ -45,8 +44,7 @@ async function prepare() {
              findOneHostingKey(o[key], key);
       }
     };
-    findOneHostingKey(hostings, 'N');
-    if (!hostingCandidate) throw 'Cannot find hosting in: ' + JSON.stringify(hostings);
+    if (hostingCandidate == null) throw 'Cannot find hosting in: ' + JSON.stringify(hostings);
     const hosting = hostingCandidate;
 
     // create user
@@ -78,7 +76,7 @@ async function prepare() {
     )
   } catch (e) {
   }
-  if (! loginRes.body || ! loginRes.body.token) throw 'Failed login process during testData prepare' + loginRes.text;
+  if ((loginRes.body == null) || (loginRes.body.token == null)) throw 'Failed login process during testData prepare' + loginRes.text;
   testData.serviceInfo = serviceInfo;
   testData.token = loginRes.body.token;
 
