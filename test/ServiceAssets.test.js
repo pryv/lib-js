@@ -4,6 +4,11 @@ const testData = require('./test-data.js');
 
 describe('ServiceAssets', function () {
   let removeZombie = false;
+
+  before(async function () {
+    this.timeout(5000);
+    await testData.prepare();
+  });
   
   before(async () => {
     if (typeof document !== 'undefined') return; // in browser
@@ -24,23 +29,21 @@ describe('ServiceAssets', function () {
 
   it('relativeURL()', async () => {
    
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
+    expect(assets.relativeURL('./toto')).to.eql(testData.serviceInfo.assets.definitions.replace('index.json', 'toto'));
    
-    expect(assets.relativeURL('./toto')).to.eql('https://pryv.github.io:/assets-pryv.me/toto');
-   
-
   });
 
   it('setAllDefaults()', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     await assets.setAllDefaults();
 
   });
 
   it('Load all external elements', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
    
    
@@ -51,24 +54,24 @@ describe('ServiceAssets', function () {
   });
 
   it('.get() returns all assets', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const allAssets = await assets.get();
     expect(allAssets.favicon.default.url).to.eql('favicon.ico');
   });
 
   it('.get(keyPath) ', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const faviconUrl = await assets.get('favicon:default:url');
     expect(faviconUrl).to.eql('favicon.ico');
   });
 
   it('.getUrl(keyPath) ', async () => {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const faviconUrl = await assets.getUrl('favicon:default:url');
-    expect(faviconUrl).to.eql('https://pryv.github.io:/assets-pryv.me/favicon.ico');
+    expect(faviconUrl).to.eql(testData.serviceInfo.assets.definitions.replace('index.json', 'favicon.ico'));
   });
 
 });

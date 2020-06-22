@@ -1,6 +1,6 @@
 {
   "name": "pryv",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "homepage": "https://github.com/pryv/lib-js",
   "description": "Pryv Javascript Library",
   "keywords": [
@@ -27,7 +27,7 @@
     "test:browser": "npm run build; ",
     "cover": "nyc npm run test && npm run cover:report",
     "cover:report": "nyc report --reporter=lcov --reporter=html",
-    "webserver": "node node_modules/rec-la/webserver/main.js ./dist",
+    "webserver": "node node_modules/rec-la/webserver/main.js ./dist 9443",
     "gh-pages": "./scripts/upload.sh",
     "clear": "rm -r dist/ && npm run setup"
   },
@@ -55,6 +55,7 @@
     "chai-as-promised": "^7.1.1",
     "copy-webpack-plugin": "^5.1.1",
     "css-loader": "^3.6.0",
+    "cuid": "^2.1.8",
     "jsdoc": "^3.6.4",
     "mocha": "^6.2.3",
     "node-fetch": "^2.6.0",

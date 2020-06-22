@@ -7,7 +7,6 @@ const AuthController = require('../src/Browser/AuthController.js')
 
 describe('Browser.AuthController', function () {
 
-
   it('getReturnURL()', async () => {
     const myUrl = 'https://mysite.com/bobby';
 

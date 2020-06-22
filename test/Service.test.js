@@ -12,8 +12,14 @@ const testData = require('./test-data.js');
 
 
 describe('Service', function () {
+
+  before(async function () {
+    this.timeout(5000);
+    await testData.prepare();
+  });
+
   it('info()', async () => {
-    const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
+    const pryvService = new Pryv.Service(testData.serviceInfoUrl);
     const res = await pryvService.info();
     should.exist(res);
     
@@ -25,7 +31,7 @@ describe('Service', function () {
   });
 
   it('info() 2x ', async () => {
-    const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
+    const pryvService = new Pryv.Service(testData.serviceInfoUrl);
     const res = await pryvService.info();
     should.exist(res);
     should.exist(res.access);
@@ -36,19 +42,18 @@ describe('Service', function () {
 
   it('login()', async function () {
     this.timeout(5000);
-    const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
-    const conn = await pryvService.login(testData.defaults.user.split('.')[0], testData.defaults.password, 'jslib-test');
+    const pryvService = new Pryv.Service(testData.serviceInfoUrl);
+    const conn = await pryvService.login(testData.username, testData.password, 'jslib-test');
     should.exist(conn);
     should.exist(conn.token);
     should.exist(conn.endpoint);
-    expect(conn.endpoint.includes(testData.defaults.user)).to.equal(true);
   });
 
 
   
 
   it('assets()', async function() {
-    const pryvService = new Pryv.Service(null, testData.defaults.serviceInfoSettings);
+    const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     should.exist(assets);
 
@@ -66,7 +71,7 @@ describe('Service', function () {
     });
 
     it('Warn if no assets', async () => {
-      let serviceInfoCopy = Object.assign({}, testData.defaults.serviceInfoSettings);
+      let serviceInfoCopy = Object.assign({}, testData.serviceInfo);
       delete serviceInfoCopy.assets;
       const pryvService = new Pryv.Service(null, serviceInfoCopy);
       const assets = await pryvService.assets();
@@ -75,9 +80,9 @@ describe('Service', function () {
 
     it('login() failed', async function () {
       this.timeout(5000);
-      const pryvService = new Pryv.Service(testData.defaults.serviceInfoUrl);
+      const pryvService = new Pryv.Service(testData.serviceInfoUrl);
       await assert.isRejected(
-        pryvService.login(testData.defaults.user.split('.')[0], 'bobby', 'jslib-test'),'The given username/password pair is invalid.');
+        pryvService.login(testData.username, 'bobby', 'jslib-test'),'The given username/password pair is invalid.');
     });
 
   });

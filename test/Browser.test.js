@@ -20,6 +20,11 @@ function genSettings() {
 describe('Browser', function () {
   this.timeout(5000); 
 
+  before(async function () {
+    this.timeout(5000);
+    await testData.prepare();
+  });
+
   let removeZombie = false;
 
   before(async () => {
@@ -56,7 +61,7 @@ describe('Browser', function () {
       }
     }
 
-    Pryv.Browser.setupAuth(settings, testData.defaults.serviceInfoUrl).then((service) => {
+    Pryv.Browser.setupAuth(settings, testData.serviceInfoUrl).then((service) => {
       const serviceInfo = service.infoSync();
       should.exist(serviceInfo.access);
       should.exist(serviceInfo.serial);
