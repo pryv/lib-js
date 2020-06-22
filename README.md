@@ -86,7 +86,7 @@ const connection = new Pryv.Connection(apiEndpoint);
 
 #### Within a WebPage with a login button
 
-The following code is an implementation of the [Pryv.io Authorization process](https://api.pryv.com/reference/#authorizing-your-app). 
+The following code is an implementation of the [Pryv.io Authorization process](https://api.pryv.com/reference/#authenticate-your-app). 
 
 ```html
 <!doctype html>
