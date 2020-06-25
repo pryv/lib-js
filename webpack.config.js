@@ -2,36 +2,17 @@ const path = require('path');
 const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
 
-require("babel-core/register");
-require("babel-polyfill");
-
 module.exports = [
 	{
 		mode: 'production',
 		entry: {
-			'pryv': ['babel-polyfill', './src/index.js'],
+			'pryv': ['./src/index.js'],
 		},
 		output: {
 			filename: '[name].js',
 			path: path.resolve(__dirname, 'dist'),
 			libraryTarget: 'var',
 			library: 'Pryv'
-		},
-		// Loaders
-		module: {
-			rules: [
-				// JavaScript Files
-				{
-					test: /\.js$/,
-					exclude: /node_modules/,
-					use: ['babel-loader'],
-				},
-				// CSS Files
-				{
-					test: /\.css$/,
-					use: ['style-loader', 'css-loader'],
-				}
-			]
 		},
 		plugins: [
 			new CopyPlugin([
@@ -42,29 +23,13 @@ module.exports = [
 	{
 		mode: 'development',
 		entry: {
-			'pryv': ['babel-polyfill', './src/index.js'],
+			'pryv': ['./src/index.js'],
 		},
 		output: {
 			filename: '[name]-dev.js',
 			path: path.resolve(__dirname, 'dist/tests/'),
 			libraryTarget: 'var',
 			library: 'Pryv'
-		},
-		// Loaders
-		module: {
-			rules: [
-				// JavaScript/JSX Files
-				{
-					test: /\.js$/,
-					exclude: /node_modules/,
-					use: ['babel-loader'],
-				},
-				// CSS Files
-				{
-					test: /\.css$/,
-					use: ['style-loader', 'css-loader'],
-				}
-			]
 		},
 		devtool: 'source-map',
 	},
@@ -85,23 +50,6 @@ module.exports = [
 				{ from: 'test/browser-tests.html' },
 			])
 		],
-		// Loaders
-		module: {
-			rules: [
-				// JavaScript/JSX Files
-				{
-					test: /\.js$/,
-					exclude: /node_modules/,
-					use: ['babel-loader'],
-				},
-				// CSS Files
-				{
-					test: /\.css$/,
-					use: ['style-loader', 'css-loader'],
-				}
-			],
-			
-		},
 		devtool: 'source-map',
 	}
 ];
