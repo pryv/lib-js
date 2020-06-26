@@ -38,12 +38,12 @@
     }
   ],
   "dependencies": {
+    "copy-webpack-plugin": "^6.0.2",
     "superagent": "^5.2.2"
   },
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "copy-webpack-plugin": "^5.1.1",
     "cuid": "^2.1.8",
     "jsdoc": "^3.6.4",
     "mocha": "^6.2.3",
@@ -51,8 +51,7 @@
     "nyc": "^14.1.1",
     "rec-la": "^0.1.13",
     "universal-url": "^2.0.0",
-    "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.11",
-    "zombie": "^6.1.4"
+    "zombie": "^6.1.4",
+    "pryv-lib-js-common": "file:/./lib-js-common/"
   }
 }
