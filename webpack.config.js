@@ -16,9 +16,9 @@ module.exports = [
 			library: 'Pryv'
 		},
 		plugins: [
-		/**	new CopyPlugin([
+			new CopyPlugin({ patterns: [
 				{ from: 'web-demos', to: 'demos' },
-			])*/],
+			]})],
 		devtool: 'source-map',
 	},
 	{ // es5 version
@@ -75,10 +75,9 @@ module.exports = [
 		},
 		plugins: [
 			new webpack.IgnorePlugin(/zombie/),
-			/** 
-			new CopyPlugin([
+			new CopyPlugin({ patterns: [
 				{ from: 'test/browser-tests.html' },
-			])*/
+			]})
 		],
 		devtool: 'source-map',
 	}

@@ -4,7 +4,6 @@
   "description": "Pryv Lib-js internal package - contains common configuration and tools for lib-js and socket.io + monitor add-ons ",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Pryv S.A.",
   "license": "BSD-3-Clause",
