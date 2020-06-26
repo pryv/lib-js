@@ -1,7 +1,7 @@
 const path = require('path');
 const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
-const { webpackBabelConfig } = require('pryv-lib-js-common');
+const { webpackBabelConfig } = require('@pryv/lib-js-common');
 
 module.exports = [
 	{ // es6 not transpiled version

@@ -51,6 +51,6 @@
     "rec-la": "^0.1.13",
     "universal-url": "^2.0.0",
     "zombie": "^6.1.4",
-    "pryv-lib-js-common": "file:/./lib-js-common/"
+    "@pryv/lib-js-common": "git+https://github.com/pryv/lib-js-common.git"
   }
 }
