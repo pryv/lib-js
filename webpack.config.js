@@ -38,7 +38,7 @@ module.exports = [
 	{ // es5 version including socket.io and monitors
 		mode: 'production',
 		entry: {
-			'pryv-socket-monitor': ['./src/index-socket.io-monitor.js'],
+			'pryv-socket.io-monitor': ['./src/index-socket.io-monitor.js'],
 		},
 		output: {
 			filename: '[name].js',
