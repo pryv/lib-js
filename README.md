@@ -51,13 +51,21 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 <script src="https://api.pryv.com/lib-js/pryv.js"></script>
 ```
 
+#### Others distributions for browsers & extensions:
+
+- ES6: `https://api.pryv.com/lib-js/pryv-es6.js` 
+- Bundle: (Socket.io + Monitor + Lib-js) `https://api.pryv.com/lib-js/pryv-socket.io-monitor.js`.
+  This library can be extended with two packages: 
+  - Socket.io extension: [https://github.com/pryv/lib-js-socket.io](https://github.com/pryv/lib-js-socket.io) 
+  - Monitor extension: [https://github.com/pryv/lib-js-monitor](https://github.com/pryv/lib-js-monitor)
+
 #### Example on code pen:
 
 - Save notes and measure simple form: [Example on codepen.io](https://codepen.io/pryv/pen/ExVYemE)
 
 #### Node.js
 
-Install with:  `npm install git+https://github.com/pryv/lib-js.git --save ` 
+Install with:  `npm install pryv --save ` 
 
 ```javascript
 const Pryv = require('pryv');
