@@ -4,7 +4,7 @@ const CopyPlugin = require('copy-webpack-plugin');
 const { webpackBabelConfig } = require('@pryv/lib-js-common');
 
 module.exports = [
-	{ // es6 not transpiled version
+	{ // es6 version
 		mode: 'production',
 		entry: {
 			'pryv': ['./src/index.js'],
