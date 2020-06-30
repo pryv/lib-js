@@ -65,7 +65,7 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 
 #### Node.js
 
-Install with:  `npm install git+https://github.com/pryv/lib-js.git --save ` 
+Install with:  `npm install pryv --save ` 
 
 ```javascript
 const Pryv = require('pryv');
