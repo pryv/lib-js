@@ -24,7 +24,7 @@ module.exports = [
 	{ // es5 version
 		mode: 'production',
 		entry: {
-			'pryv': ['./src/index.js'],
+			'pryv': ['core-js/stable', './src/index.js'],
 		},
 		output: {
 			filename: '[name].js',
@@ -38,7 +38,7 @@ module.exports = [
 	{ // es5 version including socket.io and monitors
 		mode: 'production',
 		entry: {
-			'pryv-socket.io-monitor': ['./src/index-socket.io-monitor.js'],
+			'pryv-socket.io-monitor': ['core-js/stable', './src/index-socket.io-monitor.js'],
 		},
 		output: {
 			filename: '[name].js',
@@ -48,19 +48,6 @@ module.exports = [
 		},
 		devtool: 'source-map',
 		module: webpackBabelConfig
-	},
-	{ // development and test versions (es6)
-		mode: 'development',
-		entry: {
-			'pryv': ['./src/index.js'],
-		},
-		output: {
-			filename: '[name]-dev.js',
-			path: path.resolve(__dirname, 'dist/tests/'),
-			libraryTarget: 'var',
-			library: 'Pryv'
-		},
-		devtool: 'source-map',
 	},
 	{ // browser test suite (es6)
 		mode: 'development',
