@@ -12501,8 +12501,8 @@ class AuthController {
         window.outerWidth : document.body.clientWidth,
       outerHeight = typeof window.outerHeight !== 'undefined' ?
         window.outerHeight : (document.body.clientHeight - 22),
-      width = 270,
-      height = 420,
+      width = 320,
+      height = 510,
       left = parseInt(screenX + ((outerWidth - width) / 2), 10),
       top = parseInt(screenY + ((outerHeight - height) / 2.5), 10),
       features = (
