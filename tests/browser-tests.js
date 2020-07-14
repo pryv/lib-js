@@ -12295,10 +12295,16 @@ class AuthController {
 
     // 3. Check if there is a prYvkey as result of "out of page login"
     const params = AuthController.getQueryParamsFromURL();
-    if (params.prYvkey) {
+    let pollUrl = null;
+    if (params.prYvkey) { // deprecated method - To be removed
+      pollUrl = this.pryvServiceInfo.access + params.prYvkey;
+    }
+    if (params.prYvpoll) {
+      pollUrl = params.prYvpoll;
+    }
+    if (pollUrl !== null) {
       try {
-        const res = await utils.superagent.get(
-          this.pryvServiceInfo.access + params.prYvkey);
+        const res = await utils.superagent.get(pollUrl);
         this.processAccess(res.body);
       } catch (e) {
         this.state = {
