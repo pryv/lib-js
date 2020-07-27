@@ -190,7 +190,16 @@ class AuthController {
   * @private
   */
   async getAccess() {
-    const res = await utils.superagent.get(this.accessData.poll).set('accept', 'json');
+    let res;
+    try{
+      res = await utils.superagent.get(this.accessData.poll).set('accept', 'json');
+    } 
+    catch(e){
+      const body  = {
+        "status" : 'ERROR'
+      }
+      return body
+    }
     return res.body;
   }
 
@@ -225,12 +234,11 @@ class AuthController {
       throw this.state.error;
     }
     this.accessData = accessData;
-
     switch (this.accessData.status) {
       case 'ERROR':
         this.state = {
           id: AuthStates.ERROR,
-          message: 'Error on the backend'
+          message: 'Error on the backend, please refresh'
         };
         break;
       case 'ACCEPTED':

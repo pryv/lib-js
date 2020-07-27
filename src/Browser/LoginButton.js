@@ -66,7 +66,6 @@ class LoginButton {
     if (state) {
       this.lastState = state;
     }
-
     switch (this.lastState.id) {
       case AuthStates.ERROR:
         this.text = this.myMessages.ERROR + ': ' + this.lastState.message
