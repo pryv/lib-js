@@ -191,14 +191,11 @@ class AuthController {
   */
   async getAccess() {
     let res;
-    try{
+    try {
       res = await utils.superagent.get(this.accessData.poll).set('accept', 'json');
-    } 
-    catch(e){
-      const body  = {
-        "status" : 'ERROR'
-      }
-      return body
+    }
+    catch (e) {
+      return { "status": "ERROR" }
     }
     return res.body;
   }
