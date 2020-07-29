@@ -1,6 +1,6 @@
 {
   "name": "pryv",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "homepage": "https://github.com/pryv/lib-js",
   "description": "Pryv Javascript Library",
   "keywords": [
@@ -51,7 +51,7 @@
     "mocha": "^6.2.3",
     "node-fetch": "^2.6.0",
     "nyc": "^14.1.1",
-    "rec-la": "^0.1.13",
+    "rec-la": "^0.1.14",
     "universal-url": "^2.0.0",
     "zombie": "^6.1.4"
   }
