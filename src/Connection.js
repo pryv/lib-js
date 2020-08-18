@@ -62,6 +62,14 @@ class Connection {
   }
 
   /**
+   * get access info
+   * It's async as it is constructed with get function.
+   */
+  async accessInfo(){
+    return await this.get("access-info", null);
+  }
+
+  /**
    * Issue a Batch call https://api.pryv.com/reference/#call-batch .
    * arrayOfAPICalls will be splited in multiple calls if the size is > `conn.options.chunkSize` .
    * Default chunksize is 1000.
