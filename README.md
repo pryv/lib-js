@@ -25,6 +25,7 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
   - [Using an API endpoint](#using-an-api-endpoint)
   - [Using a Username & Token (knowing the service information URL)](#using-a-username--token-knowing-the-service-information-url)
   - [Within a WebPage with a login button](#within-a-webpage-with-a-login-button)
+  - [Fetch access info](#fetch-access-info)
   - [Using Service.login() *(trusted apps only)*](#using-servicelogin-trusted-apps-only)
 + [API calls](#api-calls)
 + [Advanced usage of API calls with optional individual result and progress callbacks](#advanced-usage-of-api-calls-with-optional-individual-result-and-progress-callbacks)
@@ -149,6 +150,18 @@ The following code is an implementation of the [Pryv.io Authentication process](
 </body>
 </html>
 ```
+
+#### Fetch access info
+
+Implementation of [access info](https://api.pryv.com/reference/#access-info).
+
+```js
+const apiEndpoint = 'https://ck6bwmcar00041ep87c8ujf90@drtom.pryv.me';
+const connection = new Pryv.Connection(apiEndpoint);
+const accessInfo = await connection.accessInfo();
+```
+
+
 
 #### Using Service.login() *(trusted apps only)*
 
