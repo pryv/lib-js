@@ -79,25 +79,6 @@ const utils = {
       res[2] += '/';
     }
     return res[1] + '://' + tokenAndApi.token + '@' + res[2];
-  },
-
-  /**
-   * Get the username from serviceInfo.api property and an apiEndpoint 
-   * @param {string} serviceInfoApi - serviceInfo.api property in the form of http://...{username}...
-   * @param {PryvApiEndpoint} apiEndpoint - apiEndpoint (with or without token)
-   * @throws {Error} if {username} is not present and if apiEndpoint URL is not of this Service
-   */
-  extractUsernameFromAPIAndEndpoint: function(serviceInfoApi, apiEndpoint) {
-    const {endpoint} = utils.extractTokenAndApiEndpoint(apiEndpoint);
-    const start = serviceInfoApi.indexOf('{username}');
-    const tail = serviceInfoApi.length - start - 10; // length of str after '{username}'
-    if (start < 5) throw new Error('Invalid API schema with no {username} placeholder');
-    const username = endpoint.slice(start, - tail);
-    if (serviceInfoApi.replace('{username}', username) !== endpoint) {
-      throw new Error('serviceInfoApi ' + serviceInfoApi 
-      + ' schema does not match apiEndpoint: ' + apiEndpoint)
-    }
-    return username;
   }
 
 }

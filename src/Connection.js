@@ -51,14 +51,13 @@ class Connection {
 
   /**
    * get username. 
-   * It's async as in it constructed from service info "api" property and 
-   * endpoint URL.
+   * It's async as in it constructed from access info
    * @param {*} arrayOfAPICalls 
    * @param {*} progress 
    */
   async username() {
-    const info = await this.service.info();
-    return utils.extractUsernameFromAPIAndEndpoint(info.api, this.endpoint);
+    const accessInfo = await this.accessInfo();
+    return accessInfo.user.username;
   }
 
   /**
@@ -66,7 +65,7 @@ class Connection {
    * It's async as it is constructed with get function.
    */
   async accessInfo(){
-    return await this.get("access-info", null);
+    return this.get("access-info", null);
   }
 
   /**
