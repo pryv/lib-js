@@ -161,8 +161,6 @@ const connection = new Pryv.Connection(apiEndpoint);
 const accessInfo = await connection.accessInfo();
 ```
 
-
-
 #### Using Service.login() *(trusted apps only)*
 
 [auth.login reference](https://api.pryv.com/reference-full/#login-user)
