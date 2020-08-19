@@ -12920,14 +12920,21 @@ class Connection {
 
   /**
    * get username. 
-   * It's async as in it constructed from service info "api" property and 
-   * endpoint URL.
+   * It's async as in it constructed from access info
    * @param {*} arrayOfAPICalls 
    * @param {*} progress 
    */
   async username() {
-    const info = await this.service.info();
-    return utils.extractUsernameFromAPIAndEndpoint(info.api, this.endpoint);
+    const accessInfo = await this.accessInfo();
+    return accessInfo.user.username;
+  }
+
+  /**
+   * get access info
+   * It's async as it is constructed with get function.
+   */
+  async accessInfo(){
+    return this.get("access-info", null);
   }
 
   /**
@@ -13901,25 +13908,6 @@ const utils = {
       res[2] += '/';
     }
     return res[1] + '://' + tokenAndApi.token + '@' + res[2];
-  },
-
-  /**
-   * Get the username from serviceInfo.api property and an apiEndpoint 
-   * @param {string} serviceInfoApi - serviceInfo.api property in the form of http://...{username}...
-   * @param {PryvApiEndpoint} apiEndpoint - apiEndpoint (with or without token)
-   * @throws {Error} if {username} is not present and if apiEndpoint URL is not of this Service
-   */
-  extractUsernameFromAPIAndEndpoint: function(serviceInfoApi, apiEndpoint) {
-    const {endpoint} = utils.extractTokenAndApiEndpoint(apiEndpoint);
-    const start = serviceInfoApi.indexOf('{username}');
-    const tail = serviceInfoApi.length - start - 10; // length of str after '{username}'
-    if (start < 5) throw new Error('Invalid API schema with no {username} placeholder');
-    const username = endpoint.slice(start, - tail);
-    if (serviceInfoApi.replace('{username}', username) !== endpoint) {
-      throw new Error('serviceInfoApi ' + serviceInfoApi 
-      + ' schema does not match apiEndpoint: ' + apiEndpoint)
-    }
-    return username;
   }
 
 }
@@ -14157,7 +14145,7 @@ const cuid = __webpack_require__(/*! cuid */ "./node_modules/cuid/index.js");
 
 describe('Connection', () => {
 
-  before(async function() { 
+  before(async function () {
     this.timeout(5000);
     await testData.prepare();
     conn = new Pryv.Connection(testData.apiEndpointWithToken);
@@ -14214,7 +14202,7 @@ describe('Connection', () => {
   });
 
   describe('.service', function () {
-    it('return a Pryv.Service object', async () =>  {
+    it('return a Pryv.Service object', async () => {
       const service = conn.service;
       expect(service instanceof Pryv.Service).to.equal(true);
     });
@@ -14338,7 +14326,7 @@ describe('Connection', () => {
 
       if (typeof window === 'undefined') { // node
 
-         res = await conn.createEventWithFile({
+        res = await conn.createEventWithFile({
           type: 'picture/attached',
           streamId: 'data'
         }, './test/Y.png');
@@ -14387,7 +14375,6 @@ describe('Connection', () => {
 
       should.exist(res2);
       'ok'.should.equal(res2.status);
-
     });
 
   });
@@ -14430,11 +14417,11 @@ describe('Connection', () => {
 
 
       it('streaming includesDeletion', async () => {
-        const queryParams = { fromTime: 0, toTime: now, limit: 10000, includeDeletions: true, modifiedSince: 0, state: 'all'};
+        const queryParams = { fromTime: 0, toTime: now, limit: 10000, includeDeletions: true, modifiedSince: 0, state: 'all' };
         let eventsCount = 0;
         let trashedCount = 0;
         let deletedCount = 0;
-        function forEachEvent(event) { 
+        function forEachEvent(event) {
           if (event.deleted) {
             deletedCount++;
           } else if (event.trashed) {
@@ -14459,7 +14446,7 @@ describe('Connection', () => {
       });
 
       it('no-events includeDeletions', async () => {
-        const queryParams = { fromTime: 0, toTime: now, tags: ['RANDOM-123'], includeDeletions: true, modifiedSince: 0};
+        const queryParams = { fromTime: 0, toTime: now, tags: ['RANDOM-123'], includeDeletions: true, modifiedSince: 0 };
         function forEachEvent(event) { }
         const res = await conn.getEventsStreamed(queryParams, forEachEvent);
         expect(0).to.equal(res.eventsCount);
@@ -14512,6 +14499,69 @@ describe('Connection', () => {
         });
       });
     }
+  });
+
+  describe('Access Info', () => {
+    let newUser;
+    let accessInfoUser;
+    before(async () => {
+      newUser = (await conn.api([
+        {
+          method: "accesses.create", params: {
+            "name": "test",
+            "permissions": [
+              {
+                "streamId": "data",
+                "level": "read"
+              }
+            ]
+          }
+        }
+      ]))[0];
+    });
+
+    beforeEach(async () => {
+      const regexAPIandToken = /(.+):\/\/(.+)/gm;
+      const res = regexAPIandToken.exec(testData.apiEndpoint);
+      const apiEndpointWithToken = res[1] + '://' + newUser.access.token + '@' + res[2];
+      const newConn = new Pryv.Connection(apiEndpointWithToken);
+      accessInfoUser = await newConn.accessInfo();
+    });
+
+    after(async () => {
+      await conn.api([
+        {
+          method: "accesses.delete", params: {
+            "id": newUser.access.id
+          }
+        }
+      ]);
+    });
+
+    it('has same username', () => {
+      should.exist(accessInfoUser);
+      should.exist(accessInfoUser.name);
+      should.equal(newUser.access.name, accessInfoUser.name);
+    });
+
+    it('has same permissions', () => {
+      should.exist(accessInfoUser);
+      should.exist(accessInfoUser.permissions);
+      let lengthPermission = accessInfoUser.permissions.length;
+      should.equal(newUser.access.permissions.length, lengthPermission);
+      for (let i = 0; i < lengthPermission; i++) {
+        should.exist(accessInfoUser.permissions[i].streamId);
+        should.equal(newUser.access.permissions[i].streamId, accessInfoUser.permissions[i].streamId);
+        should.exist(accessInfoUser.permissions[i].level);
+        should.equal(newUser.access.permissions[i].level, accessInfoUser.permissions[i].level);
+      }
+    });
+
+    it('has same token', () => {
+      should.exist(accessInfoUser.token);
+      should.equal(newUser.access.token, accessInfoUser.token);
+    });
+
   });
 
 });
@@ -14905,58 +14955,6 @@ describe('utils', function () {
       });
     apiEndpoint.should.equals(testData.apiEndpoint);
     done();
-  });
-
-  it('extractUsernameFromAPIAndEndpoint should retrieve username without token', async () => {
-    const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
-      testData.serviceInfo.api,
-      testData.apiEndpoint
-    );
-    expect(username).to.equals(testData.username);
-  });
-
-  it('extractUsernameFromAPIAndEndpoint should retrieve username with token', async () => {
-    const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
-      testData.serviceInfo.api,
-      testData.apiEndpointWithToken
-    );
-    expect(username).to.equals(testData.username);
-  });
-
-  it('extractUsernameFromAPIAndEndpoint should work with DNSLess api schema', async () => {
-    const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
-      'https://test.pryv.me/{username}/',
-      'https://' + testData.token + '@test.pryv.me/' + testData.username 
-    );
-    expect(username).to.equals(testData.username);
-  });
-
-  it('extractUsernameFromAPIAndEndpoint should fail with invalid api URL', async () => {
-    let error = null;
-    try { 
-      const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
-        'http://no-username.com/',
-        testData.apiEndpointWithToken
-      );
-    } catch (e) {
-      error = e;
-    }
-    expect(error).to.exist;
-    expect(error.message).to.equal('Invalid API schema with no {username} placeholder');
-  });
-
-  it('extractUsernameFromAPIAndEndpoint should fail with not matching endpoints', async () => {
-    let error = null;
-    try {
-      const username = Pryv.utils.extractUsernameFromAPIAndEndpoint(
-        'http://pryv.me/{username}',
-        testData.apiEndpointWithToken
-      );
-    } catch (e) {
-      error = e;
-    }
-    expect(error).to.exist;
-    expect(error.message).to.equal('serviceInfoApi http://pryv.me/{username} schema does not match apiEndpoint: ' + testData.apiEndpointWithToken);
   });
 
 });
