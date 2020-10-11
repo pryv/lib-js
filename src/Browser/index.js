@@ -1,5 +1,5 @@
-const AuthController = require('./AuthController');
-const AuthStates = require('./AuthStates');
+const AuthController = require('./Auth/AuthController');
+const AuthStates = require('./Auth/AuthStates');
 
 /**
  * @memberof Pryv
