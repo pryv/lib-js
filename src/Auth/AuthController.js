@@ -1,6 +1,6 @@
-rconst utils = require('../utils'); 
+const utils = require('../utils'); 
 const Service = require('../Service');
-const LoginButton = require('./LoginButton');
+const LoginButton = require('../Browser/LoginButton');
 const AuthStates = require('./AuthStates');
 
 /**

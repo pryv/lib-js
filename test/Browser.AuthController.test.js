@@ -2,7 +2,7 @@
 const should = chai.should();
 const expect = chai.expect;
 
-const AuthController = require('../src/Browser/AuthController.js')
+const AuthController = require('../src/Auth/AuthController.js')
 
 
 describe('Browser.AuthController', function () {

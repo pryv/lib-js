@@ -1,7 +1,7 @@
 
 const Messages = require('./LoginButtonMessages');
-const AuthStates = require('./Auth/AuthStates');
-const HumanInteractionInterface = require('./Auth/HumanInteractionInterface');
+const AuthStates = require('../Auth/AuthStates');
+const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
 
 const Cookies = require('./CookieUtils');
 
