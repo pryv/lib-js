@@ -29,14 +29,13 @@ class LoginButton extends HumanInteractionInterface {
     this.loginButtonSpan = document.getElementById(auth.settings.spanButtonID);
 
     if (!this.loginButtonSpan) {
-      throw new Error('No Cannot find SpanId: ' + auth.settings.spanButtonID + ' in DOM');
+      console.log('WARNING: Pryv.Browser initialized with no spanButtonID');	
     }
 
-    // up to the time the button is loaded use the Span to dsiplay eventual error messages
+    // up to the time the button is loaded use the Span to display eventual error messages
     this.loginButtonText = this.loginButtonSpan;
 
     this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
-
 
     this.onStateChange({ id: AuthStates.LOADING });
   }

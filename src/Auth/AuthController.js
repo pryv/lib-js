@@ -8,8 +8,7 @@ const AuthStates = require('./AuthStates');
  */
 class AuthController {
 
-
-  constructor(settings, serviceInfoUrl, serviceCustomizations, HumanInteraction) {
+  constructor(settings, serviceInfoUrl, serviceCustomizations, HumanInteraction = LoginButton) {
     this.stateChangeListners = [];
     this.settings = settings;
     this.serviceInfoUrl = serviceInfoUrl;

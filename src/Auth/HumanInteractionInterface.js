@@ -1,6 +1,9 @@
+
+
 class HumanInteractionInterface {
+
   constructor(auth) {
-     this.auth = auth; 
+    this.auth = auth; 
   }
   
   /**
@@ -22,6 +25,7 @@ class HumanInteractionInterface {
   onStateChange (state) {
     throw new Error('onStateChange() must be implemented')
   }
- 
-  
+
 }
+
+module.exports = HumanInteractionInterface;
