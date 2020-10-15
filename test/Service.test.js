@@ -9,8 +9,6 @@ chai.use(chaiAsPromised);
 
 const testData = require('./test-data.js');
 
-
-
 describe('Service', function () {
 
   before(async function () {

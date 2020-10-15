@@ -49,7 +49,6 @@ describe('Browser', function () {
     const settings = genSettings();
     
     let AuthLoaded = false;
-    let ServiceInfoLoaded = false;
     settings.onStateChange = function (state) {
       should.exist(state.id);
       if (state.id == Pryv.Browser.AuthStates.LOADING) {
@@ -73,7 +72,7 @@ describe('Browser', function () {
   });
 
 
-  it ('serviceInfoFromUrl()', async () => {
+  it('serviceInfoFromUrl()', async () => {
     expect('https://zouzou.com/service/info').to.equal(Pryv.Browser.serviceInfoFromUrl());
   });
 

@@ -1,5 +1,6 @@
 const AuthController = require('../Auth/AuthController');
 const AuthStates = require('../Auth/AuthStates');
+const LoginButton = require('../Browser/LoginButton');
 
 /**
  * @memberof Pryv
@@ -23,10 +24,17 @@ const AuthStates = require('../Auth/AuthStates');
  * @param {string} serviceInfoUrl
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
  * @returns {Pryv.Service}
+ * TODO IEVA - how end developer should access methods in the AuthController like 
+ * messages depending on the state
  */
-async function setupAuth(settings, serviceInfoUrl, serviceCustomizations) {
-  return (new AuthController(settings, 
-    serviceInfoUrl, serviceCustomizations)).init();
+async function setupAuth (settings, serviceInfoUrl, serviceCustomizations) {
+  let HumanInteraction = null;
+  if (settings.spanButtonID) {
+    HumanInteraction = LoginButton;
+  }
+  return (
+    new AuthController(settings, serviceInfoUrl, serviceCustomizations, HumanInteraction)
+  ).init();
 }
 
 

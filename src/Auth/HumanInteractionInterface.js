@@ -1,5 +1,3 @@
-
-
 class HumanInteractionInterface {
 
   constructor(auth) {
