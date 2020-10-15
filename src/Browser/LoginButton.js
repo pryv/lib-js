@@ -1,5 +1,6 @@
 const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
 const utils = require('../utils'); 
+const AuthStates = require('../Auth/AuthStates');
 
 /**
  * @memberof Pryv.Browser
@@ -9,16 +10,33 @@ class LoginButton extends HumanInteractionInterface {
   /**
    * @param {Browser/AuthController} auth 
    */
+  
   constructor (authController) {
     super(authController);
   }
-  
+   
   /**
    * setup button and load assets
    */
-  async init() {
+  async init () {
+    this.auth.stateChangeListners.push(this.onStateChange.bind(this));
     this.setupButton();
     await this.loadAssets();
+    /*
+      // 3. Check if there is a prYvkey as result of "out of page login"
+      let pollUrl = await this.pollUrlReturningFromLogin();
+      if (pollUrl !== null) {
+        try {
+          const res = await utils.superagent.get(pollUrl);
+          this.processAccess(res.body);
+        } catch (e) {
+          this.state = {
+            id: AuthStates.ERROR,
+            message: 'Cannot fetch result',
+            error: e
+          }
+        }
+    */
   }
   
   setupButton () {
@@ -36,15 +54,6 @@ class LoginButton extends HumanInteractionInterface {
   }
 
   /**
-   * The same button can redirect, open popup or logout - set the dynamic action
-   */
-  onClick () {
-    if (this.auth.state.action) {
-      this.auth.state.action.apply(this);
-    }
-  }
-
-  /**
    * Optional - sets the button with the style from the 
    * service info
    */
@@ -54,6 +63,17 @@ class LoginButton extends HumanInteractionInterface {
     this.loginButtonText = document.getElementById('pryv-access-btn-text');
     // State was not changed, only the button text, so reload state manually
     this.onStateChange();
+  }
+
+  /**
+   * The same button can redirect, open auth popup or logout
+   */
+  onClick () {
+    if (this.auth.state.id === AuthStates.AUTHORIZED) {
+      this.auth.logOut();
+    } else if (this.auth.state.id === AuthStates.INITIALIZED) {
+      this.startLoginScreen();
+    }
   }
 
   /**
@@ -72,28 +92,12 @@ class LoginButton extends HumanInteractionInterface {
     return pollUrl;
   }
 
-  onStateChange (state) {
+  onStateChange () {
     this.text = this.auth.defaultOnStateChange();
     if (this.loginButtonText) {
       this.loginButtonText.innerHTML = this.text;
     }
   }
-
-  // ------------------ Internal utils ------------------- //
-
-  /**
-   * TODO IEVA - windowLocationForTest, navigatorForTests - 
-   * ALSO make this method optional
-   * can I remove these 2 parameters and add them directly to the tests?
-   * From the settings and the environement  
-   * @param {string} [returnURL] Url
-   * @param {Object} [windowLocationForTest] fake window.location.href
-   * @param {Object} [navigatorForTests] fake navigaotor for testsuseragent
-   */
-  // getReturnURL (returnURL, windowLocationForTest, navigatorForTests) {
-  //   console.log(returnURL,'returnURL', windowLocationForTest,'windowLocationForTest',navigatorForTests,'navigatorForTestsssssssssssssssss');
-  //   return this.auth.getReturnURL(returnURL, windowLocationForTest, navigatorForTests);
-  // }
 
   startLoginScreen () {
     // Poll Access if not yet in course
@@ -128,8 +132,6 @@ class LoginButton extends HumanInteractionInterface {
     } else if (window.focus) {
       this.popup.focus();
     }
-
-    return;
   }
 }
 module.exports = LoginButton;

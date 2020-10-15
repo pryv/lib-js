@@ -28,13 +28,21 @@ const LoginButton = require('../Browser/LoginButton');
  * messages depending on the state
  */
 async function setupAuth (settings, serviceInfoUrl, serviceCustomizations) {
-  let HumanInteraction = null;
-  if (settings.spanButtonID) {
-    HumanInteraction = LoginButton;
+  let loginButton
+  if (settings.spanButtonID && !settings.onStateChange) {
+    //loginButton = new LoginButton(authController);
+    //settings.onStateChange = loginButton.onStateChange.bind(loginButton);
   }
-  return (
-    new AuthController(settings, serviceInfoUrl, serviceCustomizations, HumanInteraction)
-  ).init();
+  const authController = new AuthController(settings, serviceInfoUrl, serviceCustomizations);
+  if (settings.spanButtonID && !settings.onStateChange) {
+    loginButton = new LoginButton(authController);
+    //settings.onStateChange = loginButton.onStateChange.bind(loginButton);
+  }
+  const authService = await authController.init();
+  if (loginButton) {
+    await loginButton.init();
+  }
+  return authService;
 }
 
 

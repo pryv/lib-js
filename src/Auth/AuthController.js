@@ -9,19 +9,12 @@ const Cookies = require('../Browser/CookieUtils');
  */
 class AuthController {
 
-  constructor (settings, serviceInfoUrl, serviceCustomizations, HumanInteraction) {
+  constructor (settings, serviceInfoUrl, serviceCustomizations) {
     this.stateChangeListners = [];
     this.settings = settings;
     this.serviceInfoUrl = serviceInfoUrl;
     this.serviceCustomizations = serviceCustomizations;
     if (!settings) { throw new Error('settings cannot be null'); }
-
-    // Auth controller should work with or without interface
-    if (HumanInteraction) {
-      this.humanInteraction = new HumanInteraction(this);
-      // -- Register Human Interactions to stateListener
-      this.stateChangeListners.push(this.humanInteraction.onStateChange.bind(this.humanInteraction));
-    }
 
     // 1. get Language
     this.languageCode = this.settings.authRequest.languageCode || 'en';
@@ -29,8 +22,10 @@ class AuthController {
 
     try {
       // -- Check Error CallBack
-      if (!this.settings.onStateChange) { throw new Error('Missing settings.onStateChange'); }
-      this.stateChangeListners.push(this.settings.onStateChange);
+      //TODO IEVA if (!this.settings.onStateChange) { throw new Error('Missing settings.onStateChange'); }
+      if (this.settings.onStateChange) {
+        this.stateChangeListners.push(this.settings.onStateChange);
+      }
 
       // -- settings 
       if (!this.settings.authRequest) { throw new Error('Missing settings.authRequest'); }
@@ -79,26 +74,6 @@ class AuthController {
       throw e; // forward error
     }
 
-    // only with interface login sequence could be initialized
-    if (typeof this.humanInteraction !== 'undefined') {
-      await this.humanInteraction.init();
-      // 3. Check if there is a prYvkey as result of "out of page login"
-      let pollUrl = await this.pollUrlReturningFromLogin();
-      if (pollUrl !== null) {
-        try {
-          const res = await utils.superagent.get(pollUrl);
-          this.processAccess(res.body);
-        } catch (e) {
-          this.state = {
-            id: AuthStates.ERROR,
-            message: 'Cannot fetch result',
-            error: e
-          }
-        }
-        return this.pryvService;
-      }
-    }
-
     // 4. check autologin 
     let loginCookie = null;
     try {
@@ -111,12 +86,11 @@ class AuthController {
       this.state = {
         id: AuthStates.AUTHORIZED,
         apiEndpoint: loginCookie.apiEndpoint,
-        displayName: loginCookie.displayName,
-        action: this.logOut
+        displayName: loginCookie.displayName
       };
     } else {
       // 5. Propose Login
-      await this.readyToLogin();
+      await this.prepareForLogin();
     }
     return this.pryvService;
   }
@@ -139,7 +113,7 @@ class AuthController {
    * Called at the end init() and when logging out()
    */
   
-  async readyToLogin() {
+  async prepareForLogin() {
     await this.verifyAndPrepareForLogin();
 
     // 3.a Open Popup (even if already opened)
@@ -154,8 +128,7 @@ class AuthController {
       } else {
         this.state = {
           id: AuthStates.INITIALIZED,
-          serviceInfo: this.serviceInfo,
-          action: this.humanInteraction ? this.humanInteraction.popupLogin : null
+          serviceInfo: this.serviceInfo
         }
       }
     }
@@ -244,19 +217,16 @@ class AuthController {
         this.state = {
           id: AuthStates.AUTHORIZED,
           apiEndpoint: apiEndpoint,
-          displayName: this.accessData.username,
-          action: this.logOut
+          displayName: this.accessData.username
         };
 
         break;
     }
   }
 
-
   // ---------------------- STATES ----------------- //
-
   set state (newState) {
-    //console.log('State Changed:' + JSON.stringify(newState));
+    // console.log('State Changed:' + JSON.stringify(newState));
     this._state = newState;
 
     this.stateChangeListners.map((listner) => {
@@ -272,7 +242,6 @@ class AuthController {
     return this._state;
   }
 
-
   // ------------------ ACTIONS  ----------- //
   /**
    * Revoke Connection and clean local cookies
@@ -281,7 +250,7 @@ class AuthController {
   logOut() {
     const message = this.messages.LOGOUT_CONFIRM ? this.messages.LOGOUT_CONFIRM : 'Logout ?';
     if (confirm(message)) {
-      this.readyAndClean();
+      this.prepareForLogin();
     }
   }
 
