@@ -1,5 +1,6 @@
 const AuthController = require('../Auth/AuthController');
 const AuthStates = require('../Auth/AuthStates');
+const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
 const LoginButton = require('../Browser/LoginButton');
 
 /**
@@ -24,22 +25,18 @@ const LoginButton = require('../Browser/LoginButton');
  * @param {string} serviceInfoUrl
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
  * @returns {Pryv.Service}
- * TODO IEVA - how end developer should access methods in the AuthController like 
- * messages depending on the state
  */
-async function setupAuth (settings, serviceInfoUrl, serviceCustomizations) {
+async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, humanInteractionInterface) {
   let loginButton
-  if (settings.spanButtonID && !settings.onStateChange) {
-    //loginButton = new LoginButton(authController);
-    //settings.onStateChange = loginButton.onStateChange.bind(loginButton);
-  }
   const authController = new AuthController(settings, serviceInfoUrl, serviceCustomizations);
-  if (settings.spanButtonID && !settings.onStateChange) {
-    loginButton = new LoginButton(authController);
-    //settings.onStateChange = loginButton.onStateChange.bind(loginButton);
-  }
   const authService = await authController.init();
-  if (loginButton) {
+  
+  if (settings.spanButtonID) {
+    if (humanInteractionInterface == null) {
+      loginButton = new LoginButton(authController);
+    } else {
+      loginButton = new humanInteractionInterface(authController);
+    }
     await loginButton.init();
   }
   return authService;
@@ -49,6 +46,7 @@ async function setupAuth (settings, serviceInfoUrl, serviceCustomizations) {
 module.exports = {
   setupAuth: setupAuth,
   AuthStates: AuthStates,
+  HumanInteractionInterface: HumanInteractionInterface,
   serviceInfoFromUrl: AuthController.getServiceInfoFromURL
 }
 

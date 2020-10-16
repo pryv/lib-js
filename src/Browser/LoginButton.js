@@ -54,8 +54,7 @@ class LoginButton extends HumanInteractionInterface {
   }
 
   /**
-   * Optional - sets the button with the style from the 
-   * service info
+   * Loads the style from the service info
    */
   async loadAssets () {
     const assets = await this.auth.loadAssets();

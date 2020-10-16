@@ -1,21 +1,16 @@
 const expect = chai.expect;
 
-const utils = require('../src/utils.js')
-//const LoginButton = require('../src/Browser/LoginButton.js')
-const AuthController = require('../src/Auth/AuthController.js')
+const utils = require('../src/utils.js');
+const AuthController = require('../src/Auth/AuthController.js');
 const testData = require('./test-data.js');
 
 describe('Browser.LoginButton', () => {
   let auth;
   before(async () => {
-    //TODO IEVA decouple login button from the controller if possible
     auth = new AuthController({
-      onStateChange: function pryvAuthStateChange (state) { },
       authRequest: {
         requestingAppId: 'lib-js-test',
-        returnURL: 'auto#',
-        requestedPermissions: [],
-        clientData: {}
+        requestedPermissions: []
       }
     }, testData.serviceInfoUrl, {});
     await auth.init();
@@ -51,11 +46,6 @@ describe('Browser.LoginButton', () => {
   it('browserIsMobileOrTablet()', async () => {
     expect(utils.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
     expect(utils.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
-  });
-
-  it('getStatusFromURL()', async () => {
-    expect('2jsadh').to.equal(auth.getStatusFromURL(
-      'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
   });
 
   it('getServiceInfoFromURL()', async () => {

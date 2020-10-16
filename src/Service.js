@@ -37,7 +37,6 @@ const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
 class Service {
 
   constructor (serviceInfoUrl, serviceCustomizations) {
-    //super();
     this._pryvServiceInfo = null;
     this._assets = null;
     this._pryvServiceInfoUrl = serviceInfoUrl;
@@ -56,11 +55,12 @@ class Service {
   async info(forceFetch) {
     if (forceFetch || ! this._pryvServiceInfo) {
       let baseServiceInfo = {};
+      /* TODO IEVA
       if (this._pryvServiceInfoUrl) {
         const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
         baseServiceInfo = res.body;
       }
-      /* TODO IEVA
+      */
       baseServiceInfo = {
         "register": "https://reg.pryv.me",
         "access": "https://access.pryv.me/access",
@@ -73,7 +73,7 @@ class Service {
         "assets": {
           "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
         }
-      };*/
+      };
       Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
       this.setServiceInfo(baseServiceInfo);
     }

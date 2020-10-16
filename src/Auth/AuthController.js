@@ -361,13 +361,6 @@ class AuthController {
     //TODO check validity of status
     return queryParams[AuthController.options.SERVICE_INFO_QUERY_PARAM_KEY];
   }
-  // TODO IEVA - where it is used, because now I see usage only in test????
-  //util to grab parameters from url query string
-  getStatusFromURL (url) {
-    const queryParams = utils.getQueryParamsFromURL(url || window.location.href);
-    //TODO check validity of status
-    return queryParams.prYvstatus;
-  }
 }
 AuthController.options = {
   SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl'

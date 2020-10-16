@@ -27,6 +27,7 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
   - [Within a WebPage with a login button](#within-a-webpage-with-a-login-button)
   - [Fetch access info](#fetch-access-info)
   - [Using Service.login() *(trusted apps only)*](#using-servicelogin-trusted-apps-only)
+  - [Performing the Pryv Authentication request with your own UI](#pryv-ui)
 + [API calls](#api-calls)
 + [Advanced usage of API calls with optional individual result and progress callbacks](#advanced-usage-of-api-calls-with-optional-individual-result-and-progress-callbacks)
 + [Get Events Streamed](#get-events-streamed)
@@ -43,7 +44,10 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 + [Pryv.Browser & Visual assets](#pryvbrowser--visual-assets)
   - [Pryv.Browser - retrieve serviceInfo from query URL](#pryvbrowser---retrieve-serviceinfo-from-query-url)
   - [Visual assets](#visual-assets)
-
++ [Customizing the process](#pryv-ui)
+  - [Customize login button](#pryv-ui---customize-login-button)
+  - [Customize authentication UI screens](#pryv-ui---customize-authentication-ui-screens)
+  
 ### Import
 
 #### Browser
@@ -505,6 +509,57 @@ To customize the Sign in Button refer to: [sign in button in pryv.me assets](htt
   (await service.assets()).setAllDefaults(); // will load the default Favicon and CSS for this platform
 })();
 ```
+
+### Pryv UI
+Lib-js ships with pre-built authentication service, that you would get as a response
+from `Pryv.Browser.setupAuth` method. Lib-js will help you with
+
+    1. Retrieving service information
+    2. Retrieving button assets from service information
+    3. Calling /access method 
+    4. Calling login method
+    5. Calling logout method
+    6. Default authentication using toekn information storred in the cookie 
+
+#### Using your own login button
+
+In the `Visual Assets` section it was presented how to customize your
+platform styles. Here you will find how to get more advanced and customize
+Login button and it's logic for the steps mentioned above. 
+
+In a `./web-demos/custom-login-button.html` you can find an example how you can do so.
+
+#### Using custom authentication UI screens
+In a section 'Within a WebPage with a login button' we have mentioned that you can create function that monitors the 
+change of authentication `state`. The simplest function example is this:
+```
+function pryvAuthStateChange(state) { // called each time the authentication state changed
+  switch(state.id) {
+      case Pryv.Browser.AuthStates.LOADING:
+        console.log('Loading service information...');
+        break;
+      case Pryv.Browser.AuthStates.INITIALIZED:
+        console.log('Service information is retrieved so authorization can start. You can display login / registration screen or redirect to the our hosted app - web - auth application.');
+        break;
+      case Pryv.Browser.AuthStates.AUTHORIZED:
+        console.log('User is authorized and can access his personal data');
+        break;
+      case Pryv.Browser.AuthStates.LOGOUT:
+        console.log('User just logged off, please delete all the session related data');
+        break;
+      case Pryv.Browser.AuthStates.ERROR:
+        console.log('Error:', state?.message);
+        break;
+  }
+}
+```
+
+Using the information about the state changes, you can render the right views accordingly.
+Check the examples for the next step.
+
+##### Examples
+  1. [Mini React-Native app](https://github.com/pryv/lib-js-react-native) using lib-js authentication with custom UI screens.
+   
 
 # Change Log
 

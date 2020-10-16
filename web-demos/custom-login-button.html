@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Pryv - Javascript Lib</title>
+  <script src="/dist/pryv.js"></script>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+</head>
+
+<body>
+  <span id="pryv-button"></span>
+  <script>
+    let authSettings = {
+      spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
+      authRequest: { // See: https://api.pryv.com/reference/#auth-request
+        requestingAppId: 'lib-js-test',
+        languageCode: 'fr', // optional (default english)
+        returnURL: 'auto#',
+        requestedPermissions: [
+          {
+            streamId: 'test',
+            defaultName: 'test',
+            level: 'manage'
+          }
+        ],
+        clientData: {
+          'app-web-auth:description': {
+            'type': 'note/txt',
+            'content': 'This is a consent message.'
+          }
+        },
+      }
+    };
+
+  let serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
+
+  class MyLoginButton extends Pryv.Browser.HumanInteractionInterface {
+    // Authentication controller will be passet in the setupAuth method
+    constructor(authController) {
+      super(authController);
+    }
+
+    /**
+     * setup button and load assets
+     */
+    async init() {
+      this.auth.stateChangeListners.push(this.onStateChange.bind(this));
+      this.setupButton();
+      await this.loadAssets();
+    }
+
+    setupButton() {
+      console.log('Setup button');
+      // load the button that you set in the settings
+      this.loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
+
+      // up to the time the button is loaded use the Span to display eventual error messages
+      this.loginButtonText = this.loginButtonSpan;
+
+      // bind actions dynamically to the button click
+      this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
+    }
+
+    /**
+     * Loads the style from the service info
+     */
+    async loadAssets() {
+      console.log('Loading button assets from service info');
+      const assets = await this.auth.loadAssets();
+      this.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
+      this.loginButtonText = document.getElementById('pryv-access-btn-text');
+      // State was not changed, only the button text, so reload state manually
+      this.onStateChange();
+    }
+
+    /**
+     * The same button can redirect, open auth popup or logout
+     */
+    onClick() {
+      console.log('My custom on click event. Currect auth state is: ', this.auth.state);
+      if (this.auth.state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
+        this.auth.logOut();
+      } else if (this.auth.state.id === Pryv.Browser.AuthStates.INITIALIZED) {
+        this.startLoginScreen();
+      }
+    }
+
+    onStateChange() {
+      console.log('State just changed to:', this.auth.state);
+      this.text = 'custom ' + this.auth.defaultOnStateChange();
+      if (this.loginButtonText) {
+        this.loginButtonText.innerHTML = this.text;
+      }
+    }
+
+    startLoginScreen() {
+      console.log('My custom popup that is huge:');
+      // Poll Access if not yet in course
+      if (!this.auth.polling) this.auth.poll();
+
+      let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
+        screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
+        outerWidth = typeof window.outerWidth !== 'undefined' ?
+          window.outerWidth : document.body.clientWidth,
+        outerHeight = typeof window.outerHeight !== 'undefined' ?
+          window.outerHeight : (document.body.clientHeight - 22),
+        width = 900,
+        height = 500,
+        left = parseInt(screenX + ((outerWidth - width) / 2), 10),
+        top = parseInt(screenY + ((outerHeight - height) / 2.5), 10),
+        features = (
+          'width=' + width +
+          ',height=' + height +
+          ',left=' + left +
+          ',top=' + top +
+          ',scrollbars=yes'
+        );
+      const authUrl = this.auth.accessData.authUrl;
+      this.popup = window.open(authUrl, 'You custom Sign-in', features);
+
+      if (!this.popup) {
+        this.auth.polling = false;
+        console.log('FAILED_TO_OPEN_WINDOW');
+      } else if (window.focus) {
+        this.popup.focus();
+      }
+    }
+  }
+
+  (async function () {
+    let service = await Pryv.Browser.setupAuth(
+      authSettings, 
+      serviceInfoUrl,
+      null,
+      MyLoginButton,
+      );
+  })();
+  </script>
+</body>
+
+</html>
