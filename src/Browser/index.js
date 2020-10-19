@@ -34,7 +34,7 @@ async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, human
   const authService = await authController.init();
   
   if (settings.spanButtonID) {
-    let loginButton
+    let loginButton;
     if (humanInteractionInterface == null) {
       loginButton = new LoginButton(authController);
     } else {
@@ -45,15 +45,12 @@ async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, human
   return authService;
 }
 
-
 module.exports = {
   setupAuth: setupAuth,
   AuthStates: AuthStates,
   HumanInteractionInterface: HumanInteractionInterface,
   serviceInfoFromUrl: AuthController.getServiceInfoFromURL
 }
-
-
 
 /**
  * Notify the requesting code of all important changes

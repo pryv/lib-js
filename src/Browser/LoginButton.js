@@ -41,7 +41,7 @@ class LoginButton extends HumanInteractionInterface {
    * Loads the style from the service info
    */
   async _loadAssets () {
-    const assets = await this.auth.pryvService.loadAssets();
+    const assets = await this.auth.getAssets();
     this.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
     this.loginButtonText = document.getElementById('pryv-access-btn-text');
     // State was not changed, only the button text, so reload state manually

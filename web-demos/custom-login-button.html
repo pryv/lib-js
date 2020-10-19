@@ -9,7 +9,7 @@
 </head>
 
 <body>
-  <span id="pryv-button"></span>
+  <button type="button" id="pryv-button">My custom button</button>
   <script>
     let authSettings = {
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
@@ -48,32 +48,9 @@
      */
     async init() {
       this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
-      this.setupButton();
-      await this.loadAssets();
-    }
-
-    setupButton() {
-      console.log('Setup button');
-      // load the button that you set in the settings
-      this.loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
-
-      // up to the time the button is loaded use the Span to display eventual error messages
-      this.loginButtonText = this.loginButtonSpan;
-
-      // bind actions dynamically to the button click
-      this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
-    }
-
-    /**
-     * Loads the style from the service info
-     */
-    async loadAssets() {
-      console.log('Loading button assets from service info');
-      const assets = await this.auth.pryvService.loadAssets();
-      this.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
-      this.loginButtonText = document.getElementById('pryv-access-btn-text');
-      // State was not changed, only the button text, so reload state manually
-      this.onStateChange();
+       let loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
+       loginButtonSpan.addEventListener('click', this.onClick.bind(this));
+       this.onStateChange(); // update button text
     }
 
     /**
@@ -90,10 +67,8 @@
 
     onStateChange() {
       console.log('State just changed to:', this.auth.getState());
-      this.text = 'custom ' + this.auth.pryvService.defaultOnStateChange();
-      if (this.loginButtonText) {
-        this.loginButtonText.innerHTML = this.text;
-      }
+      let text = this.auth.pryvService.defaultOnStateChange();
+      document.querySelector(`#${this.auth.settings.spanButtonID}`).innerText = text;
     }
 
     startLoginScreen() {

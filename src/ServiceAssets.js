@@ -113,7 +113,9 @@ class ServiceAssets {
  * Get Messages strings for Login Button
  */
   async loginButtonGetMessages() {
-    const res = await utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.messages)).set('accept', 'json');
+    const res = await utils.superagent.get(
+      this.relativeURL(this._assets['lib-js'].buttonSignIn.messages))
+      .set('accept', 'json');
     return res.body;
   }
 

@@ -297,7 +297,7 @@ class Service {
   }
 
   async deleteCurrentAuthInfo () {
-    Cookies.del(this._cookieKey)
+    Cookies.del(this._cookieKey);
     this.store.accessData = null;
   }
 
@@ -339,11 +339,11 @@ class Service {
   }
 
   async loadAssets () {
-    let assets = {};
+    let loadedAssets = {};
     try {
-      assets = await this.assets();
-      assets.loginButtonLoadCSS(); // can be async 
-      const thisMessages = await assets.loginButtonGetMessages();
+      loadedAssets = await this.assets();
+      await loadedAssets.loginButtonLoadCSS(); // can be async 
+      const thisMessages = await loadedAssets.loginButtonGetMessages();
       if (thisMessages.LOADING) {
         this.store.messages = Messages(this.store.languageCode, thisMessages);
       } else {
@@ -357,7 +357,7 @@ class Service {
       });
       throw e; // forward error
     }
-    return assets;
+    return loadedAssets;
   }
 }
 

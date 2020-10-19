@@ -64,7 +64,7 @@ class AuthController {
 
     await this.finishAuthProcessAfterRedirection();
 
-
+    this.assets = await this.pryvService.loadAssets();
 
     return this.pryvService;
   }
@@ -257,6 +257,10 @@ class AuthController {
 
   getState () {
     return this.store.state;
+  }
+
+  getAssets () {
+    return this.assets;
   }
 }
 
