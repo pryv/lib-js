@@ -18,7 +18,7 @@ class LoginButton extends HumanInteractionInterface {
    * setup button and load assets
    */
   async init () {
-    this.auth.stateChangeListners.push(this.onStateChange.bind(this));
+    this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
     this._setupButton();
     await this._loadAssets();   
   }
@@ -41,7 +41,7 @@ class LoginButton extends HumanInteractionInterface {
    * Loads the style from the service info
    */
   async _loadAssets () {
-    const assets = await this.auth.loadAssets();
+    const assets = await this.auth.pryvService.loadAssets();
     this.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
     this.loginButtonText = document.getElementById('pryv-access-btn-text');
     // State was not changed, only the button text, so reload state manually
@@ -52,9 +52,9 @@ class LoginButton extends HumanInteractionInterface {
    * The same button can redirect, open auth popup or logout
    */
   onClick () {
-    if (this.auth.state.id === AuthStates.AUTHORIZED) {
+    if (this.auth.store.state.id === AuthStates.AUTHORIZED) {
       this.auth.logOut();
-    } else if (this.auth.state.id === AuthStates.INITIALIZED) {
+    } else if (this.auth.store.state.id === AuthStates.INITIALIZED) {
       if (this.auth.settings.authRequest.returnURL) { // open on same page (no Popup) 
         location.href = this.auth.pryvService.getAccessData().url;
         return;
@@ -65,15 +65,15 @@ class LoginButton extends HumanInteractionInterface {
   }
 
   onStateChange () {
-    this.text = this.auth.defaultOnStateChange();
+    this.text = this.auth.pryvService.defaultOnStateChange();
     if (this.loginButtonText) {
       this.loginButtonText.innerHTML = this.text;
     }
   }
 
-  _startLoginScreen () {
+  async _startLoginScreen () {
     // Poll Access if not yet in course
-    this.auth.startAuthRequest();
+    await this.auth.pryvService.startAuthRequest();
 
     let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
       screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
@@ -97,7 +97,6 @@ class LoginButton extends HumanInteractionInterface {
     const authUrl = this.auth.pryvService.getAccessData().authUrl || this.auth.pryvService.getAccessData().url;
 
     this.popup = window.open(authUrl, 'prYv Sign-in', features);
-
     if (!this.popup) {
       this.auth.pryvService.stopAuthRequest();
       console.log('FAILED_TO_OPEN_WINDOW');

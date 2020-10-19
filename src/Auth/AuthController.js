@@ -1,7 +1,7 @@
-const utils = require('../utils'); 
+const utils = require('../utils');
 const Service = require('../Service');
-const Messages = require('../Browser/LoginButtonMessages');
 const AuthStates = require('./AuthStates');
+const { getStore } = require('./AuthStore');
 
 /**
  * @private
@@ -9,27 +9,28 @@ const AuthStates = require('./AuthStates');
 class AuthController {
 
   constructor (settings, serviceInfoUrl, serviceCustomizations) {
-    this.stateChangeListners = [];
+    this.store = getStore();
     this.settings = settings;
+
+    // 1. get Language
+    if (settings.authRequest.languageCode != null) {
+      this.store.languageCode = settings.authRequest.languageCode;
+    }
     this.serviceInfoUrl = serviceInfoUrl;
     this.serviceCustomizations = serviceCustomizations;
     if (!settings) { throw new Error('settings cannot be null'); }
 
-    // 1. get Language
-    this.languageCode = this.settings.authRequest.languageCode || 'en';
-    this.messages = Messages(this.languageCode);
-
     try {
       // -- Check Error CallBack
       if (this.settings.onStateChange) {
-        this.stateChangeListners.push(this.settings.onStateChange);
+        this.store.stateChangeListners.push(this.settings.onStateChange);
       }
 
       // -- settings 
       if (!this.settings.authRequest) { throw new Error('Missing settings.authRequest'); }
 
       // -- Extract returnURL 
-      this.settings.authRequest.returnURL = 
+      this.settings.authRequest.returnURL =
         this.getReturnURL(this.settings.authRequest.returnURL);
 
       if (!this.settings.authRequest.requestingAppId) {
@@ -40,9 +41,9 @@ class AuthController {
       }
 
     } catch (e) {
-      this.state = {
+      this.store.setState({
         id: AuthStates.ERROR, message: 'During initialization', error: e
-      }
+      });
       throw (e);
     }
   }
@@ -51,16 +52,19 @@ class AuthController {
    * @returns {PryvService}
    */
   async init () {
-    this.state = { id: AuthStates.LOADING };
+    this.store.setState({ id: AuthStates.LOADING });
+
     await this.fetchServiceInfo();
     this.checkAutoLogin();
 
-    if (this.state !== AuthStates.AUTHORIZED) {
+    if (this.store.state.id !== AuthStates.AUTHORIZED) {
       // 5. Propose Login
       await this.prepareForLogin();
     }
 
     await this.finishAuthProcessAfterRedirection();
+
+
 
     return this.pryvService;
   }
@@ -80,11 +84,11 @@ class AuthController {
     try {
       this.pryvServiceInfo = await this.pryvService.info();
     } catch (e) {
-      this.state = {
+      this.store.setState({
         id: AuthStates.ERROR,
         message: 'Cannot fetch service/info',
         error: e
-      }
+      });
       throw e; // forward error
     }
   }
@@ -98,11 +102,11 @@ class AuthController {
     }
 
     if (loginCookie) {
-      this.state = {
+      this.store.setState({
         id: AuthStates.AUTHORIZED,
         apiEndpoint: loginCookie.apiEndpoint,
         displayName: loginCookie.displayName
-      };
+      });
     }
   }
 
@@ -117,16 +121,13 @@ class AuthController {
     if (pollUrl !== null) {
       try {
         const res = await utils.superagent.get(pollUrl);
-        const authState = this.pryvService.processAccess(res.body);
-        if (authState != null) {
-          this.state = authState;
-        }
+        this.pryvService.processAccess(res.body);
       } catch (e) {
-        this.state = {
+        this.store.setState({
           id: AuthStates.ERROR,
           message: 'Cannot fetch result',
           error: e
-        }
+        });
       }
     }
   }
@@ -144,24 +145,21 @@ class AuthController {
     await this.postAccessIfNeeded();
 
     // change state to initialized if signin is needed
-    if (this.pryvService.getAccessData().status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN) {
-      if (!this.pryvService.getAccessData().url) {
+    if (this.store.accessData.status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN) {
+      if (!this.store.accessData.url) {
         throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
       }
 
-      this.state = {
+      this.store.setState({
         id: AuthStates.INITIALIZED,
         serviceInfo: this.serviceInfo
-      }
+      });
     }
   }
 
   async postAccessIfNeeded () {
-    if (!this.pryvService.getAccessData()) {
-      const authState = this.pryvService.processAccess(await this.postAccess());
-      if (authState != null) {
-        this.state = authState;
-      }
+    if (!this.store.accessData) {
+      this.pryvService.processAccess(await this.postAccess());
     }
   }
 
@@ -169,7 +167,7 @@ class AuthController {
   /**
    * @private
    */
-  async postAccess() {
+  async postAccess () {
     try {
       const res = await utils.superagent
         .post(this.pryvServiceInfo.access)
@@ -177,31 +175,13 @@ class AuthController {
         .send(this.settings.authRequest);
       return res.body;
     } catch (e) {
-      this.state = {
+      this.store.setState({
         id: AuthStates.ERROR,
         message: 'Requesting access',
         error: e
-      }
+      });
       throw e; // forward error
     }
-  }
-
-  // ---------------------- STATES ----------------- //
-  set state (newState) {
-    // console.log('State Changed:' + JSON.stringify(newState));
-    this._state = newState;
-
-    this.stateChangeListners.map((listner) => {
-      try {
-        listner(this.state)
-      } catch (e) {
-        console.log(e);
-      }
-    });
-  }
-
-  get state() {
-    return this._state;
   }
 
   // ------------------ ACTIONS  ----------- //
@@ -209,73 +189,11 @@ class AuthController {
    * Revoke Connection and clean local cookies
    * 
    */
-  logOut() {
-    const message = this.messages.LOGOUT_CONFIRM ? this.messages.LOGOUT_CONFIRM : 'Logout ?';
+  logOut () {
+    const message = this.store.messages.LOGOUT_CONFIRM ? this.store.messages.LOGOUT_CONFIRM : 'Logout ?';
     if (confirm(message)) {
       this.prepareForLogin();
     }
-  }
-
-  getErrorMessage () {
-    return this.messages.ERROR + ': ' + this.state.message;
-  }
-
-  getLoadingMessage () {
-    return this.messages.LOADING;
-  }
-
-  getInitializedMessage () {
-    return this.messages.LOGIN + ': ' + this.pryvServiceInfo.name;
-  }
-
-  getAuthorizedMessage () {
-    return this.state.displayName;
-  }
-
-  defaultOnStateChange () {
-    let text = '';
-    switch (this.state.id) {
-      case AuthStates.ERROR:
-        text = this.getErrorMessage();
-        break;
-      case AuthStates.LOADING:
-        text = this.getLoadingMessage();
-        break;
-      case AuthStates.INITIALIZED:
-        text = this.getInitializedMessage();
-        break;
-      case AuthStates.AUTHORIZED:
-        text = this.getAuthorizedMessage();
-        break;
-      default:
-        console.log('WARNING Unhandled state for Login: ' + this.state.id);
-    }
-    return text;
-  }
-
-  /**
-   * @param {Service} pryvService 
-   */
-  async loadAssets () {
-    let assets = {};
-    try {
-      assets = await this.pryvService.assets();
-      assets.loginButtonLoadCSS(); // can be async 
-      const thisMessages = await assets.loginButtonGetMessages();
-      if (thisMessages.LOADING) {
-        this.messages = Messages(this.languageCode, thisMessages);
-      } else {
-        console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
-      }
-    } catch (e) {
-      this.state = {
-        id: AuthStates.ERROR,
-        message: 'Cannot fetch button visuals',
-        error: e
-      };
-      throw e; // forward error
-    } 
-    return assets;
   }
 
   getReturnURL (
@@ -322,9 +240,9 @@ class AuthController {
     return queryParams[AuthController.options.SERVICE_INFO_QUERY_PARAM_KEY];
   }
 
- /**
-  * Eventually return pollUrl when returning from login in another page
-  */
+  /**
+   * Eventually return pollUrl when returning from login in another page
+   */
   async pollUrlReturningFromLogin (url) {
     const params = utils.getQueryParamsFromURL(url);
     let pollUrl = null;
@@ -337,8 +255,8 @@ class AuthController {
     return pollUrl;
   }
 
-  startAuthRequest () {
-    this.pryvService.startAuthRequest(this);
+  getState () {
+    return this.store.state;
   }
 }
 

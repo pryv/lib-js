@@ -4,6 +4,8 @@ const utils = require('./utils.js');
 const Assets = require('./ServiceAssets.js');
 const Cookies = require('./Browser/CookieUtils');
 const AuthStates = require('./Auth/AuthStates');
+const Messages = require('./Browser/LoginButtonMessages');
+const { getStore } = require('./Auth/AuthStore');
 
 /**
  * @class Pryv.Service
@@ -37,18 +39,21 @@ const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
  * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform see: {@link https://api.pryv.com/reference/#service-info}
  */
 class Service {
-  
+
   constructor (serviceInfoUrl, serviceCustomizations, appId) {
     this._pryvServiceInfo = null;
     this._assets = null;
     this._polling = false;
     this._pryvServiceInfoUrl = serviceInfoUrl;
     this._pryvServiceCustomizations = serviceCustomizations;
+
+    this.store = getStore();
     // if appId is set, build the cookieKey
     if (appId != null) {
       const COOKIE_STRING = 'pryv-libjs-';
       this._cookieKey = COOKIE_STRING + appId;
     }
+    this._messages = Messages(this.store.languageCode);
   }
 
   /**
@@ -60,13 +65,26 @@ class Service {
    * @param {boolean?} forceFetch If true, will force fetching service info.
    * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
    */
-  async info(forceFetch) {
-    if (forceFetch || ! this._pryvServiceInfo) {
+  async info (forceFetch) {
+    if (forceFetch || !this._pryvServiceInfo) {
       let baseServiceInfo = {};
       if (this._pryvServiceInfoUrl) {
         const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
         baseServiceInfo = res.body;
-      }
+      }/*
+      baseServiceInfo = {
+        "register": "https://reg.pryv.me",
+        "access": "https://access.pryv.me/access",
+        "api": "https://{username}.pryv.me/",
+        "name": "Pryv Lab",
+        "home": "https://www.pryv.com",
+        "support": "https://pryv.com/helpdesk",
+        "terms": "https://pryv.com/pryv-lab-terms-of-use/",
+        "eventTypes": "https://api.pryv.com/event-types/flat.json",
+        "assets": {
+          "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
+        }
+      };*/
       Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
       this.setServiceInfo(baseServiceInfo);
     }
@@ -77,7 +95,7 @@ class Service {
    * @private
    * @param {PryvServiceInfo} serviceInfo
    */
-  setServiceInfo(serviceInfo) {
+  setServiceInfo (serviceInfo) {
     if (!serviceInfo.name) {
       throw new Error('Invalid data from service/info');
     }
@@ -96,7 +114,7 @@ class Service {
    * @param {boolean?} forceFetch If true, will force fetching service info.
    * @returns {Promise<ServiceAssets>} Promise to ServiceAssets 
    */
-  async assets(forceFetch) {
+  async assets (forceFetch) {
     if (!forceFetch && this._assets) {
       return this._assets;
     } else {
@@ -114,7 +132,7 @@ class Service {
    * Return service info parameters info known or null if not yet loaded
    * @returns {PryvServiceInfo} Service Info definition
    */
-  infoSync() {
+  infoSync () {
     return this._pryvServiceInfo;
   }
 
@@ -124,7 +142,7 @@ class Service {
    * @param {string} [token]
    * @return {PryvApiEndpoint}
    */
-  async apiEndpointFor(username, token) {
+  async apiEndpointFor (username, token) {
     const serviceInfo = await this.info();
     return Service.buildAPIEndpoint(serviceInfo, username, token);
   }
@@ -152,13 +170,13 @@ class Service {
    * @param {string} [originHeader=service-info.register] Only for Node.js. If not set will use the register value of service info. In browsers this will overridden by current page location.
    * @throws {Error} on invalid login
    */
-  async login(username, password, appId, originHeader) {
+  async login (username, password, appId, originHeader) {
     const apiEndpoint = await this.apiEndpointFor(username);
 
     try {
       const headers = { accept: 'json' };
       originHeader = originHeader || (await this.info()).register;
-      if (! utils.isBrowser()) {
+      if (!utils.isBrowser()) {
         headers.Origin = originHeader;
       }
       const res = await utils.superagent.post(apiEndpoint + 'auth/login')
@@ -171,24 +189,24 @@ class Service {
       return new Connection(
         Service.buildAPIEndpoint(await this.info(), username, res.body.token),
         this // Pre load Connection with service
-        );
+      );
     } catch (e) {
-      if (e.response && e.response.body 
+      if (e.response && e.response.body
         && e.response.body.error
         && e.response.body.error.message) {
         throw new Error(e.response.body.error.message)
-        }
+      }
     }
   }
 
   /**
    * Start pulling the access url until user signs in
    */
-  startAuthRequest (auth) {
+  async startAuthRequest () {
     if (this._polling) {
       return;
     }
-    this._poll(auth);
+    await this._poll();
   }
 
   /**
@@ -197,21 +215,18 @@ class Service {
    * 
    * @param {AuthController} auth 
    */
-  async _poll (auth) {
-    if (this._accessData.status != 'NEED_SIGNIN') {
+  async _poll () {
+    if (this.store.accessData.status != 'NEED_SIGNIN') {
       this._polling = false;
       return;
     }
     this._polling = true;
-    const authState = this.processAccess(await this.getAccess());
-    if (authState != null) {
-      auth.state = authState;
-    }
-    setTimeout(this._poll.bind(this, auth), this._accessData.poll_rate_ms);
+    this.processAccess(await this.getAccess());
+    setTimeout(await this._poll.bind(this), this.store.accessData.poll_rate_ms);
   }
 
   stopAuthRequest () {
-    this._polling = false;
+    this.store.accessData = { status: 'ERROR' };
   }
 
   /**
@@ -221,7 +236,7 @@ class Service {
     let res;
     try {
       res = await utils.superagent
-        .get(this._accessData.poll)
+        .get(this.store.accessData.poll)
         .set('accept', 'json');
     } catch (e) {
       return { status: 'ERROR' }
@@ -230,54 +245,51 @@ class Service {
   }
 
   processAccess (accessData) {
-    let state = null;
     if (!accessData || !accessData.status) {
-      state = {
+      this.store.setState({
         id: AuthStates.ERROR,
         message: 'Invalid Access data response',
         error: new Error('Invalid Access data response')
-      };
-      throw this.state.error;
+      });
+      throw this.store.state.error;
     }
-
-    this._accessData = accessData;
-    switch (this._accessData.status) {
+    this.store.accessData = accessData;
+    switch (this.store.accessData.status) {
       case 'ERROR':
-        state = {
+        this.store.setState({
           id: AuthStates.ERROR,
           message: 'Error on the backend, please refresh'
-        };
+        });
         break;
       case 'ACCEPTED':
         const apiEndpoint =
           Service.buildAPIEndpoint(
             this._pryvServiceInfo,
-            this._accessData.username,
-            this._accessData.token
+            this.store.accessData.username,
+            this.store.accessData.token
           );
 
         Cookies.set(this._cookieKey,
           {
             apiEndpoint: apiEndpoint,
-            displayName: this._accessData.username
+            displayName: this.store.accessData.username
           });
 
-        state = {
+        this.store.setState({
           id: AuthStates.AUTHORIZED,
           apiEndpoint: apiEndpoint,
-          displayName: this._accessData.username
-        };
+          displayName: this.store.accessData.username
+        });
         break;
     }
-    return state;
   }
 
   getAccessData () {
-    return this._accessData;
+    return this.store.accessData;
   }
-  
+
   setAccessData (accessData) {
-    this._accessData = accessData;
+    this.store.accessData = accessData;
   }
 
   getCurrentCookieInfo () {
@@ -286,7 +298,66 @@ class Service {
 
   async deleteCurrentAuthInfo () {
     Cookies.del(this._cookieKey)
-    this.setAccessData(null);
+    this.store.accessData = null;
+  }
+
+  getErrorMessage () {
+    return this.store.messages.ERROR + ': ' + this.store.state.message;
+  }
+
+  getLoadingMessage () {
+    return this.store.messages.LOADING;
+  }
+
+  getInitializedMessage () {
+    return this.store.messages.LOGIN + ': ' + this._pryvServiceInfo.name;
+  }
+
+  getAuthorizedMessage () {
+    return this.store.state.displayName;
+  }
+
+  defaultOnStateChange () {
+    let text = '';
+    switch (this.store.state.id) {
+      case AuthStates.ERROR:
+        text = this.getErrorMessage();
+        break;
+      case AuthStates.LOADING:
+        text = this.getLoadingMessage();
+        break;
+      case AuthStates.INITIALIZED:
+        text = this.getInitializedMessage();
+        break;
+      case AuthStates.AUTHORIZED:
+        text = this.getAuthorizedMessage();
+        break;
+      default:
+        console.log('WARNING Unhandled state for Login: ' + this.store.state.id);
+    }
+    return text;
+  }
+
+  async loadAssets () {
+    let assets = {};
+    try {
+      assets = await this.assets();
+      assets.loginButtonLoadCSS(); // can be async 
+      const thisMessages = await assets.loginButtonGetMessages();
+      if (thisMessages.LOADING) {
+        this.store.messages = Messages(this.store.languageCode, thisMessages);
+      } else {
+        console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
+      }
+    } catch (e) {
+      this.store.setState({
+        id: AuthStates.ERROR,
+        message: 'Cannot fetch button visuals',
+        error: e
+      });
+      throw e; // forward error
+    }
+    return assets;
   }
 }
 

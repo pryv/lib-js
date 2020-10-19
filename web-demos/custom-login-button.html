@@ -3,7 +3,7 @@
 
 <head>
   <title>Pryv - Javascript Lib</title>
-  <script src="../pryv.js"></script>
+  <script src="./pryv.js"></script>
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
   <meta content="utf-8" http-equiv="encoding">
 </head>
@@ -47,7 +47,7 @@
      * setup button and load assets
      */
     async init() {
-      this.auth.stateChangeListners.push(this.onStateChange.bind(this));
+      this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
       this.setupButton();
       await this.loadAssets();
     }
@@ -69,7 +69,7 @@
      */
     async loadAssets() {
       console.log('Loading button assets from service info');
-      const assets = await this.auth.loadAssets();
+      const assets = await this.auth.pryvService.loadAssets();
       this.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
       this.loginButtonText = document.getElementById('pryv-access-btn-text');
       // State was not changed, only the button text, so reload state manually
@@ -80,17 +80,17 @@
      * The same button can redirect, open auth popup or logout
      */
     onClick() {
-      console.log('My custom on click event. Currect auth state is: ', this.auth.state);
-      if (this.auth.state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
+      console.log('My custom on click event. Currect auth state is: ', this.auth.getState());
+      if (this.auth.getState().id === Pryv.Browser.AuthStates.AUTHORIZED) {
         this.auth.logOut();
-      } else if (this.auth.state.id === Pryv.Browser.AuthStates.INITIALIZED) {
+      } else if (this.auth.getState().id === Pryv.Browser.AuthStates.INITIALIZED) {
         this.startLoginScreen();
       }
     }
 
     onStateChange() {
-      console.log('State just changed to:', this.auth.state);
-      this.text = 'custom ' + this.auth.defaultOnStateChange();
+      console.log('State just changed to:', this.auth.getState());
+      this.text = 'custom ' + this.auth.pryvService.defaultOnStateChange();
       if (this.loginButtonText) {
         this.loginButtonText.innerHTML = this.text;
       }
@@ -99,7 +99,7 @@
     startLoginScreen() {
       console.log('My custom popup that is huge:');
       // Poll Access if not yet in course
-      this.auth.startAuthRequest(this.auth);
+      this.auth.pryvService.startAuthRequest(this.auth);
 
       let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
         screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
