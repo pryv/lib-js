@@ -2,8 +2,7 @@ const utils = require('../utils');
 const Service = require('../Service');
 const Messages = require('../Browser/LoginButtonMessages');
 const AuthStates = require('./AuthStates');
-const COOKIE_STRING = 'pryv-libjs-';
-const Cookies = require('../Browser/CookieUtils');
+
 /**
  * @private
  */
@@ -36,8 +35,6 @@ class AuthController {
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
       }
-      this.cookieKey = COOKIE_STRING + this.settings.authRequest.requestingAppId;
-
       if (!this.settings.authRequest.requestedPermissions) {
         throw new Error('Missing settings.authRequest.requestedPermissions');
       }
@@ -74,7 +71,11 @@ class AuthController {
     }
 
     // 1. fetch service-info
-    this.pryvService = new Service(this.serviceInfoUrl, this.serviceCustomizations);
+    this.pryvService = new Service(
+      this.serviceInfoUrl,
+      this.serviceCustomizations,
+      this.settings.authRequest.requestingAppId
+    );
 
     try {
       this.pryvServiceInfo = await this.pryvService.info();
@@ -91,7 +92,7 @@ class AuthController {
   checkAutoLogin () {
     let loginCookie = null;
     try {
-      loginCookie = Cookies.get(this.cookieKey);
+      loginCookie = this.pryvService.getCurrentCookieInfo();
     } catch (e) {
       console.log(e);
     }
@@ -116,7 +117,10 @@ class AuthController {
     if (pollUrl !== null) {
       try {
         const res = await utils.superagent.get(pollUrl);
-        this.processAccess(res.body);
+        const authState = this.pryvService.processAccess(res.body);
+        if (authState != null) {
+          this.state = authState;
+        }
       } catch (e) {
         this.state = {
           id: AuthStates.ERROR,
@@ -130,7 +134,7 @@ class AuthController {
    * Called at the end init() and when logging out()
    */
   async prepareForLogin () {
-    this.deleteCurrentAuthInfo();
+    this.pryvService.deleteCurrentAuthInfo();
 
     // 1. Make sure Browser is initialized
     if (!this.pryvServiceInfo) {
@@ -140,8 +144,8 @@ class AuthController {
     await this.postAccessIfNeeded();
 
     // change state to initialized if signin is needed
-    if (this.needSignIn()) {
-      if (!this.accessData.url) {
+    if (this.pryvService.getAccessData().status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN) {
+      if (!this.pryvService.getAccessData().url) {
         throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
       }
 
@@ -152,21 +156,15 @@ class AuthController {
     }
   }
 
-  async deleteCurrentAuthInfo () {
-    Cookies.del(this.cookieKey)
-    this.accessData = null;
-  }
-
   async postAccessIfNeeded () {
-    // 2. Post access if needed
-    if (!this.accessData) {
-      this.processAccess(await this.postAccess());
+    if (!this.pryvService.getAccessData()) {
+      const authState = this.pryvService.processAccess(await this.postAccess());
+      if (authState != null) {
+        this.state = authState;
+      }
     }
   }
 
-  needSignIn () {
-    return this.accessData.status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN;
-  }
   // ----------------------- ACCESS --------------- //
   /**
    * @private
@@ -185,76 +183,6 @@ class AuthController {
         error: e
       }
       throw e; // forward error
-    }
-  }
-
-  /**
-  * @private
-  */
-  async getAccess () {
-    let res;
-    try {
-      res = await utils.superagent
-        .get(this.accessData.poll)
-        .set('accept', 'json');
-    } catch (e) {
-      return { status: 'ERROR' }
-    }
-    return res.body;
-  }
-
-  /**
-   */
-  async poll () {
-    if (this.auth.polling) {
-      return;
-    }
-    if (! this.needSignIn()) {
-      this.polling = false;
-      return;
-    }
-    if (this.settings.authRequest.returnURL) { // no popup
-      return;
-    }
-    this.polling = true;
-    this.processAccess(await this.getAccess());
-    setTimeout(this.poll.bind(this), this.accessData.poll_rate_ms);
-  }
-
-  /**
-   * @private 
-   */
-  processAccess (accessData) {
-    if (!accessData || !accessData.status) {
-      this.state = {
-        id: AuthStates.ERROR,
-        message: 'Invalid Access data response',
-        error: new Error('Invalid Access data response')
-      };
-      throw this.state.error;
-    }
-    
-    this.accessData = accessData;
-    switch (this.accessData.status) {
-      case 'ERROR':
-        this.state = {
-          id: AuthStates.ERROR,
-          message: 'Error on the backend, please refresh'
-        };
-        break;
-      case 'ACCEPTED':
-        const apiEndpoint =
-          Service.buildAPIEndpoint(this.pryvServiceInfo, this.accessData.username, this.accessData.token);
-
-        Cookies.set(this.cookieKey, 
-          { apiEndpoint: apiEndpoint, displayName: this.accessData.username });
-
-        this.state = {
-          id: AuthStates.AUTHORIZED,
-          apiEndpoint: apiEndpoint,
-          displayName: this.accessData.username
-        };
-        break;
     }
   }
 
@@ -407,6 +335,10 @@ class AuthController {
       pollUrl = params.prYvpoll;
     }
     return pollUrl;
+  }
+
+  startAuthRequest () {
+    this.pryvService.startAuthRequest(this);
   }
 }
 

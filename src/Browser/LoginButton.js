@@ -1,5 +1,4 @@
 const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
-const utils = require('../utils'); 
 const AuthStates = require('../Auth/AuthStates');
 
 /**
@@ -57,7 +56,7 @@ class LoginButton extends HumanInteractionInterface {
       this.auth.logOut();
     } else if (this.auth.state.id === AuthStates.INITIALIZED) {
       if (this.auth.settings.authRequest.returnURL) { // open on same page (no Popup) 
-        location.href = this.auth.accessData.url;
+        location.href = this.auth.pryvService.getAccessData().url;
         return;
       } else {
         this._startLoginScreen();
@@ -74,7 +73,7 @@ class LoginButton extends HumanInteractionInterface {
 
   _startLoginScreen () {
     // Poll Access if not yet in course
-    this.auth.poll();
+    this.auth.startAuthRequest();
 
     let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
       screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
@@ -95,12 +94,12 @@ class LoginButton extends HumanInteractionInterface {
       );
 
     // Keep "url" for retro-compatibility for Pryv.io before v1.0.4 
-    const authUrl = this.auth.accessData.authUrl || this.auth.accessData.url;
+    const authUrl = this.auth.pryvService.getAccessData().authUrl || this.auth.pryvService.getAccessData().url;
 
     this.popup = window.open(authUrl, 'prYv Sign-in', features);
 
     if (!this.popup) {
-      this.auth.polling = false;
+      this.auth.pryvService.stopAuthRequest();
       console.log('FAILED_TO_OPEN_WINDOW');
     } else if (window.focus) {
       this.popup.focus();

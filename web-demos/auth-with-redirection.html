@@ -43,7 +43,8 @@
     };
 
     let serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
-    // For local development let serviceInfoUrl = 'https://l.rec.la:4443/web-demos/service-info.json';
+    // For local development 
+    // let serviceInfoUrl = 'https://l.rec.la:4443/web-demos/service-info.json';
     (async function () {
       let service = await Pryv.Browser.setupAuth(
         authSettings, 

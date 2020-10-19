@@ -2,6 +2,8 @@
 const utils = require('./utils.js');
 // Connection is required at the end of this file to allow circular requires.
 const Assets = require('./ServiceAssets.js');
+const Cookies = require('./Browser/CookieUtils');
+const AuthStates = require('./Auth/AuthStates');
 
 /**
  * @class Pryv.Service
@@ -35,12 +37,18 @@ const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
  * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform see: {@link https://api.pryv.com/reference/#service-info}
  */
 class Service {
-
-  constructor (serviceInfoUrl, serviceCustomizations) {
+  
+  constructor (serviceInfoUrl, serviceCustomizations, appId) {
     this._pryvServiceInfo = null;
     this._assets = null;
+    this._polling = false;
     this._pryvServiceInfoUrl = serviceInfoUrl;
     this._pryvServiceCustomizations = serviceCustomizations;
+    // if appId is set, build the cookieKey
+    if (appId != null) {
+      const COOKIE_STRING = 'pryv-libjs-';
+      this._cookieKey = COOKIE_STRING + appId;
+    }
   }
 
   /**
@@ -129,7 +137,7 @@ class Service {
    * @param {string} [token]
    * @return {PryvApiEndpoint}
    */
-  static buildAPIEndpoint(serviceInfo, username, token) {
+  static buildAPIEndpoint (serviceInfo, username, token) {
     const endpoint = serviceInfo.api.replace('{username}', username);
     return utils.buildPryvApiEndpoint({ endpoint: endpoint, token: token });
   }
@@ -148,7 +156,7 @@ class Service {
     const apiEndpoint = await this.apiEndpointFor(username);
 
     try {
-      const headers = {accept: 'json'};
+      const headers = { accept: 'json' };
       originHeader = originHeader || (await this.info()).register;
       if (! utils.isBrowser()) {
         headers.Origin = originHeader;
@@ -173,6 +181,113 @@ class Service {
     }
   }
 
+  /**
+   * Start pulling the access url until user signs in
+   */
+  startAuthRequest (auth) {
+    if (this._polling) {
+      return;
+    }
+    this._poll(auth);
+  }
+
+  /**
+   * Keeps running authRequest until it gets the status
+   * not equal to NEED_SIGNIN and then updates authController state
+   * 
+   * @param {AuthController} auth 
+   */
+  async _poll (auth) {
+    if (this._accessData.status != 'NEED_SIGNIN') {
+      this._polling = false;
+      return;
+    }
+    this._polling = true;
+    const authState = this.processAccess(await this.getAccess());
+    if (authState != null) {
+      auth.state = authState;
+    }
+    setTimeout(this._poll.bind(this, auth), this._accessData.poll_rate_ms);
+  }
+
+  stopAuthRequest () {
+    this._polling = false;
+  }
+
+  /**
+  * @private
+  */
+  async getAccess () {
+    let res;
+    try {
+      res = await utils.superagent
+        .get(this._accessData.poll)
+        .set('accept', 'json');
+    } catch (e) {
+      return { status: 'ERROR' }
+    }
+    return res.body;
+  }
+
+  processAccess (accessData) {
+    let state = null;
+    if (!accessData || !accessData.status) {
+      state = {
+        id: AuthStates.ERROR,
+        message: 'Invalid Access data response',
+        error: new Error('Invalid Access data response')
+      };
+      throw this.state.error;
+    }
+
+    this._accessData = accessData;
+    switch (this._accessData.status) {
+      case 'ERROR':
+        state = {
+          id: AuthStates.ERROR,
+          message: 'Error on the backend, please refresh'
+        };
+        break;
+      case 'ACCEPTED':
+        const apiEndpoint =
+          Service.buildAPIEndpoint(
+            this._pryvServiceInfo,
+            this._accessData.username,
+            this._accessData.token
+          );
+
+        Cookies.set(this._cookieKey,
+          {
+            apiEndpoint: apiEndpoint,
+            displayName: this._accessData.username
+          });
+
+        state = {
+          id: AuthStates.AUTHORIZED,
+          apiEndpoint: apiEndpoint,
+          displayName: this._accessData.username
+        };
+        break;
+    }
+    return state;
+  }
+
+  getAccessData () {
+    return this._accessData;
+  }
+  
+  setAccessData (accessData) {
+    this._accessData = accessData;
+  }
+
+  getCurrentCookieInfo () {
+    return Cookies.get(this._cookieKey);
+  }
+
+  async deleteCurrentAuthInfo () {
+    Cookies.del(this._cookieKey)
+    this.setAccessData(null);
+  }
 }
 
 module.exports = Service;

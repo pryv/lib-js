@@ -34,7 +34,8 @@
     };
 
   let serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
-  // For local development let serviceInfoUrl = 'https://l.rec.la:4443/web-demos/service-info.json';
+  // For local development 
+  // let serviceInfoUrl = 'https://l.rec.la:4443/web-demos/service-info.json';
 
   class MyLoginButton extends Pryv.Browser.HumanInteractionInterface {
     // Authentication controller will be passet in the setupAuth method
@@ -98,7 +99,7 @@
     startLoginScreen() {
       console.log('My custom popup that is huge:');
       // Poll Access if not yet in course
-      if (!this.auth.polling) this.auth.poll();
+      this.auth.startAuthRequest(this.auth);
 
       let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
         screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
@@ -117,7 +118,7 @@
           ',top=' + top +
           ',scrollbars=yes'
         );
-      const authUrl = this.auth.accessData.authUrl;
+      const authUrl = this.auth.pryvService.getAccessData().authUrl;
       this.popup = window.open(authUrl, 'You custom Sign-in', features);
 
       if (!this.popup) {

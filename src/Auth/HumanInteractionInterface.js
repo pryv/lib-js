@@ -20,6 +20,11 @@ class HumanInteractionInterface {
     throw new Error('onStateChange() must be implemented')
   }
 
+  /**
+   * Not mandatory, but needed to launch auth request and
+   * start authentication popup
+   */
+  onClick () {}
 }
 
 module.exports = HumanInteractionInterface;
