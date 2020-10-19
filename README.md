@@ -45,8 +45,10 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
   - [Pryv.Browser - retrieve serviceInfo from query URL](#pryvbrowser---retrieve-serviceinfo-from-query-url)
   - [Visual assets](#visual-assets)
 + [Customizing the process](#pryv-ui)
-  - [Using your own login button](#pryv-ui---using-your-own-login-button)
-  - [Using custom authentication UI screens](#pryv-ui---using-custom-authentication-ui-screens)
+  - [Using your own login button](#using-your-own-login-button)
+  - [Using custom authentication UI screens](#using-custom-authentication-ui-screens)
+  - [Redirect user to the authentication page](#redirect-user-to-the-authentication-page)
+  - [Examples](#examples)
   
 ### Import
 
@@ -564,7 +566,7 @@ There is possibility that you would like to register user in another page. You c
 check `./web-demos/auth-with-redirection.html` example.
 Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html)
 
-##### Examples
+#### Examples
   1. [Mini React-Native app](https://github.com/pryv/lib-js-react-native) using lib-js authentication with custom UI screens.
    
 
