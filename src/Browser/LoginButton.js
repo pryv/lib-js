@@ -74,7 +74,7 @@ class LoginButton extends HumanInteractionInterface {
 
   _startLoginScreen () {
     // Poll Access if not yet in course
-    if (!this.auth.polling) this.auth.poll();
+    this.auth.poll();
 
     let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
       screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,

@@ -106,8 +106,13 @@ class AuthController {
   }
 
   async finishAuthProcessAfterRedirection () {
+    // this step should be applied only for the browser
+    if (typeof window == 'undefined') {
+      return;
+    }
     // 3. Check if there is a prYvkey as result of "out of page login"
-    let pollUrl = await this.pollUrlReturningFromLogin();
+    const url = window.location.href;
+    let pollUrl = await this.pollUrlReturningFromLogin(url);
     if (pollUrl !== null) {
       try {
         const res = await utils.superagent.get(pollUrl);
@@ -201,6 +206,9 @@ class AuthController {
   /**
    */
   async poll () {
+    if (this.auth.polling) {
+      return;
+    }
     if (! this.needSignIn()) {
       this.polling = false;
       return;
@@ -389,8 +397,8 @@ class AuthController {
  /**
   * Eventually return pollUrl when returning from login in another page
   */
-  async pollUrlReturningFromLogin () {
-    const params = utils.getQueryParamsFromURL(window.location.href);
+  async pollUrlReturningFromLogin (url) {
+    const params = utils.getQueryParamsFromURL(url);
     let pollUrl = null;
     if (params.prYvkey) { // deprecated method - To be removed
       pollUrl = this.pryvServiceInfo.access + params.prYvkey;
