@@ -20,26 +20,11 @@ class LoginButton extends HumanInteractionInterface {
    */
   async init () {
     this.auth.stateChangeListners.push(this.onStateChange.bind(this));
-    this.setupButton();
-    await this.loadAssets();
-    /*
-      // 3. Check if there is a prYvkey as result of "out of page login"
-      let pollUrl = await this.pollUrlReturningFromLogin();
-      if (pollUrl !== null) {
-        try {
-          const res = await utils.superagent.get(pollUrl);
-          this.processAccess(res.body);
-        } catch (e) {
-          this.state = {
-            id: AuthStates.ERROR,
-            message: 'Cannot fetch result',
-            error: e
-          }
-        }
-    */
+    this._setupButton();
+    await this._loadAssets();   
   }
   
-  setupButton () {
+  _setupButton () {
     this.loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
 
     if (!this.loginButtonSpan) {
@@ -56,7 +41,7 @@ class LoginButton extends HumanInteractionInterface {
   /**
    * Loads the style from the service info
    */
-  async loadAssets () {
+  async _loadAssets () {
     const assets = await this.auth.loadAssets();
     this.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
     this.loginButtonText = document.getElementById('pryv-access-btn-text');
@@ -71,24 +56,13 @@ class LoginButton extends HumanInteractionInterface {
     if (this.auth.state.id === AuthStates.AUTHORIZED) {
       this.auth.logOut();
     } else if (this.auth.state.id === AuthStates.INITIALIZED) {
-      this.startLoginScreen();
+      if (this.auth.settings.authRequest.returnURL) { // open on same page (no Popup) 
+        location.href = this.auth.accessData.url;
+        return;
+      } else {
+        this._startLoginScreen();
+      }
     }
-  }
-
-  /**
-   * Eventually return pollUrl when returning from login in another page
-   * TODO IEVA - what situation this one is handling?
-   */
-  async pollUrlReturningFromLogin () {
-    const params = utils.getQueryParamsFromURL(window.location.href);
-    let pollUrl = null;
-    if (params.prYvkey) { // deprecated method - To be removed
-      pollUrl = this.pryvServiceInfo.access + params.prYvkey;
-    }
-    if (params.prYvpoll) {
-      pollUrl = params.prYvpoll;
-    }
-    return pollUrl;
   }
 
   onStateChange () {
@@ -98,7 +72,7 @@ class LoginButton extends HumanInteractionInterface {
     }
   }
 
-  startLoginScreen () {
+  _startLoginScreen () {
     // Poll Access if not yet in course
     if (!this.auth.polling) this.auth.poll();
 

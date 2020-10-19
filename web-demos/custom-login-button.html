@@ -3,7 +3,7 @@
 
 <head>
   <title>Pryv - Javascript Lib</title>
-  <script src="/dist/pryv.js"></script>
+  <script src="../pryv.js"></script>
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
   <meta content="utf-8" http-equiv="encoding">
 </head>
@@ -34,6 +34,7 @@
     };
 
   let serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
+  // For local development let serviceInfoUrl = 'https://l.rec.la:4443/web-demos/service-info.json';
 
   class MyLoginButton extends Pryv.Browser.HumanInteractionInterface {
     // Authentication controller will be passet in the setupAuth method

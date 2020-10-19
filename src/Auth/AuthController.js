@@ -22,7 +22,6 @@ class AuthController {
 
     try {
       // -- Check Error CallBack
-      //TODO IEVA if (!this.settings.onStateChange) { throw new Error('Missing settings.onStateChange'); }
       if (this.settings.onStateChange) {
         this.stateChangeListners.push(this.settings.onStateChange);
       }
@@ -56,6 +55,20 @@ class AuthController {
    */
   async init () {
     this.state = { id: AuthStates.LOADING };
+    await this.fetchServiceInfo();
+    this.checkAutoLogin();
+
+    if (this.state !== AuthStates.AUTHORIZED) {
+      // 5. Propose Login
+      await this.prepareForLogin();
+    }
+
+    await this.finishAuthProcessAfterRedirection();
+
+    return this.pryvService;
+  }
+
+  async fetchServiceInfo () {
     if (this.pryvService) {
       throw new Error('Browser service already initialized');
     }
@@ -73,8 +86,9 @@ class AuthController {
       }
       throw e; // forward error
     }
+  }
 
-    // 4. check autologin 
+  checkAutoLogin () {
     let loginCookie = null;
     try {
       loginCookie = Cookies.get(this.cookieKey);
@@ -82,67 +96,80 @@ class AuthController {
       console.log(e);
     }
 
-    if (loginCookie) { 
+    if (loginCookie) {
       this.state = {
         id: AuthStates.AUTHORIZED,
         apiEndpoint: loginCookie.apiEndpoint,
         displayName: loginCookie.displayName
       };
-    } else {
-      // 5. Propose Login
-      await this.prepareForLogin();
     }
-    return this.pryvService;
   }
 
-  async verifyAndPrepareForLogin () {
-    Cookies.del(this.cookieKey)
-    this.accessData = null;
+  async finishAuthProcessAfterRedirection () {
+    // 3. Check if there is a prYvkey as result of "out of page login"
+    let pollUrl = await this.pollUrlReturningFromLogin();
+    if (pollUrl !== null) {
+      try {
+        const res = await utils.superagent.get(pollUrl);
+        this.processAccess(res.body);
+      } catch (e) {
+        this.state = {
+          id: AuthStates.ERROR,
+          message: 'Cannot fetch result',
+          error: e
+        }
+      }
+    }
+  }
+  /**
+   * Called at the end init() and when logging out()
+   */
+  async prepareForLogin () {
+    this.deleteCurrentAuthInfo();
 
     // 1. Make sure Browser is initialized
     if (!this.pryvServiceInfo) {
       throw new Error('Browser service must be initialized first');
     }
 
+    await this.postAccessIfNeeded();
+
+    // change state to initialized if signin is needed
+    if (this.needSignIn()) {
+      if (!this.accessData.url) {
+        throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
+      }
+
+      this.state = {
+        id: AuthStates.INITIALIZED,
+        serviceInfo: this.serviceInfo
+      }
+    }
+  }
+
+  async deleteCurrentAuthInfo () {
+    Cookies.del(this.cookieKey)
+    this.accessData = null;
+  }
+
+  async postAccessIfNeeded () {
     // 2. Post access if needed
     if (!this.accessData) {
       this.processAccess(await this.postAccess());
     }
   }
-  /**
-   * Called at the end init() and when logging out()
-   */
-  
-  async prepareForLogin() {
-    await this.verifyAndPrepareForLogin();
 
-    // 3.a Open Popup (even if already opened)
-    if (this.accessData.status === 'NEED_SIGNIN') {
-      if (!this.accessData.url) {
-        throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
-      }
-
-      if (this.settings.authRequest.returnURL) { // open on same page (no Popup) 
-        location.href = this.accessData.url;
-        return;
-      } else {
-        this.state = {
-          id: AuthStates.INITIALIZED,
-          serviceInfo: this.serviceInfo
-        }
-      }
-    }
+  needSignIn () {
+    return this.accessData.status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN;
   }
-
-  // ----------------------- ACCESS --------------- ///
-
-
+  // ----------------------- ACCESS --------------- //
   /**
    * @private
    */
   async postAccess() {
     try {
-      const res = await utils.superagent.post(this.pryvServiceInfo.access)
+      const res = await utils.superagent
+        .post(this.pryvServiceInfo.access)
         .set('accept', 'json')
         .send(this.settings.authRequest);
       return res.body;
@@ -159,21 +186,22 @@ class AuthController {
   /**
   * @private
   */
-  async getAccess() {
+  async getAccess () {
     let res;
     try {
-      res = await utils.superagent.get(this.accessData.poll).set('accept', 'json');
-    }
-    catch (e) {
-      return { "status": "ERROR" }
+      res = await utils.superagent
+        .get(this.accessData.poll)
+        .set('accept', 'json');
+    } catch (e) {
+      return { status: 'ERROR' }
     }
     return res.body;
   }
 
   /**
    */
-  async poll() {
-    if (this.accessData.status !== 'NEED_SIGNIN') {
+  async poll () {
+    if (! this.needSignIn()) {
       this.polling = false;
       return;
     }
@@ -185,12 +213,10 @@ class AuthController {
     setTimeout(this.poll.bind(this), this.accessData.poll_rate_ms);
   }
 
-
-
   /**
    * @private 
    */
-  processAccess(accessData) {
+  processAccess (accessData) {
     if (!accessData || !accessData.status) {
       this.state = {
         id: AuthStates.ERROR,
@@ -199,6 +225,7 @@ class AuthController {
       };
       throw this.state.error;
     }
+    
     this.accessData = accessData;
     switch (this.accessData.status) {
       case 'ERROR':
@@ -219,7 +246,6 @@ class AuthController {
           apiEndpoint: apiEndpoint,
           displayName: this.accessData.username
         };
-
         break;
     }
   }
@@ -254,13 +280,10 @@ class AuthController {
     }
   }
 
-  getLanguage () {
-    return this.languageCode;
-  }
-
   getErrorMessage () {
     return this.messages.ERROR + ': ' + this.state.message;
   }
+
   getLoadingMessage () {
     return this.messages.LOADING;
   }
@@ -324,7 +347,7 @@ class AuthController {
     windowLocationForTest,
     navigatorForTests
   ) {
-    returnURL = returnURL || 'auto#';
+    returnURL = returnURL || AuthController.options.RETURN_URL_AUTO + '#';
 
     // check the trailer
     let trailer = returnURL.slice(-1);
@@ -334,13 +357,15 @@ class AuthController {
     }
     // auto mode for desktop
     if (
-      returnURL.indexOf('auto') === 0
-      && !utils.browserIsMobileOrTablet(navigatorForTests)
+      returnUrlIsAuto(returnURL) &&
+      !utils.browserIsMobileOrTablet(navigatorForTests)
     ) {
       return false;
     } else if (
       // auto mode for mobile or self
-      (returnURL.indexOf('auto') === 0 && utils.browserIsMobileOrTablet(navigatorForTests))
+      (returnUrlIsAuto(returnURL) &&
+        utils.browserIsMobileOrTablet(navigatorForTests)
+      )
       || returnURL.indexOf('self') === 0
     ) {
       // set self as return url?
@@ -352,7 +377,6 @@ class AuthController {
   }
 
   /**
-   * TODO IEVA - where it is used
    * Util to grab parameters from url query string
    * @param {*} url 
    */
@@ -361,8 +385,29 @@ class AuthController {
     //TODO check validity of status
     return queryParams[AuthController.options.SERVICE_INFO_QUERY_PARAM_KEY];
   }
+
+ /**
+  * Eventually return pollUrl when returning from login in another page
+  */
+  async pollUrlReturningFromLogin () {
+    const params = utils.getQueryParamsFromURL(window.location.href);
+    let pollUrl = null;
+    if (params.prYvkey) { // deprecated method - To be removed
+      pollUrl = this.pryvServiceInfo.access + params.prYvkey;
+    }
+    if (params.prYvpoll) {
+      pollUrl = params.prYvpoll;
+    }
+    return pollUrl;
+  }
+}
+
+function returnUrlIsAuto (returnURL) {
+  return returnURL.indexOf(AuthController.options.RETURN_URL_AUTO) === 0;
 }
 AuthController.options = {
-  SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl'
+  SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl',
+  ACCESS_STATUS_NEED_SIGNIN: 'NEED_SIGNIN',
+  RETURN_URL_AUTO: 'auto',
 }
 module.exports = AuthController;

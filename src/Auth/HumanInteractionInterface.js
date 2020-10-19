@@ -6,21 +6,17 @@ class HumanInteractionInterface {
   
   /**
    * Called at the end of AuthController.init()
-   * At this stage this.auth.pryvService & this.auth.pryvServiceInfo are loaded
    * - Load potential assets 
+   * - Register state change with
+   * this.auth.stateChangeListners.push(this.onStateChange.bind(this));
    * implementation is optional
    */ 
-  async init() { }
-  
-  /**
-   * Eventually return pollUrl when returning from login in another page
-   */
-  async pollUrlReturningFromLogin() { }
-  
+  async init () { }
+
   /**
    * Called each time the Auth state change
    */
-  onStateChange (state) {
+  onStateChange () {
     throw new Error('onStateChange() must be implemented')
   }
 

@@ -45,8 +45,8 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
   - [Pryv.Browser - retrieve serviceInfo from query URL](#pryvbrowser---retrieve-serviceinfo-from-query-url)
   - [Visual assets](#visual-assets)
 + [Customizing the process](#pryv-ui)
-  - [Customize login button](#pryv-ui---customize-login-button)
-  - [Customize authentication UI screens](#pryv-ui---customize-authentication-ui-screens)
+  - [Using your own login button](#pryv-ui---using-your-own-login-button)
+  - [Using custom authentication UI screens](#pryv-ui---using-custom-authentication-ui-screens)
   
 ### Import
 
@@ -519,7 +519,7 @@ from `Pryv.Browser.setupAuth` method. Lib-js will help you with
     3. Calling /access method 
     4. Calling login method
     5. Calling logout method
-    6. Default authentication using toekn information storred in the cookie 
+    6. Default authentication using token information stored in the cookie 
 
 #### Using your own login button
 
@@ -528,10 +528,11 @@ platform styles. Here you will find how to get more advanced and customize
 Login button and it's logic for the steps mentioned above. 
 
 In a `./web-demos/custom-login-button.html` you can find an example how you can do so.
+Also you can try the same code in [https://api.pryv.com/lib-js/demos/custom-login-button.html](https://api.pryv.com/lib-js/demos/custom-login-button.html)
 
 #### Using custom authentication UI screens
-In a section 'Within a WebPage with a login button' we have mentioned that you can create function that monitors the 
-change of authentication `state`. The simplest function example is this:
+
+In a section 'Within a WebPage with a login button' we have mentioned that you can create function that monitors the  change of authentication `state`. The simplest function example is this:
 ```
 function pryvAuthStateChange(state) { // called each time the authentication state changed
   switch(state.id) {
@@ -555,13 +556,24 @@ function pryvAuthStateChange(state) { // called each time the authentication sta
 ```
 
 Using the information about the state changes, you can render the right views accordingly.
-Check the examples for the next step.
+Check the examples in the [examles section]('#examples').
+
+#### Redirect user to the authentication page
+
+There is possibility that you would like to register user in another page. You can
+check `./web-demos/auth-with-redirection.html` example.
+Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html)
 
 ##### Examples
   1. [Mini React-Native app](https://github.com/pryv/lib-js-react-native) using lib-js authentication with custom UI screens.
    
 
 # Change Log
+
+## 2.1.0
+
+- UI separated from the Authentication logic
+- Extendable UI feature was added
 
 ## 2.0.3 
 

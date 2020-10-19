@@ -55,25 +55,10 @@ class Service {
   async info(forceFetch) {
     if (forceFetch || ! this._pryvServiceInfo) {
       let baseServiceInfo = {};
-      /* TODO IEVA
       if (this._pryvServiceInfoUrl) {
         const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
         baseServiceInfo = res.body;
       }
-      */
-      baseServiceInfo = {
-        "register": "https://reg.pryv.me",
-        "access": "https://access.pryv.me/access",
-        "api": "https://{username}.pryv.me/",
-        "name": "Pryv Lab",
-        "home": "https://www.pryv.com",
-        "support": "https://pryv.com/helpdesk",
-        "terms": "https://pryv.com/pryv-lab-terms-of-use/",
-        "eventTypes": "https://api.pryv.com/event-types/flat.json",
-        "assets": {
-          "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
-        }
-      };
       Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
       this.setServiceInfo(baseServiceInfo);
     }

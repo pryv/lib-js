@@ -36,32 +36,20 @@
           requestingAppId: 'lib-js-test',
           languageCode: 'fr', // optional (default english)
           returnURL: 'auto#',
-          requestedPermissions: [
-            {
-              streamId: 'test',
-              defaultName: 'test',
-              level: 'manage'
-            }
-          ],
-          clientData: {
-            'app-web-auth:description': {
-              'type': 'note/txt',
-              'content': 'This is a consent message.'
-            }
-          },
-          // referer: 'my test with lib-js', // optional string to track registration source
+          requestedPermissions: [],
+          // the login page where user will be redirected
+          returnURL: 'https://l.rec.la:4443/web-demos/auth-with-redirection.html#'
         }
-      };
+    };
 
-      let serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
-      // For local development with pryv/rec-la package
-      // let serviceInfoUrl = 'https://l.rec.la:4443/web-demos/service-info.json';
-      (async function () {
-        let service = await Pryv.Browser.setupAuth(
-          authSettings, 
-          serviceInfoUrl
-          );
-      })();
+    let serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
+    // For local development let serviceInfoUrl = 'https://l.rec.la:4443/web-demos/service-info.json';
+    (async function () {
+      let service = await Pryv.Browser.setupAuth(
+        authSettings, 
+        serviceInfoUrl
+        );
+    })();
   </script>
 </body>
 
