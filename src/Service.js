@@ -53,7 +53,7 @@ class Service {
       const COOKIE_STRING = 'pryv-libjs-';
       this._cookieKey = COOKIE_STRING + appId;
     }
-    this._messages = Messages(this.store.languageCode);
+    this.store.messages = Messages(this.store.languageCode);
   }
 
   /**
@@ -71,20 +71,7 @@ class Service {
       if (this._pryvServiceInfoUrl) {
         const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
         baseServiceInfo = res.body;
-      }/*
-      baseServiceInfo = {
-        "register": "https://reg.pryv.me",
-        "access": "https://access.pryv.me/access",
-        "api": "https://{username}.pryv.me/",
-        "name": "Pryv Lab",
-        "home": "https://www.pryv.com",
-        "support": "https://pryv.com/helpdesk",
-        "terms": "https://pryv.com/pryv-lab-terms-of-use/",
-        "eventTypes": "https://api.pryv.com/event-types/flat.json",
-        "assets": {
-          "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
-        }
-      };*/
+      }
       Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
       this.setServiceInfo(baseServiceInfo);
     }
@@ -214,6 +201,7 @@ class Service {
    * not equal to NEED_SIGNIN and then updates authController state
    * 
    * @param {AuthController} auth 
+   * @private
    */
   async _poll () {
     if (this.store.accessData.status != 'NEED_SIGNIN') {
@@ -288,6 +276,10 @@ class Service {
     return this.store.accessData;
   }
 
+  /**
+   * Only for simulation of the successful response
+   * @param {*} accessData 
+   */
   setAccessData (accessData) {
     this.store.accessData = accessData;
   }
@@ -338,26 +330,8 @@ class Service {
     return text;
   }
 
-  async loadAssets () {
-    let loadedAssets = {};
-    try {
-      loadedAssets = await this.assets();
-      await loadedAssets.loginButtonLoadCSS(); // can be async 
-      const thisMessages = await loadedAssets.loginButtonGetMessages();
-      if (thisMessages.LOADING) {
-        this.store.messages = Messages(this.store.languageCode, thisMessages);
-      } else {
-        console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
-      }
-    } catch (e) {
-      this.store.setState({
-        id: AuthStates.ERROR,
-        message: 'Cannot fetch button visuals',
-        error: e
-      });
-      throw e; // forward error
-    }
-    return loadedAssets;
+  getAssets () {
+    return this.store.assets;
   }
 }
 

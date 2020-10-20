@@ -2,6 +2,7 @@ const utils = require('../utils');
 const Service = require('../Service');
 const AuthStates = require('./AuthStates');
 const { getStore } = require('./AuthStore');
+const Messages = require('../Browser/LoginButtonMessages');
 
 /**
  * @private
@@ -64,7 +65,7 @@ class AuthController {
 
     await this.finishAuthProcessAfterRedirection();
 
-    this.assets = await this.pryvService.loadAssets();
+    this.store.assets = await this.loadAssets();
 
     return this.pryvService;
   }
@@ -259,8 +260,28 @@ class AuthController {
     return this.store.state;
   }
 
-  getAssets () {
-    return this.assets;
+  async loadAssets () {
+    let loadedAssets = {};
+    try {
+      loadedAssets = await this.pryvService.assets();
+      if (typeof location !== 'undefined') {
+        await loadedAssets.loginButtonLoadCSS(); // can be async 
+        const thisMessages = await loadedAssets.loginButtonGetMessages();
+        if (thisMessages.LOADING) {
+          this.store.messages = Messages(this.store.languageCode, thisMessages);
+        } else {
+          console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
+        }
+      }
+    } catch (e) {
+      this.store.setState({
+        id: AuthStates.ERROR,
+        message: 'Cannot fetch button visuals',
+        error: e
+      });
+      throw e; // forward error
+    }
+    return loadedAssets;
   }
 }
 

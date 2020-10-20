@@ -47,7 +47,6 @@ describe('Browser', function () {
 
   it('setupAuth()', (done) => {
     const settings = genSettings();
-    
     let AuthLoaded = false;
     settings.onStateChange = function (state) {
       should.exist(state.id);

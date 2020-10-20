@@ -97,7 +97,7 @@ class ServiceAssets {
   /**
   * Load CSS for Login button
   */
-  async loginButtonLoadCSS() {
+  async loginButtonLoadCSS () {
     loadCSS(this.relativeURL(this._assets['lib-js'].buttonSignIn.css));
   }
 
@@ -113,14 +113,11 @@ class ServiceAssets {
  * Get Messages strings for Login Button
  */
   async loginButtonGetMessages() {
-    const res = await utils.superagent.get(
-      this.relativeURL(this._assets['lib-js'].buttonSignIn.messages))
-      .set('accept', 'json');
+    const res = await utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.messages)).set('accept', 'json');
     return res.body;
   }
 
 }
-
 
 function loadCSS(url) {
   var head = document.getElementsByTagName('head')[0];
@@ -144,7 +141,7 @@ function loadCSS(url) {
   |*|
   \*/
 
-function relPathToAbs(baseUrlString, sRelPath) {
+function relPathToAbs (baseUrlString, sRelPath) {
   var baseLocation = location;
   if (baseUrlString) {
     baseLocation = document.createElement('a');

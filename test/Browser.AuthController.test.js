@@ -6,6 +6,24 @@ const testData = require('./test-data.js');
 
 describe('Browser.LoginButton', () => {
   let auth;
+  let removeZombie = false;
+  before(async () => {
+    if (typeof document !== 'undefined') return; // in browser
+    removeZombie = true;
+    const browser = new Browser();
+    browser.visit('./?pryvServiceInfoUrl=https://zouzou.com/service/info');
+    global.document = browser.document;
+    global.window = browser.window;
+    global.location = browser.location;
+    global.navigator = { userAgent: 'Safari' };
+  });
+
+  after(async () => {
+    if (!removeZombie) return; // in browser
+    delete global.document;
+    delete global.window;
+    delete global.location;
+  });
   before(async () => {
     auth = new AuthController({
       authRequest: {
@@ -14,7 +32,8 @@ describe('Browser.LoginButton', () => {
       }
     }, testData.serviceInfoUrl, {});
     await auth.init();
-  })
+  });
+  
   it('getReturnURL()', async () => {
     const myUrl = 'https://mysite.com/bobby';
     let error = null;

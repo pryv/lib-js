@@ -30,7 +30,8 @@ class LoginButton extends HumanInteractionInterface {
       console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
     }
 
-    // up to the time the button is loaded use the Span to display eventual error messages
+    // up to the time the button is loaded use the Span to display eventual 
+    // error messages
     this.loginButtonText = this.loginButtonSpan;
 
     // bind actions dynamically to the button click
@@ -41,8 +42,7 @@ class LoginButton extends HumanInteractionInterface {
    * Loads the style from the service info
    */
   async _loadAssets () {
-    const assets = await this.auth.getAssets();
-    this.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
+    this.loginButtonSpan.innerHTML = await this.auth.pryvService.getAssets().loginButtonGetHTML();
     this.loginButtonText = document.getElementById('pryv-access-btn-text');
     // State was not changed, only the button text, so reload state manually
     this.onStateChange();
