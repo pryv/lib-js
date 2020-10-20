@@ -513,26 +513,38 @@ To customize the Sign in Button refer to: [sign in button in pryv.me assets](htt
 ```
 
 ### Pryv UI
-Lib-js ships with pre-built authentication service, that you would get as a response
-from `Pryv.Browser.setupAuth` method. Lib-js will help you with
+You can use Lib-js 
 
-    1. Retrieving service information
-    2. Retrieving button assets from service information
-    3. Calling /access method 
-    4. Calling login method
-    5. Calling logout method
-    6. Default authentication using token information stored in the cookie 
+a) with login button that launches [app-web-auth3](https://github.com/pryv/app-web-auth3) UI
+to authenticate the user. In the section [Using your own login button](#using-your-own-login-button) we provide information
+how you can customize that button.
+
+b) with your own screens and reuse the authentication process of `setupAuth` method.
+This is presented in the [Using custom authentication UI screens](#using-custom-authentication-ui-screens) section.
 
 #### Using your own login button
 
-In the `Visual Assets` section it was presented how to customize your platform styles. Here you will find how to customize the Login button logic for the steps mentioned above. 
+In the `Visual Assets` section it was presented how to customize your platform styles. 
+Here you will find how to customize the Login button logic that will launch [app-web-auth3](https://github.com/pryv/app-web-auth3) UI
+for user authentication. 
 
-In [`./web-demos/custom-login-button.html`](./web-demos/custom-login-button.html) you can find an example how you can do so.
+In [`./web-demos/custom-login-button.html`](./web-demos/custom-login-button.html) you can find minimal example how you can do so.
 Also you can try the same code in [https://api.pryv.com/lib-js/demos/custom-login-button.html](https://api.pryv.com/lib-js/demos/custom-login-button.html)
+For more advanced scenario, you can check dafault Pryv button implementation in the code `./src/Browser/LoginButton.js`.
 
 #### Using custom authentication UI screens
 
-In a section 'Within a WebPage with a login button' we have mentioned that you can create a function that monitors the  change of authentication `state`. The simplest function example is this:
+This section explains how you would replace [app-web-auth3](https://github.com/pryv/app-web-auth3)  with your own registration UI 
+screens. Lib-js method `Pryv.Browser.setupAuth` would return authentication service and it can help you with:
+
+    1. Retrieving service information
+    2. Retrieving button assets from service information
+    3. Calling auth method 
+    4. Calling login method
+    5. Default authentication using token information stored in the cookie 
+
+In a section `Within a WebPage with a login button` we have mentioned that you can create a function that monitors 
+the  change of authentication `state`. The simplest function example would be this:
 
 ```javascript
 function pryvAuthStateChange(state) { // called each time the authentication state changed
@@ -556,7 +568,7 @@ function pryvAuthStateChange(state) { // called each time the authentication sta
 }
 ```
 
-Using the information about the state changes, you can render the right views accordingly. Check the [following examples]('#examples').
+Using the information about the `state` changes, you can render the right views accordingly. Check the [following examples]('#examples').
 
 #### Redirect user to the authentication page
 
