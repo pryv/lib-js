@@ -567,8 +567,9 @@ function pryvAuthStateChange(state) { // called each time the authentication sta
   }
 }
 ```
+(#using-custom-authentication-ui-screens)
 
-Using the information about the `state` changes, you can render the right views accordingly. Check the [following examples]('#examples').
+Using the information about the `state` changes, you can render the right views accordingly. Check the [following examples](#examples).
 
 #### Redirect user to the authentication page
 
