@@ -3,7 +3,7 @@
 
 <head>
   <title>Pryv - Javascript Lib</title>
-  <script src="./pryv.js"></script>
+  <script src="https://api.pryv.com/lib-js/pryv.js"></script>
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
   <meta content="utf-8" http-equiv="encoding">
 </head>
@@ -42,13 +42,24 @@
         }
     };
 
-    let serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
-    // For local development 
-    // let serviceInfoUrl = 'https://l.rec.la:4443/web-demos/service-info.json';
+    let serviceInfoUrl = null;// 'https://api.pryv.com/lib-js/demos/service-info.json';
+    let serviceInfoJson = {
+      "register": "https://reg.pryv.me",
+      "access": "https://access.pryv.me/access",
+      "api": "https://{username}.pryv.me/",
+      "name": "Pryv Lab",
+      "home": "https://www.pryv.com",
+     "support": "https://pryv.com/helpdesk",
+      "terms": "https://pryv.com/pryv-lab-terms-of-use/",
+      "eventTypes": "https://api.pryv.com/event-types/flat.json",
+      "assets": {
+        "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
+     }};
     (async function () {
       let service = await Pryv.Browser.setupAuth(
         authSettings, 
-        serviceInfoUrl
+        serviceInfoUrl,
+        serviceInfoJson
         );
     })();
   </script>

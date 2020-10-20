@@ -265,7 +265,7 @@ class AuthController {
     try {
       loadedAssets = await this.pryvService.assets();
       if (typeof location !== 'undefined') {
-        await loadedAssets.loginButtonLoadCSS(); // can be async 
+        await loadedAssets.loginButtonLoadCSS();
         const thisMessages = await loadedAssets.loginButtonGetMessages();
         if (thisMessages.LOADING) {
           this.store.messages = Messages(this.store.languageCode, thisMessages);

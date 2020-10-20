@@ -49,7 +49,8 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
   - [Using custom authentication UI screens](#using-custom-authentication-ui-screens)
   - [Redirect user to the authentication page](#redirect-user-to-the-authentication-page)
   - [Examples](#examples)
-  
++ [Launch web demos locally](#launch-web-demos-locally)
+
 ### Import
 
 #### Browser
@@ -529,7 +530,9 @@ Here you will find how to customize the Login button logic that will launch [app
 for user authentication. 
 
 In [`./web-demos/custom-login-button.html`](./web-demos/custom-login-button.html) you can find minimal example how you can do so.
-Also you can try the same code in [https://api.pryv.com/lib-js/demos/custom-login-button.html](https://api.pryv.com/lib-js/demos/custom-login-button.html)
+Also you can try the same code in [https://api.pryv.com/lib-js/demos/custom-login-button.html](https://api.pryv.com/lib-js/demos/custom-login-button.html).
+Here is the explanation how to [launch web-demos locally](#launch-web-demos-locally)
+
 For more advanced scenario, you can check dafault Pryv button implementation in the code `./src/Browser/LoginButton.js`.
 
 #### Using custom authentication UI screens
@@ -567,18 +570,30 @@ function pryvAuthStateChange(state) { // called each time the authentication sta
   }
 }
 ```
-(#using-custom-authentication-ui-screens)
 
 Using the information about the `state` changes, you can render the right views accordingly. Check the [following examples](#examples).
 
 #### Redirect user to the authentication page
 
 There is a possibility that you would like to register the user in another page. You can check the [`./web-demos/auth-with-redirection.html`](./web-demos/auth-with-redirection.html) example.
-Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html)
+Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html).
+Here is the explanation how to [launch web-demos locally](#launch-web-demos-locally)
 
 #### Examples
 
 1. [Mini React-Native app](https://github.com/pryv/lib-js-react-native) using lib-js authentication with custom UI screens.
+
+### Launch web demos locally
+
+You can find html examples in the `./web-demos` directory. You can launch them in  ways:
+a) as a simple html file (service information is passed as a json to avoid CORS problem)
+b) using our package called `pryv/rec-la` that allows to run your code with our SSL certificate.
+To launch the server you simply need to run
+```
+npm run setup (to install dependencies)
+./node_modules/.bin/rec-la ./
+```
+and open one of our examples like [https://l.rec.la:4443/web-demos/auth.html](https://l.rec.la:4443/web-demos/auth.html)
 
 # Change Log
 
