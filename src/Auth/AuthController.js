@@ -113,9 +113,8 @@ class AuthController {
 
   async finishAuthProcessAfterRedirection () {
     // this step should be applied only for the browser
-    if (typeof window == 'undefined') {
-      return;
-    }
+    if (!utils.isBrowser()) return;
+
     // 3. Check if there is a prYvkey as result of "out of page login"
     const url = window.location.href;
     let pollUrl = await this.pollUrlReturningFromLogin(url);

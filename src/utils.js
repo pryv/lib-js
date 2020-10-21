@@ -23,7 +23,7 @@ const utils = {
    * @returns {boolean}
    */
   isBrowser: function() {
-      return typeof window !== 'undefined';
+      return typeof window !== 'undefined' && typeof document !== 'undefined';
   },
 
 
