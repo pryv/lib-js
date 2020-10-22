@@ -27,7 +27,7 @@
     "test:browser": "npm run build; ",
     "cover": "nyc npm run test && npm run cover:report",
     "cover:report": "nyc report --reporter=lcov --reporter=html",
-    "webserver": "node node_modules/rec-la/webserver/main.js ./dist 9443",
+    "webserver": "./node_modules/.bin/rec-la ./dist 9443",
     "gh-pages": "./scripts/upload.sh",
     "clear": "rm -r dist/ && npm run setup"
   },
@@ -51,7 +51,7 @@
     "mocha": "^6.2.3",
     "node-fetch": "^2.6.0",
     "nyc": "^14.1.1",
-    "rec-la": "^0.1.14",
+    "rec-la": "^0.1.16",
     "universal-url": "^2.0.0",
     "zombie": "^6.1.4"
   }

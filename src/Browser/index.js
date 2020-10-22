@@ -1,5 +1,8 @@
-const AuthController = require('./AuthController');
-const AuthStates = require('./AuthStates');
+const AuthController = require('../Auth/AuthController');
+const AuthStates = require('../Auth/AuthStates');
+const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
+const LoginButton = require('../Browser/LoginButton');
+const { getStore } = require('../Auth/AuthStore');
 
 /**
  * @memberof Pryv
@@ -24,19 +27,30 @@ const AuthStates = require('./AuthStates');
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
  * @returns {Pryv.Service}
  */
-async function setupAuth(settings, serviceInfoUrl, serviceCustomizations) {
-  return (new AuthController(settings, 
-    serviceInfoUrl, serviceCustomizations)).init();
+async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, humanInteractionInterface) {
+  let store = getStore();
+  store.resetValues();
+  const authController = new AuthController(settings, serviceInfoUrl, serviceCustomizations);
+  const authService = await authController.init();
+  
+  if (settings.spanButtonID) {
+    let loginButton;
+    if (humanInteractionInterface == null) {
+      loginButton = new LoginButton(authController);
+    } else {
+      loginButton = new humanInteractionInterface(authController);
+    }
+    await loginButton.init();
+  }
+  return authService;
 }
-
 
 module.exports = {
   setupAuth: setupAuth,
   AuthStates: AuthStates,
+  HumanInteractionInterface: HumanInteractionInterface,
   serviceInfoFromUrl: AuthController.getServiceInfoFromURL
 }
-
-
 
 /**
  * Notify the requesting code of all important changes

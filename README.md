@@ -27,6 +27,7 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
   - [Within a WebPage with a login button](#within-a-webpage-with-a-login-button)
   - [Fetch access info](#fetch-access-info)
   - [Using Service.login() *(trusted apps only)*](#using-servicelogin-trusted-apps-only)
+  - [Performing the authentication request with your own UI](#customize-auth-process)
 + [API calls](#api-calls)
 + [Advanced usage of API calls with optional individual result and progress callbacks](#advanced-usage-of-api-calls-with-optional-individual-result-and-progress-callbacks)
 + [Get Events Streamed](#get-events-streamed)
@@ -43,6 +44,12 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 + [Pryv.Browser & Visual assets](#pryvbrowser--visual-assets)
   - [Pryv.Browser - retrieve serviceInfo from query URL](#pryvbrowser---retrieve-serviceinfo-from-query-url)
   - [Visual assets](#visual-assets)
++ [Customize Auth process](#customize-auth-process)
+  - [Using a custom login button](#using-your-own-login-button)
+  - [Authentication process for virtual DOM applications](#authentication-process-for-virtual-dom-applications)
+  - [Redirect user to the authentication page](#redirect-user-to-the-authentication-page)
+  - [Examples](#examples)
++ [Launch web demos locally](#launch-web-demos-locally)
 
 ### Import
 
@@ -382,7 +389,7 @@ Reference: [https://api.pryv.com/reference/#hf-events](https://api.pryv.com/refe
 ```javascript
 function generateSerie() {
   const serie = [];
-  for (let t = 0; t < 100000, t++) { // t will be the deltatime in seconds
+  for (let t = 0; t < 100000, t++) { // t will be the deltaTime in seconds
     serie.push([t, Math.sin(t/1000)]);
   }
   return serie;
@@ -506,7 +513,186 @@ To customize the Sign in Button refer to: [sign in button in pryv.me assets](htt
 })();
 ```
 
+### Customize Auth process
+
+You can customize the authentication process at different levels:
+
+1. [Using a custom login button](#using-your-own-login-button) to launch the [Pryv.io Authentication process](https://api.pryv.com/reference/#authenticate-your-app).
+2. Using a custom UI for the [Pryv.io Authentication process](https://api.pryv.com/reference/#authenticate-your-app), including the flow of [app-web-auth3](https://github.com/pryv/app-web-auth3).
+
+#### Using a custom login button
+
+You will need to extend the [`Pryv.Auth.HumanInteractionInterface`](/src/Auth/HumanInteractionInterface.js), implementing the methods:
+
+- init()
+- onStateChange()
+
+```javascript
+class MyLoginButton extends Pryv.Browser.HumanInteractionInterface {
+  // Authentication controller will be passed in the setupAuth method
+  constructor(authController) {
+    super(authController);
+  }
+
+  async init() {
+    // register the onStateChange() method - always do this
+    this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
+      
+    // (optional) bind your button's event emitter to the auth state
+    let loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
+    loginButtonSpan.addEventListener('click', onClick.bind(this));
+      
+    // update the button text to initialized state
+    this.onStateChange();
+  }
+
+  onStateChange() {
+    // perform action depending on new state, obtainable through this.auth.getState() 
+    console.log('State just changed to:', this.auth.getState());
+
+    let text = this.auth.pryvService.defaultButtonMessage();
+    document.querySelector(`#${this.auth.settings.spanButtonID}`).innerText = text;
+  }
+}
+
+onClick(button) {
+  console.log('My custom on click event. Currect auth state is: ', this.auth.getState());
+  if (button.auth.getState().id === Pryv.Browser.AuthStates.AUTHORIZED) {
+    button.auth.logOut();
+  } else if (button.auth.getState().id === Pryv.Browser.AuthStates.INITIALIZED) {
+    button.auth.pryvService.startAuthRequest(button.auth);
+    const authUrl = button.auth.pryvService.getAccessData().authUrl;
+    // open the authUrl in a new window or web view
+    window.open(authUrl, 'You custom Sign-in');
+  }
+}
+```
+
+You must then provide this class as following:
+
+```javascript
+let service = await Pryv.Browser.setupAuth(
+      authSettings, // See https://github.com/pryv/lib-js#within-a-webpage-with-a-login-button
+      serviceInfoUrl,
+      optionalServiceInfoOverride,
+      MyLoginButton
+);
+```
+
+You will find a working example in  [`./web-demos/custom-login-button.html`](./web-demos/custom-login-button.html). You can run this code at [https://api.pryv.com/lib-js/demos/custom-login-button.html](https://api.pryv.com/lib-js/demos/custom-login-button.html).
+
+Follow the instructions below on [how to run these examples locally](#launch-web-demos-locally).
+
+For a more advanced scenario, you can check the default button implementation at [`./src/Browser/LoginButton.js`](/src/Browser/LoginButton.js).
+
+#### Authentication process for virtual DOM applications
+
+This section explains how you can use this library for the authentication process in virtual DOM applications.  
+
+Instead of having a predefined log in button, you can display [app-web-auth3](https://github.com/pryv/app-web-auth3) screens in a WebView component and render your screens according to the authentication `state`. For this, you would need these steps:
+
+1. Create a state monitoring function that would update a user interface when the authentication `state` changes as shown in the function below:
+
+    ```javascript
+    function pryvAuthStateChange(state) { // called each time the authentication state changed
+      switch(state.id) {
+          case Pryv.Browser.AuthStates.LOADING:
+            console.log('Loading service information...');
+            break;
+          case Pryv.Browser.AuthStates.INITIALIZED:
+            console.log('Service information is retrieved so authorization can start. You can display login / registration screen or redirect to the our hosted app - web - auth application.');
+            break;
+          case Pryv.Browser.AuthStates.AUTHORIZED:
+            console.log('User is authorized and can access his personal data');
+            break;
+          case Pryv.Browser.AuthStates.LOGOUT:
+            console.log('User just logged off, please delete all the session related data');
+            break;
+          case Pryv.Browser.AuthStates.ERROR:
+            console.log('Error:', state?.message);
+            break;
+      }
+    }
+    ```
+
+    See the [pryvAuthStateChange() function in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L36)
+
+2. Initialize Pryv Service (it is important that authSettings would NOT have `spanButtonID` setting,
+ otherwise, default Pryv login button would be rendered):
+
+    ```javascript
+    let service = await Pryv.Browser.setupAuth(
+          authSettings,
+          serviceInfoUrl,
+          optionalServiceInfoOverride
+    );
+    ```
+
+    See the [setupAuth() function in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L116)  
+
+    Note: the `pryvAuthStateChange()` function will be part of `authSettings`.
+
+3. When user clicks on the login button, the application should:
+
+    a) start the auth process  
+    
+    b) redirect to the url that is received from auth request as in the example below:  
+    
+    ```javascript
+      async function startAuthProcess () {
+        await service.startAuthRequest();
+        const loginUrl = service.getAccessData().authUrl;
+        // open webview with loginUrl url
+      }
+    ```
+
+    See the [startAuthProcess() in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L169)
+
+4. In case of error or when the user does not finish login process, the application should stop the auth process:
+
+    ```javascript
+    await pryvService.stopAuthProcess();
+    ```
+
+5. When `state.id` is equal to `Pryv.Browser.AuthStates.AUTHORIZED`, you can get api_endpoint with the token from the `state` as shown below:
+
+    ```javascript
+    if (authState.id == Pryv.Browser.AuthStates.AUTHORIZED) {
+      const { endpoint, token } = pryvService.extractTokenAndApiEndpoint(authState.apiEndpoint);
+      // username = authState.displayName
+    }
+    ```
+
+    See how to [retrieve auth data from the state in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L51)
+
+For the **full example**, see the [Mini React-Native app](https://github.com/pryv/lib-js-react-native) that is using lib-js authentication.
+
+#### Redirect user to the authentication page
+
+There is a possibility that you would like to register the user in another page. You can check the [`./web-demos/auth-with-redirection.html`](./web-demos/auth-with-redirection.html) example.
+Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html).
+Here is the explanation how to [launch web-demos locally](#launch-web-demos-locally)
+
+### Launch web demos locally
+
+You can find html examples in the [`./web-demos`](/web-demos) directory. You can launch them in 2 ways:
+
+1. using [rec-la](https://github.com/pryv/rec-la) that allows to run your code with a valid SSL certificate (this requires to have run `npm run build` prior). To launch the server you simply need to run:
+
+    ```bash
+    npm run webserver
+    ```
+    
+    and open an example with the following URL **https://l.rec.la:9443/demos/EXAMPLE_NAME.html**, like: [https://l.rec.la:9443/demos/auth.html](https://l.rec.la:9443/demos/auth.html)
+
+2. as a simple html file (service information must be passed as JSON to avoid CORS problem).
+
 # Change Log
+
+## 2.1.0
+
+- UI separated from the Authentication logic
+- Extendable UI feature was added
 
 ## 2.0.3 
 

@@ -97,7 +97,7 @@ class ServiceAssets {
   /**
   * Load CSS for Login button
   */
-  async loginButtonLoadCSS() {
+  async loginButtonLoadCSS () {
     loadCSS(this.relativeURL(this._assets['lib-js'].buttonSignIn.css));
   }
 
@@ -118,7 +118,6 @@ class ServiceAssets {
   }
 
 }
-
 
 function loadCSS(url) {
   var head = document.getElementsByTagName('head')[0];
@@ -142,7 +141,7 @@ function loadCSS(url) {
   |*|
   \*/
 
-function relPathToAbs(baseUrlString, sRelPath) {
+function relPathToAbs (baseUrlString, sRelPath) {
   var baseLocation = location;
   if (baseUrlString) {
     baseLocation = document.createElement('a');

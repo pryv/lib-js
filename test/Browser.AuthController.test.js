@@ -1,55 +1,70 @@
-
-const should = chai.should();
 const expect = chai.expect;
 
-const AuthController = require('../src/Browser/AuthController.js')
+const utils = require('../src/utils.js');
+const AuthController = require('../src/Auth/AuthController.js');
+const testData = require('./test-data.js');
 
+describe('Browser.LoginButton', () => {
+  let auth;
+  let removeZombie = false;
+  before(async () => {
+    if (typeof document !== 'undefined') return; // in browser
+    removeZombie = true;
+    const browser = new Browser();
+    browser.visit('./?pryvServiceInfoUrl=https://zouzou.com/service/info');
+    global.document = browser.document;
+    global.window = browser.window;
+    global.location = browser.location;
+    global.navigator = { userAgent: 'Safari' };
+  });
 
-describe('Browser.AuthController', function () {
-
+  after(async () => {
+    if (!removeZombie) return; // in browser
+    delete global.document;
+    delete global.window;
+    delete global.location;
+  });
+  before(async () => {
+    auth = new AuthController({
+      authRequest: {
+        requestingAppId: 'lib-js-test',
+        requestedPermissions: []
+      }
+    }, testData.serviceInfoUrl, {});
+    await auth.init();
+  });
+  
   it('getReturnURL()', async () => {
     const myUrl = 'https://mysite.com/bobby';
-
     let error = null;
     try {
-      AuthController.getReturnURL('auto');
+      auth.getReturnURL('auto');
     } catch (e) {
       error = e;
     }
     expect(error).to.be.not.null;
 
     let fakeNavigator = { userAgent: 'android' };
-    expect(AuthController.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(myUrl + '#');
-    expect(AuthController.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
-    expect(AuthController.getReturnURL(false, myUrl, fakeNavigator)).to.equal(myUrl + '#');
-    expect(AuthController.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+    expect(auth.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(myUrl + '#');
+    expect(auth.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+    expect(auth.getReturnURL(false, myUrl, fakeNavigator)).to.equal(myUrl + '#');
+    expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
 
-    expect(AuthController.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
+    expect(auth.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
 
     fakeNavigator =  { userAgent: 'Safari' };
-    expect(AuthController.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(false);
-    expect(AuthController.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(false);
-    expect(AuthController.getReturnURL(false, myUrl, fakeNavigator)).to.equal(false);
-    expect(AuthController.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
-
-    expect(AuthController.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
-
-
+    expect(auth.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(false);
+    expect(auth.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(false);
+    expect(auth.getReturnURL(false, myUrl, fakeNavigator)).to.equal(false);
+    expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+    expect(auth.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
     global.window = { location: { href: myUrl + '?prYvstatus=zouzou'} }
-    expect(AuthController.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
-
-    
+    expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
   });
 
   it('browserIsMobileOrTablet()', async () => {
-    expect(AuthController.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
-
-    expect(AuthController.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
-  });
-
-  it('getStatusFromURL()', async () => {
-    expect('2jsadh').to.equal(AuthController.getStatusFromURL(
-      'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
+    expect(utils.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
+    expect(utils.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
   });
 
   it('getServiceInfoFromURL()', async () => {
@@ -62,19 +77,19 @@ describe('Browser.AuthController', function () {
 
   it('cleanURLFromPrYvParams()', async () => {
 
-    expect('https://my.Url.com/?bobby=2').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/?bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?pryvServiceInfoUrl=zzz#prYvZoutOu=1&prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/#prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/#bobby=2').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/#bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
     
   });
