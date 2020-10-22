@@ -670,7 +670,7 @@ Here is the explanation how to [launch web-demos locally](#launch-web-demos-loca
 
 ### Launch web demos locally
 
-You can find html examples in the [`./web-demos`](/web-demos) directory. You can launch them in ways:
+You can find html examples in the [`./web-demos`](/web-demos) directory. You can launch them in 2 ways:
 
 1. as a simple html file (service information must be passed as JSON to avoid CORS problem)
 2. using our package called `pryv/rec-la` that allows to run your code with our SSL certificate.
@@ -679,7 +679,7 @@ You can find html examples in the [`./web-demos`](/web-demos) directory. You can
 ```bash
 ./node_modules/.bin/rec-la .
 ```
-and open one of our examples like [https://l.rec.la:4443/web-demos/auth.html](https://l.rec.la:4443/web-demos/auth.html)
+and then open one of our examples like [https://l.rec.la:4443/web-demos/auth.html](https://l.rec.la:4443/web-demos/auth.html)
 
 # Change Log
 
