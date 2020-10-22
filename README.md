@@ -45,10 +45,9 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
   - [Pryv.Browser - retrieve serviceInfo from query URL](#pryvbrowser---retrieve-serviceinfo-from-query-url)
   - [Visual assets](#visual-assets)
 + [Customize Auth process](#customize-auth-process)
-  - [Using a custom login button](#using-your-own-login-button)
+  - [Using a custom login button](using-a-custom-login-button)
   - [Authentication process for virtual DOM applications](#authentication-process-for-virtual-dom-applications)
   - [Redirect user to the authentication page](#redirect-user-to-the-authentication-page)
-  - [Examples](#examples)
 + [Launch web demos locally](#launch-web-demos-locally)
 
 ### Import
