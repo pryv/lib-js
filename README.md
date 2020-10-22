@@ -514,6 +514,7 @@ To customize the Sign in Button refer to: [sign in button in pryv.me assets](htt
 ```
 
 ### Customize Auth process
+
 You can customize the authentication process at different levels:
 
 1. [Using a custom login button](#using-your-own-login-button) to launch the [Pryv.io Authentication process](https://api.pryv.com/reference/#authenticate-your-app).
@@ -586,81 +587,86 @@ For a more advanced scenario, you can check the default button implementation at
 
 #### Authentication process for virtual DOM applications
 
-This section explains how you can use this library for virtual DOM applications authentication process. 
+This section explains how you can use this library for the authentication process in virtual DOM applications.  
 
-Instead of having predefined
-  log in button, you can show [app-web-auth3](https://github.com/pryv/app-web-auth3) screens as a WebView component
-   and render your screens accordingly to the authentication `state`. For this you would need these steps:
+Instead of having a predefined log in button, you can display [app-web-auth3](https://github.com/pryv/app-web-auth3) screens in a WebView component and render your screens according to the authentication `state`. For this, you would need these steps:
 
+1. Create a state monitoring function that would update a user interface when the authentication `state` changes as shown in the function below:
 
-1. Create a state monitoring function that would render interface when auth `state` changes.
-Example function is below:
-    ```javascript
-    function pryvAuthStateChange(state) { // called each time the authentication state changed
-      switch(state.id) {
-          case Pryv.Browser.AuthStates.LOADING:
-            console.log('Loading service information...');
-            break;
-          case Pryv.Browser.AuthStates.INITIALIZED:
-            console.log('Service information is retrieved so authorization can start. You can display login / registration screen or redirect to the our hosted app - web - auth application.');
-            break;
-          case Pryv.Browser.AuthStates.AUTHORIZED:
-            console.log('User is authorized and can access his personal data');
-            break;
-          case Pryv.Browser.AuthStates.LOGOUT:
-            console.log('User just logged off, please delete all the session related data');
-            break;
-          case Pryv.Browser.AuthStates.ERROR:
-            console.log('Error:', state?.message);
-            break;
-      }
-    }
-    ```
-     [pryvAuthStateChange in react-native example](https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L36)
-     
+```javascript
+function pryvAuthStateChange(state) { // called each time the authentication state changed
+  switch(state.id) {
+      case Pryv.Browser.AuthStates.LOADING:
+        console.log('Loading service information...');
+        break;
+      case Pryv.Browser.AuthStates.INITIALIZED:
+        console.log('Service information is retrieved so authorization can start. You can display login / registration screen or redirect to the our hosted app - web - auth application.');
+        break;
+      case Pryv.Browser.AuthStates.AUTHORIZED:
+        console.log('User is authorized and can access his personal data');
+        break;
+      case Pryv.Browser.AuthStates.LOGOUT:
+        console.log('User just logged off, please delete all the session related data');
+        break;
+      case Pryv.Browser.AuthStates.ERROR:
+        console.log('Error:', state?.message);
+        break;
+  }
+}
+```
+
+See the [pryvAuthStateChange() function in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L36)
+
 2. Initialize Pryv Service and custom view as false as shown below:
 
-    ```javascript
-    const customView = false;
-    let service = await Pryv.Browser.setupAuth(
-          authSettings,
-          serviceInfoUrl,
-          optionalServiceInfoOverride,
-          customView
-    );
-    ```
-    [setupAuth in react-native example](https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L116)
-    Note: `pryvAuthStateChange` function will be part of `authSettings`.
-3. When user clicks on login button, the application should:
+```javascript
+const customView = false;
+let service = await Pryv.Browser.setupAuth(
+      authSettings,
+      serviceInfoUrl,
+      optionalServiceInfoOverride,
+      customView
+);
+```
 
-    a) start the auth process
-    
-    b) redirect to the url that is received from auth request as in the example below:
+See the [setupAuth() function in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L116)  
 
-    ```javascript
-      async function startAuthProcess () {
-        await pryvService.startAuthRequest();
-        const loginUrl = pryvService.getAccessData().authUrl;
-        // open webview with loginUrl url
-      }
-    ```
-   [startAuthProcess in react-native example](https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L169)
-4. In case of the error or when user don't finish login process, the application should stop the auth process:
-    ```javascript
-    await pryvService.stopAuthProcess();
-    ```
-   
-5. When state id is equal to `Pryv.Browser.AuthStates.AUTHORIZED`, you can get api_endpoint with the token from the `state` as shown below:
-    ```javascript
-    if (authState.id == Pryv.Browser.AuthStates.AUTHORIZED) {
-      const { endpoint, token } = pryvService.extractTokenAndApiEndpoint(authState.apiEndpoint);
-      // username = authState.displayName
-    }
-    ```
-   [getting auth data from the state in react-native example](https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L51)
+Note: the `pryvAuthStateChange()` function will be part of `authSettings`.
 
-For the **full example**, check the [Mini React-Native app](https://github.com/pryv/lib-js-react-native) that is using lib-js authentication.
+3. When user clicks on the login button, the application should:
 
+a) start the auth process  
+
+b) redirect to the url that is received from auth request as in the example below:  
+
+```javascript
+  async function startAuthProcess () {
+    await service.startAuthRequest();
+    const loginUrl = service.getAccessData().authUrl;
+    // open webview with loginUrl url
+  }
+```
+
+See the [startAuthProcess() in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L169)
+
+4. In case of error or when the user does not finish login process, the application should stop the auth process:
+
+```javascript
+await pryvService.stopAuthProcess();
+```
+
+5. When `state.id` is equal to `Pryv.Browser.AuthStates.AUTHORIZED`, you can get api_endpoint with the token from the `state` as shown below:
+
+```javascript
+if (authState.id == Pryv.Browser.AuthStates.AUTHORIZED) {
+  const { endpoint, token } = pryvService.extractTokenAndApiEndpoint(authState.apiEndpoint);
+  // username = authState.displayName
+}
+```
+
+See how to [retrieve auth data from the state in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L51)
+
+For the **full example**, see the [Mini React-Native app](https://github.com/pryv/lib-js-react-native) that is using lib-js authentication.
 
 #### Redirect user to the authentication page
 
