@@ -204,7 +204,7 @@ class Service {
    * @private
    */
   async _poll () {
-    if (this.store.accessData.status != 'NEED_SIGNIN') {
+    if (this.store.accessData && this.store.accessData.status != 'NEED_SIGNIN') {
       this._polling = false;
       return;
     }
@@ -332,6 +332,10 @@ class Service {
 
   getAssets () {
     return this.store.assets;
+  }
+
+  extractTokenAndApiEndpoint (pryvApiEndpoint){
+    return utils.extractTokenAndApiEndpoint(pryvApiEndpoint);
   }
 }
 

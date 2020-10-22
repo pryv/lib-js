@@ -145,7 +145,8 @@ class AuthController {
     await this.postAccessIfNeeded();
 
     // change state to initialized if signin is needed
-    if (this.store.accessData.status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN) {
+    if (this.store.accessData &&
+      this.store.accessData.status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN) {
       if (!this.store.accessData.url) {
         throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
       }
