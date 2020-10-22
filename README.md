@@ -678,9 +678,9 @@ You can find html examples in the [`./web-demos`](/web-demos) directory. You can
 npm run web-demos
 ```
 
-and open an example with the following URL **https://l.rec.la:4443/EXAMPLE_NAME.html**, like: [https://l.rec.la:4443/auth.html](https://l.rec.la:4443/auth.html)
+and open an example with the following URL **https://l.rec.la:4443/web-demos/EXAMPLE_NAME.html**, like: [https://l.rec.la:4443/web-demos/auth.html](https://l.rec.la:4443/web-demos/auth.html)
 
-2. as a simple html file (service information must be passed as JSON to avoid CORS problem)
+2. as a simple html file (service information must be passed as JSON to avoid CORS problem).
 
 # Change Log
 
