@@ -484,7 +484,7 @@ async function postAccess (authControler) {
 // ------------------ ACTIONS  ----------- //
 function logOut (authControler) {
   const message = authControler.messages.LOGOUT_CONFIRM ? authControler.messages.LOGOUT_CONFIRM : 'Logout ?';
-  if (confirm(message)) {
+  if (typeof confirm === 'undefined' || confirm(message)) {
     prepareForLogin(authControler);
   }
 }
