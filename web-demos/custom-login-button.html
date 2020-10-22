@@ -34,19 +34,12 @@
     };
 
   class MyLoginButton extends Pryv.Browser.HumanInteractionInterface {
-    // Authentication controller will be passet in the setupAuth method
-    constructor(authController) {
-      super(authController);
-    }
-
     /**
      * setup button and load assets
      */
     async init() {
-      this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
        let loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
-       loginButtonSpan.addEventListener('click', this.onClick.bind(this));
-       this.onStateChange(); // update button text
+       loginButtonSpan.addEventListener('click', this.onClick.bind(this));     
     }
 
     /**
@@ -54,24 +47,17 @@
      */
     onClick() {
       console.log('My custom on click event. Currect auth state is: ', this.auth.getState());
-      if (this.auth.getState().id === Pryv.Browser.AuthStates.AUTHORIZED) {
-        this.auth.logOut();
-      } else if (this.auth.getState().id === Pryv.Browser.AuthStates.INITIALIZED) {
-        this.startLoginScreen();
-      }
+      this.auth.handleClick();
     }
 
     onStateChange() {
       console.log('State just changed to:', this.auth.getState());
-      let text = this.auth.pryvService.defaultOnStateChange();
+      let text = this.auth.getButtonText();
       document.querySelector(`#${this.auth.settings.spanButtonID}`).innerText = text;
     }
 
-    startLoginScreen() {
+    startLoginScreen(authUrl) {
       console.log('My custom popup that is huge:');
-      // Poll Access if not yet in course
-      this.auth.pryvService.startAuthRequest(this.auth);
-
       let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
         screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
         outerWidth = typeof window.outerWidth !== 'undefined' ?
@@ -89,7 +75,6 @@
           ',top=' + top +
           ',scrollbars=yes'
         );
-      const authUrl = this.auth.pryvService.getAccessData().authUrl;
       this.popup = window.open(authUrl, 'You custom Sign-in', features);
 
       if (!this.popup) {
@@ -98,6 +83,21 @@
       } else if (window.focus) {
         this.popup.focus();
       }
+    }
+
+    saveAuthorizationData(username, apiEndpoint) {
+      console.log('You should save this object to the storage', {
+        apiEndpoint: apiEndpoint,
+        displayName: username
+      });
+    }
+
+    getSavedLogIn() {
+      console.log('You should return saved data from the storage');
+    }
+
+    async logOut() {
+      console.log('You should delete saved data from the storage');
     }
   }
 

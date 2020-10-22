@@ -1,7 +1,7 @@
 const AuthController = require('../Auth/AuthController');
 const AuthStates = require('../Auth/AuthStates');
 const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
-const LoginButton = require('../Browser/LoginButton');
+const { getStore } = require('../Auth/AuthStore');
 
 /**
  * @memberof Pryv
@@ -27,17 +27,13 @@ const LoginButton = require('../Browser/LoginButton');
  * @returns {Pryv.Service}
  */
 async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, humanInteractionInterface) {
+  let store = getStore();
+  store.resetValues();
   const authController = new AuthController(settings, serviceInfoUrl, serviceCustomizations);
+  const authService = await authController.init();
+  let loginButton = new humanInteractionInterface(authController);
+  await loginButton.init();
 
-  let loginButton;
-  if (humanInteractionInterface == null) {
-    loginButton = new LoginButton();
-  } else {
-    loginButton = new humanInteractionInterface();
-  }
-  
-  const authService = await authController.init(loginButton);
-  
   return authService;
 }
 

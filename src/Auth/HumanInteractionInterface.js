@@ -1,15 +1,8 @@
-class HumanInteractionInterface {
-
-  constructor(auth) {
-    this.auth = auth; 
-  }
-  
+class HumanInteractionInterface { 
   /**
    * Called at the end of AuthController.init()
    * - Load potential assets 
    * - Register state change with
-   * this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
-   * implementation is optional
    */ 
   async init () { }
 

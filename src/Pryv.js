@@ -12,6 +12,7 @@ module.exports = {
   Service: require('./Service'),
   Connection: require('./Connection'),
   Browser: require('./Browser'),
+  MobileApp: require('./MobileApp'),
   utils: require('./utils'),
   version: require('../package.json').version
 }

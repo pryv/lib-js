@@ -1,80 +1,38 @@
 const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
 const AuthStates = require('../Auth/AuthStates');
+const Cookies = require('./CookieUtils');
+const { buildPryvApiEndpoint } = require('../utils');
 
 /**
  * @memberof Pryv.Browser
  */
 class LoginButton extends HumanInteractionInterface {
-
-  /**
-   * @param {Browser/AuthController} auth 
-   */
-  
-  constructor (authController) {
-    super(authController);
-  }
    
   /**
    * setup button and load assets
    */
   async init () {
-    this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
-    this._setupButton();
-    await this._loadAssets();   
-  }
-  
-  _setupButton () {
-    this.loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
-
-    if (!this.loginButtonSpan) {
-      console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
-    }
-
-    // up to the time the button is loaded use the Span to display eventual 
-    // error messages
-    this.loginButtonText = this.loginButtonSpan;
-
-    // bind actions dynamically to the button click
-    this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
-  }
-
-  /**
-   * Loads the style from the service info
-   */
-  async _loadAssets () {
-    this.loginButtonSpan.innerHTML = await this.auth.pryvService.getAssets().loginButtonGetHTML();
-    this.loginButtonText = document.getElementById('pryv-access-btn-text');
-    // State was not changed, only the button text, so reload state manually
-    this.onStateChange();
+    this.auth.stateChangeListners.push(this.onStateChange.bind(this));
+    setupButton(this);
+    await loadAssets(this);
+    this._cookieKey = 'pryv-libjs-' + this.auth.settings.authRequest.requestingAppId;
   }
 
   /**
    * The same button can redirect, open auth popup or logout
    */
   onClick () {
-    if (this.auth.store.state.id === AuthStates.AUTHORIZED) {
-      this.auth.logOut();
-    } else if (this.auth.store.state.id === AuthStates.INITIALIZED) {
-      if (this.auth.settings.authRequest.returnURL) { // open on same page (no Popup) 
-        location.href = this.auth.pryvService.getAccessData().url;
-        return;
-      } else {
-        this._startLoginScreen();
-      }
-    }
+    this.auth.handleClick();
   }
 
   onStateChange () {
-    this.text = this.auth.pryvService.defaultOnStateChange();
+    this.text = this.auth.getButtonText();
     if (this.loginButtonText) {
       this.loginButtonText.innerHTML = this.text;
     }
   }
 
-  async _startLoginScreen () {
-    // Poll Access if not yet in course
-    await this.auth.pryvService.startAuthRequest();
-
+  async startLoginScreen (authUrl) {
     let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
       screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
       outerWidth = typeof window.outerWidth !== 'undefined' ?
@@ -93,16 +51,52 @@ class LoginButton extends HumanInteractionInterface {
         ',scrollbars=yes'
       );
 
-    // Keep "url" for retro-compatibility for Pryv.io before v1.0.4 
-    const authUrl = this.auth.pryvService.getAccessData().authUrl || this.auth.pryvService.getAccessData().url;
-
     this.popup = window.open(authUrl, 'prYv Sign-in', features);
     if (!this.popup) {
-      this.auth.pryvService.stopAuthRequest();
+      this.auth.stopAuthRequest();
       console.log('FAILED_TO_OPEN_WINDOW');
     } else if (window.focus) {
       this.popup.focus();
     }
   }
+
+  saveAuthorizationData (username, apiEndpoint) {
+    Cookies.set(this._cookieKey,
+      {
+        apiEndpoint: apiEndpoint,
+        displayName: username
+    });
+  }
+
+  getSavedLogIn () {
+    return Cookies.get(this._cookieKey);
+  }
+
+  async logOut () {
+    Cookies.del(this._cookieKey);
+  }
+}
+
+function setupButton(loginBtn) {
+  loginBtn.loginButtonSpan = document.getElementById(loginBtn.auth.settings.spanButtonID);
+
+  if (!loginBtn.loginButtonSpan) {
+    console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
+  }
+
+  // up to the time the button is loaded use the Span to display eventual 
+  // error messages
+  loginBtn.loginButtonText = loginBtn.loginButtonSpan;
+
+  // bind actions dynamically to the button click
+  loginBtn.loginButtonSpan.addEventListener('click', loginBtn.onClick.bind(loginBtn));
+}
+
+/**
+ * Loads the style from the service info
+ */
+async function loadAssets(loginBtn) {
+  loginBtn.loginButtonSpan.innerHTML = await loginBtn.auth.getAssets().loginButtonGetHTML();
+  loginBtn.loginButtonText = document.getElementById('pryv-access-btn-text');
 }
 module.exports = LoginButton;
