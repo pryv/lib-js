@@ -672,13 +672,13 @@ Here is the explanation how to [launch web-demos locally](#launch-web-demos-loca
 
 You can find html examples in the [`./web-demos`](/web-demos) directory. You can launch them in 2 ways:
 
-1. using [rec-la](https://github.com/pryv/rec-la) that allows to run your code with a valid SSL certificate. To launch the server you simply need to run:
+1. using [rec-la](https://github.com/pryv/rec-la) that allows to run your code with a valid SSL certificate (this requires to have run `npm run build` prior). To launch the server you simply need to run:
 
 ```bash
-npm run web-demos
+npm run webserver
 ```
 
-and open an example with the following URL **https://l.rec.la:4443/web-demos/EXAMPLE_NAME.html**, like: [https://l.rec.la:4443/web-demos/auth.html](https://l.rec.la:4443/web-demos/auth.html)
+and open an example with the following URL **https://l.rec.la:9443/demos/EXAMPLE_NAME.html**, like: [https://l.rec.la:9443/demos/auth.html](https://l.rec.la:9443/demos/auth.html)
 
 2. as a simple html file (service information must be passed as JSON to avoid CORS problem).
 

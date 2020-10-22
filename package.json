@@ -27,8 +27,7 @@
     "test:browser": "npm run build; ",
     "cover": "nyc npm run test && npm run cover:report",
     "cover:report": "nyc report --reporter=lcov --reporter=html",
-    "webserver": "node node_modules/rec-la/webserver/main.js ./dist 9443",
-    "web-demos": "./node_modules/.bin/rec-la .",
+    "webserver": "./node_modules/.bin/rec-la ./dist 9443",
     "gh-pages": "./scripts/upload.sh",
     "clear": "rm -r dist/ && npm run setup"
   },
