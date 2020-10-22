@@ -614,7 +614,7 @@ Instead of having a predefined log in button, you can display [app-web-auth3](ht
     }
     ```
 
-    See the [pryvAuthStateChange() function in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L36)
+    See the [pryvAuthStateChange() function in the react-native example app](https://github.com/pryv/app-react-native-example/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L36).
 
 2. Initialize Pryv Service (it is important that authSettings would NOT have `spanButtonID` setting,
  otherwise, default Pryv login button would be rendered):
@@ -627,7 +627,7 @@ Instead of having a predefined log in button, you can display [app-web-auth3](ht
     );
     ```
 
-    See the [setupAuth() function in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L116)  
+    See the [setupAuth() function in the react-native example app].(https://github.com/pryv/app-react-native-example/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L116)  
 
     Note: the `pryvAuthStateChange()` function will be part of `authSettings`.
 
@@ -645,7 +645,7 @@ Instead of having a predefined log in button, you can display [app-web-auth3](ht
       }
     ```
 
-    See the [startAuthProcess() in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L169)
+    See the [startAuthProcess() in the react-native example app](https://github.com/pryv/app-react-native-example/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L169).
 
 4. In case of error or when the user does not finish login process, the application should stop the auth process:
 
@@ -662,14 +662,14 @@ Instead of having a predefined log in button, you can display [app-web-auth3](ht
     }
     ```
 
-    See how to [retrieve auth data from the state in the react-native example app].(https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L51)
+    See how to [retrieve auth data from the state in the react-native example app](https://github.com/pryv/app-react-native-example/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L51).
 
-For the **full example**, see the [Mini React-Native app](https://github.com/pryv/lib-js-react-native) that is using lib-js authentication.
+For the **full example**, see the [Mini React-Native app](https://github.com/pryv/app-react-native-example) that is using lib-js authentication.
 
 #### Redirect user to the authentication page
 
-There is a possibility that you would like to register the user in another page. You can check the [`./web-demos/auth-with-redirection.html`](./web-demos/auth-with-redirection.html) example.
-Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html).
+There is a possibility that you would like to register the user in another page. You can check the [`./web-demos/auth-with-redirection.html`](./web-demos/auth-with-redirection.html) example.  
+Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html).  
 Here is the explanation how to [launch web-demos locally](#launch-web-demos-locally)
 
 ### Launch web demos locally
