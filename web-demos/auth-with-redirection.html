@@ -36,7 +36,11 @@
           requestingAppId: 'lib-js-test',
           languageCode: 'fr', // optional (default english)
           returnURL: 'auto#',
-          requestedPermissions: [],
+          requestedPermissions: [{
+            streamId: 'test',
+            defaultName: 'Test',
+            level: 'read',
+          }],
           // the login page where user will be redirected
           returnURL: 'https://l.rec.la:4443/web-demos/auth-with-redirection.html#'
         }
