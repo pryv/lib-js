@@ -85,11 +85,8 @@
       }
     }
 
-    saveAuthorizationData(username, apiEndpoint) {
-      console.log('You should save this object to the storage', {
-        apiEndpoint: apiEndpoint,
-        displayName: username
-      });
+    saveAuthorizationData(authData) {
+      console.log('You should save this object to the storage', authData);
     }
 
     getSavedLogIn() {

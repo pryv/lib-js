@@ -17,8 +17,7 @@ class AuthController {
       this.languageCode = this.settings.authRequest.languageCode || 'en';    
       this.serviceInfoUrl = serviceInfoUrl;
       this.serviceCustomizations = serviceCustomizations;
-      this.messages = Messages(this.languageCode);
-            
+      this.messages = Messages(this.languageCode);     
       // -- Check Error CallBack
       if (this.settings.onStateChange) {
         this.stateChangeListners.push(this.settings.onStateChange);
@@ -38,7 +37,7 @@ class AuthController {
 
     // -- Extract returnURL 
     this.settings.authRequest.returnURL =
-      getReturnURL(this.settings.authRequest.returnURL);
+      this.getReturnURL(this.settings.authRequest.returnURL);
 
     if (!this.settings.authRequest.requestingAppId) {
       throw new Error('Missing settings.authRequest.requestingAppId');
@@ -57,20 +56,23 @@ class AuthController {
     this.assets = await this.loadAssets();
 
     // initialize human interaction interface
-    loginButton.auth = this;
-    await (loginButton.init());
-    this.loginButton = loginButton;
-    await checkAutoLogin(this);
+    if (loginButton != null) {
+      loginButton.auth = this;
+      await (loginButton.init());
+      this.loginButton = loginButton;
+      await checkAutoLogin(this);      
+    }
 
     if (!this.isAuthorized()) {
       await prepareForLogin(this);
     }
 
     await finishAuthProcessAfterRedirection(this);
-    this.stateChangeListners.push(this.loginButton.onStateChange.bind(this.loginButton));
-
-    // update button text
-    this.loginButton.onStateChange(); 
+    if (loginButton != null) {
+      this.stateChangeListners.push(this.loginButton.onStateChange.bind(this.loginButton));
+      // update button text
+      this.loginButton.onStateChange();
+    }
     return this.pryvService;
   }
 
@@ -233,7 +235,6 @@ class AuthController {
   }
 
   async handleClick () {
-    console.log('handleClick', this.isAuthorized());
     if (this.isAuthorized()) {
       logOut(this);
     } else if (this.isInitialized()) {
@@ -242,8 +243,10 @@ class AuthController {
         return;
       } else {
         await this.startAuthRequest();
-        const loginUrl = this.getAccessData().authUrl || this.getAccessData().url
-        this.loginButton.startLoginScreen(loginUrl);
+        if (this.loginButton != null) {
+          const loginUrl = this.getAccessData().authUrl || this.getAccessData().url;
+          this.loginButton.startLoginScreen(loginUrl);
+        }
       }
     }
   }
@@ -270,17 +273,53 @@ class AuthController {
               this.getAccessData().username,
               this.getAccessData().token
             );
-          this.loginButton.saveAuthorizationData(
-            this.getAccessData().username,
-            apiEndpoint
-          );
+          if (this.loginButton != null) {
+            this.loginButton.saveAuthorizationData({
+              apiEndpoint: apiEndpoint,
+              displayName: this.getAccessData().username
+            });
+          }
         }
         break;
       default:
         console.log('WARNING Unhandled state for Login: ' + this.state.id);
-        this.loginButton.onChange();
     }
   }
+
+  getReturnURL (
+    returnURL,
+    windowLocationForTest,
+    navigatorForTests
+  ) {
+    returnURL = returnURL || AuthController.options.RETURN_URL_AUTO + '#';
+
+    // check the trailer
+    let trailer = returnURL.slice(-1);
+    if ('#&?'.indexOf(trailer) < 0) {
+      throw new Error('Pryv access: Last character of --returnURL setting-- is not ' +
+        '"?", "&" or "#": ' + returnURL);
+    }
+    // auto mode for desktop
+    if (
+      returnUrlIsAuto(returnURL) &&
+      !utils.browserIsMobileOrTablet(navigatorForTests)
+    ) {
+      return false;
+    } else if (
+      // auto mode for mobile or self
+      (returnUrlIsAuto(returnURL) &&
+        utils.browserIsMobileOrTablet(navigatorForTests)
+      )
+      || returnURL.indexOf('self') === 0
+    ) {
+      // set self as return url?
+      // eventually clean-up current url from previous pryv returnURL
+      const locationHref = windowLocationForTest || window.location.href;
+      returnURL = locationHref + returnURL.substring(4);
+    }
+    return utils.cleanURLFromPrYvParams(returnURL);
+  }
+
 
   // -------------- Auth state listeners ---------------------
   set state (newState) {
@@ -307,7 +346,9 @@ function returnUrlIsAuto (returnURL) {
 
 async function deleteSessionData(authController) {
   authController.accessData = null;
-  authController.loginButton.logOut();
+  if (authController.loginButton != null) {
+    authController.loginButton.logOut();
+  }
 }
 
 /**
@@ -372,7 +413,10 @@ function changeAuthStateDependingOnAccess (authController, accessData) {
 }
 
 
-async function checkAutoLogin(authController) {
+async function checkAutoLogin (authController) {
+  if (authController.loginButton == null) {
+    return;
+  }
   let loginCookie = null;
   try {
     loginCookie = await authController.loginButton.getSavedLogIn();
@@ -443,40 +487,6 @@ function logOut (authControler) {
   if (confirm(message)) {
     prepareForLogin(authControler);
   }
-}
-
-function getReturnURL (
-  returnURL,
-  windowLocationForTest,
-  navigatorForTests
-) {
-  returnURL = returnURL || AuthController.options.RETURN_URL_AUTO + '#';
-
-  // check the trailer
-  let trailer = returnURL.slice(-1);
-  if ('#&?'.indexOf(trailer) < 0) {
-    throw new Error('Pryv access: Last character of --returnURL setting-- is not ' +
-      '"?", "&" or "#": ' + returnURL);
-  }
-  // auto mode for desktop
-  if (
-    returnUrlIsAuto(returnURL) &&
-    !utils.browserIsMobileOrTablet(navigatorForTests)
-  ) {
-    return false;
-  } else if (
-    // auto mode for mobile or self
-    (returnUrlIsAuto(returnURL) &&
-      utils.browserIsMobileOrTablet(navigatorForTests)
-    )
-    || returnURL.indexOf('self') === 0
-  ) {
-    // set self as return url?
-    // eventually clean-up current url from previous pryv returnURL
-    const locationHref = windowLocationForTest || window.location.href;
-    returnURL = locationHref + returnURL.substring(4);
-  }
-  return utils.cleanURLFromPrYvParams(returnURL);
 }
 
 AuthController.options = {

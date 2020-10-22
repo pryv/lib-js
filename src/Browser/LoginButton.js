@@ -14,7 +14,9 @@ class LoginButton extends HumanInteractionInterface {
   async init () {
     this.auth.stateChangeListners.push(this.onStateChange.bind(this));
     setupButton(this);
-    await loadAssets(this);
+    if (this.loginButtonText) {
+      await loadAssets(this);
+    }
     this._cookieKey = 'pryv-libjs-' + this.auth.settings.authRequest.requestingAppId;
   }
 
@@ -60,12 +62,8 @@ class LoginButton extends HumanInteractionInterface {
     }
   }
 
-  saveAuthorizationData (username, apiEndpoint) {
-    Cookies.set(this._cookieKey,
-      {
-        apiEndpoint: apiEndpoint,
-        displayName: username
-    });
+  saveAuthorizationData (authData) {
+    Cookies.set(this._cookieKey,authData);
   }
 
   getSavedLogIn () {
@@ -82,14 +80,15 @@ function setupButton(loginBtn) {
 
   if (!loginBtn.loginButtonSpan) {
     console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
+  } else {
+    // up to the time the button is loaded use the Span to display eventual 
+    // error messages
+    loginBtn.loginButtonText = loginBtn.loginButtonSpan;
+
+    // bind actions dynamically to the button click
+    loginBtn.loginButtonSpan.addEventListener('click', loginBtn.onClick.bind(loginBtn));
+
   }
-
-  // up to the time the button is loaded use the Span to display eventual 
-  // error messages
-  loginBtn.loginButtonText = loginBtn.loginButtonSpan;
-
-  // bind actions dynamically to the button click
-  loginBtn.loginButtonSpan.addEventListener('click', loginBtn.onClick.bind(loginBtn));
 }
 
 /**
