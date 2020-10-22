@@ -121,7 +121,7 @@ class AuthController {
     if (pollUrl !== null) {
       try {
         const res = await utils.superagent.get(pollUrl);
-        this.pryvService.processAccess(res.body);
+        this.pryvService.changeAuthStateDependingOnAccess(res.body);
       } catch (e) {
         this.store.setState({
           id: AuthStates.ERROR,
@@ -160,7 +160,7 @@ class AuthController {
 
   async postAccessIfNeeded () {
     if (!this.store.accessData) {
-      this.pryvService.processAccess(await this.postAccess());
+      this.pryvService.changeAuthStateDependingOnAccess(await this.postAccess());
     }
   }
 

@@ -209,7 +209,7 @@ class Service {
       return;
     }
     this._polling = true;
-    this.processAccess(await this.getAccess());
+    this.changeAuthStateDependingOnAccess(await this._pollAccess());
     setTimeout(await this._poll.bind(this), this.store.accessData.poll_rate_ms);
   }
 
@@ -220,7 +220,7 @@ class Service {
   /**
   * @private
   */
-  async getAccess () {
+  async _pollAccess () {
     let res;
     try {
       res = await utils.superagent
@@ -232,7 +232,7 @@ class Service {
     return res.body;
   }
 
-  processAccess (accessData) {
+  changeAuthStateDependingOnAccess (accessData) {
     if (!accessData || !accessData.status) {
       this.store.setState({
         id: AuthStates.ERROR,
