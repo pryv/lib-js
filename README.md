@@ -618,7 +618,7 @@ Example function is below:
     ```
      [pryvAuthStateChange in react-native example](https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L36)
      
-2. Initialize Pryv Service and setting the button as false as shown below:
+2. Initialize Pryv Service and custom view as false as shown below:
 
     ```javascript
     const customView = false;
@@ -631,8 +631,11 @@ Example function is below:
     ```
     [setupAuth in react-native example](https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L116)
     Note: `pryvAuthStateChange` function will be part of `authSettings`.
-3. When user clicks on login button, the application should start the auth process and redirect to the 
-url that is received from auth request as in the example below:
+3. When user clicks on login button, the application should:
+
+    a) start the auth process
+    
+    b) redirect to the url that is received from auth request as in the example below:
 
     ```javascript
       async function startAuthProcess () {
@@ -654,7 +657,7 @@ url that is received from auth request as in the example below:
       // username = authState.displayName
     }
     ```
-   [getting auth data from the state in react-native real-world example](https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L51)
+   [getting auth data from the state in react-native example](https://github.com/pryv/lib-js-react-native/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L51)
 
 For the **full example**, check the [Mini React-Native app](https://github.com/pryv/lib-js-react-native) that is using lib-js authentication.
 
