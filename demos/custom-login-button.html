@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Pryv - Javascript Lib</title>
+  <script src="../pryv.js"></script>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+</head>
+
+<body>
+  <button type="button" id="pryv-button">My custom button</button>
+  <script>
+    let authSettings = {
+      spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
+      authRequest: { // See: https://api.pryv.com/reference/#auth-request
+        requestingAppId: 'lib-js-test',
+        languageCode: 'fr', // optional (default english)
+        returnURL: 'auto#',
+        requestedPermissions: [
+          {
+            streamId: 'test',
+            defaultName: 'test',
+            level: 'manage'
+          }
+        ],
+        clientData: {
+          'app-web-auth:description': {
+            'type': 'note/txt',
+            'content': 'This is a consent message.'
+          }
+        },
+      }
+    };
+
+  class MyLoginButton extends Pryv.Browser.HumanInteractionInterface {
+    // Authentication controller will be passet in the setupAuth method
+    constructor(authController) {
+      super(authController);
+    }
+
+    /**
+     * setup button and load assets
+     */
+    async init() {
+      this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
+       let loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
+       loginButtonSpan.addEventListener('click', this.onClick.bind(this));
+       this.onStateChange(); // update button text
+    }
+
+    /**
+     * The same button can redirect, open auth popup or logout
+     */
+    onClick() {
+      console.log('My custom on click event. Currect auth state is: ', this.auth.getState());
+      if (this.auth.getState().id === Pryv.Browser.AuthStates.AUTHORIZED) {
+        this.auth.logOut();
+      } else if (this.auth.getState().id === Pryv.Browser.AuthStates.INITIALIZED) {
+        this.startLoginScreen();
+      }
+    }
+
+    onStateChange() {
+      console.log('State just changed to:', this.auth.getState());
+      let text = this.auth.pryvService.defaultOnStateChange();
+      document.querySelector(`#${this.auth.settings.spanButtonID}`).innerText = text;
+    }
+
+    startLoginScreen() {
+      console.log('My custom popup that is huge:');
+      // Poll Access if not yet in course
+      this.auth.pryvService.startAuthRequest(this.auth);
+
+      let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
+        screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
+        outerWidth = typeof window.outerWidth !== 'undefined' ?
+          window.outerWidth : document.body.clientWidth,
+        outerHeight = typeof window.outerHeight !== 'undefined' ?
+          window.outerHeight : (document.body.clientHeight - 22),
+        width = 900,
+        height = 500,
+        left = parseInt(screenX + ((outerWidth - width) / 2), 10),
+        top = parseInt(screenY + ((outerHeight - height) / 2.5), 10),
+        features = (
+          'width=' + width +
+          ',height=' + height +
+          ',left=' + left +
+          ',top=' + top +
+          ',scrollbars=yes'
+        );
+      const authUrl = this.auth.pryvService.getAccessData().authUrl;
+      this.popup = window.open(authUrl, 'You custom Sign-in', features);
+
+      if (!this.popup) {
+        this.auth.polling = false;
+        console.log('FAILED_TO_OPEN_WINDOW');
+      } else if (window.focus) {
+        this.popup.focus();
+      }
+    }
+  }
+
+  let serviceInfoUrl = null;// 'https://api.pryv.com/lib-js/demos/service-info.json';
+  let serviceInfoJson = {
+    "register": "https://reg.pryv.me",
+    "access": "https://access.pryv.me/access",
+    "api": "https://{username}.pryv.me/",
+    "name": "Pryv Lab",
+    "home": "https://www.pryv.com",
+   "support": "https://pryv.com/helpdesk",
+    "terms": "https://pryv.com/pryv-lab-terms-of-use/",
+    "eventTypes": "https://api.pryv.com/event-types/flat.json",
+    "assets": {
+      "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
+   }};
+  (async function () {
+    let service = await Pryv.Browser.setupAuth(
+      authSettings, 
+      serviceInfoUrl,
+      serviceInfoJson,
+      MyLoginButton,
+      );
+  })();
+  </script>
+</body>
+
+</html>

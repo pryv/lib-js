@@ -12177,80 +12177,60 @@ module.exports = exports = {
 
 /***/ }),
 
-/***/ "./src/Browser/AuthController.js":
-/*!***************************************!*\
-  !*** ./src/Browser/AuthController.js ***!
-  \***************************************/
+/***/ "./src/Auth/AuthController.js":
+/*!************************************!*\
+  !*** ./src/Auth/AuthController.js ***!
+  \************************************/
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
 const utils = __webpack_require__(/*! ../utils */ "./src/utils.js");
 const Service = __webpack_require__(/*! ../Service */ "./src/Service.js");
-const LoginButton = __webpack_require__(/*! ./LoginButton */ "./src/Browser/LoginButton.js");
-const AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Browser/AuthStates.js");
-const Cookies = __webpack_require__(/*! ./CookieUtils */ "./src/Browser/CookieUtils.js");
-
-const COOKIE_STRING = 'pryv-libjs-';
-
-const QUERY_REGEXP = /[?#&]+([^=&]+)=([^&]*)/g;
-const PRYV_REGEXP = /[?#&]+prYv([^=&]+)=([^&]*)/g;
+const AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Auth/AuthStates.js");
+const { getStore } = __webpack_require__(/*! ./AuthStore */ "./src/Auth/AuthStore.js");
+const Messages = __webpack_require__(/*! ../Browser/LoginButtonMessages */ "./src/Browser/LoginButtonMessages.js");
 
 /**
  * @private
  */
 class AuthController {
 
-
-  constructor(settings, serviceInfoUrl, serviceCustomizations) {
-    this.stateChangeListners = [];
+  constructor (settings, serviceInfoUrl, serviceCustomizations) {
+    this.store = getStore();
     this.settings = settings;
+
+    // 1. get Language
+    if (settings.authRequest.languageCode != null) {
+      this.store.languageCode = settings.authRequest.languageCode;
+    }
     this.serviceInfoUrl = serviceInfoUrl;
     this.serviceCustomizations = serviceCustomizations;
-    
-
     if (!settings) { throw new Error('settings cannot be null'); }
 
-    // -- First of all get the button 
-    if (this.settings.spanButtonID) {
-      this.loginButton = new LoginButton(this);
-      this.stateChangeListners.push(this.loginButton.onStateChange.bind(this.loginButton));
-    } else {
-      if (document) {
-        console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
-      }
-    }
-
-    try { // Wrap all in a large try catch 
-      
-
+    try {
       // -- Check Error CallBack
-      if (!this.settings.onStateChange) { throw new Error('Missing settings.onStateChange'); }
-      this.stateChangeListners.push(this.settings.onStateChange);
+      if (this.settings.onStateChange) {
+        this.store.stateChangeListners.push(this.settings.onStateChange);
+      }
 
       // -- settings 
       if (!this.settings.authRequest) { throw new Error('Missing settings.authRequest'); }
 
       // -- Extract returnURL 
-      this.settings.authRequest.returnURL = 
-        AuthController.getReturnURL(this.settings.authRequest.returnURL);
+      this.settings.authRequest.returnURL =
+        this.getReturnURL(this.settings.authRequest.returnURL);
 
       if (!this.settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
       }
-      this.cookieKey = COOKIE_STRING + this.settings.authRequest.requestingAppId;
-
       if (!this.settings.authRequest.requestedPermissions) {
         throw new Error('Missing settings.authRequest.requestedPermissions');
       }
 
-      // -- Extract service info from URL query params if nor specified -- //
-      if (!this.serviceInfoUrl) {
-        // TODO
-      }
     } catch (e) {
-      this.state = {
+      this.store.setState({
         id: AuthStates.ERROR, message: 'During initialization', error: e
-      }
+      });
       throw (e);
     }
   }
@@ -12258,43 +12238,200 @@ class AuthController {
   /**
    * @returns {PryvService}
    */
-  async init() {
-    this.state = { id: AuthStates.LOADING };
+  async init () {
+    this.store.setState({ id: AuthStates.LOADING });
+
+    await this.fetchServiceInfo();
+    this.checkAutoLogin();
+
+    if (this.store.state.id !== AuthStates.AUTHORIZED) {
+      // 5. Propose Login
+      await this.prepareForLogin();
+    }
+
+    await this.finishAuthProcessAfterRedirection();
+
+    this.store.assets = await this.loadAssets();
+
+    return this.pryvService;
+  }
+
+  async fetchServiceInfo () {
     if (this.pryvService) {
       throw new Error('Browser service already initialized');
     }
 
- 
     // 1. fetch service-info
-    this.pryvService = new Service(this.serviceInfoUrl, this.serviceCustomizations);
+    this.pryvService = new Service(
+      this.serviceInfoUrl,
+      this.serviceCustomizations,
+      this.settings.authRequest.requestingAppId
+    );
 
     try {
       this.pryvServiceInfo = await this.pryvService.info();
     } catch (e) {
-      this.state = {
+      this.store.setState({
         id: AuthStates.ERROR,
         message: 'Cannot fetch service/info',
         error: e
-      }
+      });
       throw e; // forward error
     }
+  }
 
-    // 2. setup button with assets
-    if (this.loginButton) {
-      try {
-        await this.loginButton.loadAssets(this.pryvService);
-      } catch (e) {
-        this.state = {
-          id: AuthStates.ERROR,
-          message: 'Cannot fetch button visuals',
-          error: e
-        }
-        throw e; // forward error
-      }
+  checkAutoLogin () {
+    let loginCookie = null;
+    try {
+      loginCookie = this.pryvService.getCurrentCookieInfo();
+    } catch (e) {
+      console.log(e);
     }
 
+    if (loginCookie) {
+      this.store.setState({
+        id: AuthStates.AUTHORIZED,
+        apiEndpoint: loginCookie.apiEndpoint,
+        displayName: loginCookie.displayName
+      });
+    }
+  }
+
+  async finishAuthProcessAfterRedirection () {
+    // this step should be applied only for the browser
+    if (!utils.isBrowser()) return;
+
     // 3. Check if there is a prYvkey as result of "out of page login"
-    const params = AuthController.getQueryParamsFromURL();
+    const url = window.location.href;
+    let pollUrl = await this.pollUrlReturningFromLogin(url);
+    if (pollUrl !== null) {
+      try {
+        const res = await utils.superagent.get(pollUrl);
+        this.pryvService.changeAuthStateDependingOnAccess(res.body);
+      } catch (e) {
+        this.store.setState({
+          id: AuthStates.ERROR,
+          message: 'Cannot fetch result',
+          error: e
+        });
+      }
+    }
+  }
+  /**
+   * Called at the end init() and when logging out()
+   */
+  async prepareForLogin () {
+    this.pryvService.deleteCurrentAuthInfo();
+
+    // 1. Make sure Browser is initialized
+    if (!this.pryvServiceInfo) {
+      throw new Error('Browser service must be initialized first');
+    }
+
+    await this.postAccessIfNeeded();
+
+    // change state to initialized if signin is needed
+    if (this.store.accessData &&
+      this.store.accessData.status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN) {
+      if (!this.store.accessData.url) {
+        throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
+      }
+
+      this.store.setState({
+        id: AuthStates.INITIALIZED,
+        serviceInfo: this.serviceInfo
+      });
+    }
+  }
+
+  async postAccessIfNeeded () {
+    if (!this.store.accessData) {
+      this.pryvService.changeAuthStateDependingOnAccess(await this.postAccess());
+    }
+  }
+
+  // ----------------------- ACCESS --------------- //
+  /**
+   * @private
+   */
+  async postAccess () {
+    try {
+      const res = await utils.superagent
+        .post(this.pryvServiceInfo.access)
+        .set('accept', 'json')
+        .send(this.settings.authRequest);
+      return res.body;
+    } catch (e) {
+      this.store.setState({
+        id: AuthStates.ERROR,
+        message: 'Requesting access',
+        error: e
+      });
+      throw e; // forward error
+    }
+  }
+
+  // ------------------ ACTIONS  ----------- //
+  /**
+   * Revoke Connection and clean local cookies
+   * 
+   */
+  logOut () {
+    const message = this.store.messages.LOGOUT_CONFIRM ? this.store.messages.LOGOUT_CONFIRM : 'Logout ?';
+    if (confirm(message)) {
+      this.prepareForLogin();
+    }
+  }
+
+  getReturnURL (
+    returnURL,
+    windowLocationForTest,
+    navigatorForTests
+  ) {
+    returnURL = returnURL || AuthController.options.RETURN_URL_AUTO + '#';
+
+    // check the trailer
+    let trailer = returnURL.slice(-1);
+    if ('#&?'.indexOf(trailer) < 0) {
+      throw new Error('Pryv access: Last character of --returnURL setting-- is not ' +
+        '"?", "&" or "#": ' + returnURL);
+    }
+    // auto mode for desktop
+    if (
+      returnUrlIsAuto(returnURL) &&
+      !utils.browserIsMobileOrTablet(navigatorForTests)
+    ) {
+      return false;
+    } else if (
+      // auto mode for mobile or self
+      (returnUrlIsAuto(returnURL) &&
+        utils.browserIsMobileOrTablet(navigatorForTests)
+      )
+      || returnURL.indexOf('self') === 0
+    ) {
+      // set self as return url?
+      // eventually clean-up current url from previous pryv returnURL
+      const locationHref = windowLocationForTest || window.location.href;
+      returnURL = locationHref + returnURL.substring(4);
+    }
+    return utils.cleanURLFromPrYvParams(returnURL);
+  }
+
+  /**
+   * Util to grab parameters from url query string
+   * @param {*} url 
+   */
+  static getServiceInfoFromURL (url) {
+    const queryParams = utils.getQueryParamsFromURL(url || window.location.href);
+    //TODO check validity of status
+    return queryParams[AuthController.options.SERVICE_INFO_QUERY_PARAM_KEY];
+  }
+
+  /**
+   * Eventually return pollUrl when returning from login in another page
+   */
+  async pollUrlReturningFromLogin (url) {
+    const params = utils.getQueryParamsFromURL(url);
     let pollUrl = null;
     if (params.prYvkey) { // deprecated method - To be removed
       pollUrl = this.pryvServiceInfo.access + params.prYvkey;
@@ -12302,336 +12439,55 @@ class AuthController {
     if (params.prYvpoll) {
       pollUrl = params.prYvpoll;
     }
-    if (pollUrl !== null) {
-      try {
-        const res = await utils.superagent.get(pollUrl);
-        this.processAccess(res.body);
-      } catch (e) {
-        this.state = {
-          id: AuthStates.ERROR,
-          message: 'Cannot fetch result',
-          error: e
+    return pollUrl;
+  }
+
+  getState () {
+    return this.store.state;
+  }
+
+  async loadAssets () {
+    let loadedAssets = {};
+    try {
+      loadedAssets = await this.pryvService.assets();
+      if (typeof location !== 'undefined') {
+        await loadedAssets.loginButtonLoadCSS();
+        const thisMessages = await loadedAssets.loginButtonGetMessages();
+        if (thisMessages.LOADING) {
+          this.store.messages = Messages(this.store.languageCode, thisMessages);
+        } else {
+          console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
         }
       }
-      return this.pryvService;
-    }
-
-    // 4. check autologin 
-    let loginCookie = null;
-    try {
-      loginCookie = Cookies.get(this.cookieKey);
-    } catch (e) { console.log(e); }
-
-    if (loginCookie) {
-      this.state = {
-        id: AuthStates.AUTHORIZED,
-        apiEndpoint: loginCookie.apiEndpoint,
-        displayName: loginCookie.displayName,
-        action: this.logOut
-      };
-    } else {
-      // 5. Propose Login
-      this.readyAndClean();
-    }
-
-    return this.pryvService;
-  }
-
-  /**
-   * Called at the end init() and when logging out()
-   */
-  readyAndClean() {
-    Cookies.del(this.cookieKey)
-    this.accessData = null;
-    this.state = {
-      id: AuthStates.INITIALIZED,
-      serviceInfo: this.serviceInfo,
-      action: this.openLoginPage
-    }
-  }
-
-  // ----------------------- ACCESS --------------- ///
-
-
-  /**
-   * @private
-   */
-  async postAccess() {
-    try {
-      const res = await utils.superagent.post(this.pryvServiceInfo.access)
-        .set('accept', 'json')
-        .send(this.settings.authRequest);
-      return res.body;
     } catch (e) {
-      this.state = {
+      this.store.setState({
         id: AuthStates.ERROR,
-        message: 'Requesting access',
+        message: 'Cannot fetch button visuals',
         error: e
-      }
+      });
       throw e; // forward error
     }
+    return loadedAssets;
   }
-
-  /**
-  * @private
-  */
-  async getAccess() {
-    let res;
-    try {
-      res = await utils.superagent.get(this.accessData.poll).set('accept', 'json');
-    }
-    catch (e) {
-      return { "status": "ERROR" }
-    }
-    return res.body;
-  }
-
-  /**
-   * @private 
-   */
-  async poll() {
-    if (this.accessData.status !== 'NEED_SIGNIN') {
-      this.polling = false;
-      return;
-    }
-    if (this.settings.authRequest.returnURL) { // no popup
-      return;
-    }
-    this.polling = true;
-    this.processAccess(await this.getAccess());
-    setTimeout(this.poll.bind(this), this.accessData.poll_rate_ms);
-  }
-
-
-
-  /**
-   * @private 
-   */
-  processAccess(accessData) {
-    if (!accessData || !accessData.status) {
-      this.state = {
-        id: AuthStates.ERROR,
-        message: 'Invalid Access data response',
-        error: new Error('Invalid Access data response')
-      };
-      throw this.state.error;
-    }
-    this.accessData = accessData;
-    switch (this.accessData.status) {
-      case 'ERROR':
-        this.state = {
-          id: AuthStates.ERROR,
-          message: 'Error on the backend, please refresh'
-        };
-        break;
-      case 'ACCEPTED':
-        const apiEndpoint =
-          Service.buildAPIEndpoint(this.pryvServiceInfo, this.accessData.username, this.accessData.token);
-
-        Cookies.set(this.cookieKey, 
-          { apiEndpoint: apiEndpoint, displayName: this.accessData.username });
-
-        this.state = {
-          id: AuthStates.AUTHORIZED,
-          apiEndpoint: apiEndpoint,
-          displayName: this.accessData.username,
-          action: this.logOut
-        };
-
-        break;
-    }
-  }
-
-
-  // ---------------------- STATES ----------------- //
-
-  set state(newState) {
-    //console.log('State Changed:' + JSON.stringify(newState));
-    this._state = newState;
-
-    this.stateChangeListners.map((listner) => {
-      try { listner(this.state) } catch (e) { console.log(e); }
-    });
-  }
-
-  get state() {
-    return this._state;
-  }
-
-
-  // ------------------ ACTIONS  ----------- //
-
-  /**
-   * Follow Browser Process and 
-   * Open Login Page.
-   */
-  async openLoginPage() {
-    console.log('OpenLogin', this);
-    // 1. Make sure Browser is initialized
-    if (!this.pryvServiceInfo) {
-      throw new Error('Browser service must be initialized first');
-    }
-
-    // 2. Post access if needed
-    if (!this.accessData) {
-      this.processAccess(await this.postAccess());
-    }
-
-    // 3.a Open Popup (even if already opened)
-    if (this.accessData.status === 'NEED_SIGNIN')
-      this.popupLogin();
-
-    // 3.a.1 Poll Access if not yet in course
-    if (!this.polling) this.poll();
-  }
-
-  /**
-   * Revoke Connection and clean local cookies
-   * 
-   */
-  logOut() {
-    const message = this.loginButton ? this.loginButton.myMessages.LOGOUT_CONFIRM : 'Logout ?';
-    if (confirm(message)) {
-      this.readyAndClean();
-    }
-  }
-
-  popupLogin() {
-    if (!this.accessData || !this.accessData.url) {
-      throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
-    }
-
-    if (this.settings.authRequest.returnURL) { // open on same page (no Popup) 
-      location.href = this.accessData.url;
-      return;
-    }
-
-    var screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
-      screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
-      outerWidth = typeof window.outerWidth !== 'undefined' ?
-        window.outerWidth : document.body.clientWidth,
-      outerHeight = typeof window.outerHeight !== 'undefined' ?
-        window.outerHeight : (document.body.clientHeight - 22),
-      width = 320,
-      height = 510,
-      left = parseInt(screenX + ((outerWidth - width) / 2), 10),
-      top = parseInt(screenY + ((outerHeight - height) / 2.5), 10),
-      features = (
-        'width=' + width +
-        ',height=' + height +
-        ',left=' + left +
-        ',top=' + top +
-        ',scrollbars=yes'
-      );
-
-    // Keep "url" for retro-compatibility for Pryv.io before v1.0.4 
-    const authUrl = this.accessData.authUrl || this.accessData.url;
-
-    this.popup = window.open(authUrl, 'prYv Sign-in', features);
-
-    if (!this.popup) {
-      // TODO try to fall back on access
-      console.log('FAILED_TO_OPEN_WINDOW');
-    } else if (window.focus) {
-      this.popup.focus();
-    }
-
-    return;
-  }
-
-  // ------------------ Internal utils ------------------- //
-
-  /**
-   * From the settings and the environement  
-   * @param {string} [setting] Url 
-   * @param {Object} [windowLocationForTest] fake window.location.href
-   * @param {Object} [navigatorForTests] fake navigaotor for testsuseragent
-   */
-  static getReturnURL(setting, 
-    windowLocationForTest, navigatorForTests) {
-    let returnURL = setting || 'auto#';
-  
-    const locationHref = windowLocationForTest || window.location.href;
-
-    // check the trailer
-    var trailer = returnURL.slice(-1);
-    if ('#&?'.indexOf(trailer) < 0) {
-      throw new Error('Pryv access: Last character of --returnURL setting-- is not ' +
-        '"?", "&" or "#": ' + returnURL);
-    }
-
-    // is Popup ? (not mobile && auto#)
-    if (returnURL.indexOf('auto') === 0 && !AuthController.browserIsMobileOrTablet(navigatorForTests)) {
-      return false;
-    }
-
-    // set self as return url?
-    if ((returnURL.indexOf('auto') === 0 && AuthController.browserIsMobileOrTablet(navigatorForTests)) ||
-      (returnURL.indexOf('self') === 0)) { // 
-
-      // eventually clean-up current url from previous pryv returnURL
-      returnURL = locationHref + returnURL.substring(4);;
-    }
-    
-    return AuthController.cleanURLFromPrYvParams(returnURL);
-  }
-
-  /**
-   * 
-   * @param {Object} [navigatorForTests] mock navigator var only for testing purposes 
-   */
-  static browserIsMobileOrTablet(navigatorForTests) {
-    const myNavigator = navigatorForTests || navigator;
-    var check = false;
-    (function (a) { if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) check = true; })(myNavigator.userAgent || myNavigator.vendor || myNavigator.opera);
-    return check;
-  };
-
-
-  static getQueryParamsFromURL(url) { 
-    url = url || window.location.href;
-    var vars = {};
-    url.replace(QUERY_REGEXP,
-      function (m, key, value) {
-        vars[key] = decodeURIComponent(value);
-      });
-    return vars;
-  }
-
-  //util to grab parameters from url query string
-  static getServiceInfoFromURL(url) {
-    const vars = AuthController.getQueryParamsFromURL(url);
-    //TODO check validity of status
-    return vars[AuthController.options.SERVICE_INFO_QUERY_PARAM_KEY];
-  };
-
-
-  //util to grab parameters from url query string
-  static getStatusFromURL(url) {
-    const vars = AuthController.getQueryParamsFromURL(url);
-    //TODO check validity of status
-    return vars.prYvstatus;
-  };
-
-  //util to grab parameters from url query string
-  static cleanURLFromPrYvParams(url) {
-    return url.replace(PRYV_REGEXP, '');
-  };
 }
 
+function returnUrlIsAuto (returnURL) {
+  return returnURL.indexOf(AuthController.options.RETURN_URL_AUTO) === 0;
+}
 AuthController.options = {
-  SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl'
+  SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl',
+  ACCESS_STATUS_NEED_SIGNIN: 'NEED_SIGNIN',
+  RETURN_URL_AUTO: 'auto',
 }
-
 module.exports = AuthController;
 
 
 /***/ }),
 
-/***/ "./src/Browser/AuthStates.js":
-/*!***********************************!*\
-  !*** ./src/Browser/AuthStates.js ***!
-  \***********************************/
+/***/ "./src/Auth/AuthStates.js":
+/*!********************************!*\
+  !*** ./src/Auth/AuthStates.js ***!
+  \********************************/
 /*! no static exports found */
 /***/ (function(module, exports) {
 
@@ -12653,6 +12509,63 @@ const AuthState = {
 
 
 module.exports = AuthState 
+
+
+/***/ }),
+
+/***/ "./src/Auth/AuthStore.js":
+/*!*******************************!*\
+  !*** ./src/Auth/AuthStore.js ***!
+  \*******************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+
+const AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Auth/AuthStates.js");
+
+let store = null;
+function getStore () {
+  if (store == null) {
+    store = new AuthStore();
+  }
+  return store;
+}
+module.exports = { getStore };
+
+class AuthStore {
+  constructor () {
+    this.setInitialValues();
+  }
+  setState (newState) {
+    // console.log('State Changed:' + JSON.stringify(newState), this.stateChangeListners);
+    this.state = newState;
+    this.stateChangeListners.map((listner) => {
+      try {
+        listner(newState)
+      } catch (e) {
+        console.log(e);
+      }
+    });
+  }
+
+  resetValues () {
+    this.setInitialValues();
+  }
+
+  setInitialValues () {
+    this.state = {
+      id: ''
+    };
+    this.accessData = {
+      poll: '',
+      authUrl: '',
+      status: '',
+    };
+    this.stateChangeListners = [];
+    this.messages = {};
+    this.languageCode = 'en';
+  }
+}
 
 
 /***/ }),
@@ -12715,108 +12628,6 @@ exports.get = function get(cookieKey) {
 exports.del = function del(cookieKey) {
   set(cookieKey, {deleted: true}, -1);
 }
-
-/***/ }),
-
-/***/ "./src/Browser/LoginButton.js":
-/*!************************************!*\
-  !*** ./src/Browser/LoginButton.js ***!
-  \************************************/
-/*! no static exports found */
-/***/ (function(module, exports, __webpack_require__) {
-
-
-const Messages = __webpack_require__(/*! ./LoginButtonMessages */ "./src/Browser/LoginButtonMessages.js");
-const AuthStates = __webpack_require__(/*! ./AuthStates */ "./src/Browser/AuthStates.js");
-
-/**
- * @memberof Pryv.Browser
- */
-class LoginButton {
-
-  /**
-   * @param {Browser} auth 
-   */
-  constructor(auth) {
-    // 1. get Language
-    
-    this.languageCode = auth.settings.authRequest.languageCode || 'en';
-    this.myMessages = Messages(this.languageCode);
-    // 2. build button
-    this.loginButtonSpan = document.getElementById(auth.settings.spanButtonID);
-
-    if (!this.loginButtonSpan) {
-      throw new Error('No Cannot find SpanId: ' + auth.settings.spanButtonID + ' in DOM');
-    }
-
-    // up to the time the button is loaded use the Span to dsiplay eventual error messages
-    this.loginButtonText = this.loginButtonSpan;
-
-    this.loginButtonSpan.addEventListener('click', this.onClick.bind(this));
-    this.auth = auth;
-
-
-    this.onStateChange({ id: AuthStates.LOADING });
-  }
-
-  /**
-   * @param {Service} pryvService 
-   */
-  async loadAssets(pryvService) {
-    const assets = await pryvService.assets();
-    assets.loginButtonLoadCSS(); // can be async 
-    this.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
-    this.loginButtonText = document.getElementById('pryv-access-btn-text');
-    const thisMessages = await assets.loginButtonGetMessages();
-    if (thisMessages.LOADING) {
-      this.myMessages = Messages(this.languageCode, thisMessages);
-    } else {
-      console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
-    }
-    this.onStateChange(); // refresh messages
-    this.refreshText();
-  }
-
-
-  refreshText() {
-    if (this.loginButtonText)
-     this.loginButtonText.innerHTML = this.text;
-  }
-
-  onClick() {
-    if (this.auth.state.action) {
-      this.auth.state.action.apply(this.auth);
-    }
-  }
-
-  onStateChange(state) {
-    if (state) {
-      this.lastState = state;
-    }
-    switch (this.lastState.id) {
-      case AuthStates.ERROR:
-        this.text = this.myMessages.ERROR + ': ' + this.lastState.message
-      break;
-      case AuthStates.LOADING:
-        this.text = this.myMessages.LOADING;
-        break;
-      case AuthStates.INITIALIZED:
-        this.text = this.myMessages.LOGIN + ': ' + this.auth.pryvServiceInfo.name;
-      break;
-      case AuthStates.AUTHORIZED:
-        this.text = this.lastState.displayName;
-        break;
-      default:
-        console.log('WARNING Unhandled state for Login: ' + this.lastState.id);
-    }
-    this.refreshText();
-  }
-
-  
-}
-
-
-module.exports = LoginButton;
 
 /***/ }),
 
@@ -13195,6 +13006,10 @@ const Service = __webpack_require__(/*! ./Service */ "./src/Service.js");
 const utils = __webpack_require__(/*! ./utils.js */ "./src/utils.js");
 // Connection is required at the end of this file to allow circular requires.
 const Assets = __webpack_require__(/*! ./ServiceAssets.js */ "./src/ServiceAssets.js");
+const Cookies = __webpack_require__(/*! ./Browser/CookieUtils */ "./src/Browser/CookieUtils.js");
+const AuthStates = __webpack_require__(/*! ./Auth/AuthStates */ "./src/Auth/AuthStates.js");
+const Messages = __webpack_require__(/*! ./Browser/LoginButtonMessages */ "./src/Browser/LoginButtonMessages.js");
+const { getStore } = __webpack_require__(/*! ./Auth/AuthStore */ "./src/Auth/AuthStore.js");
 
 /**
  * @class Pryv.Service
@@ -13229,11 +13044,20 @@ const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
  */
 class Service {
 
-  constructor(serviceInfoUrl, serviceCustomizations) {
+  constructor (serviceInfoUrl, serviceCustomizations, appId) {
     this._pryvServiceInfo = null;
     this._assets = null;
+    this._polling = false;
     this._pryvServiceInfoUrl = serviceInfoUrl;
     this._pryvServiceCustomizations = serviceCustomizations;
+
+    this.store = getStore();
+    // if appId is set, build the cookieKey
+    if (appId != null) {
+      const COOKIE_STRING = 'pryv-libjs-';
+      this._cookieKey = COOKIE_STRING + appId;
+    }
+    this.store.messages = Messages(this.store.languageCode);
   }
 
   /**
@@ -13245,8 +13069,8 @@ class Service {
    * @param {boolean?} forceFetch If true, will force fetching service info.
    * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
    */
-  async info(forceFetch) {
-    if (forceFetch || ! this._pryvServiceInfo) {
+  async info (forceFetch) {
+    if (forceFetch || !this._pryvServiceInfo) {
       let baseServiceInfo = {};
       if (this._pryvServiceInfoUrl) {
         const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
@@ -13262,7 +13086,7 @@ class Service {
    * @private
    * @param {PryvServiceInfo} serviceInfo
    */
-  setServiceInfo(serviceInfo) {
+  setServiceInfo (serviceInfo) {
     if (!serviceInfo.name) {
       throw new Error('Invalid data from service/info');
     }
@@ -13281,7 +13105,7 @@ class Service {
    * @param {boolean?} forceFetch If true, will force fetching service info.
    * @returns {Promise<ServiceAssets>} Promise to ServiceAssets 
    */
-  async assets(forceFetch) {
+  async assets (forceFetch) {
     if (!forceFetch && this._assets) {
       return this._assets;
     } else {
@@ -13299,7 +13123,7 @@ class Service {
    * Return service info parameters info known or null if not yet loaded
    * @returns {PryvServiceInfo} Service Info definition
    */
-  infoSync() {
+  infoSync () {
     return this._pryvServiceInfo;
   }
 
@@ -13309,7 +13133,7 @@ class Service {
    * @param {string} [token]
    * @return {PryvApiEndpoint}
    */
-  async apiEndpointFor(username, token) {
+  async apiEndpointFor (username, token) {
     const serviceInfo = await this.info();
     return Service.buildAPIEndpoint(serviceInfo, username, token);
   }
@@ -13322,7 +13146,7 @@ class Service {
    * @param {string} [token]
    * @return {PryvApiEndpoint}
    */
-  static buildAPIEndpoint(serviceInfo, username, token) {
+  static buildAPIEndpoint (serviceInfo, username, token) {
     const endpoint = serviceInfo.api.replace('{username}', username);
     return utils.buildPryvApiEndpoint({ endpoint: endpoint, token: token });
   }
@@ -13337,13 +13161,13 @@ class Service {
    * @param {string} [originHeader=service-info.register] Only for Node.js. If not set will use the register value of service info. In browsers this will overridden by current page location.
    * @throws {Error} on invalid login
    */
-  async login(username, password, appId, originHeader) {
+  async login (username, password, appId, originHeader) {
     const apiEndpoint = await this.apiEndpointFor(username);
 
     try {
-      const headers = {accept: 'json'};
+      const headers = { accept: 'json' };
       originHeader = originHeader || (await this.info()).register;
-      if (! utils.isBrowser()) {
+      if (!utils.isBrowser()) {
         headers.Origin = originHeader;
       }
       const res = await utils.superagent.post(apiEndpoint + 'auth/login')
@@ -13356,16 +13180,167 @@ class Service {
       return new Connection(
         Service.buildAPIEndpoint(await this.info(), username, res.body.token),
         this // Pre load Connection with service
-        );
+      );
     } catch (e) {
-      if (e.response && e.response.body 
+      if (e.response && e.response.body
         && e.response.body.error
         && e.response.body.error.message) {
         throw new Error(e.response.body.error.message)
-        }
+      }
     }
   }
 
+  /**
+   * Start pulling the access url until user signs in
+   */
+  async startAuthRequest () {
+    if (this._polling) {
+      return;
+    }
+    await this._poll();
+  }
+
+  /**
+   * Keeps running authRequest until it gets the status
+   * not equal to NEED_SIGNIN and then updates authController state
+   * 
+   * @param {AuthController} auth 
+   * @private
+   */
+  async _poll () {
+    if (this.store.accessData && this.store.accessData.status != 'NEED_SIGNIN') {
+      this._polling = false;
+      return;
+    }
+    this._polling = true;
+    this.changeAuthStateDependingOnAccess(await this._pollAccess());
+    setTimeout(await this._poll.bind(this), this.store.accessData.poll_rate_ms);
+  }
+
+  stopAuthRequest () {
+    this.store.accessData = { status: 'ERROR' };
+  }
+
+  /**
+  * @private
+  */
+  async _pollAccess () {
+    let res;
+    try {
+      res = await utils.superagent
+        .get(this.store.accessData.poll)
+        .set('accept', 'json');
+    } catch (e) {
+      return { status: 'ERROR' }
+    }
+    return res.body;
+  }
+
+  changeAuthStateDependingOnAccess (accessData) {
+    if (!accessData || !accessData.status) {
+      this.store.setState({
+        id: AuthStates.ERROR,
+        message: 'Invalid Access data response',
+        error: new Error('Invalid Access data response')
+      });
+      throw this.store.state.error;
+    }
+    this.store.accessData = accessData;
+    switch (this.store.accessData.status) {
+      case 'ERROR':
+        this.store.setState({
+          id: AuthStates.ERROR,
+          message: 'Error on the backend, please refresh'
+        });
+        break;
+      case 'ACCEPTED':
+        const apiEndpoint =
+          Service.buildAPIEndpoint(
+            this._pryvServiceInfo,
+            this.store.accessData.username,
+            this.store.accessData.token
+          );
+
+        Cookies.set(this._cookieKey,
+          {
+            apiEndpoint: apiEndpoint,
+            displayName: this.store.accessData.username
+          });
+
+        this.store.setState({
+          id: AuthStates.AUTHORIZED,
+          apiEndpoint: apiEndpoint,
+          displayName: this.store.accessData.username
+        });
+        break;
+    }
+  }
+
+  getAccessData () {
+    return this.store.accessData;
+  }
+
+  /**
+   * Only for simulation of the successful response
+   * @param {*} accessData 
+   */
+  setAccessData (accessData) {
+    this.store.accessData = accessData;
+  }
+
+  getCurrentCookieInfo () {
+    return Cookies.get(this._cookieKey);
+  }
+
+  async deleteCurrentAuthInfo () {
+    Cookies.del(this._cookieKey);
+    this.store.accessData = null;
+  }
+
+  getErrorMessage () {
+    return this.store.messages.ERROR + ': ' + this.store.state.message;
+  }
+
+  getLoadingMessage () {
+    return this.store.messages.LOADING;
+  }
+
+  getInitializedMessage () {
+    return this.store.messages.LOGIN + ': ' + this._pryvServiceInfo.name;
+  }
+
+  getAuthorizedMessage () {
+    return this.store.state.displayName;
+  }
+
+  defaultOnStateChange () {
+    let text = '';
+    switch (this.store.state.id) {
+      case AuthStates.ERROR:
+        text = this.getErrorMessage();
+        break;
+      case AuthStates.LOADING:
+        text = this.getLoadingMessage();
+        break;
+      case AuthStates.INITIALIZED:
+        text = this.getInitializedMessage();
+        break;
+      case AuthStates.AUTHORIZED:
+        text = this.getAuthorizedMessage();
+        break;
+      default:
+        console.log('WARNING Unhandled state for Login: ' + this.store.state.id);
+    }
+    return text;
+  }
+
+  getAssets () {
+    return this.store.assets;
+  }
+
+  extractTokenAndApiEndpoint (pryvApiEndpoint){
+    return utils.extractTokenAndApiEndpoint(pryvApiEndpoint);
+  }
 }
 
 module.exports = Service;
@@ -13497,7 +13472,7 @@ class ServiceAssets {
   /**
   * Load CSS for Login button
   */
-  async loginButtonLoadCSS() {
+  async loginButtonLoadCSS () {
     loadCSS(this.relativeURL(this._assets['lib-js'].buttonSignIn.css));
   }
 
@@ -13518,7 +13493,6 @@ class ServiceAssets {
   }
 
 }
-
 
 function loadCSS(url) {
   var head = document.getElementsByTagName('head')[0];
@@ -13542,7 +13516,7 @@ function loadCSS(url) {
   |*|
   \*/
 
-function relPathToAbs(baseUrlString, sRelPath) {
+function relPathToAbs (baseUrlString, sRelPath) {
   var baseLocation = location;
   if (baseUrlString) {
     baseLocation = document.createElement('a');
@@ -13852,7 +13826,7 @@ const utils = {
    * @returns {boolean}
    */
   isBrowser: function() {
-      return typeof window !== 'undefined';
+      return typeof window !== 'undefined' && typeof document !== 'undefined';
   },
 
 
@@ -13908,8 +13882,35 @@ const utils = {
       res[2] += '/';
     }
     return res[1] + '://' + tokenAndApi.token + '@' + res[2];
-  }
+  },
 
+  /**
+   * 
+   * @param {Object} [navigatorForTests] mock navigator var only for testing purposes 
+   */
+  browserIsMobileOrTablet: function (navigator) {
+    if (navigator == null) {
+      return false;
+    }
+    let check = false;
+    (function (a) { if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) check = true; })(navigator.userAgent || navigator.vendor || navigator.opera);
+    return check;
+  },
+
+  cleanURLFromPrYvParams: function (url) {
+    const PRYV_REGEXP = /[?#&]+prYv([^=&]+)=([^&]*)/g;
+    return url.replace(PRYV_REGEXP, '');
+  },
+
+  getQueryParamsFromURL: function (url) {
+    let vars = {};
+    const QUERY_REGEXP = /[?#&]+([^=&]+)=([^&]*)/g;
+    url.replace(QUERY_REGEXP,
+      function (m, key, value) {
+        vars[key] = decodeURIComponent(value);
+      });
+    return vars;
+  }  
 }
 
 module.exports = utils;
@@ -13946,58 +13947,73 @@ module.exports = utils;
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(global) {
-const should = chai.should();
-const expect = chai.expect;
+/* WEBPACK VAR INJECTION */(function(global) {const expect = chai.expect;
 
-const AuthController = __webpack_require__(/*! ../src/Browser/AuthController.js */ "./src/Browser/AuthController.js")
+const utils = __webpack_require__(/*! ../src/utils.js */ "./src/utils.js");
+const AuthController = __webpack_require__(/*! ../src/Auth/AuthController.js */ "./src/Auth/AuthController.js");
+const testData = __webpack_require__(/*! ./test-data.js */ "./test/test-data.js");
 
+describe('Browser.LoginButton', () => {
+  let auth;
+  let removeZombie = false;
+  before(async () => {
+    if (typeof document !== 'undefined') return; // in browser
+    removeZombie = true;
+    const browser = new Browser();
+    browser.visit('./?pryvServiceInfoUrl=https://zouzou.com/service/info');
+    global.document = browser.document;
+    global.window = browser.window;
+    global.location = browser.location;
+    global.navigator = { userAgent: 'Safari' };
+  });
 
-describe('Browser.AuthController', function () {
-
+  after(async () => {
+    if (!removeZombie) return; // in browser
+    delete global.document;
+    delete global.window;
+    delete global.location;
+  });
+  before(async () => {
+    auth = new AuthController({
+      authRequest: {
+        requestingAppId: 'lib-js-test',
+        requestedPermissions: []
+      }
+    }, testData.serviceInfoUrl, {});
+    await auth.init();
+  });
+  
   it('getReturnURL()', async () => {
     const myUrl = 'https://mysite.com/bobby';
-
     let error = null;
     try {
-      AuthController.getReturnURL('auto');
+      auth.getReturnURL('auto');
     } catch (e) {
       error = e;
     }
     expect(error).to.be.not.null;
 
     let fakeNavigator = { userAgent: 'android' };
-    expect(AuthController.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(myUrl + '#');
-    expect(AuthController.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
-    expect(AuthController.getReturnURL(false, myUrl, fakeNavigator)).to.equal(myUrl + '#');
-    expect(AuthController.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+    expect(auth.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(myUrl + '#');
+    expect(auth.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+    expect(auth.getReturnURL(false, myUrl, fakeNavigator)).to.equal(myUrl + '#');
+    expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
 
-    expect(AuthController.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
+    expect(auth.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
 
     fakeNavigator =  { userAgent: 'Safari' };
-    expect(AuthController.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(false);
-    expect(AuthController.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(false);
-    expect(AuthController.getReturnURL(false, myUrl, fakeNavigator)).to.equal(false);
-    expect(AuthController.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
-
-    expect(AuthController.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
-
-
+    expect(auth.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(false);
+    expect(auth.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(false);
+    expect(auth.getReturnURL(false, myUrl, fakeNavigator)).to.equal(false);
+    expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
+    expect(auth.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
     global.window = { location: { href: myUrl + '?prYvstatus=zouzou'} }
-    expect(AuthController.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
-
-    
+    expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
   });
 
   it('browserIsMobileOrTablet()', async () => {
-    expect(AuthController.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
-
-    expect(AuthController.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
-  });
-
-  it('getStatusFromURL()', async () => {
-    expect('2jsadh').to.equal(AuthController.getStatusFromURL(
-      'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
+    expect(utils.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
+    expect(utils.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
   });
 
   it('getServiceInfoFromURL()', async () => {
@@ -14010,19 +14026,19 @@ describe('Browser.AuthController', function () {
 
   it('cleanURLFromPrYvParams()', async () => {
 
-    expect('https://my.Url.com/?bobby=2').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/?bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?pryvServiceInfoUrl=zzz#prYvZoutOu=1&prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/#prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/#bobby=2').to.equal(AuthController.cleanURLFromPrYvParams(
+    expect('https://my.Url.com/#bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
     
   });
@@ -14091,9 +14107,7 @@ describe('Browser', function () {
 
   it('setupAuth()', (done) => {
     const settings = genSettings();
-    
     let AuthLoaded = false;
-    let ServiceInfoLoaded = false;
     settings.onStateChange = function (state) {
       should.exist(state.id);
       if (state.id == Pryv.Browser.AuthStates.LOADING) {
@@ -14117,7 +14131,7 @@ describe('Browser', function () {
   });
 
 
-  it ('serviceInfoFromUrl()', async () => {
+  it('serviceInfoFromUrl()', async () => {
     expect('https://zouzou.com/service/info').to.equal(Pryv.Browser.serviceInfoFromUrl());
   });
 
@@ -14586,8 +14600,6 @@ const chaiAsPromised = __webpack_require__(/*! chai-as-promised */ "./node_modul
 chai.use(chaiAsPromised); 
 
 const testData = __webpack_require__(/*! ./test-data.js */ "./test/test-data.js");
-
-
 
 describe('Service', function () {
 

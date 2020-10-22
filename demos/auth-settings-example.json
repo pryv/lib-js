@@ -1,0 +1,25 @@
+{
+  "authSettings": {
+    "spanButtonID": "pryv-button",
+      "authRequest": {
+        "requestingAppId": 'lib-js-test',
+        "languageCode": 'fr', // optional (default english)
+        "returnURL": 'auto#',
+        "requestedPermissions": [
+          {
+            "streamId": 'test',
+            "defaultName": 'test',
+            "level": 'manage'
+          }
+        ],
+        "clientData": {
+          "app-web-auth:description": {
+            "type": 'note/txt',
+            "content": 'This is a consent message.'
+          }
+        }
+      }
+    },
+  "serviceInfoUrl": ""
+
+}
