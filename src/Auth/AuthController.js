@@ -106,17 +106,6 @@ class AuthController {
     return pollUrl;
   }
 
-  /**
-   * Start pulling the access url until user signs in
-   */
-  async startAuthRequest () {
-    if (this._polling) {
-    //if (this.state.id !== AuthStates.START_SIGNING) {
-      return;
-    }
-    await this._poll();
-  }
-
   getState () {
     return this._state;
   }
@@ -257,38 +246,19 @@ class AuthController {
     return utils.cleanURLFromPrYvParams(returnURL);
   }
 
-
-  /**
-  * @private
-  */
-  async _pollAccess () {
-    let res;
-    try {
-      res = await utils.superagent
-        .get(this.accessData.poll)
-        .set('accept', 'json');
-    } catch (e) {
-      return { status: 'ERROR' }
-    }
-    return res.body;
-  }
-
-
   /**
    * Keeps running authRequest until it gets the status
    * not equal to NEED_SIGNIN and then updates authController state
-   *
+   * to something else but AuthStates.START_SIGNING
    * @param {AuthController} auth
    * @private
    */
-  async _poll () {
-    if (this.accessData && this.accessData.status != 'NEED_SIGNIN') {
-      this._polling = false;
+  async startAuthRequest () {
+    if (this.state.id !== AuthStates.START_SIGNING) {
       return;
     }
-    this._polling = true;
-    changeAuthStateDependingOnAccess(this, await this._pollAccess());
-    setTimeout(await this._poll.bind(this), this.accessData.poll_rate_ms);
+    changeAuthStateDependingOnAccess(this, await pollAccess(this));
+    setTimeout(await this.startAuthRequest.bind(this), this.accessData.poll_rate_ms);
   }
 
 
@@ -316,7 +286,6 @@ async function fetchServiceInfo(authController) {
     throw new Error('Browser service already initialized');
   }
   try {
-    // 1. fetch service-info
     authController.pryvService = new Service(
       authController.serviceInfoUrl,
       authController.serviceCustomizations,
@@ -426,6 +395,22 @@ async function checkAutoLogin (authController) {
       displayName: loginCookie.displayName
     };
   }
+}
+
+
+/**
+* @private
+*/
+async function pollAccess(authController) {
+  let res;
+  try {
+    res = await utils.superagent
+      .get(authController.accessData.poll)
+      .set('accept', 'json');
+  } catch (e) {
+    return { status: 'ERROR' }
+  }
+  return res.body;
 }
 
 async function finishAuthProcessAfterRedirection (authController) {
