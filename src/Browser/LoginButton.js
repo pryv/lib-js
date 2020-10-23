@@ -1,7 +1,5 @@
 const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
-const AuthStates = require('../Auth/AuthStates');
 const Cookies = require('./CookieUtils');
-const { buildPryvApiEndpoint } = require('../utils');
 
 /**
  * @memberof Pryv.Browser
@@ -52,8 +50,8 @@ class LoginButton extends HumanInteractionInterface {
         ',top=' + top +
         ',scrollbars=yes'
       );
-
     this.popup = window.open(authUrl, 'prYv Sign-in', features);
+    
     if (!this.popup) {
       this.auth.stopAuthRequest();
       console.log('FAILED_TO_OPEN_WINDOW');
@@ -66,11 +64,11 @@ class LoginButton extends HumanInteractionInterface {
     Cookies.set(this._cookieKey,authData);
   }
 
-  getSavedLogIn () {
+  getAuthorizationData () {
     return Cookies.get(this._cookieKey);
   }
 
-  async logOut () {
+  async deleteAuthorizationData () {
     Cookies.del(this._cookieKey);
   }
 }
@@ -87,7 +85,6 @@ function setupButton(loginBtn) {
 
     // bind actions dynamically to the button click
     loginBtn.loginButtonSpan.addEventListener('click', loginBtn.onClick.bind(loginBtn));
-
   }
 }
 

@@ -1,5 +1,6 @@
 class HumanInteractionInterface { 
   /**
+   * @optional
    * Called at the end of AuthController.init()
    * - Load potential assets 
    * - Register state change with
@@ -44,17 +45,25 @@ class HumanInteractionInterface {
   /**
    * You should return saved data from the storage
    */
-  getSavedLogIn () { 
-    throw new Error('getSavedLogIn () must be implemented');
+  getAuthorizationData () { 
+    throw new Error('getAuthorizationData () must be implemented');
   }
 
   /**
    * You should delete saved data from the storage
    */
-  async logOut () { 
-    throw new Error('logOut () must be implemented');
+  async deleteAuthorizationData () { 
+    throw new Error('deleteAuthorizationData () must be implemented');
   }
 
+  /**
+   * @optional
+   * Should implement
+   * this.auth.stopAuthRequest();
+   * If any error happens or user does not finish login,
+   * this method should be called to finish the pool request
+   */
+  stopAuthRequest () { }
 }
 
 module.exports = HumanInteractionInterface;

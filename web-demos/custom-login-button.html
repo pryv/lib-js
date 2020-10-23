@@ -89,11 +89,11 @@
       console.log('You should save this object to the storage', authData);
     }
 
-    getSavedLogIn() {
+    getAuthorizationData() {
       console.log('You should return saved data from the storage');
     }
 
-    async logOut() {
+    async deleteAuthorizationData() {
       console.log('You should delete saved data from the storage');
     }
   }
@@ -116,7 +116,7 @@
       authSettings, 
       serviceInfoUrl,
       serviceInfoJson,
-      MyLoginButton,
+      new MyLoginButton(),
       );
   })();
   </script>

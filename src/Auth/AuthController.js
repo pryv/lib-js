@@ -53,13 +53,18 @@ class AuthController {
   async init (loginButton) {
     this.state = { id: AuthStates.LOADING };
     await this.fetchServiceInfo();
-    this.assets = await this.loadAssets();
+    this.assets = await loadAssets(this);
 
     // initialize human interaction interface
     if (loginButton != null) {
       loginButton.auth = this;
-      await (loginButton.init());
+
+      // init method is optional
+      if (loginButton.init != null) {
+        await (loginButton.init());
+      }
       this.loginButton = loginButton;
+      // autologin needs cookies/storage implemented in human interaction interface
       await checkAutoLogin(this);      
     }
 
@@ -123,35 +128,6 @@ class AuthController {
     return pollUrl;
   }
 
-  getState () {
-    return this.state;
-  }
-
-  async loadAssets () {
-    let loadedAssets = {};
-    try {
-      loadedAssets = await this.pryvService.assets();
-      if (typeof location !== 'undefined') {
-        await loadedAssets.loginButtonLoadCSS();
-        const thisMessages = await loadedAssets.loginButtonGetMessages();
-        if (thisMessages.LOADING) {
-          this.messages = Messages(this.languageCode, thisMessages);
-        } else {
-          console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
-        }
-      }
-    } catch (e) {
-      this.state = {
-        id: AuthStates.ERROR,
-        message: 'Cannot fetch button visuals',
-        error: e
-      };
-      throw e; // forward error
-    }
-    return loadedAssets;
-  }
-
-
   /**
    * Start pulling the access url until user signs in
    */
@@ -162,6 +138,9 @@ class AuthController {
     await this._poll();
   }
 
+  getState () {
+    return this.state;
+  }
   /**
    * Keeps running authRequest until it gets the status
    * not equal to NEED_SIGNIN and then updates authController state
@@ -179,6 +158,9 @@ class AuthController {
     setTimeout(await this._poll.bind(this), this.accessData.poll_rate_ms);
   }
 
+  /**
+   * Stops poll for auth request
+   */
   stopAuthRequest () {
     this.accessData = { status: 'ERROR' };
   }
@@ -227,7 +209,7 @@ class AuthController {
   }
 
   isAuthorized () {
-    return this.getState().id == AuthStates.AUTHORIZED;
+    return this.state.id == AuthStates.AUTHORIZED;
   }
 
   isInitialized () {
@@ -347,7 +329,7 @@ function returnUrlIsAuto (returnURL) {
 async function deleteSessionData(authController) {
   authController.accessData = null;
   if (authController.loginButton != null) {
-    authController.loginButton.logOut();
+    authController.loginButton.deleteAuthorizationData();
   }
 }
 
@@ -365,8 +347,10 @@ async function prepareForLogin(authControler) {
   await postAccessIfNeeded(authControler);
 
   // change state to initialized if signin is needed
-  if (authControler.getAccessData() &&
-    authControler.getAccessData().status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN) {
+  if (
+    authControler.getAccessData() &&
+    authControler.getAccessData().status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN
+  ) {
     if (!authControler.getAccessData().url) {
       throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
     }
@@ -419,7 +403,7 @@ async function checkAutoLogin (authController) {
   }
   let loginCookie = null;
   try {
-    loginCookie = await authController.loginButton.getSavedLogIn();
+    loginCookie = await authController.loginButton.getAuthorizationData();
   } catch (e) {
     console.log(e);
   }
@@ -488,6 +472,32 @@ function logOut (authControler) {
     prepareForLogin(authControler);
   }
 }
+
+
+async function loadAssets(authController) {
+  let loadedAssets = {};
+  try {
+    loadedAssets = await authController.pryvService.assets();
+    if (typeof location !== 'undefined') {
+      await loadedAssets.loginButtonLoadCSS();
+      const thisMessages = await loadedAssets.loginButtonGetMessages();
+      if (thisMessages.LOADING) {
+        authController.messages = Messages(authController.languageCode, thisMessages);
+      } else {
+        console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
+      }
+    }
+  } catch (e) {
+    authController.state = {
+      id: AuthStates.ERROR,
+      message: 'Cannot fetch button visuals',
+      error: e
+    };
+    throw e; // forward error
+  }
+  return loadedAssets;
+}
+
 
 AuthController.options = {
   SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl',

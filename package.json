@@ -22,7 +22,7 @@
     "setup": "./scripts/setup-environment-dev.sh",
     "build": "webpack --config webpack.config.js",
     "doc": "node node_modules/jsdoc/jsdoc.js -c .jsdoc-conf.json",
-    "test": "mocha --reporter spec  test/**/*.test.js",
+    "test": "mocha --reporter spec  test/**/*.test.js --timeout 3000",
     "test-debug": "mocha --inpect-brk=40000 --reporter spec  test/**/*.test.js ",
     "test:browser": "npm run build; ",
     "cover": "nyc npm run test && npm run cover:report",

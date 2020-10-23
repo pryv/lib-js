@@ -29,14 +29,11 @@ const LoginButton = require('../Browser/LoginButton');
 async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, humanInteractionInterface) {
   const authController = new AuthController(settings, serviceInfoUrl, serviceCustomizations);
 
-  let loginButton;
   if (humanInteractionInterface == null) {
-    loginButton = new LoginButton();
-  } else {
-    loginButton = new humanInteractionInterface();
+    humanInteractionInterface = new LoginButton();
   }
   
-  const authService = await authController.init(loginButton);
+  const authService = await authController.init(humanInteractionInterface);
   
   return authService;
 }

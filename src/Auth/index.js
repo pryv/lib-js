@@ -11,6 +11,10 @@ const { getStore } = require('../Auth/AuthStore');
 
 /**
  * Start an authentication process
+ *   const authController = new AuthController(settings, serviceInfoUrl, serviceCustomizations);
+     const authService = await authController.init(humanInteractionInterface);
+     return authService;
+     
  * @memberof Pryv.Browser
  * @param {Object} settings
  * @param {Object} settings.authRequest See https://api.pryv.com/reference/#data-structure-access
@@ -26,16 +30,8 @@ const { getStore } = require('../Auth/AuthStore');
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
  * @returns {Pryv.Service}
  */
-async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, humanInteractionInterface) {
-  let store = getStore();
-  store.resetValues();
-  const authController = new AuthController(settings, serviceInfoUrl, serviceCustomizations);
-  const authService = await authController.init();
-  let loginButton = new humanInteractionInterface(authController);
-  await loginButton.init();
+async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, humanInteractionInterface) { }
 
-  return authService;
-}
 
 module.exports = {
   setupAuth: setupAuth,

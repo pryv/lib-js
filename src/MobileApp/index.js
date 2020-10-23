@@ -1,7 +1,6 @@
 const AuthController = require('../Auth/AuthController');
 const AuthStates = require('../Auth/AuthStates');
 const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
-const LoginButton = require('../Browser/LoginButton');
 
 /**
  * @memberof Pryv
