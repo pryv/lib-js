@@ -52,7 +52,7 @@ class AuthController {
    */
   async init (loginButton) {
     this.state = { id: AuthStates.LOADING };
-    await this.fetchServiceInfo();
+    await fetchServiceInfo(this);
     this.assets = await loadAssets(this);
 
     // initialize human interaction interface
@@ -80,28 +80,6 @@ class AuthController {
     }
     return this.pryvService;
   }
-
-  async fetchServiceInfo () {
-    if (this.pryvService) {
-      throw new Error('Browser service already initialized');
-    }
-    try {
-      // 1. fetch service-info
-      this.pryvService = new Service(
-        this.serviceInfoUrl,
-        this.serviceCustomizations,
-      );
-      this.pryvServiceInfo = await this.pryvService.info();
-    } catch (e) {
-      this.state = {
-        id: AuthStates.ERROR,
-        message: 'Cannot fetch service/info',
-        error: e
-      };
-      throw e; // forward error
-    }
-  }
-
 
   /**
    * Util to grab parameters from url query string
@@ -133,29 +111,14 @@ class AuthController {
    */
   async startAuthRequest () {
     if (this._polling) {
+    //if (this.state.id !== AuthStates.START_SIGNING) {
       return;
     }
     await this._poll();
   }
 
   getState () {
-    return this.state;
-  }
-  /**
-   * Keeps running authRequest until it gets the status
-   * not equal to NEED_SIGNIN and then updates authController state
-   *
-   * @param {AuthController} auth
-   * @private
-   */
-  async _poll () {
-    if (this.accessData && this.accessData.status != 'NEED_SIGNIN') {
-      this._polling = false;
-      return;
-    }
-    this._polling = true;
-    changeAuthStateDependingOnAccess(this, await this._pollAccess());
-    setTimeout(await this._poll.bind(this), this.accessData.poll_rate_ms);
+    return this._state;
   }
 
   /**
@@ -163,21 +126,6 @@ class AuthController {
    */
   stopAuthRequest () {
     this.accessData = { status: 'ERROR' };
-  }
-
-  /**
-  * @private
-  */
-  async _pollAccess () {
-    let res;
-    try {
-      res = await utils.superagent
-        .get(this.accessData.poll)
-        .set('accept', 'json');
-    } catch (e) {
-      return { status: 'ERROR' }
-    }
-    return res.body;
   }
 
   getAccessData () {
@@ -218,22 +166,13 @@ class AuthController {
 
   async handleClick () {
     if (this.isAuthorized()) {
-      logOut(this);
+      this.state = { id: AuthStates.LOGOUT };
     } else if (this.isInitialized()) {
-      if (this.settings.authRequest.returnURL) { // open on same page (no Popup) 
-        location.href = this.getAccessData().url;
-        return;
-      } else {
-        await this.startAuthRequest();
-        if (this.loginButton != null) {
-          const loginUrl = this.getAccessData().authUrl || this.getAccessData().url;
-          this.loginButton.startLoginScreen(loginUrl);
-        }
-      }
+      this.state = { id: AuthStates.START_SIGNING };
     }
   }
 
-  onStateChange () {
+  async onStateChange () {
     this.text = '';
     switch (this.state.id) {
       case AuthStates.ERROR:
@@ -244,6 +183,19 @@ class AuthController {
         break;
       case AuthStates.INITIALIZED:
         this.text = this.getInitializedMessage();
+        break;
+      case AuthStates.START_SIGNING:
+        this.text = this.getInitializedMessage();
+        if (this.settings.authRequest.returnURL) { // open on same page (no Popup) 
+          location.href = this.getAccessData().url;
+          return;
+        } else {
+          await this.startAuthRequest();
+          if (this.loginButton != null) {
+            const loginUrl = this.getAccessData().authUrl || this.getAccessData().url;
+            this.loginButton.startLoginScreen(loginUrl);
+          }
+        }
         break;
       case AuthStates.AUTHORIZED:
         // if accessData is null it means it is already loaded from the cookie/storage
@@ -262,6 +214,9 @@ class AuthController {
             });
           }
         }
+        break;
+      case AuthStates.LOGOUT:
+        logOut(this);
         break;
       default:
         console.log('WARNING Unhandled state for Login: ' + this.state.id);
@@ -303,6 +258,40 @@ class AuthController {
   }
 
 
+  /**
+  * @private
+  */
+  async _pollAccess () {
+    let res;
+    try {
+      res = await utils.superagent
+        .get(this.accessData.poll)
+        .set('accept', 'json');
+    } catch (e) {
+      return { status: 'ERROR' }
+    }
+    return res.body;
+  }
+
+
+  /**
+   * Keeps running authRequest until it gets the status
+   * not equal to NEED_SIGNIN and then updates authController state
+   *
+   * @param {AuthController} auth
+   * @private
+   */
+  async _poll () {
+    if (this.accessData && this.accessData.status != 'NEED_SIGNIN') {
+      this._polling = false;
+      return;
+    }
+    this._polling = true;
+    changeAuthStateDependingOnAccess(this, await this._pollAccess());
+    setTimeout(await this._poll.bind(this), this.accessData.poll_rate_ms);
+  }
+
+
   // -------------- Auth state listeners ---------------------
   set state (newState) {
     //console.log('State Changed:' + JSON.stringify(newState));
@@ -319,6 +308,27 @@ class AuthController {
 
   get state () {
     return this._state;
+  }
+}
+
+async function fetchServiceInfo(authController) {
+  if (authController.pryvService) {
+    throw new Error('Browser service already initialized');
+  }
+  try {
+    // 1. fetch service-info
+    authController.pryvService = new Service(
+      authController.serviceInfoUrl,
+      authController.serviceCustomizations,
+    );
+    authController.pryvServiceInfo = await authController.pryvService.info();
+  } catch (e) {
+    authController.state = {
+      id: AuthStates.ERROR,
+      message: 'Cannot fetch service/info',
+      error: e
+    };
+    throw e; // forward error
   }
 }
 
@@ -371,6 +381,7 @@ function changeAuthStateDependingOnAccess (authController, accessData) {
     };
     throw authController.state.error;
   }
+
   authController.accessData = accessData;
   switch (authController.accessData.status) {
     case 'ERROR':
