@@ -536,7 +536,7 @@ class MyLoginButton extends Pryv.Browser.HumanInteractionInterface {
 
   async init() {
     // register the onStateChange() method - always do this
-    this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
+    this.auth.store.stateChangeListeners.push(this.onStateChange.bind(this));
       
     // (optional) bind your button's event emitter to the auth state
     let loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);

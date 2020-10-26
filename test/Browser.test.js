@@ -45,7 +45,7 @@ describe('Browser', function () {
     delete global.location;
   });
 
-  it('setupAuth()', (done) => {
+  it('setupAuth()', async () => {
     const settings = genSettings();
     let AuthLoaded = false;
     settings.onStateChange = function (state) {
@@ -55,19 +55,18 @@ describe('Browser', function () {
       }
       if (state.id == Pryv.Browser.AuthStates.INITIALIZED) {
         expect(AuthLoaded).to.true;
-        done();
       }
     }
 
-    Pryv.Browser.setupAuth(settings, testData.serviceInfoUrl).then((service) => {
+    try {
+      const service = await Pryv.Browser.setupAuth(settings, testData.serviceInfoUrl);
       const serviceInfo = service.infoSync();
       should.exist(serviceInfo.access);
       should.exist(serviceInfo.serial);
-    }).catch((error) =>  {
+    } catch(error) {
       console.log(error);
       should.not.exist(error);
-      done();
-    });
+    }
   });
 
 

@@ -1,13 +1,16 @@
 const expect = chai.expect;
 
 const utils = require('../src/utils.js');
+const Service = require('../src/Service');
 const AuthController = require('../src/Auth/AuthController.js');
 const testData = require('./test-data.js');
 
-describe('Browser.LoginButton', () => {
+describe('Browser.LoginButton', function() {
+  this.timeout(5000); 
+
   let auth;
   let removeZombie = false;
-  before(async () => {
+  before(async function() {
     if (typeof document !== 'undefined') return; // in browser
     removeZombie = true;
     const browser = new Browser();
@@ -18,23 +21,25 @@ describe('Browser.LoginButton', () => {
     global.navigator = { userAgent: 'Safari' };
   });
 
-  after(async () => {
+  after(async function() {
     if (!removeZombie) return; // in browser
     delete global.document;
     delete global.window;
     delete global.location;
   });
-  before(async () => {
+  before(async function() {
+    let service = new Service(testData.serviceInfoUrl);
+    await service.info();
     auth = new AuthController({
       authRequest: {
         requestingAppId: 'lib-js-test',
         requestedPermissions: []
       }
-    }, testData.serviceInfoUrl, {});
+    }, service, {});
     await auth.init();
   });
   
-  it('getReturnURL()', async () => {
+  it('getReturnURL()', async function() {
     const myUrl = 'https://mysite.com/bobby';
     let error = null;
     try {
@@ -62,12 +67,12 @@ describe('Browser.LoginButton', () => {
     expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
   });
 
-  it('browserIsMobileOrTablet()', async () => {
+  it('browserIsMobileOrTablet()', async function() {
     expect(utils.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
     expect(utils.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
   });
 
-  it('getServiceInfoFromURL()', async () => {
+  it('getServiceInfoFromURL()', async function() {
     const serviceInfoUrl = AuthController.getServiceInfoFromURL(
       'https://my.Url.com/?bobby=2&prYvZoutOu=1&pryvServiceInfoUrl=' + encodeURIComponent('https://reg.pryv.me/service/infos'));
 
@@ -75,7 +80,7 @@ describe('Browser.LoginButton', () => {
   });
 
 
-  it('cleanURLFromPrYvParams()', async () => {
+  it('cleanURLFromPrYvParams()', async function() {
 
     expect('https://my.Url.com/?bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));

@@ -8,26 +8,17 @@ const Messages = require('./LoginMessages');
  */
 class AuthController {
 
-  constructor (settings, serviceInfoUrl, serviceCustomizations) {
-    this.stateChangeListners = [];
+  constructor (settings, service) {
     this.settings = settings;
-    try {
-      
-      this.validateSettings();
-      this.languageCode = this.settings.authRequest.languageCode || 'en';    
-      this.serviceInfoUrl = serviceInfoUrl;
-      this.serviceCustomizations = serviceCustomizations;
-      this.messages = Messages(this.languageCode);     
-      // -- Check Error CallBack
-      if (this.settings.onStateChange) {
-        this.stateChangeListners.push(this.settings.onStateChange);
-      }
-    } catch (e) {
-      this.state = {
-        id: AuthStates.ERROR, message: 'During initialization', error: e
-      };
-      throw (e);
+    this.validateSettings();
+
+    this.stateChangeListeners = [];
+    if (this.settings.onStateChange) {
+      this.stateChangeListeners.push(this.settings.onStateChange);
     }
+    this.service = service;
+    this.languageCode = this.settings.authRequest.languageCode || 'en';    
+    this.messages = Messages(this.languageCode);     
   }
 
   validateSettings () {
@@ -51,8 +42,8 @@ class AuthController {
    * @returns {PryvService}
    */
   async init (loginButton) {
+    this.serviceInfo = await this.service.info();
     this.state = { id: AuthStates.LOADING };
-    await fetchServiceInfo(this);
     this.assets = await loadAssets(this);
 
     // initialize human interaction interface
@@ -74,11 +65,11 @@ class AuthController {
 
     await finishAuthProcessAfterRedirection(this);
     if (loginButton != null) {
-      this.stateChangeListners.push(this.loginButton.onStateChange.bind(this.loginButton));
+      this.stateChangeListeners.push(this.loginButton.onStateChange.bind(this.loginButton));
       // update button text
       this.loginButton.onStateChange();
     }
-    return this.pryvService;
+    return this.service;
   }
 
   /**
@@ -130,7 +121,7 @@ class AuthController {
   }
 
   getInitializedMessage () {
-    return this.messages.LOGIN + ': ' + this.pryvServiceInfo.name;
+    return this.messages.LOGIN + ': ' + this.serviceInfo.name;
   }
 
   getAuthorizedMessage () {
@@ -192,7 +183,7 @@ class AuthController {
         if (this.getAccessData() != null) {
           const apiEndpoint =
             Service.buildAPIEndpoint(
-              this.pryvServiceInfo,
+              this.serviceInfo,
               this.getAccessData().username,
               this.getAccessData().token
             );
@@ -267,7 +258,7 @@ class AuthController {
     //console.log('State Changed:' + JSON.stringify(newState));
     this._state = newState;
     this.onStateChange();
-    this.stateChangeListners.map((listner) => {
+    this.stateChangeListeners.map((listner) => {
       try {
         listner(this.state)
       } catch (e) {
@@ -278,26 +269,6 @@ class AuthController {
 
   get state () {
     return this._state;
-  }
-}
-
-async function fetchServiceInfo(authController) {
-  if (authController.pryvService) {
-    throw new Error('Browser service already initialized');
-  }
-  try {
-    authController.pryvService = new Service(
-      authController.serviceInfoUrl,
-      authController.serviceCustomizations,
-    );
-    authController.pryvServiceInfo = await authController.pryvService.info();
-  } catch (e) {
-    authController.state = {
-      id: AuthStates.ERROR,
-      message: 'Cannot fetch service/info',
-      error: e
-    };
-    throw e; // forward error
   }
 }
 
@@ -315,28 +286,28 @@ async function deleteSessionData(authController) {
 /**
  * Called at the end init() and when logging out()
  */
-async function prepareForLogin(authControler) {
-  deleteSessionData(authControler);
+async function prepareForLogin(authController) {
+  deleteSessionData(authController);
 
   // 1. Make sure Browser is initialized
-  if (!authControler.pryvServiceInfo) {
+  if (!authController.service) {
     throw new Error('Browser service must be initialized first');
   }
 
-  await postAccessIfNeeded(authControler);
+  await postAccessIfNeeded(authController);
 
   // change state to initialized if signin is needed
   if (
-    authControler.getAccessData() &&
-    authControler.getAccessData().status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN
+    authController.getAccessData() &&
+    authController.getAccessData().status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN
   ) {
-    if (!authControler.getAccessData().url) {
+    if (!authController.getAccessData().url) {
       throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
     }
 
-    authControler.state = {
+    authController.state = {
       id: AuthStates.INITIALIZED,
-      serviceInfo: authControler.serviceInfo
+      serviceInfo: authController.serviceInfo
     };
   }
 }
@@ -362,7 +333,7 @@ function changeAuthStateDependingOnAccess (authController, accessData) {
     case 'ACCEPTED':
       const apiEndpoint =
         Service.buildAPIEndpoint(
-          authController.pryvServiceInfo,
+          authController.serviceInfo,
           authController.accessData.username,
           authController.accessData.token
         );
@@ -444,15 +415,15 @@ async function postAccessIfNeeded (authController) {
 /**
  * @private
  */
-async function postAccess (authControler) {
+async function postAccess (authController) {
   try {
     const res = await utils.superagent
-      .post(authControler.pryvServiceInfo.access)
+      .post(authController.serviceInfo.access)
       .set('accept', 'json')
-      .send(authControler.settings.authRequest);
+      .send(authController.settings.authRequest);
     return res.body;
   } catch (e) {
-    authControler.state = {
+    authController.state = {
       id: AuthStates.ERROR,
       message: 'Requesting access',
       error: e
@@ -462,10 +433,10 @@ async function postAccess (authControler) {
 }
 
 // ------------------ ACTIONS  ----------- //
-function logOut (authControler) {
-  const message = authControler.messages.LOGOUT_CONFIRM ? authControler.messages.LOGOUT_CONFIRM : 'Logout ?';
+function logOut (authController) {
+  const message = authController.messages.LOGOUT_CONFIRM ? authController.messages.LOGOUT_CONFIRM : 'Logout ?';
   if (typeof confirm === 'undefined' || confirm(message)) {
-    prepareForLogin(authControler);
+    prepareForLogin(authController);
   }
 }
 
@@ -473,7 +444,7 @@ function logOut (authControler) {
 async function loadAssets(authController) {
   let loadedAssets = {};
   try {
-    loadedAssets = await authController.pryvService.assets();
+    loadedAssets = await authController.service.assets();
     if (typeof location !== 'undefined') {
       await loadedAssets.loginButtonLoadCSS();
       const thisMessages = await loadedAssets.loginButtonGetMessages();

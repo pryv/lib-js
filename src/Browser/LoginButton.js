@@ -1,21 +1,36 @@
 const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
 const Cookies = require('./CookieUtils');
+const AuthStates = require('../Auth/AuthStates');
+const AuthController = require('../Auth/AuthController');
 
 /**
  * @memberof Pryv.Browser
  */
-class LoginButton extends HumanInteractionInterface {
-   
+class LoginButton {
+
+  constructor(authSettings, service) {
+    this.authSettings = authSettings;
+    this.service = service;
+  }
+
   /**
    * setup button and load assets
    */
   async init () {
-    this.auth.stateChangeListners.push(this.onStateChange.bind(this));
+    this.auth.stateChangeListeners.push(this.onStateChange.bind(this));
     setupButton(this);
     if (this.loginButtonText) {
       await loadAssets(this);
     }
-    this._cookieKey = 'pryv-libjs-' + this.auth.settings.authRequest.requestingAppId;
+    this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
+
+    const storedCredentials = await this.getAuthorizationData();
+    if (storedCredentials != null) {
+        this.onStateChange(AuthStates.AUTHORIZED, storedCredentials)
+    } else {
+        this.initAuthIfNeeded();
+    }
+    return service;
   }
 
   /**
@@ -70,6 +85,13 @@ class LoginButton extends HumanInteractionInterface {
 
   async deleteAuthorizationData () {
     Cookies.del(this._cookieKey);
+  }
+
+  async initAuthIfNeeded() {
+    if (this.auth) { return this.auth; }
+    this.auth = new AuthController(this.authSettings, this.service);
+    this.auth.stateChangeListeners.push(this);
+    await this.auth.init();
   }
 }
 
