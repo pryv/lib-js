@@ -11,68 +11,68 @@
 <body>
   <span id="pryv-button"></span>
   <script>
-    let authSettings = {
-        spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
-        onStateChange: function pryvAuthStateChange(state) { // called each time the authentication state changed
-          switch(state.id) {
-            case Pryv.Browser.AuthStates.LOADING:
-              console.log('Loading service information...');
-              break;
-            case Pryv.Browser.AuthStates.INITIALIZED:
-              console.log('Service information is retrieved so authorization can start. You can display login / registration screen or redirect to the our hosted app - web - auth application.');
-              break;
-            case Pryv.Browser.AuthStates.AUTHORIZED:
-              console.log('User is authorized and can access his personal data');
-              break;
-            case Pryv.Browser.AuthStates.LOGOUT:
-              console.log('User just logged off, please delete all the session related data');
-              break;
-            case Pryv.Browser.AuthStates.ERROR:
-              console.log('Error:', state?.message);
-              break;
-            }
-        }, // event Listener for Authentication steps
-        authRequest: { // See: https://api.pryv.com/reference/#auth-request
-          requestingAppId: 'lib-js-test',
-          languageCode: 'fr', // optional (default english)
-          returnURL: 'auto#',
-          requestedPermissions: [
-            {
-              streamId: 'test',
-              defaultName: 'test',
-              level: 'manage'
-            }
-          ],
-          clientData: {
-            'app-web-auth:description': {
-              'type': 'note/txt',
-              'content': 'This is a consent message.'
-            }
-          },
-          // referer: 'my test with lib-js', // optional string to track registration source
-        }
-      };
+    const authSettings = {
+      spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
+      onStateChange: function pryvAuthStateChange(state) { // called each time the authentication state changed
+        switch(state.id) {
+          case Pryv.Browser.AuthStates.LOADING:
+            console.log('Loading service information...');
+            break;
+          case Pryv.Browser.AuthStates.INITIALIZED:
+            console.log('Service information is retrieved so authorization can start. You can display login / registration screen or redirect to the our hosted app - web - auth application.');
+            break;
+          case Pryv.Browser.AuthStates.AUTHORIZED:
+            console.log('User is authorized and can access his personal data');
+            break;
+          case Pryv.Browser.AuthStates.LOGOUT:
+            console.log('User just logged off, please delete all the session related data');
+            break;
+          case Pryv.Browser.AuthStates.ERROR:
+            console.log('Error:', state?.message);
+            break;
+          }
+      }, // event Listener for Authentication steps
+      authRequest: { // See: https://api.pryv.com/reference/#auth-request
+        requestingAppId: 'lib-js-test',
+        languageCode: 'fr', // optional (default english)
+        returnURL: 'auto#',
+        requestedPermissions: [
+          {
+            streamId: 'test',
+            defaultName: 'test',
+            level: 'manage'
+          }
+        ],
+        clientData: {
+          'app-web-auth:description': {
+            'type': 'note/txt',
+            'content': 'This is a consent message.'
+          }
+        },
+        // referer: 'my test with lib-js', // optional string to track registration source
+      }
+    };
 
-      let serviceInfoUrl = null;// 'https://api.pryv.com/lib-js/demos/service-info.json';
-      let serviceInfoJson = {
-            "register": "https://reg.pryv.me",
-            "access": "https://access.pryv.me/access",
-            "api": "https://{username}.pryv.me/",
-            "name": "Pryv Lab",
-            "home": "https://www.pryv.com",
-           "support": "https://pryv.com/helpdesk",
-            "terms": "https://pryv.com/pryv-lab-terms-of-use/",
-            "eventTypes": "https://api.pryv.com/event-types/flat.json",
-            "assets": {
-              "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
-      }};
-      (async function () {
-        let service = await Pryv.Browser.setupAuth(
-          authSettings, 
-          serviceInfoUrl,
-          serviceInfoJson
-          );
-      })();
+    const serviceInfoUrl = null;// 'https://api.pryv.com/lib-js/demos/service-info.json';
+    const serviceInfoJson = {
+          "register": "https://reg.pryv.me",
+          "access": "https://access.pryv.me/access",
+          "api": "https://{username}.pryv.me/",
+          "name": "Pryv Lab",
+          "home": "https://www.pryv.com",
+          "support": "https://pryv.com/helpdesk",
+          "terms": "https://pryv.com/pryv-lab-terms-of-use/",
+          "eventTypes": "https://api.pryv.com/event-types/flat.json",
+          "assets": {
+            "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
+    }};
+    (async function () {
+      service = await Pryv.Browser.setupAuth(
+        authSettings, 
+        serviceInfoUrl,
+        serviceInfoJson
+        );
+    })();
   </script>
 </body>
 

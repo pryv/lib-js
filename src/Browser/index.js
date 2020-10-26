@@ -35,6 +35,7 @@ async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, human
   if (humanInteractionInterface == null) {
     humanInteractionInterface = new LoginButton(settings, service);
   }
+  await humanInteractionInterface.init();
   
   return service;
 }

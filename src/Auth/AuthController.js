@@ -108,34 +108,6 @@ class AuthController {
     this.accessData = { status: 'ERROR' };
   }
 
-  getAccessData () {
-    return this.accessData;
-  }
-
-  getErrorMessage () {
-    return this.messages.ERROR + ': ' + this.state.message;
-  }
-
-  getLoadingMessage () {
-    return this.messages.LOADING;
-  }
-
-  getInitializedMessage () {
-    return this.messages.LOGIN + ': ' + this.serviceInfo.name;
-  }
-
-  getAuthorizedMessage () {
-    return this.state.displayName;
-  }
-
-  getButtonText () {
-    return this.text;  
-  }
-
-  getAssets () {
-    return this.assets;
-  }
-
   isAuthorized () {
     return this.state.id == AuthStates.AUTHORIZED;
   }
@@ -144,62 +116,15 @@ class AuthController {
     return this.state.id === AuthStates.INITIALIZED;
   }
 
+  getAccessData () {
+    return this.accessData;
+  }
+
   async handleClick () {
     if (this.isAuthorized()) {
       this.state = { id: AuthStates.LOGOUT };
     } else if (this.isInitialized()) {
       this.state = { id: AuthStates.START_SIGNING };
-    }
-  }
-
-  async onStateChange () {
-    this.text = '';
-    switch (this.state.id) {
-      case AuthStates.ERROR:
-        this.text = this.getErrorMessage();
-        break;
-      case AuthStates.LOADING:
-        this.text = this.getLoadingMessage();
-        break;
-      case AuthStates.INITIALIZED:
-        this.text = this.getInitializedMessage();
-        break;
-      case AuthStates.START_SIGNING:
-        this.text = this.getInitializedMessage();
-        if (this.settings.authRequest.returnURL) { // open on same page (no Popup) 
-          location.href = this.getAccessData().url;
-          return;
-        } else {
-          await this.startAuthRequest();
-          if (this.loginButton != null) {
-            const loginUrl = this.getAccessData().authUrl || this.getAccessData().url;
-            this.loginButton.startLoginScreen(loginUrl);
-          }
-        }
-        break;
-      case AuthStates.AUTHORIZED:
-        // if accessData is null it means it is already loaded from the cookie/storage
-        this.text = this.getAuthorizedMessage();
-        if (this.getAccessData() != null) {
-          const apiEndpoint =
-            Service.buildAPIEndpoint(
-              this.serviceInfo,
-              this.getAccessData().username,
-              this.getAccessData().token
-            );
-          if (this.loginButton != null) {
-            this.loginButton.saveAuthorizationData({
-              apiEndpoint: apiEndpoint,
-              displayName: this.getAccessData().username
-            });
-          }
-        }
-        break;
-      case AuthStates.LOGOUT:
-        logOut(this);
-        break;
-      default:
-        console.log('WARNING Unhandled state for Login: ' + this.state.id);
     }
   }
 
@@ -255,12 +180,12 @@ class AuthController {
 
   // -------------- Auth state listeners ---------------------
   set state (newState) {
-    //console.log('State Changed:' + JSON.stringify(newState));
+    console.log('State Changed:' + JSON.stringify(newState));
     this._state = newState;
-    this.onStateChange();
-    this.stateChangeListeners.map((listner) => {
+    //this.onStateChange();
+    this.stateChangeListeners.map((listener) => {
       try {
-        listner(this.state)
+        listener(this.state)
       } catch (e) {
         console.log(e);
       }

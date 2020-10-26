@@ -2,6 +2,8 @@ const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
 const Cookies = require('./CookieUtils');
 const AuthStates = require('../Auth/AuthStates');
 const AuthController = require('../Auth/AuthController');
+const Service = require('../Service');
+const Messages = require('../Auth/LoginMessages');
 
 /**
  * @memberof Pryv.Browser
@@ -11,26 +13,29 @@ class LoginButton {
   constructor(authSettings, service) {
     this.authSettings = authSettings;
     this.service = service;
+    this.serviceInfo = service.infoSync();
   }
 
   /**
    * setup button and load assets
    */
   async init () {
-    this.auth.stateChangeListeners.push(this.onStateChange.bind(this));
     setupButton(this);
+    this.languageCode = this.authSettings.authRequest.languageCode || 'en';    
+    this.messages = Messages(this.languageCode);
     if (this.loginButtonText) {
       await loadAssets(this);
     }
     this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
+    
+    this.initAuthIfNeeded();
 
     const storedCredentials = await this.getAuthorizationData();
     if (storedCredentials != null) {
-        this.onStateChange(AuthStates.AUTHORIZED, storedCredentials)
+      await this.onStateChange(Object.assign({}, {id: AuthStates.AUTHORIZED}, storedCredentials));
     } else {
-        this.initAuthIfNeeded();
     }
-    return service;
+    return this.service;
   }
 
   /**
@@ -40,8 +45,55 @@ class LoginButton {
     this.auth.handleClick();
   }
 
-  onStateChange () {
-    this.text = this.auth.getButtonText();
+  async onStateChange (state) {
+    this.text = '';
+    switch (state.id) {
+      case AuthStates.ERROR:
+        this.text = getErrorMessage(this, state.message);
+        break;
+      case AuthStates.LOADING:
+        this.text = getLoadingMessage(this);
+        break;
+      case AuthStates.INITIALIZED:
+        this.text = getInitializedMessage(this, this.serviceInfo.name);
+        break;
+      case AuthStates.START_SIGNING:
+        this.text = getInitializedMessage(this, this.serviceInfo.name);
+        if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup) 
+          location.href = state.url;
+          return;
+        } else {
+          await this.auth.startAuthRequest();
+          if (this.loginButton != null) {
+            const loginUrl = state.authUrl || state.url;
+            this.startLoginScreen(loginUrl);
+          }
+        }
+        break;
+      case AuthStates.AUTHORIZED:
+        // if accessData is null it means it is already loaded from the cookie/storage
+        this.text = getAuthorizedMessage(state.displayName);
+        if (state != null) {
+          const apiEndpoint =
+            Service.buildAPIEndpoint(
+              this.service.infoSync(),
+              state.username,
+              state.token
+            );
+          if (this.loginButton != null) {
+            this.saveAuthorizationData({
+              apiEndpoint: apiEndpoint,
+              displayName: state.username
+            });
+          }
+        }
+        break;
+      case AuthStates.LOGOUT:
+        logOut(this);
+        break;
+      default:
+        console.log('WARNING Unhandled state for Login: ' + state.id);
+    }
     if (this.loginButtonText) {
       this.loginButtonText.innerHTML = this.text;
     }
@@ -90,13 +142,12 @@ class LoginButton {
   async initAuthIfNeeded() {
     if (this.auth) { return this.auth; }
     this.auth = new AuthController(this.authSettings, this.service);
-    this.auth.stateChangeListeners.push(this);
     await this.auth.init();
   }
 }
 
 function setupButton(loginBtn) {
-  loginBtn.loginButtonSpan = document.getElementById(loginBtn.auth.settings.spanButtonID);
+  loginBtn.loginButtonSpan = document.getElementById(loginBtn.authSettings.spanButtonID);
 
   if (!loginBtn.loginButtonSpan) {
     console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
@@ -114,7 +165,24 @@ function setupButton(loginBtn) {
  * Loads the style from the service info
  */
 async function loadAssets(loginBtn) {
-  loginBtn.loginButtonSpan.innerHTML = await loginBtn.auth.getAssets().loginButtonGetHTML();
+  const assets = await loginBtn.service.assets();
+  loginBtn.loginButtonSpan.innerHTML = assets.loginButtonGetHTML();
   loginBtn.loginButtonText = document.getElementById('pryv-access-btn-text');
 }
 module.exports = LoginButton;
+
+function getErrorMessage (loginButton, message) {
+  return loginButton.messages.ERROR + ': ' + message;
+}
+
+function getLoadingMessage (loginButton) {
+  return loginButton.messages.LOADING;
+}
+
+function getInitializedMessage (loginButton, serviceName) {
+  return loginButton.messages.LOGIN + ': ' + serviceName;
+}
+
+function getAuthorizedMessage (displayName) {
+  return displayName;
+}
