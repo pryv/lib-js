@@ -61,10 +61,6 @@ class AuthController {
     }
 
     await finishAuthProcessAfterRedirection(this);
-    if (loginButton != null) {
-      // update button text
-      this.loginButton.onStateChange();
-    }
     return this.service;
   }
 
