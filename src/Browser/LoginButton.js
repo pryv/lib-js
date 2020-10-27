@@ -24,17 +24,12 @@ class LoginButton {
     this.languageCode = this.authSettings.authRequest.languageCode || 'en';    
     this.messages = Messages(this.languageCode);
     if (this.loginButtonText) {
+      console.log('loaded assets')
       await loadAssets(this);
     }
     this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
     
     this.initAuthIfNeeded();
-
-    const storedCredentials = await this.getAuthorizationData();
-    if (storedCredentials != null) {
-      await this.onStateChange(Object.assign({}, {id: AuthStates.AUTHORIZED}, storedCredentials));
-    } else {
-    }
     return this.service;
   }
 
@@ -46,6 +41,7 @@ class LoginButton {
   }
 
   async onStateChange (state) {
+    console.log('callin buttons callback wid', state);
     this.text = '';
     switch (state.id) {
       case AuthStates.ERROR:
@@ -64,29 +60,18 @@ class LoginButton {
           return;
         } else {
           await this.auth.startAuthRequest();
-          if (this.loginButton != null) {
-            const loginUrl = state.authUrl || state.url;
-            this.startLoginScreen(loginUrl);
-          }
+          const loginUrl = state.authUrl || state.url;
+          this.startLoginScreen(loginUrl);
         }
         break;
       case AuthStates.AUTHORIZED:
         // if accessData is null it means it is already loaded from the cookie/storage
         this.text = getAuthorizedMessage(state.displayName);
-        if (state != null) {
-          const apiEndpoint =
-            Service.buildAPIEndpoint(
-              this.service.infoSync(),
-              state.username,
-              state.token
-            );
-          if (this.loginButton != null) {
-            this.saveAuthorizationData({
-              apiEndpoint: apiEndpoint,
-              displayName: state.username
-            });
-          }
-        }
+        this.saveAuthorizationData({
+          apiEndpoint: state.apiEndpoint,
+          displayName: state.displayName // maybe should be username
+        });
+        
         break;
       case AuthStates.LOGOUT:
         logOut(this);
@@ -94,7 +79,9 @@ class LoginButton {
       default:
         console.log('WARNING Unhandled state for Login: ' + state.id);
     }
+    console.log('if there is a button, settin button text to', this.text);
     if (this.loginButtonText) {
+      console.log('settin button text to', this.text);
       this.loginButtonText.innerHTML = this.text;
     }
   }
@@ -142,7 +129,7 @@ class LoginButton {
   async initAuthIfNeeded() {
     if (this.auth) { return this.auth; }
     this.auth = new AuthController(this.authSettings, this.service);
-    await this.auth.init();
+    await this.auth.init(this);
   }
 }
 
@@ -166,7 +153,7 @@ function setupButton(loginBtn) {
  */
 async function loadAssets(loginBtn) {
   const assets = await loginBtn.service.assets();
-  loginBtn.loginButtonSpan.innerHTML = assets.loginButtonGetHTML();
+  loginBtn.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
   loginBtn.loginButtonText = document.getElementById('pryv-access-btn-text');
 }
 module.exports = LoginButton;

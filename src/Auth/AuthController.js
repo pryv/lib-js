@@ -48,15 +48,12 @@ class AuthController {
 
     // initialize human interaction interface
     if (loginButton != null) {
-      loginButton.auth = this;
 
-      // init method is optional
-      if (loginButton.init != null) {
-        await (loginButton.init());
-      }
       this.loginButton = loginButton;
+      console.log('registerin', this.loginButton.onStateChange)
+      this.stateChangeListeners.push(this.loginButton.onStateChange.bind(this.loginButton));
       // autologin needs cookies/storage implemented in human interaction interface
-      await checkAutoLogin(this);      
+      await checkAutoLogin(this);
     }
 
     if (!this.isAuthorized()) {
@@ -65,7 +62,6 @@ class AuthController {
 
     await finishAuthProcessAfterRedirection(this);
     if (loginButton != null) {
-      this.stateChangeListeners.push(this.loginButton.onStateChange.bind(this.loginButton));
       // update button text
       this.loginButton.onStateChange();
     }
@@ -180,14 +176,14 @@ class AuthController {
 
   // -------------- Auth state listeners ---------------------
   set state (newState) {
-    console.log('State Changed:' + JSON.stringify(newState));
+    console.log('State set:' + JSON.stringify(newState));
     this._state = newState;
     //this.onStateChange();
     this.stateChangeListeners.map((listener) => {
       try {
         listener(this.state)
       } catch (e) {
-        console.log(e);
+        console.log('Error during set state ()', e);
       }
     });
   }
@@ -274,22 +270,15 @@ function changeAuthStateDependingOnAccess (authController, accessData) {
 
 
 async function checkAutoLogin (authController) {
-  if (authController.loginButton == null) {
+  const loginButton = authController.loginButton;
+  if (loginButton == null) {
     return;
   }
-  let loginCookie = null;
-  try {
-    loginCookie = await authController.loginButton.getAuthorizationData();
-  } catch (e) {
-    console.log(e);
-  }
 
-  if (loginCookie) {
-    authController.state = {
-      id: AuthStates.AUTHORIZED,
-      apiEndpoint: loginCookie.apiEndpoint,
-      displayName: loginCookie.displayName
-    };
+  const storedCredentials = await loginButton.getAuthorizationData();
+  if (storedCredentials != null) {
+    console.log('got auth', storedCredentials)
+    authController.state = Object.assign({}, {id: AuthStates.AUTHORIZED}, storedCredentials);
   }
 }
 
