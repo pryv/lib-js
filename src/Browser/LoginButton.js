@@ -74,7 +74,7 @@ class LoginButton {
         
         break;
       case AuthStates.LOGOUT:
-        logOut(this);
+        this.auth.logOut();
         break;
       default:
         console.log('WARNING Unhandled state for Login: ' + state.id);

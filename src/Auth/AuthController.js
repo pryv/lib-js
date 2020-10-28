@@ -169,6 +169,12 @@ class AuthController {
     setTimeout(await this.startAuthRequest.bind(this), this.accessData.poll_rate_ms);
   }
 
+  logOut () {
+    const message = this.messages.LOGOUT_CONFIRM ? this.messages.LOGOUT_CONFIRM : 'Logout ?';
+    if (typeof confirm === 'undefined' || confirm(message)) {
+      prepareForLogin(this);
+    }
+  }
 
   // -------------- Auth state listeners ---------------------
   set state (newState) {
@@ -343,12 +349,6 @@ async function postAccess (authController) {
 }
 
 // ------------------ ACTIONS  ----------- //
-function logOut (authController) {
-  const message = authController.messages.LOGOUT_CONFIRM ? authController.messages.LOGOUT_CONFIRM : 'Logout ?';
-  if (typeof confirm === 'undefined' || confirm(message)) {
-    prepareForLogin(authController);
-  }
-}
 
 
 async function loadAssets(authController) {
