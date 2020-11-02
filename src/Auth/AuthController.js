@@ -10,31 +10,33 @@ class AuthController {
 
   constructor (settings, service) {
     this.settings = settings;
-    this.validateSettings();
+    validateSettings.call(this, settings);
 
     this.stateChangeListeners = [];
     if (this.settings.onStateChange) {
       this.stateChangeListeners.push(this.settings.onStateChange);
     }
     this.service = service;
+
+    // probably remove
     this.languageCode = this.settings.authRequest.languageCode || 'en';    
     this.messages = Messages(this.languageCode);     
-  }
 
-  validateSettings () {
-    if (!this.settings) { throw new Error('settings cannot be null'); }
-    // -- settings 
-    if (!this.settings.authRequest) { throw new Error('Missing settings.authRequest'); }
-
-    // -- Extract returnURL 
-    this.settings.authRequest.returnURL =
-      this.getReturnURL(this.settings.authRequest.returnURL);
-
-    if (!this.settings.authRequest.requestingAppId) {
-      throw new Error('Missing settings.authRequest.requestingAppId');
-    }
-    if (!this.settings.authRequest.requestedPermissions) {
-      throw new Error('Missing settings.authRequest.requestedPermissions');
+    function validateSettings (settings) {
+      if (!settings) { throw new Error('settings cannot be null'); }
+      // -- settings 
+      if (!settings.authRequest) { throw new Error('Missing settings.authRequest'); }
+  
+      // -- Extract returnURL 
+      settings.authRequest.returnURL =
+        this.getReturnURL(settings.authRequest.returnURL);
+  
+      if (!settings.authRequest.requestingAppId) {
+        throw new Error('Missing settings.authRequest.requestingAppId');
+      }
+      if (!settings.authRequest.requestedPermissions) {
+        throw new Error('Missing settings.authRequest.requestedPermissions');
+      }
     }
   }
 
@@ -42,22 +44,20 @@ class AuthController {
    * @returns {PryvService}
    */
   async init (loginButton) {
-    this.serviceInfo = await this.service.info();
-    this.state = { id: AuthStates.LOADING };
+    this.serviceInfo = this.service.infoSync();
+    this.state = { status: AuthStates.LOADING };
     this.assets = await loadAssets(this);
-
+    
     // initialize human interaction interface
     if (loginButton != null) {
-
       this.loginButton = loginButton;
-      console.log('registerin', this.loginButton.onStateChange)
       this.stateChangeListeners.push(this.loginButton.onStateChange.bind(this.loginButton));
       // autologin needs cookies/storage implemented in human interaction interface
       await checkAutoLogin(this);
     }
 
-    if (!this.isAuthorized()) {
-      await prepareForLogin(this);
+    if (this.state.status != AuthStates.AUTHORIZED) {
+      this.state = { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo};
     }
 
     await finishAuthProcessAfterRedirection(this);
@@ -75,48 +75,25 @@ class AuthController {
   }
 
   /**
-   * Eventually return pollUrl when returning from login in another page
-   */
-  async pollUrlReturningFromLogin (url) {
-    const params = utils.getQueryParamsFromURL(url);
-    let pollUrl = null;
-    if (params.prYvkey) { // deprecated method - To be removed
-      pollUrl = this.access + params.prYvkey;
-    }
-    if (params.prYvpoll) {
-      pollUrl = params.prYvpoll;
-    }
-    return pollUrl;
-  }
-
-  getState () {
-    return this._state;
-  }
-
-  /**
    * Stops poll for auth request
    */
-  stopAuthRequest () {
-    this.accessData = { status: 'ERROR' };
+  stopAuthRequest (msg) {
+    this.state = { status: 'ERROR', message: msg };
   }
 
   isAuthorized () {
-    return this.state.id == AuthStates.AUTHORIZED;
+    return this.state.status == AuthStates.AUTHORIZED;
   }
 
   isInitialized () {
-    return this.state.id === AuthStates.INITIALIZED;
-  }
-
-  getAccessData () {
-    return this.accessData;
+    return this.state.status === AuthStates.INITIALIZED;
   }
 
   async handleClick () {
     if (this.isAuthorized()) {
-      this.state = { id: AuthStates.LOGOUT };
+      this.state = { status: AuthStates.LOGOUT };
     } else if (this.isInitialized()) {
-      this.state = { id: AuthStates.START_SIGNING };
+      this.startAuthRequest();
     }
   }
 
@@ -157,30 +134,63 @@ class AuthController {
   /**
    * Keeps running authRequest until it gets the status
    * not equal to NEED_SIGNIN and then updates authController state
-   * to something else but AuthStates.START_SIGNING
+   * to something else but AuthStates.NEED_SIGNIN
    * @param {AuthController} auth
    * @private
    */
   async startAuthRequest () {
-    if (this.state.id !== AuthStates.START_SIGNING) {
-      return;
+    this.state = await postAccess.call(this);
+    
+    await doPolling.call(this);
+    
+    async function postAccess () {
+      try {
+        const res = await utils.superagent
+          .post(this.serviceInfo.access)
+          .send(this.settings.authRequest);
+        return res.body;
+      } catch (e) {
+        this.state = {
+          status: AuthStates.ERROR,
+          message: 'Requesting access',
+          error: e
+        };
+        throw e; // forward error
+      }
     }
-    changeAuthStateDependingOnAccess(this, await pollAccess(this));
-    setTimeout(await this.startAuthRequest.bind(this), this.accessData.poll_rate_ms);
-  }
 
-  logOut () {
-    const message = this.messages.LOGOUT_CONFIRM ? this.messages.LOGOUT_CONFIRM : 'Logout ?';
-    if (typeof confirm === 'undefined' || confirm(message)) {
-      prepareForLogin(this);
+    async function doPolling() {
+      if (this.state.status !== AuthStates.NEED_SIGNIN) {
+        return;
+      }
+      this.state = await pollAccess.call(this);
+
+      if (this.state.status === AuthStates.NEED_SIGNIN) {
+        setTimeout(await doPolling.bind(this), this.state.poll_rate_ms);
+      }
+    }
+
+    async function pollAccess() {
+      try {
+        const res = await utils.superagent
+          .get(this.state.poll)
+        return res.body;
+      } catch (e) {
+        return { status: 'ERROR', message: 'Error while polling for auth request', error: e };
+      }
     }
   }
 
   // -------------- Auth state listeners ---------------------
   set state (newState) {
-    console.log('State set:' + JSON.stringify(newState));
+
+    const oldState = this._state;
+
+    // do nothing if state does not change
+    if (oldState != null && oldState.status === newState.status) return;
+
     this._state = newState;
-    //this.onStateChange();
+
     this.stateChangeListeners.map((listener) => {
       try {
         listener(this.state)
@@ -199,78 +209,6 @@ function returnUrlIsAuto (returnURL) {
   return returnURL.indexOf(AuthController.options.RETURN_URL_AUTO) === 0;
 }
 
-async function deleteSessionData(authController) {
-  authController.accessData = null;
-  if (authController.loginButton != null) {
-    authController.loginButton.deleteAuthorizationData();
-  }
-}
-
-/**
- * Called at the end init() and when logging out()
- */
-async function prepareForLogin(authController) {
-  deleteSessionData(authController);
-
-  // 1. Make sure Browser is initialized
-  if (!authController.service) {
-    throw new Error('Browser service must be initialized first');
-  }
-
-  await postAccessIfNeeded(authController);
-
-  // change state to initialized if signin is needed
-  if (
-    authController.getAccessData() &&
-    authController.getAccessData().status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN
-  ) {
-    if (!authController.getAccessData().url) {
-      throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
-    }
-
-    authController.state = {
-      id: AuthStates.INITIALIZED,
-      serviceInfo: authController.serviceInfo
-    };
-  }
-}
-
-function changeAuthStateDependingOnAccess (authController, accessData) {
-  if (!accessData || !accessData.status) {
-    authController.state = {
-      id: AuthStates.ERROR,
-      message: 'Invalid Access data response',
-      error: new Error('Invalid Access data response')
-    };
-    throw authController.state.error;
-  }
-
-  authController.accessData = accessData;
-  switch (authController.accessData.status) {
-    case 'ERROR':
-      authController.state = {
-        id: AuthStates.ERROR,
-        message: 'Error on the backend, please refresh'
-      };
-      break;
-    case 'ACCEPTED':
-      const apiEndpoint =
-        Service.buildAPIEndpoint(
-          authController.serviceInfo,
-          authController.accessData.username,
-          authController.accessData.token
-        );
-
-      authController.state = {
-        id: AuthStates.AUTHORIZED,
-        apiEndpoint: apiEndpoint,
-        displayName: authController.accessData.username
-      };
-      break;
-  }
-}
-
-
 async function checkAutoLogin (authController) {
   const loginButton = authController.loginButton;
   if (loginButton == null) {
@@ -279,25 +217,8 @@ async function checkAutoLogin (authController) {
 
   const storedCredentials = await loginButton.getAuthorizationData();
   if (storedCredentials != null) {
-    console.log('got auth', storedCredentials)
-    authController.state = Object.assign({}, {id: AuthStates.AUTHORIZED}, storedCredentials);
+    authController.state = Object.assign({}, {status: AuthStates.AUTHORIZED}, storedCredentials);
   }
-}
-
-
-/**
-* @private
-*/
-async function pollAccess(authController) {
-  let res;
-  try {
-    res = await utils.superagent
-      .get(authController.accessData.poll)
-      .set('accept', 'json');
-  } catch (e) {
-    return { status: 'ERROR' }
-  }
-  return res.body;
 }
 
 async function finishAuthProcessAfterRedirection (authController) {
@@ -306,50 +227,35 @@ async function finishAuthProcessAfterRedirection (authController) {
 
   // 3. Check if there is a prYvkey as result of "out of page login"
   const url = window.location.href;
-  let pollUrl = await authController.pollUrlReturningFromLogin(url);
+  let pollUrl = retrievePollUrl(url);
   if (pollUrl !== null) {
     try {
+
       const res = await utils.superagent.get(pollUrl);
-      changeAuthStateDependingOnAccess(authController, res.body);
+      authController.state = res.body;
     } catch (e) {
       authController.state = {
-        id: AuthStates.ERROR,
+        status: AuthStates.ERROR,
         message: 'Cannot fetch result',
         error: e
       };
     }
   }
-}
 
-async function postAccessIfNeeded (authController) {
-  if (!authController.accessData) {
-    changeAuthStateDependingOnAccess(authController, await postAccess(authController));
-  }
-}
-
-// ----------------------- ACCESS --------------- //
-/**
- * @private
- */
-async function postAccess (authController) {
-  try {
-    const res = await utils.superagent
-      .post(authController.serviceInfo.access)
-      .set('accept', 'json')
-      .send(authController.settings.authRequest);
-    return res.body;
-  } catch (e) {
-    authController.state = {
-      id: AuthStates.ERROR,
-      message: 'Requesting access',
-      error: e
-    };
-    throw e; // forward error
+  function retrievePollUrl (url) {
+    const params = utils.getQueryParamsFromURL(url);
+    let pollUrl = null;
+    if (params.prYvkey) { // deprecated method - To be removed
+      pollUrl = authController.serviceInfo.access + params.prYvkey;
+    }
+    if (params.prYvpoll) {
+      pollUrl = params.prYvpoll;
+    }
+    return pollUrl;
   }
 }
 
 // ------------------ ACTIONS  ----------- //
-
 
 async function loadAssets(authController) {
   let loadedAssets = {};
@@ -366,7 +272,7 @@ async function loadAssets(authController) {
     }
   } catch (e) {
     authController.state = {
-      id: AuthStates.ERROR,
+      status: AuthStates.ERROR,
       message: 'Cannot fetch button visuals',
       error: e
     };

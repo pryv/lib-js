@@ -7,12 +7,13 @@
  * @memberof Pryv.Browser
  */
 const AuthState = {
-  ERROR : 'error',
-  LOADING : 'loading',
-  INITIALIZED: 'initialized',
-  START_SIGNING: 'start-signin',
-  AUTHORIZED: 'authorized',
-  LOGOUT: 'logout'
+  ERROR : 'ERROR',
+  LOADING : 'LOADING',
+  INITIALIZED: 'INITIALIZED',
+  NEED_SIGNIN: 'NEED_SIGNIN',
+  AUTHORIZED: 'ACCEPTED',
+  LOGOUT: 'LOGOUT',
+  REFUSED: 'REFUSED',
 } 
 
 

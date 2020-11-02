@@ -24,12 +24,14 @@ class LoginButton {
     this.languageCode = this.authSettings.authRequest.languageCode || 'en';    
     this.messages = Messages(this.languageCode);
     if (this.loginButtonText) {
-      console.log('loaded assets')
       await loadAssets(this);
     }
     this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
     
-    this.initAuthIfNeeded();
+    if (this.auth) { return this.auth; }
+    this.auth = new AuthController(this.authSettings, this.service);
+    await this.auth.init(this);
+
     return this.service;
   }
 
@@ -41,9 +43,7 @@ class LoginButton {
   }
 
   async onStateChange (state) {
-    console.log('callin buttons callback wid', state);
-    this.text = '';
-    switch (state.id) {
+    switch (state.status) {
       case AuthStates.ERROR:
         this.text = getErrorMessage(this, state.message);
         break;
@@ -53,35 +53,34 @@ class LoginButton {
       case AuthStates.INITIALIZED:
         this.text = getInitializedMessage(this, this.serviceInfo.name);
         break;
-      case AuthStates.START_SIGNING:
-        this.text = getInitializedMessage(this, this.serviceInfo.name);
+      case AuthStates.NEED_SIGNIN:
         if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup) 
           location.href = state.url;
           return;
         } else {
-          await this.auth.startAuthRequest();
           const loginUrl = state.authUrl || state.url;
           this.startLoginScreen(loginUrl);
         }
         break;
       case AuthStates.AUTHORIZED:
-        // if accessData is null it means it is already loaded from the cookie/storage
-        this.text = getAuthorizedMessage(state.displayName);
+        this.text = state.username;
         this.saveAuthorizationData({
           apiEndpoint: state.apiEndpoint,
-          displayName: state.displayName // maybe should be username
+          username: state.username
         });
         
         break;
       case AuthStates.LOGOUT:
-        this.auth.logOut();
+        const message = this.messages.LOGOUT_CONFIRM ? this.messages.LOGOUT_CONFIRM : 'Logout ?';
+        if (confirm(message)) {
+          this.deleteAuthorizationData();
+          this.auth.init();
+        }
         break;
       default:
-        console.log('WARNING Unhandled state for Login: ' + state.id);
+        console.log('WARNING Unhandled state for Login: ' + state.status);
     }
-    console.log('if there is a button, settin button text to', this.text);
     if (this.loginButtonText) {
-      console.log('settin button text to', this.text);
       this.loginButtonText.innerHTML = this.text;
     }
   }
@@ -107,8 +106,7 @@ class LoginButton {
     this.popup = window.open(authUrl, 'prYv Sign-in', features);
     
     if (!this.popup) {
-      this.auth.stopAuthRequest();
-      console.log('FAILED_TO_OPEN_WINDOW');
+      this.auth.stopAuthRequest('FAILED_TO_OPEN_WINDOW');
     } else if (window.focus) {
       this.popup.focus();
     }
@@ -124,12 +122,6 @@ class LoginButton {
 
   async deleteAuthorizationData () {
     Cookies.del(this._cookieKey);
-  }
-
-  async initAuthIfNeeded() {
-    if (this.auth) { return this.auth; }
-    this.auth = new AuthController(this.authSettings, this.service);
-    await this.auth.init(this);
   }
 }
 
@@ -168,8 +160,4 @@ function getLoadingMessage (loginButton) {
 
 function getInitializedMessage (loginButton, serviceName) {
   return loginButton.messages.LOGIN + ': ' + serviceName;
-}
-
-function getAuthorizedMessage (displayName) {
-  return displayName;
 }

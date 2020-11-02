@@ -56,5 +56,5 @@ module.exports = {
  * - LOGOUT => {}
  * @callback AuthStateChangeHandler
  * @param {Object} state
- * @param {Pryv.Browser.AuthState} state.id  one of ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
+ * @param {Pryv.Browser.AuthState} state.status  one of ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
  */
