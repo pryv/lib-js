@@ -35,7 +35,6 @@ module.exports = {
   setupAuth: setupAuth,
   AuthStates: AuthStates,
   HumanInteractionInterface: HumanInteractionInterface,
-  serviceInfoFromUrl: AuthController.getServiceInfoFromURL
 }
 
 /**

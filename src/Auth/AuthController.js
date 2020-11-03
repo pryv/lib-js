@@ -56,22 +56,16 @@ class AuthController {
       await checkAutoLogin(this);
     }
 
+    // if auto login is not prompted
     if (this.state.status != AuthStates.AUTHORIZED) {
       this.state = { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo};
     }
 
-    await finishAuthProcessAfterRedirection(this);
+    if (loginButton != null && loginButton.finishAuthProcessAfterRedirection != null) {
+      await loginButton.finishAuthProcessAfterRedirection(this);
+    }
+    
     return this.service;
-  }
-
-  /**
-   * Util to grab parameters from url query string
-   * @param {*} url 
-   */
-  static getServiceInfoFromURL (url) {
-    const queryParams = utils.getQueryParamsFromURL(url || window.location.href);
-    //TODO check validity of status
-    return queryParams[AuthController.options.SERVICE_INFO_QUERY_PARAM_KEY];
   }
 
   /**
@@ -81,19 +75,29 @@ class AuthController {
     this.state = { status: 'ERROR', message: msg };
   }
 
-  isAuthorized () {
-    return this.state.status == AuthStates.AUTHORIZED;
-  }
-
-  isInitialized () {
-    return this.state.status === AuthStates.INITIALIZED;
-  }
-
+  /**
+   * Triggered when button is pressed
+   */
   async handleClick () {
-    if (this.isAuthorized()) {
+    if (isAuthorized.call(this)) {
       this.state = { status: AuthStates.LOGOUT };
-    } else if (this.isInitialized()) {
+    } else if (isInitialized.call(this)) {
       this.startAuthRequest();
+    } else if (isNeedSignIn.call(this)) {
+      // reopen popup
+      this.state = this.state;
+    } else {
+      console.log('doin nothin because state is', this.state.status);
+    }
+
+    function isAuthorized () {
+      return this.state.status == AuthStates.AUTHORIZED;
+    }
+    function isInitialized () {
+      return this.state.status === AuthStates.INITIALIZED;
+    }
+    function isNeedSignIn () {
+      return this.state.status === AuthStates.NEED_SIGNIN;
     }
   }
 
@@ -102,7 +106,9 @@ class AuthController {
     windowLocationForTest,
     navigatorForTests
   ) {
-    returnURL = returnURL || AuthController.options.RETURN_URL_AUTO + '#';
+    const RETURN_URL_AUTO = 'auto';
+
+    returnURL = returnURL || RETURN_URL_AUTO + '#';
 
     // check the trailer
     let trailer = returnURL.slice(-1);
@@ -129,15 +135,12 @@ class AuthController {
       returnURL = locationHref + returnURL.substring(4);
     }
     return utils.cleanURLFromPrYvParams(returnURL);
+
+    function returnUrlIsAuto (returnURL) {
+      return returnURL.indexOf(RETURN_URL_AUTO) === 0;
+    }
   }
 
-  /**
-   * Keeps running authRequest until it gets the status
-   * not equal to NEED_SIGNIN and then updates authController state
-   * to something else but AuthStates.NEED_SIGNIN
-   * @param {AuthController} auth
-   * @private
-   */
   async startAuthRequest () {
     this.state = await postAccess.call(this);
     
@@ -163,10 +166,12 @@ class AuthController {
       if (this.state.status !== AuthStates.NEED_SIGNIN) {
         return;
       }
-      this.state = await pollAccess.call(this);
+      const pollResponse = await pollAccess.call(this);
 
       if (this.state.status === AuthStates.NEED_SIGNIN) {
         setTimeout(await doPolling.bind(this), this.state.poll_rate_ms);
+      } else {
+        this.state = pollResponse;
       }
     }
 
@@ -183,12 +188,6 @@ class AuthController {
 
   // -------------- Auth state listeners ---------------------
   set state (newState) {
-
-    const oldState = this._state;
-
-    // do nothing if state does not change
-    if (oldState != null && oldState.status === newState.status) return;
-
     this._state = newState;
 
     this.stateChangeListeners.map((listener) => {
@@ -205,10 +204,6 @@ class AuthController {
   }
 }
 
-function returnUrlIsAuto (returnURL) {
-  return returnURL.indexOf(AuthController.options.RETURN_URL_AUTO) === 0;
-}
-
 async function checkAutoLogin (authController) {
   const loginButton = authController.loginButton;
   if (loginButton == null) {
@@ -218,40 +213,6 @@ async function checkAutoLogin (authController) {
   const storedCredentials = await loginButton.getAuthorizationData();
   if (storedCredentials != null) {
     authController.state = Object.assign({}, {status: AuthStates.AUTHORIZED}, storedCredentials);
-  }
-}
-
-async function finishAuthProcessAfterRedirection (authController) {
-  // this step should be applied only for the browser
-  if (!utils.isBrowser()) return;
-
-  // 3. Check if there is a prYvkey as result of "out of page login"
-  const url = window.location.href;
-  let pollUrl = retrievePollUrl(url);
-  if (pollUrl !== null) {
-    try {
-
-      const res = await utils.superagent.get(pollUrl);
-      authController.state = res.body;
-    } catch (e) {
-      authController.state = {
-        status: AuthStates.ERROR,
-        message: 'Cannot fetch result',
-        error: e
-      };
-    }
-  }
-
-  function retrievePollUrl (url) {
-    const params = utils.getQueryParamsFromURL(url);
-    let pollUrl = null;
-    if (params.prYvkey) { // deprecated method - To be removed
-      pollUrl = authController.serviceInfo.access + params.prYvkey;
-    }
-    if (params.prYvpoll) {
-      pollUrl = params.prYvpoll;
-    }
-    return pollUrl;
   }
 }
 
@@ -281,10 +242,4 @@ async function loadAssets(authController) {
   return loadedAssets;
 }
 
-
-AuthController.options = {
-  SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl',
-  ACCESS_STATUS_NEED_SIGNIN: 'NEED_SIGNIN',
-  RETURN_URL_AUTO: 'auto',
-}
 module.exports = AuthController;

@@ -4,6 +4,7 @@ const AuthStates = require('../Auth/AuthStates');
 const AuthController = require('../Auth/AuthController');
 const Service = require('../Service');
 const Messages = require('../Auth/LoginMessages');
+const utils = require('../utils');
 
 /**
  * @memberof Pryv.Browser
@@ -55,11 +56,11 @@ class LoginButton {
         break;
       case AuthStates.NEED_SIGNIN:
         if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup) 
-          location.href = state.url;
+          location.href = state.authUrl || state.url;
           return;
         } else {
           const loginUrl = state.authUrl || state.url;
-          this.startLoginScreen(loginUrl);
+          startLoginScreen(this, loginUrl);
         }
         break;
       case AuthStates.AUTHORIZED:
@@ -85,33 +86,6 @@ class LoginButton {
     }
   }
 
-  async startLoginScreen (authUrl) {
-    let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
-      screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
-      outerWidth = typeof window.outerWidth !== 'undefined' ?
-        window.outerWidth : document.body.clientWidth,
-      outerHeight = typeof window.outerHeight !== 'undefined' ?
-        window.outerHeight : (document.body.clientHeight - 22),
-      width = 400,
-      height = 620,
-      left = parseInt(screenX + ((outerWidth - width) / 2), 10),
-      top = parseInt(screenY + ((outerHeight - height) / 2.5), 10),
-      features = (
-        'width=' + width +
-        ',height=' + height +
-        ',left=' + left +
-        ',top=' + top +
-        ',scrollbars=yes'
-      );
-    this.popup = window.open(authUrl, 'prYv Sign-in', features);
-    
-    if (!this.popup) {
-      this.auth.stopAuthRequest('FAILED_TO_OPEN_WINDOW');
-    } else if (window.focus) {
-      this.popup.focus();
-    }
-  }
-
   saveAuthorizationData (authData) {
     Cookies.set(this._cookieKey,authData);
   }
@@ -122,6 +96,70 @@ class LoginButton {
 
   async deleteAuthorizationData () {
     Cookies.del(this._cookieKey);
+  }
+
+  /**
+   * not mandatory to implement as non-browsers don't have this behaviour
+   * @param {*} authController 
+   */
+  async finishAuthProcessAfterRedirection (authController) {
+    // this step should be applied only for the browser
+    if (!utils.isBrowser()) return;
+
+    // 3. Check if there is a prYvkey as result of "out of page login"
+    const url = window.location.href;
+    let pollUrl = retrievePollUrl(url);
+    if (pollUrl !== null) {
+      try {
+        const res = await utils.superagent.get(pollUrl);
+        authController.state = res.body;
+      } catch (e) {
+        authController.state = {
+          status: AuthStates.ERROR,
+          message: 'Cannot fetch result',
+          error: e
+        };
+      }
+    }
+
+    function retrievePollUrl (url) {
+      const params = utils.getQueryParamsFromURL(url);
+      let pollUrl = null;
+      if (params.prYvkey) { // deprecated method - To be removed
+        pollUrl = authController.serviceInfo.access + params.prYvkey;
+      }
+      if (params.prYvpoll) {
+        pollUrl = params.prYvpoll;
+      }
+      return pollUrl;
+    }
+  }
+}
+
+async function startLoginScreen (loginButton, authUrl) {
+  let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
+    screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
+    outerWidth = typeof window.outerWidth !== 'undefined' ?
+      window.outerWidth : document.body.clientWidth,
+    outerHeight = typeof window.outerHeight !== 'undefined' ?
+      window.outerHeight : (document.body.clientHeight - 22),
+    width = 400,
+    height = 620,
+    left = parseInt(screenX + ((outerWidth - width) / 2), 10),
+    top = parseInt(screenY + ((outerHeight - height) / 2.5), 10),
+    features = (
+      'width=' + width +
+      ',height=' + height +
+      ',left=' + left +
+      ',top=' + top +
+      ',scrollbars=yes'
+    );
+    loginButton.popup = window.open(authUrl, 'prYv Sign-in', features);
+  
+  if (!loginButton.popup) {
+    loginButton.auth.stopAuthRequest('FAILED_TO_OPEN_WINDOW');
+  } else if (window.focus) {
+    loginButton.popup.focus();
   }
 }
 
