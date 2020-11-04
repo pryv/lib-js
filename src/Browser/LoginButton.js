@@ -66,8 +66,8 @@ class LoginButton {
           username: state.username
         });
         break;
-      case AuthStates.LOGOUT:
-        const message = this.messages.LOGOUT_CONFIRM ? this.messages.LOGOUT_CONFIRM : 'Logout ?';
+      case AuthStates.SIGNOUT:
+        const message = this.messages.SIGNOUT_CONFIRM ? this.messages.SIGNOUT_CONFIRM : 'Logout ?';
         if (confirm(message)) {
           this.deleteAuthorizationData();
           this.auth.init();

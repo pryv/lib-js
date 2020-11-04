@@ -10,7 +10,7 @@ const Messages = {
     'en': 'Signin',
     'fr': 'Login'
   },
-  LOGOUT_CONFIRM: {
+  SIGNOUT_CONFIRM: {
     'en': 'Logout ?',
     'fr': 'Se deconnecter ?'
   }

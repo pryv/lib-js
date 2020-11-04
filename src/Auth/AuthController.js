@@ -89,7 +89,7 @@ class AuthController {
    */
   async handleClick () {
     if (isAuthorized.call(this)) {
-      this.state = { status: AuthStates.LOGOUT };
+      this.state = { status: AuthStates.SIGNOUT };
     } else if (isInitialized.call(this)) {
       this.startAuthRequest();
     } else if (isNeedSignIn.call(this)) {
@@ -196,7 +196,6 @@ class AuthController {
             .get(pollUrl)
           return res.body;
         } catch (e) {
-          console.log('got', e.response);
           if (e.response &&
               e.response.status === 403 &&
               e.response.body &&

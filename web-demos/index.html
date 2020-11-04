@@ -94,7 +94,7 @@
       connection = new Pryv.Connection(state.apiEndpoint);
       logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
     }
-    if (state.id === Pryv.Auth.AuthStates.LOGOUT) {
+    if (state.id === Pryv.Auth.AuthStates.SIGNOUT) {
       connection = null;
       logToConsole('# Logout');
     }

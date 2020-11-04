@@ -1,7 +1,7 @@
 
 
 /**
- * Enum Possible states: ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
+ * Enum Possible states: ERROR, LOADING, INITIALIZED, AUTHORIZED, SIGNOUT
  * @readonly
  * @enum {string}
  * @memberof Pryv.Browser
@@ -12,7 +12,7 @@ const AuthState = {
   INITIALIZED: 'INITIALIZED',
   NEED_SIGNIN: 'NEED_SIGNIN',
   AUTHORIZED: 'ACCEPTED',
-  LOGOUT: 'LOGOUT',
+  SIGNOUT: 'SIGNOUT',
   REFUSED: 'REFUSED',
 } 
 

@@ -144,7 +144,7 @@ The following code is an implementation of the [Pryv.io Authentication process](
         connection = new Pryv.Connection(state.apiEndpoint);
         logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
       }
-      if (state.id === Pryv.Auth.AuthStates.LOGOUT) {
+      if (state.id === Pryv.Auth.AuthStates.SIGNOUT) {
         connection = null;
         logToConsole('# Logout');
       }
@@ -595,8 +595,8 @@ async onStateChange (state) {
         username: state.username
       });
       break;
-    case AuthStates.LOGOUT:
-      const message = this.messages.LOGOUT_CONFIRM ? this.messages.LOGOUT_CONFIRM : 'Logout ?';
+    case AuthStates.SIGNOUT:
+      const message = this.messages.SIGNOUT_CONFIRM ? this.messages.SIGNOUT_CONFIRM : 'Logout ?';
       if (confirm(message)) {
         this.deleteAuthorizationData();
         this.auth.init();
@@ -629,7 +629,7 @@ onClick () {
 // AuthController.js
 async handleClick () {
   if (isAuthorized.call(this)) {
-    this.state = { status: AuthStates.LOGOUT };
+    this.state = { status: AuthStates.SIGNOUT };
   } else if (isInitialized.call(this)) {
     this.startAuthRequest();
   } else if (isNeedSignIn.call(this)) {
@@ -680,7 +680,7 @@ Instead of having a predefined log in button, you can display [app-web-auth3](ht
           case Pryv.Auth.AuthStates.AUTHORIZED:
             console.log('User is authorized and can access his personal data');
             break;
-          case Pryv.Auth.AuthStates.LOGOUT:
+          case Pryv.Auth.AuthStates.SIGNOUT:
             console.log('User just logged off, please delete all the session related data');
             break;
           case Pryv.Auth.AuthStates.ERROR:
