@@ -2,7 +2,7 @@
 <html>
 
 <head>
-  <title>Pryv - Javascript Lib</title>
+  <title>Custom Login button - Pryv JS lib</title>
   <script src="../pryv.js"></script>
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
   <meta content="utf-8" http-equiv="encoding">
@@ -11,7 +11,7 @@
 <body>
   <button type="button" id="pryv-button">My custom button</button>
   <script>
-    let authSettings = {
+    const authSettings = {
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
       authRequest: { // See: https://api.pryv.com/reference/#auth-request
         requestingAppId: 'lib-js-test',
@@ -38,8 +38,8 @@
      * setup button and load assets
      */
     async init() {
-       let loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
-       loginButtonSpan.addEventListener('click', this.onClick.bind(this));     
+      let loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
+      loginButtonSpan.addEventListener('click', this.onClick.bind(this));     
     }
 
     /**
@@ -98,21 +98,21 @@
     }
   }
 
-  let serviceInfoUrl = null;// 'https://api.pryv.com/lib-js/demos/service-info.json';
-  let serviceInfoJson = {
+  const serviceInfoUrl = null; // 'https://api.pryv.com/lib-js/demos/service-info.json';
+  const serviceInfoJson = {
     "register": "https://reg.pryv.me",
     "access": "https://access.pryv.me/access",
     "api": "https://{username}.pryv.me/",
     "name": "Pryv Lab",
     "home": "https://www.pryv.com",
-   "support": "https://pryv.com/helpdesk",
+    "support": "https://pryv.com/helpdesk",
     "terms": "https://pryv.com/pryv-lab-terms-of-use/",
     "eventTypes": "https://api.pryv.com/event-types/flat.json",
     "assets": {
       "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
-   }};
+  }};
   (async function () {
-    let service = await Pryv.Browser.setupAuth(
+    let service = await Pryv.Auth.setupAuth(
       authSettings, 
       serviceInfoUrl,
       serviceInfoJson,

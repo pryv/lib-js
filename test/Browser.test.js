@@ -50,16 +50,16 @@ describe('Browser', function () {
     let AuthLoaded = false;
     settings.onStateChange = function (state) {
       should.exist(state.id);
-      if (state.id == Pryv.Browser.AuthStates.LOADING) {
+      if (state.id == Pryv.Auth.AuthStates.LOADING) {
         AuthLoaded = true;
       }
-      if (state.id == Pryv.Browser.AuthStates.INITIALIZED) {
+      if (state.id == Pryv.Auth.AuthStates.INITIALIZED) {
         expect(AuthLoaded).to.true;
       }
     }
 
     try {
-      const service = await Pryv.Browser.setupAuth(settings, testData.serviceInfoUrl);
+      const service = await Pryv.Auth.setupAuth(settings, testData.serviceInfoUrl);
       const serviceInfo = service.infoSync();
       should.exist(serviceInfo.access);
       should.exist(serviceInfo.serial);

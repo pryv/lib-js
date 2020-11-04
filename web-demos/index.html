@@ -83,18 +83,18 @@
 
 
   (async function () {
-    const service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
+    const service = await Pryv.Auth.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
     (await service.assets()).setAllDefaults();
   })();
 
 
   function pryvAuthStateChange(state) {
     console.log('##pryvAuthStateChange', state);
-    if (state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
+    if (state.id === Pryv.Auth.AuthStates.AUTHORIZED) {
       connection = new Pryv.Connection(state.apiEndpoint);
       logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
     }
-    if (state.id === Pryv.Browser.AuthStates.LOGOUT) {
+    if (state.id === Pryv.Auth.AuthStates.LOGOUT) {
       connection = null;
       logToConsole('# Logout');
     }

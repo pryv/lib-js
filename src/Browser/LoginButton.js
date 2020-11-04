@@ -1,4 +1,3 @@
-const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
 const Cookies = require('./CookieUtils');
 const AuthStates = require('../Auth/AuthStates');
 const AuthController = require('../Auth/AuthController');
@@ -21,33 +20,30 @@ class LoginButton {
    * setup button and load assets
    */
   async init () {
+    // initialize button visuals
     setupButton(this);
     this.languageCode = this.authSettings.authRequest.languageCode || 'en';    
     this.messages = Messages(this.languageCode);
     if (this.loginButtonText) {
       await loadAssets(this);
     }
+    // set cookie key for authorization data
     this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
     
+    // initialize controller
     if (this.auth) { return this.auth; }
-    this.auth = new AuthController(this.authSettings, this.service);
-    await this.auth.init(this);
+    this.auth = new AuthController(this.authSettings, this.service, this);
+    await this.auth.init();
 
     return this.service;
   }
 
-  /**
-   * The same button can redirect, open auth popup or logout
-   */
   onClick () {
     this.auth.handleClick();
   }
 
   async onStateChange (state) {
     switch (state.status) {
-      case AuthStates.ERROR:
-        this.text = getErrorMessage(this, state.message);
-        break;
       case AuthStates.LOADING:
         this.text = getLoadingMessage(this);
         break;
@@ -55,11 +51,11 @@ class LoginButton {
         this.text = getInitializedMessage(this, this.serviceInfo.name);
         break;
       case AuthStates.NEED_SIGNIN:
+        const loginUrl = state.authUrl || state.url; // url is deprecated
         if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup) 
-          location.href = state.authUrl || state.url;
+          location.href = loginUrl; 
           return;
         } else {
-          const loginUrl = state.authUrl || state.url;
           startLoginScreen(this, loginUrl);
         }
         break;
@@ -69,7 +65,6 @@ class LoginButton {
           apiEndpoint: state.apiEndpoint,
           username: state.username
         });
-        
         break;
       case AuthStates.LOGOUT:
         const message = this.messages.LOGOUT_CONFIRM ? this.messages.LOGOUT_CONFIRM : 'Logout ?';
@@ -77,6 +72,9 @@ class LoginButton {
           this.deleteAuthorizationData();
           this.auth.init();
         }
+        break;
+      case AuthStates.ERROR:
+        this.text = getErrorMessage(this, state.message);
         break;
       default:
         console.log('WARNING Unhandled state for Login: ' + state.status);
@@ -86,12 +84,12 @@ class LoginButton {
     }
   }
 
-  saveAuthorizationData (authData) {
-    Cookies.set(this._cookieKey,authData);
-  }
-
   getAuthorizationData () {
     return Cookies.get(this._cookieKey);
+  }
+
+  saveAuthorizationData (authData) {
+    Cookies.set(this._cookieKey,authData);
   }
 
   async deleteAuthorizationData () {

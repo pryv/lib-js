@@ -1,21 +1,17 @@
-const AuthController = require('../Auth/AuthController');
-const AuthStates = require('../Auth/AuthStates');
-const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
-const { getStore } = require('../Auth/AuthStore');
+const AuthController = require('./AuthController');
+const AuthStates = require('./AuthStates');
+const LoginButton = require('../Browser/LoginButton');
+const Service = require('../Service');
 
 /**
  * @memberof Pryv
- * @namespace Pryv.Browser
+ * @namespace Pryv.Auth
  */
-
 
 /**
  * Start an authentication process
- *   const authController = new AuthController(settings, serviceInfoUrl, serviceCustomizations);
-     const authService = await authController.init(humanInteractionInterface);
-     return authService;
-     
- * @memberof Pryv.Browser
+ *
+ * @memberof Pryv.Auth
  * @param {Object} settings
  * @param {Object} settings.authRequest See https://api.pryv.com/reference/#data-structure-access
  * @param {string} [settings.authRequest.languageCode] Language code, as per LoginButton Messages: 'en', 'fr
@@ -30,23 +26,18 @@ const { getStore } = require('../Auth/AuthStore');
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
  * @returns {Pryv.Service}
  */
-async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, humanInteractionInterface) { }
+async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, HumanInteraction = LoginButton) {
+  const service = new Service(serviceInfoUrl, serviceCustomizations);
+  await service.info()
 
+  const humanInteraction = new HumanInteraction(settings, service);
+  await humanInteraction.init();
+
+  return service;
+}
 
 module.exports = {
   setupAuth: setupAuth,
   AuthStates: AuthStates,
-  HumanInteractionInterface: HumanInteractionInterface,
+  AuthController: AuthController,
 }
-
-/**
- * Notify the requesting code of all important changes
- * - ERROR => {message: <string>, error: <error>}
- * - LOADING => {}
- * - INITIALIZED => {serviceInfo: <PryvServiceInfo>, action: <Open Popup Function>}
- * - AUTHORIZED => {apiEndpoint: <PryvApiEndpoint>, serviceInfo: <PryvServiceInfo>, displayName: <string> action: <Open Logout Question>}
- * - LOGOUT => {}
- * @callback AuthStateChangeHandler
- * @param {Object} state
- * @param {Pryv.Browser.AuthState} state.status  one of ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
- */

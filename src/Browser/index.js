@@ -1,14 +1,10 @@
-const AuthController = require('../Auth/AuthController');
-const AuthStates = require('../Auth/AuthStates');
-const HumanInteractionInterface = require('../Auth/HumanInteractionInterface');
-const LoginButton = require('../Browser/LoginButton');
+const LoginButton = require('./LoginButton');
 const Service = require('../Service');
 
 /**
  * @memberof Pryv
  * @namespace Pryv.Browser
  */
-
 
 /**
  * Start an authentication process
@@ -27,33 +23,17 @@ const Service = require('../Service');
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl 
  * @returns {Pryv.Service}
  */
-async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, humanInteractionInterface) {
-  
+async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, HumanInteraction = LoginButton) {
+
   let service = new Service(serviceInfoUrl, serviceCustomizations);
   await service.info()
 
-  if (humanInteractionInterface == null) {
-    humanInteractionInterface = new LoginButton(settings, service);
-  }
-  await humanInteractionInterface.init();
-  
+  const humanInteraction = new HumanInteraction(settings, service);
+  await HumanInteraction.init();
+
   return service;
 }
 
 module.exports = {
-  setupAuth: setupAuth,
-  AuthStates: AuthStates,
-  HumanInteractionInterface: HumanInteractionInterface,
+  LoginButton: LoginButton,
 }
-
-/**
- * Notify the requesting code of all important changes
- * - ERROR => {message: <string>, error: <error>}
- * - LOADING => {}
- * - INITIALIZED => {serviceInfo: <PryvServiceInfo>, action: <Open Popup Function>}
- * - AUTHORIZED => {apiEndpoint: <PryvApiEndpoint>, serviceInfo: <PryvServiceInfo>, displayName: <string> action: <Open Logout Question>}
- * - LOGOUT => {}
- * @callback AuthStateChangeHandler
- * @param {Object} state
- * @param {Pryv.Browser.AuthState} state.status  one of ERROR, LOADING, INITIALIZED, AUTHORIZED, LOGOUT
- */

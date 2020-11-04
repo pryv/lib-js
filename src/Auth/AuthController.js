@@ -8,7 +8,12 @@ const Messages = require('./LoginMessages');
  */
 class AuthController {
 
-  constructor (settings, service) {
+  /**
+   * 
+   * @param {*} settings 
+   * @param {*} service 
+   */
+  constructor (settings, service, loginButton) {
     this.settings = settings;
     validateSettings.call(this, settings);
 
@@ -20,7 +25,9 @@ class AuthController {
 
     // probably remove
     this.languageCode = this.settings.authRequest.languageCode || 'en';    
-    this.messages = Messages(this.languageCode);     
+    this.messages = Messages(this.languageCode);
+
+    this.loginButton = loginButton;
 
     function validateSettings (settings) {
       if (!settings) { throw new Error('settings cannot be null'); }
@@ -41,17 +48,19 @@ class AuthController {
   }
 
   /**
+   * async function to call right after instanciating object
+   * 
    * @returns {PryvService}
    */
-  async init (loginButton) {
+  async init () {
     this.serviceInfo = this.service.infoSync();
     this.state = { status: AuthStates.LOADING };
     this.assets = await loadAssets(this);
     
+    const loginButton = this.loginButton;
     // initialize human interaction interface
     if (loginButton != null) {
-      this.loginButton = loginButton;
-      this.stateChangeListeners.push(this.loginButton.onStateChange.bind(this.loginButton));
+      this.stateChangeListeners.push(loginButton.onStateChange.bind(loginButton));
       // autologin needs cookies/storage implemented in human interaction interface
       await checkAutoLogin(this);
     }
@@ -87,7 +96,7 @@ class AuthController {
       // reopen popup
       this.state = this.state;
     } else {
-      console.log('doin nothin because state is', this.state.status);
+      console.log('Unhandled action in "handleClick()" for status:', this.state.status);
     }
 
     function isAuthorized () {
@@ -101,6 +110,13 @@ class AuthController {
     }
   }
 
+  /**
+   * Used only to retrieve returnUrl in browser environments
+   * 
+   * @param {*} returnURL 
+   * @param {*} windowLocationForTest 
+   * @param {*} navigatorForTests 
+   */
   getReturnURL (
     returnURL,
     windowLocationForTest,
@@ -167,8 +183,8 @@ class AuthController {
         return;
       }
       const pollResponse = await pollAccess.call(this);
-
-      if (this.state.status === AuthStates.NEED_SIGNIN) {
+      
+      if (pollResponse.status === AuthStates.NEED_SIGNIN) {
         setTimeout(await doPolling.bind(this), this.state.poll_rate_ms);
       } else {
         this.state = pollResponse;
@@ -186,8 +202,12 @@ class AuthController {
     }
   }
 
-  // -------------- Auth state listeners ---------------------
+  // -------------- state listeners ---------------------
   set state (newState) {
+
+    // retro-compatibility for lib-js < 2.0.8
+    newState.id = newState.status;
+
     this._state = newState;
 
     this.stateChangeListeners.map((listener) => {
@@ -203,6 +223,8 @@ class AuthController {
     return this._state;
   }
 }
+
+// ----------- private methods -------------
 
 async function checkAutoLogin (authController) {
   const loginButton = authController.loginButton;

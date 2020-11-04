@@ -16,7 +16,6 @@ const Messages = {
   }
 }
 
-
 function get(languageCode, definitions) {
   const myMessages = definitions || Messages;
   const res = {};
