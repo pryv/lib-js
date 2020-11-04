@@ -522,11 +522,11 @@ You can customize the authentication process at different levels:
 
 #### Using a custom login button
 
-You will need to implement a class that instanciates an [AuthController](src/Auth/AuthController.js) object and implements a few methods. We will go through this guide following the Browser's [LoginButton](src/Browser/LoginButton.js) provided with this library.
+You will need to implement a class that instanciates an [AuthController](src/Auth/AuthController.js) object and implements a few methods. We will go through this guide using the Browser's default [Login Button](src/Browser/LoginButton.js) provided with this library as example.
 
 ##### Initialization
 
-You should provide it `authSettings` and an instance of [Service](src/Service.js) at initialization. As this phase might contain asynchronous calls, we like to split it between the constructor and and `async init()` function. In particular, you will need to instanciate an [AuthController](src/Auth/AuthController.js) object 
+You should provide it `authSettings` (See [Obtain a Pryv.Connection](#within-a-webpage-with-a-login-button)) and an instance of [Service](src/Service.js) at initialization. As this phase might contain asynchronous calls, we like to split it between the constructor and an `async init()` function. In particular, you will need to instanciate an [AuthController](src/Auth/AuthController.js) object.
 
 ```javascript
 constructor(authSettings, service) {
@@ -551,7 +551,7 @@ async init () {
 
 ##### Authorization data
 
-At initialization, the AuthController will attempt to fetch some persisted authorization credentials, using `LoginButton.getAuthorizationData()`. In the browser case, we are using a client-side cookie.
+At initialization, the [AuthController](src/Auth/AuthController.js) will attempt to fetch some persisted authorization credentials, using `LoginButton.getAuthorizationData()`. In the browser case, we are using a client-side cookie.
 
 ```javascript
 getAuthorizationData () {
@@ -564,11 +564,11 @@ getAuthorizationData () {
 The [authentication process](https://api.pryv.com/reference/#authenticate-your-app) implementation on the frontend can be defined in the following states:
 
 1. Loading: while the visual assets are loading
-2. Initialized: visual l
-3. Need sign in: 
-4. Authorized
-5. Sign out
-6. Error
+2. Initialized: visuals assets are loaded
+3. Need sign in: From the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
+4. Authorized: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
+5. Sign out: When the userstriggers a deletion of the client-side authorization credentials, usually by clicking the button after being signed in
+6. Error: See message for more information
 
 ```javascript
 async onStateChange (state) {
@@ -581,7 +581,7 @@ async onStateChange (state) {
       break;
     case AuthStates.NEED_SIGNIN:
       const loginUrl = state.authUrl || state.url; // .url is deprecated
-      if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup) 
+      if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup)
         location.href = loginUrl;
         return;
       } else {
@@ -616,7 +616,7 @@ async onStateChange (state) {
 
 ##### Button actions
 
-The button actions should be handled by the AuthController in the following way:
+The button actions should be handled by the [AuthController](src/Auth/AuthController.js) in the following way:
 
 ```javascript
 // LoginButton.js
@@ -640,6 +640,8 @@ async handleClick () {
   }
 }
 ```
+
+##### Custom button usage
 
 You must then provide this class as following:
 

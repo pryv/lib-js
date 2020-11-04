@@ -81,7 +81,7 @@ class AuthController {
    * Stops poll for auth request
    */
   stopAuthRequest (msg) {
-    this.state = { status: 'ERROR', message: msg };
+    this.state = { status: AuthStates.ERROR, message: msg };
   }
 
   /**
@@ -182,24 +182,34 @@ class AuthController {
       if (this.state.status !== AuthStates.NEED_SIGNIN) {
         return;
       }
-      const pollResponse = await pollAccess.call(this);
+      const pollResponse = await pollAccess(this.state.poll);
       
       if (pollResponse.status === AuthStates.NEED_SIGNIN) {
         setTimeout(await doPolling.bind(this), this.state.poll_rate_ms);
       } else {
         this.state = pollResponse;
       }
-    }
 
-    async function pollAccess() {
-      try {
-        const res = await utils.superagent
-          .get(this.state.poll)
-        return res.body;
-      } catch (e) {
-        return { status: 'ERROR', message: 'Error while polling for auth request', error: e };
+      async function pollAccess(pollUrl) {
+        try {
+          const res = await utils.superagent
+            .get(pollUrl)
+          return res.body;
+        } catch (e) {
+          console.log('got', e.response);
+          if (e.response &&
+              e.response.status === 403 &&
+              e.response.body &&
+              e.response.body.status === 'REFUSED') {
+            return { status: AuthStates.INITIALIZED };
+          } else {
+            return { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
+          }
+        }
       }
     }
+
+    
   }
 
   // -------------- state listeners ---------------------
