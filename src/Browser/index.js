@@ -1,4 +1,5 @@
 const LoginButton = require('./LoginButton');
+const CookieUtils = require('./CookieUtils');
 const Service = require('../Service');
 
 /**
@@ -36,4 +37,5 @@ async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, Human
 
 module.exports = {
   LoginButton: LoginButton,
-}
+  CookieUtils: CookieUtils,
+};

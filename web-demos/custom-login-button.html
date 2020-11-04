@@ -14,49 +14,97 @@
     const authSettings = {
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
       authRequest: { // See: https://api.pryv.com/reference/#auth-request
-        requestingAppId: 'lib-js-test',
-        languageCode: 'fr', // optional (default english)
-        returnURL: 'auto#',
+        requestingAppId: 'custom-login-button-example',
         requestedPermissions: [
           {
             streamId: 'test',
             defaultName: 'test',
             level: 'manage'
           }
-        ],
-        clientData: {
-          'app-web-auth:description': {
-            'type': 'note/txt',
-            'content': 'This is a consent message.'
-          }
-        },
+        ]
       }
     };
 
-  class MyLoginButton extends Pryv.Browser.HumanInteractionInterface {
-    /**
-     * setup button and load assets
-     */
-    async init() {
-      let loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
-      loginButtonSpan.addEventListener('click', this.onClick.bind(this));     
+  class MyLoginButton {
+
+    constructor(authSettings, service) {
+      this.authSettings = authSettings;
+      this.service = service;
+      this.serviceInfo = service.infoSync();
     }
 
-    /**
-     * The same button can redirect, open auth popup or logout
-     */
+    async init() {
+      const loginButtonSpan = document.getElementById(this.authSettings.spanButtonID);
+      loginButtonSpan.addEventListener('click', this.onClick.bind(this));
+      this.loginButtonSpan = loginButtonSpan;
+
+      this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
+
+      if (this.auth) { return this.auth; }
+      this.auth = new Pryv.Auth.AuthController(this.authSettings, this.service, this);
+      await this.auth.init();
+    }
+
     onClick() {
-      console.log('My custom on click event. Currect auth state is: ', this.auth.getState());
       this.auth.handleClick();
     }
 
-    onStateChange() {
-      console.log('State just changed to:', this.auth.getState());
-      let text = this.auth.getButtonText();
-      document.querySelector(`#${this.auth.settings.spanButtonID}`).innerText = text;
+    async onStateChange (state) {
+      switch (state.status) {
+        case Pryv.Auth.AuthStates.LOADING:
+          this.text = 'Loading visual assets';
+          break;
+        case Pryv.Auth.AuthStates.INITIALIZED:
+          this.text = 'Sign into: ' + this.serviceInfo.name;
+          break;
+        case Pryv.Auth.AuthStates.NEED_SIGNIN:
+          const loginUrl = state.authUrl || state.url; // .url is deprecated
+          if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup)
+            location.href = loginUrl;
+            return;
+          } else {
+            startLoginScreen(this, loginUrl);
+          }
+          break;
+        case Pryv.Auth.AuthStates.AUTHORIZED:
+          this.text = 'Signed in as ' + state.username;
+          this.saveAuthorizationData({
+            apiEndpoint: state.apiEndpoint,
+            username: state.username
+          });
+          break;
+        case Pryv.Auth.AuthStates.SIGNOUT:
+          const message = 'Do you wish to sign out?';
+          if (confirm(message)) {
+            this.deleteAuthorizationData();
+            this.auth.init();
+          }
+          break;
+        case Pryv.Auth.AuthStates.ERROR:
+          this.text = getErrorMessage(this, state.message);
+          break;
+        default:
+          console.log('WARNING Unhandled state for Login: ' + state.status);
+      }
+      if (this.loginButtonSpan) {
+        this.loginButtonSpan.innerHTML = this.text;
+      }
     }
 
-    startLoginScreen(authUrl) {
+    saveAuthorizationData(authData) {
+      console.log('You should save this object to the storage', authData);
+    }
+
+    getAuthorizationData() {
+      return Pryv.Browser.CookieUtils.get(this._cookieKey);
+    }
+
+    async deleteAuthorizationData() {
+      console.log('You should delete saved data from the storage');
+    }
+  }
+
+  function startLoginScreen(loginButton, authUrl) {
       console.log('My custom popup that is huge:');
       let screenX = typeof window.screenX !== 'undefined' ? window.screenX : window.screenLeft,
         screenY = typeof window.screenY !== 'undefined' ? window.screenY : window.screenTop,
@@ -75,28 +123,14 @@
           ',top=' + top +
           ',scrollbars=yes'
         );
-      this.popup = window.open(authUrl, 'You custom Sign-in', features);
+        loginButton.popup = window.open(authUrl, 'Your custom Sign-in pop-up', features);
 
-      if (!this.popup) {
-        this.auth.polling = false;
-        console.log('FAILED_TO_OPEN_WINDOW');
+      if (!loginButton.popup) {
+        console.log('Failed to open window');
       } else if (window.focus) {
-        this.popup.focus();
+        loginButton.popup.focus();
       }
     }
-
-    saveAuthorizationData(authData) {
-      console.log('You should save this object to the storage', authData);
-    }
-
-    getAuthorizationData() {
-      console.log('You should return saved data from the storage');
-    }
-
-    async deleteAuthorizationData() {
-      console.log('You should delete saved data from the storage');
-    }
-  }
 
   const serviceInfoUrl = null; // 'https://api.pryv.com/lib-js/demos/service-info.json';
   const serviceInfoJson = {
@@ -116,7 +150,7 @@
       authSettings, 
       serviceInfoUrl,
       serviceInfoJson,
-      new MyLoginButton(),
+      MyLoginButton,
       );
   })();
   </script>
