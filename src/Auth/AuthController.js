@@ -214,7 +214,7 @@ class AuthController {
   // -------------- state listeners ---------------------
   set state (newState) {
 
-    // retro-compatibility for lib-js < 2.0.8
+    // retro-compatibility for lib-js < 2.0.9
     newState.id = newState.status;
 
     this._state = newState;
