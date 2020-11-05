@@ -550,7 +550,7 @@ async init () {
 
 ##### Authorization data
 
-At initialization, the [AuthController](src/Auth/AuthController.js) will attempt to fetch some persisted authorization credentials, using `LoginButton.getAuthorizationData()`. In the browser case, we are using a client-side cookie.
+At initialization, the [AuthController](src/Auth/AuthController.js) will attempt to fetch some persisted authorization credentials, using `LoginButton.getAuthorizationData()`. In the browser case, we are using a client-side cookie. For other frameworks, use an appropriate secure storage.
 
 ```javascript
 getAuthorizationData () {
@@ -560,14 +560,16 @@ getAuthorizationData () {
 
 ##### Authentication lifecycle
 
-The [authentication process](https://api.pryv.com/reference/#authenticate-your-app) implementation on the frontend can be defined in the following states:
+The [authentication process](https://api.pryv.com/reference/#authenticate-your-app) implementation on the frontend is defined in the following states:
 
 1. Loading: while the visual assets are loading
-2. Initialized: visuals assets are loaded
+2. Initialized: visuals assets are loaded, or when [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Refused**
 3. Need sign in: From the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
 4. Authorized: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
-5. Sign out: When the userstriggers a deletion of the client-side authorization credentials, usually by clicking the button after being signed in
+5. Sign out: When the user triggers a deletion of the client-side authorization credentials, usually by clicking the button after being signed in
 6. Error: See message for more information
+
+You will need to provide a function to act depending on the state. The states`NEED_SIGNIN` and `AUTHORIZED` contain the same fields as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only contain `status`. The `ERROR` state carries a `message` property.
 
 ```javascript
 async onStateChange (state) {
