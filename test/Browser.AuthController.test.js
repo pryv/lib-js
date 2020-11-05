@@ -35,7 +35,7 @@ describe('Browser.LoginButton', function() {
         requestingAppId: 'lib-js-test',
         requestedPermissions: []
       }
-    }, service, {});
+    }, service);
     await auth.init();
   });
   
@@ -70,13 +70,6 @@ describe('Browser.LoginButton', function() {
   it('browserIsMobileOrTablet()', async function() {
     expect(utils.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
     expect(utils.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
-  });
-
-  it('getServiceInfoFromURL()', async function() {
-    const serviceInfoUrl = AuthController.getServiceInfoFromURL(
-      'https://my.Url.com/?bobby=2&prYvZoutOu=1&pryvServiceInfoUrl=' + encodeURIComponent('https://reg.pryv.me/service/infos'));
-
-    expect('https://reg.pryv.me/service/infos').to.equal(serviceInfoUrl);
   });
 
 
