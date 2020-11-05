@@ -68,7 +68,7 @@ async function prepare() {
 
   // create data stream
   try {
-    const streamId = await superagent.post(apiEndpoint + 'streams').set('authorization', loginRes.body.token).send(
+    const streamRes = await superagent.post(apiEndpoint + 'streams').set('authorization', loginRes.body.token).send(
       {
         id: 'data',
         name: 'Data'

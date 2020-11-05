@@ -1,16 +1,17 @@
-const LoginButton = require('./LoginButton');
-const CookieUtils = require('./CookieUtils');
+const AuthController = require('./AuthController');
+const AuthStates = require('./AuthStates');
+const LoginButton = require('../Browser/LoginButton');
 const Service = require('../Service');
-const utils = require('../utils');
 
 /**
  * @memberof Pryv
- * @namespace Pryv.Browser
+ * @namespace Pryv.Auth
  */
 
 /**
  * Start an authentication process
- * @memberof Pryv.Browser
+ *
+ * @memberof Pryv.Auth
  * @param {Object} settings
  * @param {Object} settings.authRequest See https://api.pryv.com/reference/#data-structure-access
  * @param {string} [settings.authRequest.languageCode] Language code, as per LoginButton Messages: 'en', 'fr
@@ -26,30 +27,17 @@ const utils = require('../utils');
  * @returns {Pryv.Service}
  */
 async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, HumanInteraction = LoginButton) {
-
-  let service = new Service(serviceInfoUrl, serviceCustomizations);
+  const service = new Service(serviceInfoUrl, serviceCustomizations);
   await service.info()
 
   const humanInteraction = new HumanInteraction(settings, service);
-  await HumanInteraction.init();
+  await humanInteraction.init();
 
   return service;
 }
 
-/**
- * Util to grab parameters from url query string
- * @param {*} url 
- */
-function getServiceInfoFromURL (url) {
-  const queryParams = utils.getQueryParamsFromURL(url || window.location.href);
-  return queryParams['pryvServiceInfoUrl'];
-}
-
 module.exports = {
-  LoginButton: LoginButton,
-  CookieUtils: CookieUtils,
-  // retro-compatibility for lib-js < 2.0.9
-  AuthStates: require('../Auth/AuthStates'),
-  setupAuth: require('../Auth').setupAuth,
-  serviceInfoFromUrl: getServiceInfoFromURL
-};
+  setupAuth: setupAuth,
+  AuthStates: AuthStates,
+  AuthController: AuthController,
+}

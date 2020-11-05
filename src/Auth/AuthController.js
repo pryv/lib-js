@@ -1,208 +1,130 @@
 const utils = require('../utils');
 const Service = require('../Service');
 const AuthStates = require('./AuthStates');
-const { getStore } = require('./AuthStore');
-const Messages = require('../Browser/LoginButtonMessages');
+const Messages = require('./LoginMessages');
 
 /**
  * @private
  */
 class AuthController {
 
-  constructor (settings, serviceInfoUrl, serviceCustomizations) {
-    this.store = getStore();
+  /**
+   * 
+   * @param {*} settings 
+   * @param {*} service 
+   */
+  constructor (settings, service, loginButton) {
     this.settings = settings;
+    validateSettings.call(this, settings);
 
-    // 1. get Language
-    if (settings.authRequest.languageCode != null) {
-      this.store.languageCode = settings.authRequest.languageCode;
+    this.stateChangeListeners = [];
+    if (this.settings.onStateChange) {
+      this.stateChangeListeners.push(this.settings.onStateChange);
     }
-    this.serviceInfoUrl = serviceInfoUrl;
-    this.serviceCustomizations = serviceCustomizations;
-    if (!settings) { throw new Error('settings cannot be null'); }
+    this.service = service;
 
-    try {
-      // -- Check Error CallBack
-      if (this.settings.onStateChange) {
-        this.store.stateChangeListners.push(this.settings.onStateChange);
-      }
+    // probably remove
+    this.languageCode = this.settings.authRequest.languageCode || 'en';    
+    this.messages = Messages(this.languageCode);
 
+    this.loginButton = loginButton;
+
+    function validateSettings (settings) {
+      if (!settings) { throw new Error('settings cannot be null'); }
       // -- settings 
-      if (!this.settings.authRequest) { throw new Error('Missing settings.authRequest'); }
-
+      if (!settings.authRequest) { throw new Error('Missing settings.authRequest'); }
+  
       // -- Extract returnURL 
-      this.settings.authRequest.returnURL =
-        this.getReturnURL(this.settings.authRequest.returnURL);
-
-      if (!this.settings.authRequest.requestingAppId) {
+      settings.authRequest.returnURL =
+        this.getReturnURL(settings.authRequest.returnURL);
+  
+      if (!settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
       }
-      if (!this.settings.authRequest.requestedPermissions) {
+      if (!settings.authRequest.requestedPermissions) {
         throw new Error('Missing settings.authRequest.requestedPermissions');
       }
-
-    } catch (e) {
-      this.store.setState({
-        id: AuthStates.ERROR, message: 'During initialization', error: e
-      });
-      throw (e);
     }
   }
 
   /**
+   * async function to call right after instanciating object
+   * 
    * @returns {PryvService}
    */
   async init () {
-    this.store.setState({ id: AuthStates.LOADING });
-
-    await this.fetchServiceInfo();
-    this.checkAutoLogin();
-
-    if (this.store.state.id !== AuthStates.AUTHORIZED) {
-      // 5. Propose Login
-      await this.prepareForLogin();
+    this.serviceInfo = this.service.infoSync();
+    this.state = { status: AuthStates.LOADING };
+    this.assets = await loadAssets(this);
+    
+    const loginButton = this.loginButton;
+    // initialize human interaction interface
+    if (loginButton != null) {
+      this.stateChangeListeners.push(loginButton.onStateChange.bind(loginButton));
+      // autologin needs cookies/storage implemented in human interaction interface
+      await checkAutoLogin(this);
     }
 
-    await this.finishAuthProcessAfterRedirection();
+    // if auto login is not prompted
+    if (this.state.status != AuthStates.AUTHORIZED) {
+      this.state = { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo};
+    }
 
-    this.store.assets = await this.loadAssets();
-
-    return this.pryvService;
+    if (loginButton != null && loginButton.finishAuthProcessAfterRedirection != null) {
+      await loginButton.finishAuthProcessAfterRedirection(this);
+    }
+    
+    return this.service;
   }
 
-  async fetchServiceInfo () {
-    if (this.pryvService) {
-      throw new Error('Browser service already initialized');
-    }
-
-    // 1. fetch service-info
-    this.pryvService = new Service(
-      this.serviceInfoUrl,
-      this.serviceCustomizations,
-      this.settings.authRequest.requestingAppId
-    );
-
-    try {
-      this.pryvServiceInfo = await this.pryvService.info();
-    } catch (e) {
-      this.store.setState({
-        id: AuthStates.ERROR,
-        message: 'Cannot fetch service/info',
-        error: e
-      });
-      throw e; // forward error
-    }
-  }
-
-  checkAutoLogin () {
-    let loginCookie = null;
-    try {
-      loginCookie = this.pryvService.getCurrentCookieInfo();
-    } catch (e) {
-      console.log(e);
-    }
-
-    if (loginCookie) {
-      this.store.setState({
-        id: AuthStates.AUTHORIZED,
-        apiEndpoint: loginCookie.apiEndpoint,
-        displayName: loginCookie.displayName
-      });
-    }
-  }
-
-  async finishAuthProcessAfterRedirection () {
-    // this step should be applied only for the browser
-    if (!utils.isBrowser()) return;
-
-    // 3. Check if there is a prYvkey as result of "out of page login"
-    const url = window.location.href;
-    let pollUrl = await this.pollUrlReturningFromLogin(url);
-    if (pollUrl !== null) {
-      try {
-        const res = await utils.superagent.get(pollUrl);
-        this.pryvService.changeAuthStateDependingOnAccess(res.body);
-      } catch (e) {
-        this.store.setState({
-          id: AuthStates.ERROR,
-          message: 'Cannot fetch result',
-          error: e
-        });
-      }
-    }
-  }
   /**
-   * Called at the end init() and when logging out()
+   * Stops poll for auth request
    */
-  async prepareForLogin () {
-    this.pryvService.deleteCurrentAuthInfo();
-
-    // 1. Make sure Browser is initialized
-    if (!this.pryvServiceInfo) {
-      throw new Error('Browser service must be initialized first');
-    }
-
-    await this.postAccessIfNeeded();
-
-    // change state to initialized if signin is needed
-    if (this.store.accessData &&
-      this.store.accessData.status == AuthController.options.ACCESS_STATUS_NEED_SIGNIN) {
-      if (!this.store.accessData.url) {
-        throw new Error('Pryv Sign-In Error: NO SETUP. Please call Browser.setupAuth() first.');
-      }
-
-      this.store.setState({
-        id: AuthStates.INITIALIZED,
-        serviceInfo: this.serviceInfo
-      });
-    }
+  stopAuthRequest (msg) {
+    this.state = { status: AuthStates.ERROR, message: msg };
   }
 
-  async postAccessIfNeeded () {
-    if (!this.store.accessData) {
-      this.pryvService.changeAuthStateDependingOnAccess(await this.postAccess());
-    }
-  }
-
-  // ----------------------- ACCESS --------------- //
   /**
-   * @private
+   * Triggered when button is pressed
    */
-  async postAccess () {
-    try {
-      const res = await utils.superagent
-        .post(this.pryvServiceInfo.access)
-        .set('accept', 'json')
-        .send(this.settings.authRequest);
-      return res.body;
-    } catch (e) {
-      this.store.setState({
-        id: AuthStates.ERROR,
-        message: 'Requesting access',
-        error: e
-      });
-      throw e; // forward error
+  async handleClick () {
+    if (isAuthorized.call(this)) {
+      this.state = { status: AuthStates.SIGNOUT };
+    } else if (isInitialized.call(this)) {
+      this.startAuthRequest();
+    } else if (isNeedSignIn.call(this)) {
+      // reopen popup
+      this.state = this.state;
+    } else {
+      console.log('Unhandled action in "handleClick()" for status:', this.state.status);
+    }
+
+    function isAuthorized () {
+      return this.state.status == AuthStates.AUTHORIZED;
+    }
+    function isInitialized () {
+      return this.state.status === AuthStates.INITIALIZED;
+    }
+    function isNeedSignIn () {
+      return this.state.status === AuthStates.NEED_SIGNIN;
     }
   }
 
-  // ------------------ ACTIONS  ----------- //
   /**
-   * Revoke Connection and clean local cookies
+   * Used only to retrieve returnUrl in browser environments
    * 
+   * @param {*} returnURL 
+   * @param {*} windowLocationForTest 
+   * @param {*} navigatorForTests 
    */
-  logOut () {
-    const message = this.store.messages.LOGOUT_CONFIRM ? this.store.messages.LOGOUT_CONFIRM : 'Logout ?';
-    if (confirm(message)) {
-      this.prepareForLogin();
-    }
-  }
-
   getReturnURL (
     returnURL,
     windowLocationForTest,
     navigatorForTests
   ) {
-    returnURL = returnURL || AuthController.options.RETURN_URL_AUTO + '#';
+    const RETURN_URL_AUTO = 'auto';
+
+    returnURL = returnURL || RETURN_URL_AUTO + '#';
 
     // check the trailer
     let trailer = returnURL.slice(-1);
@@ -229,68 +151,126 @@ class AuthController {
       returnURL = locationHref + returnURL.substring(4);
     }
     return utils.cleanURLFromPrYvParams(returnURL);
-  }
 
-  /**
-   * Util to grab parameters from url query string
-   * @param {*} url 
-   */
-  static getServiceInfoFromURL (url) {
-    const queryParams = utils.getQueryParamsFromURL(url || window.location.href);
-    //TODO check validity of status
-    return queryParams[AuthController.options.SERVICE_INFO_QUERY_PARAM_KEY];
-  }
-
-  /**
-   * Eventually return pollUrl when returning from login in another page
-   */
-  async pollUrlReturningFromLogin (url) {
-    const params = utils.getQueryParamsFromURL(url);
-    let pollUrl = null;
-    if (params.prYvkey) { // deprecated method - To be removed
-      pollUrl = this.pryvServiceInfo.access + params.prYvkey;
+    function returnUrlIsAuto (returnURL) {
+      return returnURL.indexOf(RETURN_URL_AUTO) === 0;
     }
-    if (params.prYvpoll) {
-      pollUrl = params.prYvpoll;
+  }
+
+  async startAuthRequest () {
+    this.state = await postAccess.call(this);
+    
+    await doPolling.call(this);
+    
+    async function postAccess () {
+      try {
+        const res = await utils.superagent
+          .post(this.serviceInfo.access)
+          .send(this.settings.authRequest);
+        return res.body;
+      } catch (e) {
+        this.state = {
+          status: AuthStates.ERROR,
+          message: 'Requesting access',
+          error: e
+        };
+        throw e; // forward error
+      }
     }
-    return pollUrl;
-  }
 
-  getState () {
-    return this.store.state;
-  }
+    async function doPolling() {
+      if (this.state.status !== AuthStates.NEED_SIGNIN) {
+        return;
+      }
+      const pollResponse = await pollAccess(this.state.poll);
+      
+      if (pollResponse.status === AuthStates.NEED_SIGNIN) {
+        setTimeout(await doPolling.bind(this), this.state.poll_rate_ms);
+      } else {
+        this.state = pollResponse;
+      }
 
-  async loadAssets () {
-    let loadedAssets = {};
-    try {
-      loadedAssets = await this.pryvService.assets();
-      if (typeof location !== 'undefined') {
-        await loadedAssets.loginButtonLoadCSS();
-        const thisMessages = await loadedAssets.loginButtonGetMessages();
-        if (thisMessages.LOADING) {
-          this.store.messages = Messages(this.store.languageCode, thisMessages);
-        } else {
-          console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
+      async function pollAccess(pollUrl) {
+        try {
+          const res = await utils.superagent
+            .get(pollUrl)
+          return res.body;
+        } catch (e) {
+          if (e.response &&
+              e.response.status === 403 &&
+              e.response.body &&
+              e.response.body.status === 'REFUSED') {
+            return { status: AuthStates.INITIALIZED };
+          } else {
+            return { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
+          }
         }
       }
-    } catch (e) {
-      this.store.setState({
-        id: AuthStates.ERROR,
-        message: 'Cannot fetch button visuals',
-        error: e
-      });
-      throw e; // forward error
     }
-    return loadedAssets;
+
+    
+  }
+
+  // -------------- state listeners ---------------------
+  set state (newState) {
+
+    // retro-compatibility for lib-js < 2.0.9
+    newState.id = newState.status;
+
+    this._state = newState;
+
+    this.stateChangeListeners.map((listener) => {
+      try {
+        listener(this.state)
+      } catch (e) {
+        console.log('Error during set state ()', e);
+      }
+    });
+  }
+
+  get state () {
+    return this._state;
   }
 }
 
-function returnUrlIsAuto (returnURL) {
-  return returnURL.indexOf(AuthController.options.RETURN_URL_AUTO) === 0;
+// ----------- private methods -------------
+
+async function checkAutoLogin (authController) {
+  const loginButton = authController.loginButton;
+  if (loginButton == null) {
+    return;
+  }
+
+  const storedCredentials = await loginButton.getAuthorizationData();
+  if (storedCredentials != null) {
+    authController.state = Object.assign({}, {status: AuthStates.AUTHORIZED}, storedCredentials);
+  }
 }
-AuthController.options = {
-  SERVICE_INFO_QUERY_PARAM_KEY: 'pryvServiceInfoUrl',
-  ACCESS_STATUS_NEED_SIGNIN: 'NEED_SIGNIN',
-  RETURN_URL_AUTO: 'auto',
+
+// ------------------ ACTIONS  ----------- //
+
+async function loadAssets(authController) {
+  let loadedAssets = {};
+  try {
+    loadedAssets = await authController.service.assets();
+    if (typeof location !== 'undefined') {
+      await loadedAssets.loginButtonLoadCSS();
+      const thisMessages = await loadedAssets.loginButtonGetMessages();
+      if (thisMessages.LOADING) {
+        authController.messages = Messages(authController.languageCode, thisMessages);
+      } else {
+        console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
+      }
+    }
+  } catch (e) {
+    authController.state = {
+      status: AuthStates.ERROR,
+      message: 'Cannot fetch button visuals',
+      error: e
+    };
+    throw e; // forward error
+  }
+  return loadedAssets;
 }
+
 module.exports = AuthController;

@@ -10,12 +10,11 @@ const Messages = {
     'en': 'Signin',
     'fr': 'Login'
   },
-  LOGOUT_CONFIRM: {
+  SIGNOUT_CONFIRM: {
     'en': 'Logout ?',
     'fr': 'Se deconnecter ?'
   }
 }
-
 
 function get(languageCode, definitions) {
   const myMessages = definitions || Messages;

@@ -46,7 +46,6 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
   - [Visual assets](#visual-assets)
 + [Customize Auth process](#customize-auth-process)
   - [Using a custom login button](using-a-custom-login-button)
-  - [Authentication process for virtual DOM applications](#authentication-process-for-virtual-dom-applications)
   - [Redirect user to the authentication page](#redirect-user-to-the-authentication-page)
 + [Launch web demos locally](#launch-web-demos-locally)
 
@@ -139,18 +138,18 @@ The following code is an implementation of the [Pryv.io Authentication process](
     
     function pryvAuthStateChange(state) { // called each time the authentication state changed
       console.log('##pryvAuthStateChange', state);
-      if (state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
+      if (state.id === Pryv.Auth.AuthStates.AUTHORIZED) {
         connection = new Pryv.Connection(state.apiEndpoint);
         logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
       }
-      if (state.id === Pryv.Browser.AuthStates.LOGOUT) {
+      if (state.id === Pryv.Auth.AuthStates.SIGNOUT) {
         connection = null;
         logToConsole('# Logout');
       }
   }
     var serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
     (async function () {
-      var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
+      var service = await Pryv.Auth.setupAuth(authSettings, serviceInfoUrl);
     })();
   </script>
 </body>
@@ -493,7 +492,7 @@ let defaultServiceInfoUrl = 'https://reg.pryv.me/service/info';
 serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || defaultServiceInfoUrl;
 
 (async function () {
-	var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
+	var service = await Pryv.Auth.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
 })();
 ```
 
@@ -507,7 +506,7 @@ To customize the Sign in Button refer to: [sign in button in pryv.me assets](htt
 
 ```javascript
 (async function () {
-  const service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
+  const service = await Pryv.Auth.setupAuth(authSettings, serviceInfoUrl);
   (await service.assets()).setAllDefaults(); // will load the default Favicon and CSS for this platform
 })();
 ```
@@ -521,60 +520,136 @@ You can customize the authentication process at different levels:
 
 #### Using a custom login button
 
-You will need to extend the [`Pryv.Auth.HumanInteractionInterface`](/src/Auth/HumanInteractionInterface.js), implementing the methods:
+You will need to implement a class that instanciates an [AuthController](src/Auth/AuthController.js) object and implements a few methods. We will go through this guide using the Browser's default [Login Button](src/Browser/LoginButton.js) provided with this library as example.
 
-- init()
-- onStateChange()
+##### Initialization
+
+You should provide it `authSettings` (See [Obtain a Pryv.Connection](#within-a-webpage-with-a-login-button)) and an instance of [Service](src/Service.js) at initialization. As this phase might contain asynchronous calls, we like to split it between the constructor and an `async init()` function. In particular, you will need to instanciate an [AuthController](src/Auth/AuthController.js) object.
 
 ```javascript
-class MyLoginButton extends Pryv.Browser.HumanInteractionInterface {
-  // Authentication controller will be passed in the setupAuth method
-  constructor(authController) {
-    super(authController);
-  }
-
-  async init() {
-    // register the onStateChange() method - always do this
-    this.auth.store.stateChangeListners.push(this.onStateChange.bind(this));
-      
-    // (optional) bind your button's event emitter to the auth state
-    let loginButtonSpan = document.getElementById(this.auth.settings.spanButtonID);
-    loginButtonSpan.addEventListener('click', onClick.bind(this));
-      
-    // update the button text to initialized state
-    this.onStateChange();
-  }
-
-  onStateChange() {
-    // perform action depending on new state, obtainable through this.auth.getState() 
-    console.log('State just changed to:', this.auth.getState());
-
-    let text = this.auth.pryvService.defaultButtonMessage();
-    document.querySelector(`#${this.auth.settings.spanButtonID}`).innerText = text;
-  }
+constructor(authSettings, service) {
+  this.authSettings = authSettings;
+  this.service = service;
+  this.serviceInfo = service.infoSync();
 }
 
-onClick(button) {
-  console.log('My custom on click event. Currect auth state is: ', this.auth.getState());
-  if (button.auth.getState().id === Pryv.Browser.AuthStates.AUTHORIZED) {
-    button.auth.logOut();
-  } else if (button.auth.getState().id === Pryv.Browser.AuthStates.INITIALIZED) {
-    button.auth.pryvService.startAuthRequest(button.auth);
-    const authUrl = button.auth.pryvService.getAccessData().authUrl;
-    // open the authUrl in a new window or web view
-    window.open(authUrl, 'You custom Sign-in');
+async init () {
+  // initialize button visuals
+  // ...
+
+  // set cookie key for authorization data - browser only
+  this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
+  
+  // initialize controller
+  this.auth = new AuthController(this.authSettings, this.service, this);
+  await this.auth.init();
+}
+```
+
+##### Authorization data
+
+At initialization, the [AuthController](src/Auth/AuthController.js) will attempt to fetch some persisted authorization credentials, using `LoginButton.getAuthorizationData()`. In the browser case, we are using a client-side cookie. For other frameworks, use an appropriate secure storage.
+
+```javascript
+getAuthorizationData () {
+  return Cookies.get(this._cookieKey);
+}
+```
+
+##### Authentication lifecycle
+
+The [authentication process](https://api.pryv.com/reference/#authenticate-your-app) implementation on the frontend is defined in the following states:
+
+1. Loading: while the visual assets are loading
+2. Initialized: visuals assets are loaded, or when [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Refused**
+3. Need sign in: From the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
+4. Authorized: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
+5. Sign out: When the user triggers a deletion of the client-side authorization credentials, usually by clicking the button after being signed in
+6. Error: See message for more information
+
+You will need to provide a function to act depending on the state. The states`NEED_SIGNIN` and `AUTHORIZED` contain the same fields as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only contain `status`. The `ERROR` state carries a `message` property.
+
+```javascript
+async onStateChange (state) {
+  switch (state.status) {
+    case AuthStates.LOADING:
+      this.text = getLoadingMessage(this);
+      break;
+    case AuthStates.INITIALIZED:
+      this.text = getInitializedMessage(this, this.serviceInfo.name);
+      break;
+    case AuthStates.NEED_SIGNIN:
+      const loginUrl = state.authUrl || state.url; // .url is deprecated
+      if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup)
+        location.href = loginUrl;
+        return;
+      } else {
+        startLoginScreen(this, loginUrl);
+      }
+      break;
+    case AuthStates.AUTHORIZED:
+      this.text = state.username;
+      this.saveAuthorizationData({
+        apiEndpoint: state.apiEndpoint,
+        username: state.username
+      });
+      break;
+    case AuthStates.SIGNOUT:
+      const message = this.messages.SIGNOUT_CONFIRM ? this.messages.SIGNOUT_CONFIRM : 'Logout ?';
+      if (confirm(message)) {
+        this.deleteAuthorizationData();
+        this.auth.init();
+      }
+      break;
+    case AuthStates.ERROR:
+      this.text = getErrorMessage(this, state.message);
+      break;
+    default:
+      console.log('WARNING Unhandled state for Login: ' + state.status);
+  }
+  if (this.loginButtonText) {
+    this.loginButtonText.innerHTML = this.text;
   }
 }
 ```
 
+##### Button actions
+
+The button actions should be handled by the [AuthController](src/Auth/AuthController.js) in the following way:
+
+```javascript
+// LoginButton.js
+onClick () {
+  this.auth.handleClick();
+}
+```
+
+```javascript
+// AuthController.js
+async handleClick () {
+  if (isAuthorized.call(this)) {
+    this.state = { status: AuthStates.SIGNOUT };
+  } else if (isInitialized.call(this)) {
+    this.startAuthRequest();
+  } else if (isNeedSignIn.call(this)) {
+    // reopen popup
+    this.state = this.state;
+  } else {
+    console.log('Unhandled action in "handleClick()" for status:', this.state.status);
+  }
+}
+```
+
+##### Custom button usage
+
 You must then provide this class as following:
 
 ```javascript
-let service = await Pryv.Browser.setupAuth(
-      authSettings, // See https://github.com/pryv/lib-js#within-a-webpage-with-a-login-button
-      serviceInfoUrl,
-      optionalServiceInfoOverride,
-      MyLoginButton
+let service = await Pryv.Auth.setupAuth(
+  authSettings, // See https://github.com/pryv/lib-js#within-a-webpage-with-a-login-button
+  serviceInfoUrl,
+  serviceCustomizations,
+  MyLoginButton,
 );
 ```
 
@@ -583,88 +658,6 @@ You will find a working example in  [`./web-demos/custom-login-button.html`](./w
 Follow the instructions below on [how to run these examples locally](#launch-web-demos-locally).
 
 For a more advanced scenario, you can check the default button implementation at [`./src/Browser/LoginButton.js`](/src/Browser/LoginButton.js).
-
-#### Authentication process for virtual DOM applications
-
-This section explains how you can use this library for the authentication process in virtual DOM applications.  
-
-Instead of having a predefined log in button, you can display [app-web-auth3](https://github.com/pryv/app-web-auth3) screens in a WebView component and render your screens according to the authentication `state`. For this, you would need these steps:
-
-1. Create a state monitoring function that would update a user interface when the authentication `state` changes as shown in the function below:
-
-    ```javascript
-    function pryvAuthStateChange(state) { // called each time the authentication state changed
-      switch(state.id) {
-          case Pryv.Browser.AuthStates.LOADING:
-            console.log('Loading service information...');
-            break;
-          case Pryv.Browser.AuthStates.INITIALIZED:
-            console.log('Service information is retrieved so authorization can start. You can display login / registration screen or redirect to the our hosted app - web - auth application.');
-            break;
-          case Pryv.Browser.AuthStates.AUTHORIZED:
-            console.log('User is authorized and can access his personal data');
-            break;
-          case Pryv.Browser.AuthStates.LOGOUT:
-            console.log('User just logged off, please delete all the session related data');
-            break;
-          case Pryv.Browser.AuthStates.ERROR:
-            console.log('Error:', state?.message);
-            break;
-      }
-    }
-    ```
-
-    See the [pryvAuthStateChange() function in the react-native example app](https://github.com/pryv/app-react-native-example/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L36).
-
-2. Initialize Pryv Service (it is important that authSettings would NOT have `spanButtonID` setting,
- otherwise, default Pryv login button would be rendered):
-
-    ```javascript
-    let service = await Pryv.Browser.setupAuth(
-          authSettings,
-          serviceInfoUrl,
-          optionalServiceInfoOverride
-    );
-    ```
-
-    See the [setupAuth() function in the react-native example app].(https://github.com/pryv/app-react-native-example/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L116)  
-
-    Note: the `pryvAuthStateChange()` function will be part of `authSettings`.
-
-3. When user clicks on the login button, the application should:
-
-    a) start the auth process  
-    
-    b) redirect to the url that is received from auth request as in the example below:  
-    
-    ```javascript
-      async function startAuthProcess () {
-        await service.startAuthRequest();
-        const loginUrl = service.getAccessData().authUrl;
-        // open webview with loginUrl url
-      }
-    ```
-
-    See the [startAuthProcess() in the react-native example app](https://github.com/pryv/app-react-native-example/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L169).
-
-4. In case of error or when the user does not finish login process, the application should stop the auth process:
-
-    ```javascript
-    await pryvService.stopAuthProcess();
-    ```
-
-5. When `state.id` is equal to `Pryv.Browser.AuthStates.AUTHORIZED`, you can get api_endpoint with the token from the `state` as shown below:
-
-    ```javascript
-    if (authState.id == Pryv.Browser.AuthStates.AUTHORIZED) {
-      const { endpoint, token } = pryvService.extractTokenAndApiEndpoint(authState.apiEndpoint);
-      // username = authState.displayName
-    }
-    ```
-
-    See how to [retrieve auth data from the state in the react-native example app](https://github.com/pryv/app-react-native-example/blob/dbb45f9192661b198e6b5b86a1c20e387a3a9c7e/PryvReactNative/views/auth/login-method-selection.js#L51).
-
-For the **full example**, see the [Mini React-Native app](https://github.com/pryv/app-react-native-example) that is using lib-js authentication.
 
 #### Redirect user to the authentication page
 
