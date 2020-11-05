@@ -40,7 +40,6 @@
 
       this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
 
-      if (this.auth) { return this.auth; }
       this.auth = new Pryv.Auth.AuthController(this.authSettings, this.service, this);
       await this.auth.init();
     }

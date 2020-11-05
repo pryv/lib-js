@@ -539,11 +539,10 @@ async init () {
   // initialize button visuals
   // ...
 
-  // set cookie key for authorization data
+  // set cookie key for authorization data - browser only
   this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
   
   // initialize controller
-  if (this.auth) { return this.auth; }
   this.auth = new AuthController(this.authSettings, this.service, this);
   await this.auth.init();
 }
