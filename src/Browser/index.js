@@ -1,6 +1,7 @@
 const LoginButton = require('./LoginButton');
 const CookieUtils = require('./CookieUtils');
 const Service = require('../Service');
+const utils = require('../utils');
 
 /**
  * @memberof Pryv
@@ -35,7 +36,20 @@ async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, Human
   return service;
 }
 
+/**
+ * Util to grab parameters from url query string
+ * @param {*} url 
+ */
+function getServiceInfoFromURL (url) {
+  const queryParams = utils.getQueryParamsFromURL(url || window.location.href);
+  return queryParams['pryvServiceInfoUrl'];
+}
+
 module.exports = {
   LoginButton: LoginButton,
   CookieUtils: CookieUtils,
+  // retro-compatibility for lib-js < 2.0.9
+  AuthStates: require('../Auth/AuthStates'),
+  setupAuth: require('../Auth').setupAuth,
+  serviceInfoFromUrl: getServiceInfoFromURL
 };
