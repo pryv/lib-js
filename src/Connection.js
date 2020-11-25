@@ -217,7 +217,7 @@ class Connection {
         .buffer(false)
         .parse(myParser);
 
-    } else if (typeof fetch !== 'undefined') { // browser supports fetch 
+    } else if (typeof fetch !== 'undefined' && !(typeof navigator != 'undefined' && navigator.product == 'ReactNative')) { // browser supports fetch and it is not react native
       res = await browserGetEventStreamed(this, queryParams, myParser);
 
     } else { // browser no fetch supports
