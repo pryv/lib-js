@@ -12760,7 +12760,7 @@ class Connection {
         .buffer(false)
         .parse(myParser);
 
-    } else if (typeof fetch !== 'undefined') { // browser supports fetch 
+    } else if (typeof fetch !== 'undefined' && !(typeof navigator != 'undefined' && navigator.product == 'ReactNative')) { // browser supports fetch and it is not react native
       res = await browserGetEventStreamed(this, queryParams, myParser);
 
     } else { // browser no fetch supports
@@ -13292,7 +13292,7 @@ async function getEventStreamed(conn, queryParam, parser) {
   // ------------   fetch ------------------- //
   let url = new URL(conn.endpoint + 'events');
   url.search = new URLSearchParams(queryParam);
-  let fetchParams = {method: 'GET', headers: {Accept: 'application/jon'}};
+  let fetchParams = {method: 'GET', headers: {Accept: 'application/json'}};
   if (conn.token) fetchParams.headers.Authorization = conn.token;
 
   let response = await fetch(url,fetchParams);
