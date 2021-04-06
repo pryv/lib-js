@@ -41,7 +41,7 @@
     "superagent": "^5.2.2"
   },
   "devDependencies": {
-    "@pryv/lib-js-common": "git+https://github.com/pryv/lib-js-common.git#1.0.2",
+    "@pryv/lib-js-common": "git+https://github.com/pryv/lib-js-common.git#1.0.3",
     "@pryv/monitor": "^1.0.2",
     "@pryv/socket.io": "^1.0.2",
     "chai": "^4.2.0",
