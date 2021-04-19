@@ -125,7 +125,7 @@
         loginButton.popup = window.open(authUrl, 'Your custom Sign-in pop-up', features);
 
       if (!loginButton.popup) {
-        console.log('Failed to open window');
+        console.log('Pop-up blocked. A second click should allow it.');
       } else if (window.focus) {
         loginButton.popup.focus();
       }
