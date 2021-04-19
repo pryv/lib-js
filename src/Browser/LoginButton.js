@@ -154,7 +154,8 @@ async function startLoginScreen (loginButton, authUrl) {
     loginButton.popup = window.open(authUrl, 'prYv Sign-in', features);
   
   if (!loginButton.popup) {
-    loginButton.auth.stopAuthRequest('FAILED_TO_OPEN_WINDOW');
+    // loginButton.auth.stopAuthRequest('FAILED_TO_OPEN_WINDOW');
+    console.log('Pop-up blocked. A second click should allow it.');
   } else if (window.focus) {
     loginButton.popup.focus();
   }
