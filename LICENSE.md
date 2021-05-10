@@ -1,4 +1,4 @@
-Copyright (c) 2020, Pryv S.A.
+Copyright (c) 2020-2021, Pryv S.A.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,

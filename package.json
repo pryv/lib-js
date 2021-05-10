@@ -1,6 +1,6 @@
 {
   "name": "pryv",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "homepage": "https://github.com/pryv/lib-js",
   "description": "Pryv Javascript Library",
   "keywords": [
@@ -41,13 +41,12 @@
     "superagent": "^5.2.2"
   },
   "devDependencies": {
-    "@pryv/lib-js-common": "git+https://github.com/pryv/lib-js-common.git#1.0.3",
-    "@pryv/monitor": "^1.0.2",
-    "@pryv/socket.io": "^1.0.2",
+    "@pryv/lib-js-common": "git+https://github.com/pryv/lib-js-common.git#1.0.4",
+    "@pryv/monitor": "^1.0.5",
+    "@pryv/socket.io": "^1.0.5",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "cuid": "^2.1.8",
-    "jsdoc": "^3.6.6",
     "mocha": "^6.2.3",
     "node-fetch": "^2.6.0",
     "nyc": "^14.1.1",

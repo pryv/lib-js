@@ -7,11 +7,19 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 *Prerequisites*: Node 12
 
 - Setup: `npm run setup`
+
 - Build pryv.js library for browsers: `npm run build`, the result is published in `./dist`
+
 - Build documentation: `npm run doc`, the result is published in `./dist/docs`
+
+  Note: as per v2.1.7 `jsdoc` dev dependency has been removed from package.json .. it should be installed with `npm install jsoc --dev` 
+
 - Node Tests: `npm run test`
+
 - Coverage: `npm run cover`, the result is visible in `./coverage`
+
 - Browser tests: **build**, then `npm run webserver` and open [https://l.rec.la:9443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info](https://l.rec.la:9443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info)
+
 - Update on CDN: After running **setup** and **build** scripts, run `npm run gh-pages ${COMMIT_MESSAGE}`. If this fails, run `npm run clear` to rebuild a fresh `dist/` folder
 
 ## Usage
@@ -680,6 +688,10 @@ You can find html examples in the [`./web-demos`](/web-demos) directory. You can
 2. as a simple html file (service information must be passed as JSON to avoid CORS problem).
 
 # Change Log
+
+## 2.1.7
+
+- Removed JSDOC dev dependency for security reason
 
 ## 2.1.0
 
