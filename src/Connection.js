@@ -258,6 +258,23 @@ class Connection {
   }
 
   /**
+   * Create an event from a Buffer
+   * NODE.jS ONLY
+   * @param {Event} event
+   * @param {Buffer} bufferData
+   * @param {string} fileName
+   */
+   async createEventWithFileFromBuffer(event, bufferData, filename) {
+    const res = await this._post('events')
+      .field('event', JSON.stringify(event))
+      .attach('file', bufferData, filename);
+
+    const now = Date.now() / 1000;
+    this._handleMeta(res.body, now);
+    return res.body
+  }
+
+  /**
  * Create an event with attached formData
  * !! BROWSER ONLY
  * @param {Event} event

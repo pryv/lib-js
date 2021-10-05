@@ -339,6 +339,22 @@ const result = await connection.createEventWithFile(
 );
 ```
 
+or from a Buffer
+
+```javascript
+const filePath = './test/my_image.png';
+const buggerData = fs.readFileSync(filePath);
+
+const result = await connection.createEventWithFileFromBuffer(
+  {
+    type: 'picture/attached',
+    streamId: 'data'
+  },
+  bufferData, 
+  'my_image.png' // filename
+);
+```
+
 #### Browser
 
 From an Input field

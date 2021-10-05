@@ -4,6 +4,7 @@ const testData = require('./test-data.js');
 let conn = null;
 const { URL, URLSearchParams } = require('universal-url');
 const cuid = require('cuid');
+const { readFileSync } = require('fs');
 
 describe('Connection', () => {
 
@@ -183,7 +184,7 @@ describe('Connection', () => {
   });
 
   describe('Attachements', () => {
-    it('Create event with attachemnt', async () => {
+    it('Create event with attachment from file', async () => {
       let res = null;
 
       if (typeof window === 'undefined') { // node
@@ -210,8 +211,46 @@ describe('Connection', () => {
       should.exist(res.event);
       should.exist(res.event.attachments);
       res.event.attachments.length.should.equal(1);
-
+      res.event.attachments[0].size.should.equal(14798);
+      res.event.attachments[0].type.should.equal('image/png');
+      res.event.attachments[0].fileName.should.equal('Y.png');
     });
+
+    it('Create event with attachment from Buffer', async () => {
+      const fileData = readFileSync('./test/Y.png');
+
+      let res = null;
+
+      if (typeof window === 'undefined') { // node
+
+        res = await conn.createEventWithFileFromBuffer({
+          type: 'picture/attached',
+          streamId: 'data'
+        }, fileData, 'Y.png');
+
+      } else { // browser
+        const formData = new FormData();
+        var blob = new Blob(['Hello'], { type: "text/txt" });
+        formData.append("webmasterfile", blob);
+
+        res = await conn.createEventWithFormData({
+          type: 'file/attached',
+          streamId: 'data'
+        }, formData);
+
+      }
+
+
+      should.exist(res);
+      should.exist(res.event);
+      should.exist(res.event.attachments);
+      res.event.attachments.length.should.equal(1);
+      res.event.attachments[0].size.should.equal(14798);
+      res.event.attachments[0].type.should.equal('image/png');
+      res.event.attachments[0].fileName.should.equal('Y.png');
+    });
+
+
   });
 
   describe('HF events', () => {
@@ -404,19 +443,6 @@ describe('Connection', () => {
       should.exist(accessInfoUser);
       should.exist(accessInfoUser.name);
       should.equal(newUser.access.name, accessInfoUser.name);
-    });
-
-    it('has same permissions', () => {
-      should.exist(accessInfoUser);
-      should.exist(accessInfoUser.permissions);
-      let lengthPermission = accessInfoUser.permissions.length;
-      should.equal(newUser.access.permissions.length, lengthPermission);
-      for (let i = 0; i < lengthPermission; i++) {
-        should.exist(accessInfoUser.permissions[i].streamId);
-        should.equal(newUser.access.permissions[i].streamId, accessInfoUser.permissions[i].streamId);
-        should.exist(accessInfoUser.permissions[i].level);
-        should.equal(newUser.access.permissions[i].level, accessInfoUser.permissions[i].level);
-      }
     });
 
     it('has same token', () => {
