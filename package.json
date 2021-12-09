@@ -42,8 +42,8 @@
   },
   "devDependencies": {
     "@pryv/lib-js-common": "github:pryv/lib-js-common#1.0.6",
-    "@pryv/monitor": "^1.0.5",
-    "@pryv/socket.io": "^1.0.5",
+    "@pryv/monitor": "^1.0.6",
+    "@pryv/socket.io": "^1.0.6",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "cuid": "^2.1.8",
