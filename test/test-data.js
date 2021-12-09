@@ -61,9 +61,12 @@ async function prepare() {
       });
   }
   const apiEndpoint = serviceInfo.api.replace('{username}', username);
+  
   // login user
+  const headers = {};
+  if (typeof window === 'undefined') { headers.Origin = 'https://l.rec.la'; }; // node only
   const loginRes = await superagent.post(apiEndpoint + 'auth/login')
-    .set('Origin', 'https://l.rec.la')
+    .set(headers)
     .send({ username: username, password: username, appId: 'js-lib-test' });
 
   // create data stream
