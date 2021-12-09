@@ -4,7 +4,13 @@ const testData = require('./test-data.js');
 let conn = null;
 const { URL, URLSearchParams } = require('universal-url');
 const cuid = require('cuid');
-const { readFileSync } = require('fs');
+
+const isNode = (typeof window === 'undefined');
+
+let readFileSync;
+if (isNode) { // node
+  readFileSync = require('fs').readFileSync;
+}
 
 describe('Connection', () => {
 
@@ -184,27 +190,12 @@ describe('Connection', () => {
   });
 
   describe('Attachements', () => {
-    it('Create event with attachment from file', async () => {
-      let res = null;
-
-      if (typeof window === 'undefined') { // node
-
-        res = await conn.createEventWithFile({
-          type: 'picture/attached',
-          streamId: 'data'
-        }, './test/Y.png');
-
-      } else { // browser
-        const formData = new FormData();
-        var blob = new Blob(['Hello'], { type: "text/txt" });
-        formData.append("webmasterfile", blob);
-
-        res = await conn.createEventWithFormData({
-          type: 'file/attached',
-          streamId: 'data'
-        }, formData);
-
-      }
+    it('Node Only: Create event with attachment from file', async function () {
+      if (!isNode) { this.skip(); }
+      const res = await conn.createEventWithFile({
+        type: 'picture/attached',
+        streamId: 'data'
+      }, './test/Y.png');
 
 
       should.exist(res);
@@ -216,38 +207,65 @@ describe('Connection', () => {
       res.event.attachments[0].fileName.should.equal('Y.png');
     });
 
-    it('Create event with attachment from Buffer', async () => {
-      const fileData = readFileSync('./test/Y.png');
-
-      let res = null;
-
-      if (typeof window === 'undefined') { // node
-
-        res = await conn.createEventWithFileFromBuffer({
+    it('Node Only: Create event with attachment from Buffer', async function () {
+      if (!isNode) { this.skip(); }
+    
+        const fileData = readFileSync('./test/Y.png');
+        const res = await conn.createEventWithFileFromBuffer({
           type: 'picture/attached',
           streamId: 'data'
         }, fileData, 'Y.png');
 
-      } else { // browser
-        const formData = new FormData();
-        var blob = new Blob(['Hello'], { type: "text/txt" });
-        formData.append("webmasterfile", blob);
+        should.exist(res);
+        should.exist(res.event);
+        should.exist(res.event.attachments);
+        res.event.attachments.length.should.equal(1);
+        res.event.attachments[0].size.should.equal(14798);
+        res.event.attachments[0].type.should.equal('image/png');
+        res.event.attachments[0].fileName.should.equal('Y.png');
 
-        res = await conn.createEventWithFormData({
-          type: 'file/attached',
+    });
+
+    it('Browser Only: Create event with attachment from Buffer', async function () {
+      if (isNode) { this.skip(); }
+      
+        const blob = new Blob(['Hello'], { type: "text/txt" });
+        const res = await conn.createEventWithFileFromBuffer({
+          type: 'picture/attached',
           streamId: 'data'
-        }, formData);
+        }, blob, 'Hello.txt');
 
-      }
+        should.exist(res);
+        should.exist(res.event);
+        console.log(res.event);
+        should.exist(res.event.attachments);
+        res.event.attachments.length.should.equal(1);
+        res.event.attachments[0].size.should.equal(5);
+        res.event.attachments[0].type.should.equal('text/txt');
+        res.event.attachments[0].fileName.should.equal('Hello.txt');
+        
+    });
+    
+    it('Browser Only: Create event with attachment formData', async function () {
+      if (isNode) { this.skip(); }
+
+      const formData = new FormData();
+      const blob = new Blob(['Hello'], { type: "text/txt" });
+      formData.append("webmasterfile", blob);
+
+      const res = await conn.createEventWithFormData({
+        type: 'file/attached',
+        streamId: 'data'
+      }, formData);
 
 
       should.exist(res);
       should.exist(res.event);
       should.exist(res.event.attachments);
       res.event.attachments.length.should.equal(1);
-      res.event.attachments[0].size.should.equal(14798);
-      res.event.attachments[0].type.should.equal('image/png');
-      res.event.attachments[0].fileName.should.equal('Y.png');
+      res.event.attachments[0].size.should.equal(5);
+      res.event.attachments[0].type.should.equal('text/txt');
+      res.event.attachments[0].fileName.should.equal('blob');
     });
 
 
@@ -340,14 +358,14 @@ describe('Connection', () => {
       });
 
       it('no-events ', async () => {
-        const queryParams = { fromTime: 0, toTime: now, tags: ['RANDOM-123'] };
+        const queryParams = { fromTime: 0, toTime: now, types: ['type/unexistent'] };
         function forEachEvent(event) { }
         const res = await conn.getEventsStreamed(queryParams, forEachEvent);
         expect(0).to.equal(res.eventsCount);
       });
 
       it('no-events includeDeletions', async () => {
-        const queryParams = { fromTime: 0, toTime: now, tags: ['RANDOM-123'], includeDeletions: true, modifiedSince: 0 };
+        const queryParams = { fromTime: 0, toTime: now, types: ['type/unexistent'], includeDeletions: true, modifiedSince: 0 };
         function forEachEvent(event) { }
         const res = await conn.getEventsStreamed(queryParams, forEachEvent);
         expect(0).to.equal(res.eventsCount);

@@ -343,7 +343,7 @@ or from a Buffer
 
 ```javascript
 const filePath = './test/my_image.png';
-const buggerData = fs.readFileSync(filePath);
+const bufferData = fs.readFileSync(filePath);
 
 const result = await connection.createEventWithFileFromBuffer(
   {
@@ -402,6 +402,21 @@ connect.createEventWithFormData(
     // handle result here
   }
 );
+
+// -- alternative with a filename
+
+connect.createEventWithFileFromBuffer(
+  {
+    type: 'file/attached',
+    streamId: 'data'
+  },
+  blob, 'filename.txt')  // here we can directly use the blob
+  .then(function (res, err) {
+    // handle result here
+  }
+);
+
+
 ```
 
 ### High Frequency Events 
