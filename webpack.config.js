@@ -24,7 +24,7 @@ module.exports = [
 	{ // es5 version
 		mode: 'production',
 		entry: {
-			'pryv': ['core-js/stable', './src/index.js'],
+			'pryv': ['./src/index.js'],
 		},
 		output: {
 			filename: '[name].js',
@@ -38,7 +38,7 @@ module.exports = [
 	{ // es5 version including socket.io and monitors
 		mode: 'production',
 		entry: {
-			'pryv-socket.io-monitor': ['core-js/stable', './src/index-socket.io-monitor.js'],
+			'pryv-socket.io-monitor': ['./src/index-socket.io-monitor.js'],
 		},
 		output: {
 			filename: '[name].js',
@@ -47,7 +47,13 @@ module.exports = [
 			library: 'Pryv'
 		},
 		devtool: 'source-map',
-		module: webpackBabelConfig
+		module: webpackBabelConfig,
+    resolve: {
+      fallback: {
+          'fs': false,
+          'path': false,
+      },
+    }
 	},
 	{ // browser test suite (es6)
 		mode: 'development',
@@ -61,11 +67,17 @@ module.exports = [
 			library: 'browserTest'
 		},
 		plugins: [
-			new webpack.IgnorePlugin(/zombie/),
+			new webpack.IgnorePlugin({resourceRegExp: /zombie/}),
 			new CopyPlugin({ patterns: [
 				{ from: 'test/browser-tests.html' },
 			]})
 		],
 		devtool: 'source-map',
+    resolve: {
+      fallback: {
+          'fs': false,
+          'path': false,
+      },
+    }
 	}
 ];

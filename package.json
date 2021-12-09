@@ -1,6 +1,6 @@
 {
   "name": "pryv",
-  "version": "2.1.8",
+  "version": "2.1.9",
   "homepage": "https://github.com/pryv/lib-js",
   "description": "Pryv Javascript Library",
   "keywords": [
@@ -21,7 +21,7 @@
   "scripts": {
     "setup": "./scripts/setup-environment-dev.sh",
     "build": "webpack --config webpack.config.js",
-    "doc": "node node_modules/jsdoc/jsdoc.js -c .jsdoc-conf.json",
+    "doc": "npx jsdoc -c .jsdoc-conf.json",
     "test": "mocha --reporter spec  test/**/*.test.js --timeout 3000",
     "test-debug": "mocha --inpect-brk=40000 --reporter spec  test/**/*.test.js ",
     "test:browser": "npm run build; ",
@@ -38,19 +38,19 @@
     }
   ],
   "dependencies": {
-    "superagent": "^5.2.2"
+    "superagent": "^6.1.0"
   },
   "devDependencies": {
-    "@pryv/lib-js-common": "git+https://github.com/pryv/lib-js-common.git#1.0.4",
+    "@pryv/lib-js-common": "github:pryv/lib-js-common#1.0.6",
     "@pryv/monitor": "^1.0.5",
     "@pryv/socket.io": "^1.0.5",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "cuid": "^2.1.8",
-    "mocha": "^6.2.3",
+    "mocha": "^9.1.3",
     "node-fetch": "^2.6.0",
-    "nyc": "^14.1.1",
-    "rec-la": "latest",
+    "nyc": "^15.1.0",
+    "rec.la": "latest",
     "universal-url": "^2.0.0",
     "zombie": "^6.1.4"
   }
