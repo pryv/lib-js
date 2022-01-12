@@ -12,7 +12,7 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 
 - Build documentation: `npm run doc`, the result is published in `./dist/docs`
 
-  Note: as per v2.1.7 `jsdoc` dev dependency has been removed from package.json .. it should be installed with `npm install jsoc --dev` 
+  Note: as per v2.1.7 `jsdoc` dev dependency has been removed from package.json .. it should be installed with `npm install jsoc --dev`
 
 - Node Tests: `npm run test`
 
@@ -67,10 +67,10 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 
 #### Others distributions for browsers & extensions:
 
-- ES6: `https://api.pryv.com/lib-js/pryv-es6.js` 
+- ES6: `https://api.pryv.com/lib-js/pryv-es6.js`
 - Bundle: (Socket.io + Monitor + Lib-js) `https://api.pryv.com/lib-js/pryv-socket.io-monitor.js`.
-  This library can be extended with two packages: 
-  - Socket.io extension: [https://github.com/pryv/lib-js-socket.io](https://github.com/pryv/lib-js-socket.io) 
+  This library can be extended with two packages:
+  - Socket.io extension: [https://github.com/pryv/lib-js-socket.io](https://github.com/pryv/lib-js-socket.io)
   - Monitor extension: [https://github.com/pryv/lib-js-monitor](https://github.com/pryv/lib-js-monitor)
 
 #### Example on code pen:
@@ -79,7 +79,7 @@ This JavaScript library is meant to facilitate writing NodeJS and browser apps f
 
 #### Node.js
 
-Install with:  `npm install pryv --save ` 
+Install with:  `npm install pryv --save `
 
 ```javascript
 const Pryv = require('pryv');
@@ -108,7 +108,7 @@ const connection = new Pryv.Connection(apiEndpoint);
 
 #### Within a WebPage with a login button
 
-The following code is an implementation of the [Pryv.io Authentication process](https://api.pryv.com/reference/#authenticate-your-app). 
+The following code is an implementation of the [Pryv.io Authentication process](https://api.pryv.com/reference/#authenticate-your-app).
 
 ```html
 <!doctype html>
@@ -143,7 +143,7 @@ The following code is an implementation of the [Pryv.io Authentication process](
         // referer: 'my test with lib-js', // optional string to track registration source
       }
     };
-    
+
     function pryvAuthStateChange(state) { // called each time the authentication state changed
       console.log('##pryvAuthStateChange', state);
       if (state.id === Pryv.Auth.AuthStates.AUTHORIZED) {
@@ -274,7 +274,7 @@ try {
 #### result:
 
 ```javascript
-{ 
+{
   eventsCount: 10000,
   meta:
   {
@@ -306,7 +306,7 @@ try {
 #### result:
 
 ```javascript
-{ 
+{
   eventDeletionsCount: 150,
   eventsCount: 10000,
   meta:
@@ -350,7 +350,7 @@ const result = await connection.createEventWithFileFromBuffer(
     type: 'picture/attached',
     streamId: 'data'
   },
-  bufferData, 
+  bufferData,
   'my_image.png' // filename
 );
 ```
@@ -368,7 +368,7 @@ From an Input field
     'file0',
     document.getElementById('create-file').files[0]
 ) ;
-  
+
   connection.createEventWithFormData(
     {
       type: 'file/attached',
@@ -419,7 +419,7 @@ connect.createEventWithFileFromBuffer(
 
 ```
 
-### High Frequency Events 
+### High Frequency Events
 
 Reference: [https://api.pryv.com/reference/#hf-events](https://api.pryv.com/reference/#hf-events)
 
@@ -475,9 +475,9 @@ A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a serv
 
 It relies on the content of a **service information** configuration, See: [Service Information API reference](https://api.pryv.com/reference/#service-info)
 
-#### Pryv.Service 
+#### Pryv.Service
 
-Exposes tools to interact with Pryv.io at a "Platform" level. 
+Exposes tools to interact with Pryv.io at a "Platform" level.
 
 ##### Initizalization with a service info URL
 
@@ -492,7 +492,7 @@ Service information properties can be overriden with specific values. This might
 ```javascript
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
 const serviceCustomizations = {
-  name: 'Pryv Lab 2', 
+  name: 'Pryv Lab 2',
   assets: {
     definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
   }
@@ -504,7 +504,7 @@ const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
 
 See: [Pryv.Service](https://pryv.github.io/js-lib/docs/Pryv.Service.html) for more details
 
-- `service.info()` - returns the content of the serviceInfo in a Promise 
+- `service.info()` - returns the content of the serviceInfo in a Promise
 
   ```javascript
   // example: get the name of the platform
@@ -519,7 +519,7 @@ See: [Pryv.Service](https://pryv.github.io/js-lib/docs/Pryv.Service.html) for mo
 
 #### Pryv.Browser - retrieve serviceInfo from query URL
 
-A single Web App might need to be run on different Pryv.io platforms. This is the case of most Pryv.io demonstrators.  
+A single Web App might need to be run on different Pryv.io platforms. This is the case of most Pryv.io demonstrators.
 
 The corresponding Pryv.io platform can be specified by providing the Service Information URL as query parameter `pryvServiceInfoUrl` as per the [Pryv App Guidelines](https://api.pryv.com/guides/app-guidelines/). It can be extracted using `Pryv.Browser.serviceInfoFromUrl()` .
 
@@ -527,7 +527,7 @@ Example of usage for web App with the url https://api.pryv.com/app-web-access/?p
 
 ```javascript
 let defaultServiceInfoUrl = 'https://reg.pryv.me/service/info';
-// if present override serviceInfoURL from URL query param "?pryvServiceInfoUrl=.." 
+// if present override serviceInfoURL from URL query param "?pryvServiceInfoUrl=.."
 serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || defaultServiceInfoUrl;
 
 (async function () {
@@ -578,7 +578,7 @@ async init () {
 
   // set cookie key for authorization data - browser only
   this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
-  
+
   // initialize controller
   this.auth = new AuthController(this.authSettings, this.service, this);
   await this.auth.init();
@@ -700,8 +700,8 @@ For a more advanced scenario, you can check the default button implementation at
 
 #### Redirect user to the authentication page
 
-There is a possibility that you would like to register the user in another page. You can check the [`./web-demos/auth-with-redirection.html`](./web-demos/auth-with-redirection.html) example.  
-Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html).  
+There is a possibility that you would like to register the user in another page. You can check the [`./web-demos/auth-with-redirection.html`](./web-demos/auth-with-redirection.html) example.
+Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html).
 Here is the explanation how to [launch web-demos locally](#launch-web-demos-locally)
 
 ### Launch web demos locally
@@ -713,12 +713,16 @@ You can find html examples in the [`./web-demos`](/web-demos) directory. You can
     ```bash
     npm run webserver
     ```
-    
+
     and open an example with the following URL **https://l.rec.la:9443/demos/EXAMPLE_NAME.html**, like: [https://l.rec.la:9443/demos/auth.html](https://l.rec.la:9443/demos/auth.html)
 
 2. as a simple html file (service information must be passed as JSON to avoid CORS problem).
 
 # Change Log
+
+## 2.2.0
+
+- Added TypeScript typings – contribution from @ovesco
 
 ## 2.1.7
 
@@ -729,10 +733,10 @@ You can find html examples in the [`./web-demos`](/web-demos) directory. You can
 - UI separated from the Authentication logic
 - Extendable UI feature was added
 
-## 2.0.3 
+## 2.0.3
 
-- Added Connection.username() 
+- Added Connection.username()
 - Various dependencies upgrades
 - Fixing Origin header in Browser distribution
 
-## 2.0.1 Initial Release 
+## 2.0.1 Initial Release
