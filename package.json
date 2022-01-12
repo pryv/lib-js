@@ -39,17 +39,17 @@
     }
   ],
   "dependencies": {
-    "superagent": "^6.1.0"
+    "superagent": "^7.0.2"
   },
   "devDependencies": {
     "@pryv/lib-js-common": "github:pryv/lib-js-common#1.0.6",
-    "@pryv/monitor": "^1.0.5",
-    "@pryv/socket.io": "^1.0.5",
+    "@pryv/monitor": "^1.0.6",
+    "@pryv/socket.io": "^1.0.6",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "cuid": "^2.1.8",
     "mocha": "^9.1.3",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^2.6.1",
     "nyc": "^15.1.0",
     "rec.la": "latest",
     "universal-url": "^2.0.0",
