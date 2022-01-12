@@ -17,6 +17,7 @@
     "name": "Pryv S.A."
   },
   "main": "src/index.js",
+  "types": "src/index.d.ts",
   "license": "BSD-3-Clause",
   "scripts": {
     "setup": "./scripts/setup-environment-dev.sh",
