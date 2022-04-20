@@ -1,3 +1,6 @@
+/* global chai, describe, it, before, after, Browser */
+/* eslint-disable no-unused-expressions */
+
 const expect = chai.expect;
 
 const utils = require('../src/utils.js');
@@ -5,12 +8,12 @@ const Service = require('../src/Service');
 const AuthController = require('../src/Auth/AuthController.js');
 const testData = require('./test-data.js');
 
-describe('Browser.LoginButton', function() {
-  this.timeout(5000); 
+describe('Browser.LoginButton', function () {
+  this.timeout(5000);
 
   let auth;
   let removeZombie = false;
-  before(async function() {
+  before(async function () {
     if (typeof document !== 'undefined') return; // in browser
     removeZombie = true;
     const browser = new Browser();
@@ -21,14 +24,14 @@ describe('Browser.LoginButton', function() {
     global.navigator = { userAgent: 'Safari' };
   });
 
-  after(async function() {
+  after(async function () {
     if (!removeZombie) return; // in browser
     delete global.document;
     delete global.window;
     delete global.location;
   });
-  before(async function() {
-    let service = new Service(testData.serviceInfoUrl);
+  before(async function () {
+    const service = new Service(testData.serviceInfoUrl);
     await service.info();
     auth = new AuthController({
       authRequest: {
@@ -38,8 +41,8 @@ describe('Browser.LoginButton', function() {
     }, service);
     await auth.init();
   });
-  
-  it('getReturnURL()', async function() {
+
+  it('getReturnURL()', async function () {
     const myUrl = 'https://mysite.com/bobby';
     let error = null;
     try {
@@ -57,24 +60,22 @@ describe('Browser.LoginButton', function() {
 
     expect(auth.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
 
-    fakeNavigator =  { userAgent: 'Safari' };
+    fakeNavigator = { userAgent: 'Safari' };
     expect(auth.getReturnURL('auto#', myUrl, fakeNavigator)).to.equal(false);
     expect(auth.getReturnURL('auto?', myUrl, fakeNavigator)).to.equal(false);
     expect(auth.getReturnURL(false, myUrl, fakeNavigator)).to.equal(false);
     expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
     expect(auth.getReturnURL('http://zou.zou/toto#', myUrl, fakeNavigator)).to.equal('http://zou.zou/toto#');
-    global.window = { location: { href: myUrl + '?prYvstatus=zouzou'} }
+    global.window = { location: { href: myUrl + '?prYvstatus=zouzou' } };
     expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
   });
 
-  it('browserIsMobileOrTablet()', async function() {
+  it('browserIsMobileOrTablet()', async function () {
     expect(utils.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
     expect(utils.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
   });
 
-
-  it('cleanURLFromPrYvParams()', async function() {
-
+  it('cleanURLFromPrYvParams()', async function () {
     expect('https://my.Url.com/?bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 
@@ -89,9 +90,5 @@ describe('Browser.LoginButton', function() {
 
     expect('https://my.Url.com/#bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
-    
   });
-
 });
-
-

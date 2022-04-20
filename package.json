@@ -20,7 +20,7 @@
   "types": "src/index.d.ts",
   "license": "BSD-3-Clause",
   "scripts": {
-    "setup": "./scripts/setup-environment-dev.sh",
+    "setup": "./scripts/setup-dev-env",
     "build": "webpack --config webpack.config.js",
     "doc": "npx jsdoc -c .jsdoc-conf.json",
     "test": "mocha --reporter spec  test/**/*.test.js --timeout 3000",
@@ -29,7 +29,7 @@
     "cover": "nyc npm run test && npm run cover:report",
     "cover:report": "nyc report --reporter=lcov --reporter=html",
     "webserver": "./node_modules/.bin/rec-la ./dist 9443",
-    "gh-pages": "./scripts/upload.sh",
+    "gh-pages": "./scripts/upload",
     "clear": "rm -r dist/ && npm run setup"
   },
   "contributors": [
@@ -52,6 +52,7 @@
     "node-fetch": "^3.2.3",
     "nyc": "^15.1.0",
     "rec.la": "latest",
+    "semistandard": "^16.0.1",
     "universal-url": "^2.0.0",
     "whatwg-url": "^11.0.0",
     "zombie": "^6.1.4"

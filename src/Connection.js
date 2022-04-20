@@ -1,15 +1,11 @@
-
 const utils = require('./utils.js');
-
 const jsonParser = require('./lib/json-parser');
-
 const browserGetEventStreamed = require('./lib/browser-getEventStreamed');
-
 
 /**
  * @class Connection
  * A connection is an authenticated link to a Pryv.io account.
- * 
+ *
  * @type {TokenAndEndpoint}
  *
  * @example
@@ -19,22 +15,23 @@ const browserGetEventStreamed = require('./lib/browser-getEventStreamed');
  * @property {string} [token]
  * @property {string} endpoint
  * @memberof Pryv
- * 
+ *
  * @constructor
- * @this {Connection} 
+ * @this {Connection}
  * @param {PryvApiEndpoint} pryvApiEndpoint
  * @param {Pryv.Service} [service] - eventually initialize Connection with a Service
  */
 class Connection {
-
-  constructor(pryvApiEndpoint, service) {
+  constructor (pryvApiEndpoint, service) {
     const { token, endpoint } = utils.extractTokenAndApiEndpoint(pryvApiEndpoint);
     this.token = token;
     this.endpoint = endpoint;
     this.options = {};
     this.options.chunkSize = 1000;
     this._deltaTime = { value: 0, weight: 0 };
-    if (! service instanceof Service) { throw new Error('Invalid service param'); }
+    if (service && !(service instanceof Service)) {
+      throw new Error('Invalid service param');
+    }
     this._service = service;
   }
 
@@ -43,19 +40,19 @@ class Connection {
    * @readonly
    * @property {Pryv.Service} service
    */
-  get service() {
+  get service () {
     if (this._service) return this._service;
     this._service = new Service(this.endpoint + 'service/info');
     return this._service;
   }
 
   /**
-   * get username. 
+   * get username.
    * It's async as in it constructed from access info
-   * @param {*} arrayOfAPICalls 
-   * @param {*} progress 
+   * @param {*} arrayOfAPICalls
+   * @param {*} progress
    */
-  async username() {
+  async username () {
     const accessInfo = await this.accessInfo();
     return accessInfo.user.username;
   }
@@ -64,8 +61,8 @@ class Connection {
    * get access info
    * It's async as it is constructed with get function.
    */
-  async accessInfo(){
-    return this.get("access-info", null);
+  async accessInfo () {
+    return this.get('access-info', null);
   }
 
   /**
@@ -76,18 +73,18 @@ class Connection {
    * @param {Function} [progress] Return percentage of progress (0 - 100);
    * @returns {Promise<Array>} Promise to Array of results matching each method call in order
    */
-  async api(arrayOfAPICalls, progress) {
-    function httpHandler(batchCall) {
+  async api (arrayOfAPICalls, progress) {
+    function httpHandler (batchCall) {
       return this.post('', batchCall);
-    };
+    }
     return await this._chunkedBatchCall(arrayOfAPICalls, progress, httpHandler.bind(this));
   }
 
   /**
    * @private
    */
-  async _chunkedBatchCall(arrayOfAPICalls, progress, callHandler) {
-    if (! Array.isArray(arrayOfAPICalls)) {
+  async _chunkedBatchCall (arrayOfAPICalls, progress, callHandler) {
+    if (!Array.isArray(arrayOfAPICalls)) {
       throw new Error('Pryv.api() takes an array as input');
     }
 
@@ -97,41 +94,40 @@ class Connection {
       const thisBatch = [];
       const cursorMax = Math.min(cursor + this.options.chunkSize, arrayOfAPICalls.length);
       // copy only method and params into a back call to be exuted
-      for (let i = cursor; i < cursorMax ; i++) {      
-        thisBatch.push({ method: arrayOfAPICalls[i].method, params: arrayOfAPICalls[i].params});
+      for (let i = cursor; i < cursorMax; i++) {
+        thisBatch.push({ method: arrayOfAPICalls[i].method, params: arrayOfAPICalls[i].params });
       }
       const resRequest = await callHandler(thisBatch);
-      
+
       // result checks
-      if (! resRequest || ! Array.isArray(resRequest.results)) {
+      if (!resRequest || !Array.isArray(resRequest.results)) {
         throw new Error('API call result is not an Array: ' + JSON.stringify(resRequest));
       }
-      if (resRequest.results.length != thisBatch.length) {
+      if (resRequest.results.length !== thisBatch.length) {
         throw new Error('API call result Array does not match request: ' + JSON.stringify(resRequest));
       }
 
-
-      // eventually call handleResult 
+      // eventually call handleResult
       for (let i = 0; i < resRequest.results.length; i++) {
         if (arrayOfAPICalls[i + cursor].handleResult) {
           await arrayOfAPICalls[i + cursor].handleResult.call(null, resRequest.results[i]);
         }
       }
-      Array.prototype.push.apply(res, resRequest.results)
-      percent =  Math.round(100 * res.length / arrayOfAPICalls.length);
+      Array.prototype.push.apply(res, resRequest.results);
+      percent = Math.round(100 * res.length / arrayOfAPICalls.length);
       if (progress) { progress(percent, res); }
     }
     return res;
   }
 
   /**
-   * Post to API return results  
-   * @param {(Array | Object)} data 
+   * Post to API return results
+   * @param {(Array | Object)} data
    * @param {Object} queryParams
-   * @param {string} path 
-   * @returns {Promise<Array|Object>}  Promise to result.body
+   * @param {string} path
+   * @returns {Promise<Array|Object>} Promise to result.body
    */
-  async post(path, data, queryParams) {
+  async post (path, data, queryParams) {
     const now = Date.now() / 1000;
     const res = await this.postRaw(path, data, queryParams);
     this._handleMeta(res.body, now);
@@ -139,44 +135,44 @@ class Connection {
   }
 
   /**
-   * Raw Post to API return superagent object  
-   * @param {Array | Object} data 
+   * Raw Post to API return superagent object
+   * @param {Array | Object} data
    * @param {Object} queryParams
-   * @param {string} path 
+   * @param {string} path
    * @returns {request.superagent}  Promise from superagent's post request
    */
-  async postRaw(path, data, queryParams) {
+  async postRaw (path, data, queryParams) {
     return this._post(path)
       .query(queryParams)
       .send(data);
   }
 
-   _post(path) {
+  _post (path) {
     return utils.superagent.post(this.endpoint + path)
       .set('Authorization', this.token)
       .set('accept', 'json');
   }
 
   /**
-   * Post to API return results  
+   * Post to API return results
    * @param {Object} queryParams
-   * @param {string} path 
+   * @param {string} path
    * @returns {Promise<Array|Object>}  Promise to result.body
    */
-  async get(path, queryParams) {
+  async get (path, queryParams) {
     const now = Date.now() / 1000;
     const res = await this.getRaw(path, queryParams);
     this._handleMeta(res.body, now);
-    return res.body
+    return res.body;
   }
 
   /**
    * Raw Get to API return superagent object
-   * @param {Object} queryParams 
-   * @param {string} path 
+   * @param {Object} queryParams
+   * @param {string} path
    * @returns {request.superagent}  Promise from superagent's get request
    */
-  getRaw(path, queryParams) {
+  getRaw (path, queryParams) {
     path = path || '';
     return utils.superagent.get(this.endpoint + path)
       .set('Authorization', this.token)
@@ -188,7 +184,7 @@ class Connection {
    * ADD Data Points to HFEvent (flatJSON format)
    * https://api.pryv.com/reference/#add-hf-series-data-points
    */
-  async addPointsToHFEvent(eventId, fields, points) {
+  async addPointsToHFEvent (eventId, fields, points) {
     const res = await this.post('events/' + eventId + '/series',
       {
         format: 'flatJSON',
@@ -202,24 +198,22 @@ class Connection {
   }
 
   /**
-   * Streamed get Event. 
-   * Fallbacks to not streamed, for browsers that does not support `fetch()` API 
+   * Streamed get Event.
+   * Fallbacks to not streamed, for browsers that does not support `fetch()` API
    * @see https://api.pryv.com/reference/#get-events
    * @param {Object} queryParams See `events.get` parameters
-   * @param {Function} forEachEvent Function taking one event as parameter. Will be called for each event 
+   * @param {Function} forEachEvent Function taking one event as parameter. Will be called for each event
    * @returns {Promise<Object>} Promise to result.body transformed with `eventsCount: {count}` replacing `events: [...]`
    */
-  async getEventsStreamed(queryParams, forEachEvent) {
+  async getEventsStreamed (queryParams, forEachEvent) {
     const myParser = jsonParser(forEachEvent, queryParams.includeDeletions);
     let res = null;
     if (typeof window === 'undefined') { // node
       res = await this.getRaw('events', queryParams)
         .buffer(false)
         .parse(myParser);
-
-    } else if (typeof fetch !== 'undefined' && !(typeof navigator != 'undefined' && navigator.product == 'ReactNative')) { // browser supports fetch and it is not react native
+    } else if (typeof fetch !== 'undefined' && !(typeof navigator !== 'undefined' && navigator.product === 'ReactNative')) { // browser supports fetch and it is not react native
       res = await browserGetEventStreamed(this, queryParams, myParser);
-
     } else { // browser no fetch supports
       console.log('WARNING: Browser does not support fetch() required by Pryv.Connection.getEventsStreamed()');
       res = await this.getRaw('events', queryParams);
@@ -229,7 +223,7 @@ class Connection {
         res.body.eventsCount += res.body.events.length;
         delete res.body.events;
       }
-      if (res.body.eventDeletions) { // deletions are in a seprated Array 
+      if (res.body.eventDeletions) { // deletions are in a seprated Array
         res.body.eventDeletions.forEach(forEachEvent);
         res.body.eventsCount += res.body.eventDeletions.length;
         delete res.body.eventDeletions;
@@ -238,7 +232,7 @@ class Connection {
 
     const now = Date.now() / 1000;
     this._handleMeta(res.body, now);
-    return res.body
+    return res.body;
   }
 
   /**
@@ -247,14 +241,14 @@ class Connection {
    * @param {Event} event
    * @param {string} filePath
    */
-  async createEventWithFile(event, filePath) {
+  async createEventWithFile (event, filePath) {
     const res = await this._post('events')
       .field('event', JSON.stringify(event))
       .attach('file', filePath);
 
     const now = Date.now() / 1000;
     this._handleMeta(res.body, now);
-    return res.body
+    return res.body;
   }
 
   /**
@@ -264,14 +258,14 @@ class Connection {
    * @param {Buffer} bufferData
    * @param {string} fileName
    */
-   async createEventWithFileFromBuffer(event, bufferData, filename) {
+  async createEventWithFileFromBuffer (event, bufferData, filename) {
     const res = await this._post('events')
       .field('event', JSON.stringify(event))
       .attach('file', bufferData, filename);
 
     const now = Date.now() / 1000;
     this._handleMeta(res.body, now);
-    return res.body
+    return res.body;
   }
 
   /**
@@ -280,10 +274,10 @@ class Connection {
  * @param {Event} event
  * @param {FormData} formData https://developer.mozilla.org/en-US/docs/Web/API/FormData/FormData
  */
-  async createEventWithFormData(event, formData) {
+  async createEventWithFormData (event, formData) {
     formData.append('event', JSON.stringify(event));
     const res = await this._post('events').send(formData);
-    return res.body
+    return res.body;
   }
 
   /**
@@ -292,7 +286,7 @@ class Connection {
    * @readonly
    * @property {number} deltaTime
    */
-  get deltaTime() {
+  get deltaTime () {
     return this._deltaTime.value;
   }
 
@@ -301,21 +295,19 @@ class Connection {
    * @readonly
    * @property {PryvApiEndpoint} deltaTime
    */
-  get apiEndpoint() {
+  get apiEndpoint () {
     return utils.buildPryvApiEndpoint(this);
   }
 
   // private method that handle meta data parsing
-    _handleMeta(res, requestLocalTimestamp) {
+  _handleMeta (res, requestLocalTimestamp) {
     if (!res.meta) throw new Error('Cannot find .meta in response.');
     if (!res.meta.serverTime) throw new Error('Cannot find .meta.serverTime in response.');
 
-    // update deltaTime and weight it 
+    // update deltaTime and weight it
     this._deltaTime.value = (this._deltaTime.value * this._deltaTime.weight + res.meta.serverTime - requestLocalTimestamp) / ++this._deltaTime.weight;
   }
-
 }
-
 
 module.exports = Connection;
 

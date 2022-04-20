@@ -1,5 +1,4 @@
 const utils = require('../utils');
-const Service = require('../Service');
 const AuthStates = require('./AuthStates');
 const Messages = require('./LoginMessages');
 
@@ -7,11 +6,10 @@ const Messages = require('./LoginMessages');
  * @private
  */
 class AuthController {
-
   /**
-   * 
-   * @param {*} settings 
-   * @param {*} service 
+   *
+   * @param {*} settings
+   * @param {*} service
    */
   constructor (settings, service, loginButton) {
     this.settings = settings;
@@ -24,20 +22,20 @@ class AuthController {
     this.service = service;
 
     // probably remove
-    this.languageCode = this.settings.authRequest.languageCode || 'en';    
+    this.languageCode = this.settings.authRequest.languageCode || 'en';
     this.messages = Messages(this.languageCode);
 
     this.loginButton = loginButton;
 
     function validateSettings (settings) {
       if (!settings) { throw new Error('settings cannot be null'); }
-      // -- settings 
+      // -- settings
       if (!settings.authRequest) { throw new Error('Missing settings.authRequest'); }
-  
-      // -- Extract returnURL 
+
+      // -- Extract returnURL
       settings.authRequest.returnURL =
         this.getReturnURL(settings.authRequest.returnURL);
-  
+
       if (!settings.authRequest.requestingAppId) {
         throw new Error('Missing settings.authRequest.requestingAppId');
       }
@@ -49,14 +47,14 @@ class AuthController {
 
   /**
    * async function to call right after instanciating object
-   * 
+   *
    * @returns {PryvService}
    */
   async init () {
     this.serviceInfo = this.service.infoSync();
     this.state = { status: AuthStates.LOADING };
     this.assets = await loadAssets(this);
-    
+
     const loginButton = this.loginButton;
     // initialize human interaction interface
     if (loginButton != null) {
@@ -66,14 +64,14 @@ class AuthController {
     }
 
     // if auto login is not prompted
-    if (this.state.status != AuthStates.AUTHORIZED) {
-      this.state = { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo};
+    if (this.state.status !== AuthStates.AUTHORIZED) {
+      this.state = { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
     }
 
     if (loginButton != null && loginButton.finishAuthProcessAfterRedirection != null) {
       await loginButton.finishAuthProcessAfterRedirection(this);
     }
-    
+
     return this.service;
   }
 
@@ -93,14 +91,14 @@ class AuthController {
     } else if (isInitialized.call(this)) {
       this.startAuthRequest();
     } else if (isNeedSignIn.call(this)) {
-      // reopen popup
-      this.state = this.state;
+      // reopen popup (HACK for now: set to private property to avoid self-assignment)
+      this.state = this._state;
     } else {
       console.log('Unhandled action in "handleClick()" for status:', this.state.status);
     }
 
     function isAuthorized () {
-      return this.state.status == AuthStates.AUTHORIZED;
+      return this.state.status === AuthStates.AUTHORIZED;
     }
     function isInitialized () {
       return this.state.status === AuthStates.INITIALIZED;
@@ -112,10 +110,10 @@ class AuthController {
 
   /**
    * Used only to retrieve returnUrl in browser environments
-   * 
-   * @param {*} returnURL 
-   * @param {*} windowLocationForTest 
-   * @param {*} navigatorForTests 
+   *
+   * @param {*} returnURL
+   * @param {*} windowLocationForTest
+   * @param {*} navigatorForTests
    */
   getReturnURL (
     returnURL,
@@ -127,24 +125,19 @@ class AuthController {
     returnURL = returnURL || RETURN_URL_AUTO + '#';
 
     // check the trailer
-    let trailer = returnURL.slice(-1);
+    const trailer = returnURL.slice(-1);
     if ('#&?'.indexOf(trailer) < 0) {
       throw new Error('Pryv access: Last character of --returnURL setting-- is not ' +
         '"?", "&" or "#": ' + returnURL);
     }
     // auto mode for desktop
-    if (
-      returnUrlIsAuto(returnURL) &&
-      !utils.browserIsMobileOrTablet(navigatorForTests)
-    ) {
+    if (returnUrlIsAuto(returnURL) &&
+        !utils.browserIsMobileOrTablet(navigatorForTests)) {
       return false;
-    } else if (
-      // auto mode for mobile or self
-      (returnUrlIsAuto(returnURL) &&
-        utils.browserIsMobileOrTablet(navigatorForTests)
-      )
-      || returnURL.indexOf('self') === 0
-    ) {
+    // auto mode for mobile or self
+    } else if ((returnUrlIsAuto(returnURL) &&
+                utils.browserIsMobileOrTablet(navigatorForTests)) ||
+               returnURL.indexOf('self') === 0) {
       // set self as return url?
       // eventually clean-up current url from previous pryv returnURL
       const locationHref = windowLocationForTest || window.location.href;
@@ -159,9 +152,9 @@ class AuthController {
 
   async startAuthRequest () {
     this.state = await postAccess.call(this);
-    
+
     await doPolling.call(this);
-    
+
     async function postAccess () {
       try {
         const res = await utils.superagent
@@ -178,22 +171,21 @@ class AuthController {
       }
     }
 
-    async function doPolling() {
+    async function doPolling () {
       if (this.state.status !== AuthStates.NEED_SIGNIN) {
         return;
       }
       const pollResponse = await pollAccess(this.state.poll);
-      
+
       if (pollResponse.status === AuthStates.NEED_SIGNIN) {
         setTimeout(await doPolling.bind(this), this.state.poll_rate_ms);
       } else {
         this.state = pollResponse;
       }
 
-      async function pollAccess(pollUrl) {
+      async function pollAccess (pollUrl) {
         try {
-          const res = await utils.superagent
-            .get(pollUrl)
+          const res = await utils.superagent.get(pollUrl);
           return res.body;
         } catch (e) {
           if (e.response &&
@@ -207,21 +199,18 @@ class AuthController {
         }
       }
     }
-
-    
   }
 
   // -------------- state listeners ---------------------
   set state (newState) {
-
     // retro-compatibility for lib-js < 2.0.9
     newState.id = newState.status;
 
     this._state = newState;
 
-    this.stateChangeListeners.map((listener) => {
+    this.stateChangeListeners.forEach((listener) => {
       try {
-        listener(this.state)
+        listener(this.state);
       } catch (e) {
         console.log('Error during set state ()', e);
       }
@@ -243,13 +232,13 @@ async function checkAutoLogin (authController) {
 
   const storedCredentials = await loginButton.getAuthorizationData();
   if (storedCredentials != null) {
-    authController.state = Object.assign({}, {status: AuthStates.AUTHORIZED}, storedCredentials);
+    authController.state = Object.assign({}, { status: AuthStates.AUTHORIZED }, storedCredentials);
   }
 }
 
 // ------------------ ACTIONS  ----------- //
 
-async function loadAssets(authController) {
+async function loadAssets (authController) {
   let loadedAssets = {};
   try {
     loadedAssets = await authController.service.assets();
@@ -259,7 +248,7 @@ async function loadAssets(authController) {
       if (thisMessages.LOADING) {
         authController.messages = Messages(authController.languageCode, thisMessages);
       } else {
-        console.log("WARNING Messages cannot be loaded using defaults: ", thisMessages)
+        console.log('WARNING Messages cannot be loaded using defaults: ', thisMessages);
       }
     }
   } catch (e) {

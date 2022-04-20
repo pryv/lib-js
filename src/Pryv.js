@@ -1,4 +1,3 @@
-
 /**
  * Pryv library
  * @version 1.0
@@ -15,5 +14,4 @@ module.exports = {
   Browser: require('./Browser'),
   utils: require('./utils'),
   version: require('../package.json').version
-}
-
+};

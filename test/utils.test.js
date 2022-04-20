@@ -1,11 +1,10 @@
+/* global chai, describe, it, before, Pryv */
 
 const should = chai.should();
-const expect = chai.expect;
 
 const testData = require('./test-data.js');
 
 describe('utils', function () {
-
   before(async function () {
     this.timeout(5000);
     await testData.prepare();
@@ -15,7 +14,7 @@ describe('utils', function () {
     const tokenAndAPI = Pryv.utils
       .extractTokenAndApiEndpoint(testData.apiEndpointWithToken);
     testData.token.should.equals(tokenAndAPI.token);
-  
+
     (testData.apiEndpoint).should.equals(tokenAndAPI.endpoint);
     done();
   });
@@ -23,7 +22,7 @@ describe('utils', function () {
   it('extractTokenAndApiEndpoint should work without token', function (done) {
     const tokenAndAPI = Pryv.utils
       .extractTokenAndApiEndpoint(testData.apiEndpoint);
-      
+
     should.not.exist(tokenAndAPI.token);
 
     (testData.apiEndpoint).should.equals(tokenAndAPI.endpoint);
@@ -33,22 +32,20 @@ describe('utils', function () {
   it('extractTokenAndApiEndpoint should fail on invalid url', function (done) {
     let error = null;
     try {
-      const tokenAndAPI = Pryv.utils
-        .extractTokenAndApiEndpoint('blip');
+      Pryv.utils.extractTokenAndApiEndpoint('blip');
     } catch (e) {
       error = e;
-      
       return done();
     }
     should.exist(error);
-    
   });
 
   it('buildAPIEndpoint with token', function (done) {
     const apiEndpoint = Pryv.utils
-      .buildPryvApiEndpoint({ 
-        token: testData.token, 
-        endpoint: testData.apiEndpoint});   
+      .buildPryvApiEndpoint({
+        token: testData.token,
+        endpoint: testData.apiEndpoint
+      });
     apiEndpoint.should.equals(testData.apiEndpointWithToken);
     done();
   });
@@ -62,7 +59,4 @@ describe('utils', function () {
     apiEndpoint.should.equals(testData.apiEndpoint);
     done();
   });
-
 });
-
-

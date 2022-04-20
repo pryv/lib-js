@@ -10,9 +10,9 @@ module.exports = function (foreachEvent, includeDeletions) {
   let buffer = ''; // temp data
   let body = null; // to be returned
 
-  //IN EVENTS VARS
-  let depth = 0; // level of depth in brackets 
-  let inString = false; // cursor is in a String 
+  // IN EVENTS VARS
+  let depth = 0; // level of depth in brackets
+  let inString = false; // cursor is in a String
   let skipNextOne = false; // when a backslash is found
   let cursorPos = 0; // position of Character Cursor
 
@@ -24,11 +24,11 @@ module.exports = function (foreachEvent, includeDeletions) {
     A_BEFORE_EVENTS: 0,
     B_IN_EVENTS: 1,
     D_AFTER_EVENTS: 2
-  }
+  };
 
   let state = states.A_BEFORE_EVENTS;
 
-  function processBuffer() {
+  function processBuffer () {
     switch (state) {
       case states.A_BEFORE_EVENTS:
         searchStartEvents();
@@ -42,10 +42,9 @@ module.exports = function (foreachEvent, includeDeletions) {
     }
   }
 
-
-  function searchStartEvents() {
-    // search for "events": and happend any info before to the body 
-    var n = buffer.indexOf(EVENTMARKERS[eventOrEventDeletions]);
+  function searchStartEvents () {
+    // search for "events": and happend any info before to the body
+    const n = buffer.indexOf(EVENTMARKERS[eventOrEventDeletions]);
     if (n > 0) {
       if (eventOrEventDeletions === 0) { // do only once
         body = buffer.substring(0, n);
@@ -56,8 +55,7 @@ module.exports = function (foreachEvent, includeDeletions) {
     }
   }
 
-
-  function processEvents() {
+  function processEvents () {
     /// ---- in Event
     while (cursorPos < buffer.length && (state === states.B_IN_EVENTS)) {
       if (skipNextOne) { // ignore next character
@@ -66,7 +64,7 @@ module.exports = function (foreachEvent, includeDeletions) {
         continue;
       }
       switch (buffer.charCodeAt(cursorPos)) {
-        case 93:  // ]
+        case 93: // ]
           if (depth === 0) { // end of events
             if (cursorPos !== 0) {
               throw new Error('Found trailling ] in mid-course');
@@ -75,20 +73,20 @@ module.exports = function (foreachEvent, includeDeletions) {
               state = states.A_BEFORE_EVENTS;
               eventOrEventDeletions = 1; // now look for eventDeletions
               return;
-            } else { // done 
+            } else { // done
               state = states.D_AFTER_EVENTS;
               let eventsOrDeletionMsg = '';
               if (eventOrEventDeletions === 1) {
-                eventsOrDeletionMsg = '"eventDeletionsCount":' + eventDeletionsCount + ','
+                eventsOrDeletionMsg = '"eventDeletionsCount":' + eventDeletionsCount + ',';
               }
               buffer = eventsOrDeletionMsg + '"eventsCount":' + eventsCount + '' + buffer.substr(1);
             }
           }
           break;
-        case 92:  // \
+        case 92: // \
           skipNextOne = true;
           break;
-        case 123:  // {
+        case 123: // {
           if (!inString) depth++;
           break;
         case 34: // "
@@ -100,13 +98,13 @@ module.exports = function (foreachEvent, includeDeletions) {
             // ignore possible coma ',' if first char
             const ignoreComa = (buffer.charCodeAt(0) === 44) ? 1 : 0;
             const eventStr = buffer.substring(ignoreComa, cursorPos + 1);
-            
+
             if (eventOrEventDeletions === 0) {
               eventsCount++;
             } else {
               eventDeletionsCount++;
             }
-            buffer = buffer.substr(cursorPos + 1 );
+            buffer = buffer.substr(cursorPos + 1);
             addEvent(eventStr);
             cursorPos = -1;
           }
@@ -116,11 +114,10 @@ module.exports = function (foreachEvent, includeDeletions) {
     }
   }
 
-  function afterEvents() {
+  function afterEvents () {
     // just happend the end of message;
     body += buffer;
     buffer = '';
-    return;
   }
 
   return function (res, fn) {
@@ -147,10 +144,8 @@ module.exports = function (foreachEvent, includeDeletions) {
     });
   };
 
-
   /// --- Direct Push
-  function addEvent(strEvent) {
+  function addEvent (strEvent) {
     foreachEvent(JSON.parse(strEvent));
   }
-
 };

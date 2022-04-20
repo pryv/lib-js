@@ -2,6 +2,7 @@
 
 This JavaScript library is meant to facilitate writing Node.js and browser apps for a Pryv.io platform. It follows the [Pryv.io App Guidelines](https://api.pryv.com/guides/app-guidelines/).
 
+
 ## Contribute
 
 *Prerequisite*: Node 12+
@@ -21,6 +22,9 @@ This JavaScript library is meant to facilitate writing Node.js and browser apps 
 - Browser tests: **build**, then `npm run webserver` and open [https://l.rec.la:9443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info](https://l.rec.la:9443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info)
 
 - Update on CDN: After running **setup** and **build** scripts, run `npm run gh-pages ${COMMIT_MESSAGE}`. If this fails, run `npm run clear` to rebuild a fresh `dist/` folder
+
+The code follows the [Semi-Standard](https://github.com/standard/semistandard) style.
+
 
 ## Usage
 
@@ -718,25 +722,26 @@ You can find html examples in the [`./web-demos`](/web-demos) directory. You can
 
 2. as a simple html file (service information must be passed as JSON to avoid CORS problem).
 
-# Change Log
 
-## 2.2.0
+## Change Log
+
+### 2.2.0
 
 - Added TypeScript typings – contribution from @ovesco
 
-## 2.1.7
+### 2.1.7
 
 - Removed JSDOC dev dependency for security reason
 
-## 2.1.0
+### 2.1.0
 
 - UI separated from the Authentication logic
 - Extendable UI feature was added
 
-## 2.0.3
+### 2.0.3
 
 - Added Connection.username()
 - Various dependencies upgrades
 - Fixing Origin header in Browser distribution
 
-## 2.0.1 Initial Release
+### 2.0.1 Initial Release

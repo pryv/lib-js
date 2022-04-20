@@ -1,7 +1,10 @@
 const utils = require('./utils.js');
+
+/* global location */
+
 /**
  * Holds Pryv Service informations.
- * 
+ *
  * It's returned by `service.assets()`
  *
  * @memberof Pryv
@@ -12,7 +15,7 @@ class ServiceAssets {
    * @param { object} assets The content of service/info.assets properties.
    * @param { string } pryvServiceAssetsSourceUrl Url point to assets of the service of a Pryv platform: https://api.pryv.com/reference/#service-info property `assets.src`
    */
-  constructor(assets, assetsURL) {
+  constructor (assets, assetsURL) {
     this._assets = assets;
     this._assetsURL = assetsURL;
   }
@@ -22,7 +25,7 @@ class ServiceAssets {
    * @param {string} pryvServiceAssetsSourceUrl
    * @returns {ServiceAssets}
    */
-  static async setup(pryvServiceAssetsSourceUrl) {
+  static async setup (pryvServiceAssetsSourceUrl) {
     const res = await utils.superagent.get(pryvServiceAssetsSourceUrl).set('accept', 'json');
     return new ServiceAssets(res.body, pryvServiceAssetsSourceUrl);
   }
@@ -30,9 +33,9 @@ class ServiceAssets {
   /**
    * get a value from path separated by `:`
    * exemple of key `lib-js:buttonSignIn`
-   * @param {string} [keyPath] if null, will return the all assets  
+   * @param {string} [keyPath] if null, will return the all assets
    */
-  get(keyPath) {
+  get (keyPath) {
     let result = Object.assign({}, this._assets);
     if (keyPath) {
       keyPath.split(':').forEach((key) => {
@@ -47,12 +50,12 @@ class ServiceAssets {
    * get an Url from path separated by `:`
    * identical to doing assets.relativeURL(assets.get(keyPath))
    * exemple of key `lib-js:buttonSignIn`
-   * @param {string} [keyPath] if null, will return the all assets  
+   * @param {string} [keyPath] if null, will return the all assets
    */
-  getUrl(keyPath) {
+  getUrl (keyPath) {
     const url = this.get(keyPath);
     if (typeof url !== 'string') {
-      throw new Error(url + ' returned ' + value); 
+      throw new Error(`Unexpected value for ${keyPath}: ${url}`);
     }
     return this.relativeURL(url);
   }
@@ -60,16 +63,16 @@ class ServiceAssets {
   /**
    * get relativeUrl
    */
-  relativeURL(url) {
+  relativeURL (url) {
     return relPathToAbs(this._assets.baseUrl || this._assetsURL, url);
   }
 
-  //----------------   Default service ressources
-  
+  // ---------------- Default service resources
+
   /**
    * Set all defaults Favicon, CSS
    */
-  async setAllDefaults() {
+  async setAllDefaults () {
     this.setFavicon();
     await this.loadCSS();
   }
@@ -77,8 +80,8 @@ class ServiceAssets {
   /**
    * Set service Favicon to Web Page
    */
-  setFavicon() {
-    var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+  setFavicon () {
+    const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
     link.type = 'image/x-icon';
     link.rel = 'shortcut icon';
     link.href = this.relativeURL(this._assets.favicon.default.url);
@@ -88,40 +91,41 @@ class ServiceAssets {
   /**
    * Set default service CSS
    */
-  async loadCSS() {
+  async loadCSS () {
     loadCSS(this.relativeURL(this._assets.css.default.url));
   }
 
   // ---- Login
 
   /**
-  * Load CSS for Login button
-  */
+   * Load CSS for Login button
+   */
   async loginButtonLoadCSS () {
     loadCSS(this.relativeURL(this._assets['lib-js'].buttonSignIn.css));
   }
 
   /**
-  * Get HTML for Login Button
-  */
-  async loginButtonGetHTML() {
+   * Get HTML for Login Button
+   */
+  async loginButtonGetHTML () {
     const res = await utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.html)).set('accept', 'html');
     return res.text;
   }
 
- /**
- * Get Messages strings for Login Button
- */
-  async loginButtonGetMessages() {
+  /**
+   * Get Messages strings for Login Button
+   */
+  async loginButtonGetMessages () {
     const res = await utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.messages)).set('accept', 'json');
     return res.body;
   }
-
 }
 
-function loadCSS(url) {
-  var head = document.getElementsByTagName('head')[0];
-  var link = document.createElement('link');
+module.exports = ServiceAssets;
+
+function loadCSS (url) {
+  const head = document.getElementsByTagName('head')[0];
+  const link = document.createElement('link');
   link.id = url;
   link.rel = 'stylesheet';
   link.type = 'text/css';
@@ -130,8 +134,11 @@ function loadCSS(url) {
   head.appendChild(link);
 }
 
+/* HACK: disabling linting until code is cleaned up */
+/* eslint-disable */
+
   /*\
-  |*| Modified version of 
+  |*| Modified version of
   |*| :: translate relative paths to absolute paths ::
   |*|
   |*| https://developer.mozilla.org/en-US/docs/Web/API/document.cookie
@@ -154,9 +161,6 @@ function relPathToAbs (baseUrlString, sRelPath) {
     sDir = (sDir + sPath.substring(nStart, nEnd)).replace(new RegExp("(?:\\\/+[^\\\/]*){0," + ((nUpLn - 1) / 3) + "}$"),
       "/");
   }
-  let portStr = baseLocation.port ? ':' + baseLocation.port : '';
+  const portStr = baseLocation.port ? ':' + baseLocation.port : '';
   return baseLocation.protocol + '//' + baseLocation.hostname + portStr + sDir + sPath.substr(nStart);
 }
-
-
-module.exports = ServiceAssets;
