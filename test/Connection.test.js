@@ -194,7 +194,7 @@ describe('Connection', () => {
       if (!isNode) { this.skip(); }
       const res = await conn.createEventWithFile({
         type: 'picture/attached',
-        streamId: 'data'
+        streamIds: ['data']
       }, './test/Y.png');
 
 
@@ -209,11 +209,11 @@ describe('Connection', () => {
 
     it('Node Only: Create event with attachment from Buffer', async function () {
       if (!isNode) { this.skip(); }
-    
+
         const fileData = readFileSync('./test/Y.png');
         const res = await conn.createEventWithFileFromBuffer({
           type: 'picture/attached',
-          streamId: 'data'
+          streamIds: ['data']
         }, fileData, 'Y.png');
 
         should.exist(res);
@@ -228,11 +228,11 @@ describe('Connection', () => {
 
     it('Browser Only: Create event with attachment from Buffer', async function () {
       if (isNode) { this.skip(); }
-      
+
         const blob = new Blob(['Hello'], { type: "text/txt" });
         const res = await conn.createEventWithFileFromBuffer({
           type: 'picture/attached',
-          streamId: 'data'
+          streamIds: ['data']
         }, blob, 'Hello.txt');
 
         should.exist(res);
@@ -243,9 +243,9 @@ describe('Connection', () => {
         res.event.attachments[0].size.should.equal(5);
         res.event.attachments[0].type.should.equal('text/txt');
         res.event.attachments[0].fileName.should.equal('Hello.txt');
-        
+
     });
-    
+
     it('Browser Only: Create event with attachment formData', async function () {
       if (isNode) { this.skip(); }
 
@@ -255,7 +255,7 @@ describe('Connection', () => {
 
       const res = await conn.createEventWithFormData({
         type: 'file/attached',
-        streamId: 'data'
+        streamIds: ['data']
       }, formData);
 
 
@@ -278,7 +278,8 @@ describe('Connection', () => {
       const res = await conn.api([{
         method: 'events.create',
         params: {
-          type: 'series:mass/kg', streamId: 'data'
+          type: 'series:mass/kg',
+          streamIds: ['data']
         }
       }]);
       should.exist(res);

@@ -1,10 +1,10 @@
 # JavaScript library for Pryv.io
 
-This JavaScript library is meant to facilitate writing NodeJS and browser apps for a Pryv.io platform, it follows the [Pryv.io App Guidelines](https://api.pryv.com/guides/app-guidelines/).
+This JavaScript library is meant to facilitate writing Node.js and browser apps for a Pryv.io platform. It follows the [Pryv.io App Guidelines](https://api.pryv.com/guides/app-guidelines/).
 
 ## Contribute
 
-*Prerequisites*: Node 12
+*Prerequisite*: Node 12+
 
 - Setup: `npm run setup`
 
@@ -197,11 +197,11 @@ const apiCalls = [
   },
   {
     "method": "events.create",
-    "params": { "time": 1385046854.282, "streamId": "heart", "type": "frequency/bpm", "content": 90 }
+    "params": { "time": 1385046854.282, "streamIds": ["heart"], "type": "frequency/bpm", "content": 90 }
   },
   {
     "method": "events.create",
-    "params": { "time": 1385046854.283, "streamId": "heart", "type": "frequency/bpm", "content": 120 }
+    "params": { "time": 1385046854.283, "streamIds": ["heart"], "type": "frequency/bpm", "content": 120 }
   }
 ]
 
@@ -228,12 +228,12 @@ const apiCalls = [
   },
   {
     method: 'events.create',
-    params: { time: 1385046854.282, streamId: 'heart', type: 'frequency/bpm', content: 90 },
+    params: { time: 1385046854.282, streamIds: ['heart'], type: 'frequency/bpm', content: 90 },
     handleResult: handleResult
   },
   {
     method: 'events.create',
-    params: { time: 1385046854.283, streamId: 'heart', type: 'frequency/bpm', content: 120 },
+    params: { time: 1385046854.283, streamIds: ['heart'], type: 'frequency/bpm', content: 120 },
     handleResult: handleResult
   }
 ]
@@ -333,7 +333,7 @@ const filePath = './test/my_image.png';
 const result = await connection.createEventWithFile(
   {
     type: 'picture/attached',
-    streamId: 'data'
+    streamIds: ['data']
   },
   filePath
 );
@@ -348,7 +348,7 @@ const bufferData = fs.readFileSync(filePath);
 const result = await connection.createEventWithFileFromBuffer(
   {
     type: 'picture/attached',
-    streamId: 'data'
+    streamIds: ['data']
   },
   bufferData,
   'my_image.png' // filename
@@ -372,7 +372,7 @@ From an Input field
   connection.createEventWithFormData(
     {
       type: 'file/attached',
-      streamId: 'test'
+      streamIds: ['test']
     },
     formData)
     .then(function (res, err) {
@@ -395,7 +395,7 @@ formData.append("webmasterfile", blob);
 connect.createEventWithFormData(
   {
     type: 'file/attached',
-    streamId: 'data'
+    streamIds: ['data']
   },
   formData)
   .then(function (res, err) {
@@ -408,7 +408,7 @@ connect.createEventWithFormData(
 connect.createEventWithFileFromBuffer(
   {
     type: 'file/attached',
-    streamId: 'data'
+    streamIds: ['data']
   },
   blob, 'filename.txt')  // here we can directly use the blob
   .then(function (res, err) {
@@ -451,12 +451,12 @@ const apiCalls = [
   },
   {
     method: 'events.create',
-    params: { streamId: 'signal1', type: 'serie:frequency/bpm' },
+    params: { streamIds: ['signal1'], type: 'serie:frequency/bpm' },
     handleResult: postHFData(pointsA)
   },
   {
     method: 'events.create',
-    params: { streamId: 'signal2', type: 'serie:frequency/bpm' },
+    params: { streamIds: ['signal2'], type: 'serie:frequency/bpm' },
     handleResult: postHFData(pointsB)
   }
 ]

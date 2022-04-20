@@ -6,7 +6,7 @@ const conn = new Pryv.Connection(testData.apiEndpointWithToken);
 const TEST_DATA_VERSION = "v1";
 
 
-// -- check if account is already loaded 
+// -- check if account is already loaded
 const res = conn.api([{
   "method": "events.get",
   "params": {
@@ -60,7 +60,7 @@ function doLoad() {
     {
       "method": "events.create",
       "params": {
-        "streamId": "data",
+        "streamIds": ["data"],
         "type": "test/version",
         "content": TEST_DATA_VERSION
       }
@@ -75,7 +75,7 @@ function doLoad() {
         "method": "events.create",
         "params": {
           "time": now - i * steps,
-          "streamId": "data",
+          "streamIds": ["data"],
           "type": "mass/kg",
           "content": Math.sin(i / 180)
         }
@@ -84,7 +84,7 @@ function doLoad() {
   }
 
   const res = conn.api(query).then((res, err) => {
-    trashFirst200DeleteFirst100(res).then((res2, err2) => { 
+    trashFirst200DeleteFirst100(res).then((res2, err2) => {
       console.log(res2);
     });
   });
