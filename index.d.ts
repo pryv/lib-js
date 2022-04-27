@@ -67,6 +67,7 @@ declare module 'pryv' {
     createdBy: Identifier;
     modified: Timestamp;
     modifiedBy: Identifier;
+    apiEndpoint: string;
   };
 
   type FollowedSlice = {
