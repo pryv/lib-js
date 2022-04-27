@@ -1,14 +1,12 @@
-
 const utils = require('./utils.js');
 // Connection is required at the end of this file to allow circular requires.
 const Assets = require('./ServiceAssets.js');
 
-
 /**
  * @class Pryv.Service
  * A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a service, deployed with the domain name **pryv.me**.
- * 
- * `Pryv.Service` exposes tools to interact with Pryv.io at a "Platform" level. 
+ *
+ * `Pryv.Service` exposes tools to interact with Pryv.io at a "Platform" level.
  *
  *  ##### Initizalization with a service info URL
 ```javascript
@@ -28,15 +26,14 @@ const serviceCustomizations = {
   }
 }
 const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
-``` 
+```
 
  * @memberof Pryv
- * 
+ *
  * @constructor
  * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform see: {@link https://api.pryv.com/reference/#service-info}
  */
 class Service {
-
   constructor (serviceInfoUrl, serviceCustomizations) {
     this._pryvServiceInfo = null;
     this._assets = null;
@@ -47,9 +44,9 @@ class Service {
 
   /**
    * Return service info parameters info known of fetch it if needed.
-   * Example   
-   *  - name of a platform   
-   *    `const serviceName = await service.info().name` 
+   * Example
+   *  - name of a platform
+   *    `const serviceName = await service.info().name`
    * @see PryvServiceInfo For details on available properties.
    * @param {boolean?} forceFetch If true, will force fetching service info.
    * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
@@ -75,7 +72,7 @@ class Service {
     if (!serviceInfo.name) {
       throw new Error('Invalid data from service/info');
     }
-    // cleanup serviceInfo for eventual url not finishing by "/" 
+    // cleanup serviceInfo for eventual url not finishing by "/"
     // code will be obsolete with next version of register
     ['access', 'api', 'register'].forEach((key) => {
       if (serviceInfo[key].slice(-1) !== '/') {
@@ -88,7 +85,7 @@ class Service {
   /**
    * Return assets property content
    * @param {boolean?} forceFetch If true, will force fetching service info.
-   * @returns {Promise<ServiceAssets>} Promise to ServiceAssets 
+   * @returns {Promise<ServiceAssets>} Promise to ServiceAssets
    */
   async assets (forceFetch) {
     if (!forceFetch && this._assets) {
@@ -124,7 +121,7 @@ class Service {
   }
 
   /**
-   * Return an API Endpoint from a username and token and a PryvServiceInfo. 
+   * Return an API Endpoint from a username and token and a PryvServiceInfo.
    * This is method is rarely used. See **apiEndpointFor** as an alternative.
    * @param {PryvServiceInfo} serviceInfo
    * @param {string} username
@@ -137,12 +134,12 @@ class Service {
   }
 
   /**
-   * Issue a "login call on the Service" return a Connection on success  
+   * Issue a "login call on the Service" return a Connection on success
    * **! Warning**: the token of the connection will be a "Personal" token that expires
    * @see https://api.pryv.com/reference-full/#login-user
-   * @param {string} username 
-   * @param {string} password 
-   * @param {string} appId 
+   * @param {string} username
+   * @param {string} password
+   * @param {string} appId
    * @param {string} [originHeader=service-info.register] Only for Node.js. If not set will use the register value of service info. In browsers this will overridden by current page location.
    * @throws {Error} on invalid login
    */
@@ -167,10 +164,11 @@ class Service {
         this // Pre load Connection with service
       );
     } catch (e) {
-      if (e.response && e.response.body
-        && e.response.body.error
-        && e.response.body.error.message) {
-        throw new Error(e.response.body.error.message)
+      if (e.response &&
+          e.response.body &&
+          e.response.body.error &&
+          e.response.body.error.message) {
+        throw new Error(e.response.body.error.message);
       }
     }
   }
@@ -191,7 +189,7 @@ const Connection = require('./Connection');
  * @property {string} home The URL of the platform's home page.
  * @property {string} support The email or URL of the support page.
  * @property {string} terms The terms and conditions, in plain text or the URL displaying them.
- * @property {string} eventTypes The URL of the list of validated event types.
+ * @property {string} eventTypes The URL of the list of validated event types.
  * @property {Object} [assets] Holder for service specific Assets (icons, css, ...)
  * @property {String} [assets.definitions] URL to json object with assets definitions
  */

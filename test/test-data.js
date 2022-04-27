@@ -2,49 +2,50 @@ const superagent = require('superagent');
 
 const username = 'jslibtest5';
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
-//const serviceInfoUrl = 'https://l.rec.la:4443/reg/service/info';
+// const serviceInfoUrl = 'https://l.rec.la:4443/reg/service/info';
 
 /**
  * Data used for tests
  */
-const testData = {
+const testData = module.exports = {
   username: username,
   password: username,
   serviceInfoUrl: serviceInfoUrl,
   token: null,
   serviceInfo: null,
   apiEndpoint: null,
-  apiEndpointWithToken: null
-}
+  apiEndpointWithToken: null,
+  prepare
+};
 
-
-async function prepare() {
+async function prepare () {
   if (testData.token != null) return testData;
   console.log('Preparing test Data..');
-  // fetch serviceInfo
 
+  // fetch serviceInfo
   const serviceInfo = (await superagent.get(serviceInfoUrl)).body;
-  if (serviceInfo.api == null) throw 'Invalid service Info ' + JSON.stringify(serviceInfo);
+  if (serviceInfo.api == null) throw Error('Invalid service Info ' + JSON.stringify(serviceInfo));
   // test if user exists
   const userExists = (await superagent.get(serviceInfo.register + username + '/check_username')).body;
-  if (typeof userExists.reserved === 'undefined') throw 'Invalid user exists ' + JSON.stringify(userExists);
+  if (typeof userExists.reserved === 'undefined') throw Error('Invalid user exists ' + JSON.stringify(userExists));
 
   let hostingCandidate = null;
-  if (! userExists.reserved) { // create user
+  if (!userExists.reserved) { // create user
     // get available hosting
     const hostings = (await superagent.get(serviceInfo.register + 'hostings').set('accept', 'json')).body;
     findOneHostingKey(hostings, 'N');
-    function findOneHostingKey(o, parentKey) {      
+    function findOneHostingKey (o, parentKey) {
       for (const key of Object.keys(o)) {
         if (parentKey === 'hostings') {
           hostingCandidate = key;
           return key;
         }
-        if (typeof o[key] !== 'string')
-             findOneHostingKey(o[key], key);
+        if (typeof o[key] !== 'string') {
+          findOneHostingKey(o[key], key);
+        }
       }
-    };
-    if (hostingCandidate == null) throw 'Cannot find hosting in: ' + JSON.stringify(hostings);
+    }
+    if (hostingCandidate == null) throw Error('Cannot find hosting in: ' + JSON.stringify(hostings));
     const hosting = hostingCandidate;
 
     // create user
@@ -61,25 +62,23 @@ async function prepare() {
       });
   }
   const apiEndpoint = serviceInfo.api.replace('{username}', username);
-  
+
   // login user
   const headers = {};
-  if (typeof window === 'undefined') { headers.Origin = 'https://l.rec.la'; }; // node only
+  if (typeof window === 'undefined') { headers.Origin = 'https://l.rec.la'; } // node only
   const loginRes = await superagent.post(apiEndpoint + 'auth/login')
     .set(headers)
     .send({ username: username, password: username, appId: 'js-lib-test' });
 
   // create data stream
   try {
-    const streamRes = await superagent.post(apiEndpoint + 'streams').set('authorization', loginRes.body.token).send(
-      {
-        id: 'data',
-        name: 'Data'
-      }
-    )
+    await superagent.post(apiEndpoint + 'streams').set('authorization', loginRes.body.token).send({
+      id: 'data',
+      name: 'Data'
+    });
   } catch (e) {
   }
-  if ((loginRes.body == null) || (loginRes.body.token == null)) throw 'Failed login process during testData prepare' + loginRes.text;
+  if ((loginRes.body == null) || (loginRes.body.token == null)) throw Error('Failed login process during testData prepare' + loginRes.text);
   testData.serviceInfo = serviceInfo;
   testData.token = loginRes.body.token;
 
@@ -88,8 +87,3 @@ async function prepare() {
   testData.apiEndpointWithToken = res[1] + '://' + testData.token + '@' + res[2];
   testData.apiEndpoint = apiEndpoint;
 }
-
-testData.prepare = prepare;
-
-
-module.exports = testData;

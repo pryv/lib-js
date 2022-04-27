@@ -49,7 +49,7 @@
     };
 
   let serviceInfoUrl = 'https://reg.pryv.me/service/infos';
-  // override serviceInfo if provided in the url. 
+  // override serviceInfo if provided in the url.
   serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || serviceInfoUrl;
 
   var authSettings = {
@@ -105,7 +105,7 @@
 
   function createNoteEvent() {
     createEvent({
-      streamId: 'test',
+      streamIds: ['test'],
       type: 'note/txt',
       content: $noteContent.value
     });
@@ -114,7 +114,7 @@
 
   function createValueEvent() {
     createEvent({
-      streamId: 'test',
+      streamIds: ['test'],
       type: 'count/generic',
       content: $valueContent.value
     });
@@ -130,7 +130,7 @@
     const formData = new FormData();
     formData.append('file0', $fileContent.files[0]);
     connection.createEventWithFormData(
-      { type: 'file/attached', streamId: 'test' },
+      { type: 'file/attached', streamIds: ['test'] },
       formData
     ).then(function (res, err) {
       if (err) { return logToConsole('...error: ' + JSON.stringify(err)); }

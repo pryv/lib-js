@@ -1,29 +1,28 @@
+module.exports = get;
+
 const Messages = {
   LOADING: {
-    'en': '...'
+    en: '...'
   },
   ERROR: {
-    'en': 'Error',
-    'fr': 'Erreur',
+    en: 'Error',
+    fr: 'Erreur'
   },
   LOGIN: {
-    'en': 'Signin',
-    'fr': 'Login'
+    en: 'Signin',
+    fr: 'Login'
   },
   SIGNOUT_CONFIRM: {
-    'en': 'Logout ?',
-    'fr': 'Se deconnecter ?'
+    en: 'Logout?',
+    fr: 'Se déconnecter ?'
   }
-}
+};
 
-function get(languageCode, definitions) {
+function get (languageCode, definitions) {
   const myMessages = definitions || Messages;
   const res = {};
-  Object.keys(myMessages).map((key) => {
-    res[key] = myMessages[key][languageCode] || myMessages[key]['en'];
+  Object.keys(myMessages).forEach((key) => {
+    res[key] = myMessages[key][languageCode] || myMessages[key].en;
   });
   return res;
 }
-
-
-module.exports = get;

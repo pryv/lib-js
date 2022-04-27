@@ -1,3 +1,5 @@
+/* global chai, describe, it, before, after, Browser, Pryv */
+
 const expect = chai.expect;
 
 const testData = require('./test-data.js');
@@ -9,7 +11,7 @@ describe('ServiceAssets', function () {
     this.timeout(5000);
     await testData.prepare();
   });
-  
+
   before(async () => {
     if (typeof document !== 'undefined') return; // in browser
     removeZombie = true;
@@ -21,36 +23,31 @@ describe('ServiceAssets', function () {
   });
 
   after(async () => {
-    if (! removeZombie) return; // in browser
+    if (!removeZombie) return; // in browser
     delete global.document;
-    delete global.window; 
-    delete global.location; 
+    delete global.window;
+    delete global.location;
   });
 
   it('relativeURL()', async () => {
-   
     const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     expect(assets.relativeURL('./toto')).to.eql(testData.serviceInfo.assets.definitions.replace('index.json', 'toto'));
-   
   });
 
   it('setAllDefaults()', async () => {
     const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     await assets.setAllDefaults();
-
   });
 
   it('Load all external elements', async () => {
     const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
-   
-   
+
     await assets.loginButtonLoadCSS();
     await assets.loginButtonGetHTML();
     await assets.loginButtonGetMessages();
-    
   });
 
   it('.get() returns all assets', async () => {
@@ -73,7 +70,4 @@ describe('ServiceAssets', function () {
     const faviconUrl = await assets.getUrl('favicon:default:url');
     expect(faviconUrl).to.eql(testData.serviceInfo.assets.definitions.replace('index.json', 'favicon.ico'));
   });
-
 });
-
-

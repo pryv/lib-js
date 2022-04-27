@@ -1,51 +1,57 @@
 
 const utils = require('../utils');
+
 /**
  * @memberof Pryv.Browser
  * @namespace Pryv.Browser.CookieUtils
  */
+module.exports = {
+  get,
+  set,
+  del
+};
 
 /**
-  * Set a Local cookier
+  * Set a local cookie
   * @memberof Pryv.Browser.CookieUtils
   * @param {string} cookieKey - The key for the cookie
-  * @param {mixed} value - The Value 
+  * @param {mixed} value - The Value
   * @param {number} expireInDays - Expiration date in days from now
   */
-function set(cookieKey, value, expireInDays) {
-  if (! utils.isBrowser()) return;
+function set (cookieKey, value, expireInDays) {
+  if (!utils.isBrowser()) return;
   expireInDays = expireInDays || 365;
-  var myDate = new Date();
-  var hostName = window.location.hostname;
-  var path = window.location.pathname;
+  const myDate = new Date();
+  const hostName = window.location.hostname;
+  const path = window.location.pathname;
   myDate.setDate(myDate.getDate() + expireInDays);
-  var cookieStr = encodeURIComponent(cookieKey) + '=' + encodeURIComponent(JSON.stringify(value))
-    + ';expires=' + myDate.toGMTString()
-    + ';domain=.' + hostName + ';path=' + path;
-    // do not add SameSite when removing a cookie
+  let cookieStr = encodeURIComponent(cookieKey) + '=' +
+    encodeURIComponent(JSON.stringify(value)) +
+    ';expires=' + myDate.toGMTString() +
+    ';domain=.' + hostName + ';path=' + path;
+  // do not add SameSite when removing a cookie
   if (expireInDays >= 0) cookieStr += ';SameSite=Strict';
   document.cookie = cookieStr;
 }
-exports.set = set;
 
 /**
- * returns the value of a local cookie
+ * Return the value of a local cookie
  * @memberof Pryv.Browser.CookieUtils
  * @param cookieKey - The key
  */
-exports.get = function get(cookieKey) {
+function get (cookieKey) {
   const name = encodeURIComponent(cookieKey);
-  if (! utils.isBrowser()) return;
-  var value = "; " + document.cookie;
-  var parts = value.split("; " + name + "=");
-  if (parts.length == 2) return JSON.parse(decodeURIComponent(parts.pop().split(";").shift()));
+  if (!utils.isBrowser()) return;
+  const value = '; ' + document.cookie;
+  const parts = value.split('; ' + name + '=');
+  if (parts.length === 2) return JSON.parse(decodeURIComponent(parts.pop().split(';').shift()));
 }
 
 /**
- * delete a local cookie
+ * Delete a local cookie
  * @memberof Pryv.Browser.CookieUtils
  * @param cookieKey - The key
  */
-exports.del = function del(cookieKey) {
-  set(cookieKey, {deleted: true}, -1);
+function del (cookieKey) {
+  set(cookieKey, { deleted: true }, -1);
 }
