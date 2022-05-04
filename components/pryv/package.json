@@ -1,9 +1,10 @@
 {
   "name": "pryv",
   "version": "2.2.0",
-  "description": "Pryv Javascript Library",
+  "description": "Pryv JavaScript library",
   "keywords": [
-    "Pryv"
+    "Pryv",
+    "Pryv.io"
   ],
   "homepage": "https://github.com/pryv/lib-js",
   "bugs": {
@@ -14,15 +15,7 @@
     "url": "git://github.com/pryv/lib-js"
   },
   "license": "BSD-3-Clause",
-  "author": {
-    "name": "Pryv S.A."
-  },
-  "contributors": [
-    {
-      "name": "Pierre-Mikael Legris",
-      "email": "perki@pryv.com"
-    }
-  ],
+  "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "scripts": {
@@ -40,21 +33,5 @@
   },
   "dependencies": {
     "superagent": "^7.1.2"
-  },
-  "devDependencies": {
-    "@pryv/lib-js-common": "github:pryv/lib-js-common#1.0.6",
-    "@pryv/monitor": "^1.0.6",
-    "@pryv/socket.io": "^1.0.6",
-    "chai": "^4.3.6",
-    "chai-as-promised": "^7.1.1",
-    "cuid": "^2.1.8",
-    "mocha": "^9.2.2",
-    "node-fetch": "^3.2.3",
-    "nyc": "^15.1.0",
-    "rec.la": "latest",
-    "semistandard": "^16.0.1",
-    "universal-url": "^2.0.0",
-    "whatwg-url": "^11.0.0",
-    "zombie": "^6.1.4"
   }
 }

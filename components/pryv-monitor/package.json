@@ -1,21 +1,7 @@
 {
   "name": "@pryv/monitor",
   "version": "1.0.6",
-  "description": "Extends `pryv` lib-js with event driven notifications for changes on a Pryv.io account.",
-  "main": "src/index.js",
-  "scripts": {
-    "test": "mocha --reporter spec  test/*.test.js",
-    "setup": "./scripts/setup-environment-dev.sh",
-    "example": "npx rec-la ./examples",
-    "build": "webpack"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/pryv/lib-js-monitor"
-  },
-  "bugs": {
-    "url": "https://github.com/pryv/lib-js-monitor/issues"
-  },
+  "description": "Extends `pryv` with event-driven notifications for changes on a Pryv.io account",
   "keywords": [
     "Pryv",
     "Pryv.io",
@@ -23,13 +9,20 @@
     "Scope",
     "Monitor"
   ],
-  "author": "Pryv S.A.",
+  "bugs": {
+    "url": "https://github.com/pryv/lib-js-monitor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pryv/lib-js-monitor"
+  },
   "license": "BSD-3-Clause",
-  "devDependencies": {
-    "@pryv/lib-js-common":  "github:pryv/lib-js-common#1.0.6",
-    "@pryv/socket.io": "^1.0.6",
-    "chai": "^4.3.4",
-    "mocha": "^9.1.3",
-    "pryv": "^2.1.9"
+  "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "webpack",
+    "example": "npx rec-la ./examples",
+    "setup": "./scripts/setup-environment-dev.sh",
+    "test": "mocha --reporter spec  test/*.test.js"
   }
 }

@@ -1,23 +1,7 @@
 {
   "name": "@pryv/lib-js-common",
   "version": "1.0.6",
-  "description": "Pryv Lib-js helper package - contains common configuration and build tools for lib-js and socket.io + monitor add-ons ",
-  "main": "src/index.js",
-  "scripts": {},
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/pryv/lib-js-common"
-  },
-  "author": "Pryv S.A.",
-  "license": "BSD-3-Clause",
-  "dependencies": {
-    "@babel/core": "^7.16.0",
-    "@babel/plugin-transform-runtime": "^7.16.4",
-    "@babel/preset-env": "^7.16.4",
-    "babel-loader": "^8.2.3",
-    "copy-webpack-plugin": "^10.0.0",
-    "core-js": "^3.19.2",
-    "webpack": "^5.64.4",
-    "webpack-cli": "^4.9.1"
-  }
+  "private": true,
+  "description": "Common configuration and build tools",
+  "main": "src/index.js"
 }

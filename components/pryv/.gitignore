@@ -1,7 +1,0 @@
-.nyc*
-.DS_Store
-node_modules/
-dist/
-coverage/
-# PyCharm IDE
-.idea
