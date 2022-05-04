@@ -9,21 +9,21 @@ const Changes = require('./lib/Changes');
  */
 class Monitor extends EventEmitter {
   /**
-   * 
-   * @param {(Pryv.PryvApiEndpoint|Pryv.Connection)} apiEndpointOrConnection ApiEnpoint or connection to use. 
+   *
+   * @param {(Pryv.PryvApiEndpoint|Pryv.Connection)} apiEndpointOrConnection ApiEnpoint or connection to use.
    * @param {Pryv.Monitor.Scope} [eventsGetScope={}] The Scope to monitor
    */
-  constructor(apiEndpointOrConnection, eventsGetScope = {}) {
+  constructor (apiEndpointOrConnection, eventsGetScope = {}) {
     super();
     if (!Monitor.Pryv) {
       throw new Error('package \'@pryv/monitor\' must loaded after package \'pryv\'');
     }
 
     this.eventsGetScope = { // default eventsGetScope values
-      fromTime: - Number.MAX_VALUE,
+      fromTime: -Number.MAX_VALUE,
       toTime: Number.MAX_VALUE,
-      modifiedSince: - Number.MAX_VALUE
-    }
+      modifiedSince: -Number.MAX_VALUE
+    };
     Object.assign(this.eventsGetScope, eventsGetScope);
 
     if (apiEndpointOrConnection instanceof Monitor.Pryv.Connection) {
@@ -35,7 +35,7 @@ class Monitor extends EventEmitter {
       started: false,
       starting: false, // in phase of initializing
       updatingEvents: false, // semaphore to prevent updating events in parallel
-      updatingStreams: false, // semaphore to prevent updating streams in parallel
+      updatingStreams: false // semaphore to prevent updating streams in parallel
     };
   }
 
@@ -43,7 +43,7 @@ class Monitor extends EventEmitter {
    * Start the monitor
    * @returns {Monitor} this
    */
-  async start() {
+  async start () {
     if (this.states.started || this.states.starting) return this;
     this.states.starting = true;
     await _updateStreams(this);
@@ -62,7 +62,7 @@ class Monitor extends EventEmitter {
    * request and update of events
    * @returns {Monitor} this
    */
-  async updateEvents() {
+  async updateEvents () {
     if (!this.states.started) {
       throw new Error('Start Monitor before calling update Events');
     }
@@ -94,7 +94,7 @@ class Monitor extends EventEmitter {
    * request and update of streams
    * @returns {Monitor} this
    */
-  async updateStreams() {
+  async updateStreams () {
     if (!this.states.started) {
       throw new Error('Start Monitor before calling update Streams');
     }
@@ -125,20 +125,19 @@ class Monitor extends EventEmitter {
   /**
    * @private
    * Called after init phase and each updateEvents
-   * Advertise the update method or any listener that the Monitor is ready 
+   * Advertise the update method or any listener that the Monitor is ready
    * for a next event update
    */
-  ready() {
-    if (!this.states.started) return; // it might be stoped 
+  ready () {
+    if (!this.states.started) return; // it might be stoped
     this.emit(Changes.READY);
   }
-
 
   /**
    * Stop monitoring (no event will be fired anymore)
    * @returns {Monitor} this
    */
-  stop() {
+  stop () {
     if (!this.states.started) return this;
     if (this.states.starting) throw new Error('Process is starting, wait for the end of initialization to stop it');
     this.emit(Changes.STOP);
@@ -150,14 +149,14 @@ class Monitor extends EventEmitter {
    * Used by updateMethods to be sure they can call updateXXX methods
    * @property {Boolean} started - true is monitor is started
    */
-  get started() {
+  get started () {
     return this.states.started;
   }
 
   /**
    * Initialize the updateMethods with this Monitor
    * @callback Monitor~UpdateMethod
-   * @param {Monitor} setMonitor 
+   * @param {Monitor} setMonitor
    */
 
   /**
@@ -167,12 +166,9 @@ class Monitor extends EventEmitter {
    * @param {Monitor~UpdateMethod} updateMethod - the auto-update method
    * @returns {Monitor} this
    */
-  addUpdateMethod(updateMethod) {
-    if (false) {
-      throw new Error('Argument is not a valid UpdateMethod instance');
-    }
+  addUpdateMethod (updateMethod) {
     updateMethod.setMonitor(this);
-    return this
+    return this;
   }
 }
 

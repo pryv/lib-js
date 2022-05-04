@@ -1,6 +1,5 @@
-/*global
-  Pryv, chai, should, testData, conn, apiEndpoint, creaBaseStreams
-*/
+/* global describe, it, before, expect, Pryv, conn, apiEndpoint, prepareAndcreateBaseStreams */
+
 require('@pryv/socket.io')(Pryv);
 
 describe('Monitor + Socket.io', function () {
@@ -16,11 +15,11 @@ describe('Monitor + Socket.io', function () {
       const monitor = new Pryv.Monitor(apiEndpoint, { limit: 1 })
         .addUpdateMethod(new Pryv.Monitor.UpdateMethod.Socket());
       await monitor.start();
-    
+
       let count = 0;
 
       const eventData = {
-        streamId: testStreamId,
+        streamId: global.testStreamId,
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };
@@ -29,33 +28,32 @@ describe('Monitor + Socket.io', function () {
         expect(event.content).to.equal(eventData.content);
         count++;
       });
-      await new Promise(r => setTimeout(r, 1000));
-      const res = await conn.api([
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await conn.api([
         {
           method: 'events.create',
           params: eventData
         }
       ]);
 
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       monitor.stop();
       expect(count).to.be.gt(0);
-
     });
   });
 
   describe('stop', () => {
     it('Monitor stops when requested', async function () {
       this.timeout(4000);
-      const monitor = new Pryv.Monitor(apiEndpoint, { limit: 1 }).
-        addUpdateMethod(new Pryv.Monitor.UpdateMethod.Socket());
+      const monitor = new Pryv.Monitor(apiEndpoint, { limit: 1 })
+        .addUpdateMethod(new Pryv.Monitor.UpdateMethod.Socket());
       await monitor.start();
       let count = 0;
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       monitor.stop();
 
       const eventData = {
-        streamId: testStreamId,
+        streamId: global.testStreamId,
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };
@@ -63,16 +61,15 @@ describe('Monitor + Socket.io', function () {
       monitor.on('event', function (event) {
         count++;
       });
-      const res = await conn.api([
+      await conn.api([
         {
           method: 'events.create',
           params: eventData
         }
       ]);
 
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       expect(count).to.equals(0);
     });
   });
-
 });

@@ -1,8 +1,6 @@
-/*global 
-  Pryv, chai, should, testData, conn, apiEndpoint, prepareAndcreateBaseStreams
-*/
+/* global describe, it, before, beforeEach, afterEach, expect, conn, apiEndpoint, prepareAndcreateBaseStreams */
 
-const Pryv = require("pryv");
+const Pryv = require('pryv');
 
 describe('Monitor', function () {
   this.timeout(3000);
@@ -24,16 +22,16 @@ describe('Monitor', function () {
     });
 
     it('throw Error on invalid apiEndpoint', async () => {
-      const passed = true;
+      let passed = true;
       try {
+        /* eslint-disable-next-line no-unused-vars */
         const monitor = new Pryv.Monitor('BlipBlop', { limit: 1 });
         passed = false;
-      } catch(e) {
+      } catch (e) {
 
       }
       expect(passed).to.equal(true);
     });
-
   });
 
   describe('notifications', () => {
@@ -43,7 +41,7 @@ describe('Monitor', function () {
     });
 
     afterEach(async () => {
-      monitor.stop()
+      monitor.stop();
     });
 
     it('Load events at start', async function () {
@@ -56,22 +54,22 @@ describe('Monitor', function () {
         {
           method: 'events.create',
           params: {
-            streamId: testStreamId,
+            streamId: global.testStreamId,
             type: 'note/txt',
             content: 'hello monitor'
           }
         }
-      ])
-      await new Promise(r => setTimeout(r, 2000));
+      ]);
+      await new Promise(resolve => setTimeout(resolve, 2000));
       expect(count).to.be.gt(0);
     });
 
     it('Detect new events added', async function () {
-      let count = 0; 
+      let count = 0;
       await monitor.start();
 
       const eventData = {
-        streamId: testStreamId,
+        streamId: global.testStreamId,
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };
@@ -80,17 +78,15 @@ describe('Monitor', function () {
         expect(event.content).to.equal(eventData.content);
         count++;
       });
-      const res = await conn.api([
+      await conn.api([
         {
           method: 'events.create',
           params: eventData
         }
       ]);
       await monitor.updateEvents(); // trigger refresh
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       expect(count).to.be.gt(0);
     });
-
-
   });
 });

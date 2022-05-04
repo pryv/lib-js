@@ -6,11 +6,11 @@ const Changes = require('../lib/Changes');
  */
 class UpdateMethod {
   /**
-   * Assign a Monitor to this updater. 
+   * Assign a Monitor to this updater.
    * Usually called by the monitor itself on monitor.addUpdateMethod()
-   * @param {Monitor} monitor 
+   * @param {Monitor} monitor
    */
-  setMonitor(monitor) { 
+  setMonitor (monitor) {
     if (this.monitor) {
       throw new Error('An update Method can be assigned to one monitor only');
     }
@@ -27,13 +27,13 @@ class UpdateMethod {
    * Called with no params, when all update tasks are done.
    * Also used at "start" call
    */
-  async ready() { }
+  async ready () { }
 
   /**
    * Should be overwritten by subclases
    * Called with no params, when monitor is stoped: updater should be stoped too.
    */
-  async stop() { }
+  async stop () { }
 }
 
 module.exports = UpdateMethod;

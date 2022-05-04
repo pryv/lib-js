@@ -1,10 +1,6 @@
-/*global
-  Pryv, chai, should, testData, conn, apiEndpoint, creaBaseStreams
-*/
+/* global describe, it, before, expect, conn, apiEndpoint, prepareAndcreateBaseStreams */
 
-const testData = require("pryv/test/test-data");
-const Pryv = require("pryv");
-
+const Pryv = require('pryv');
 
 describe('Monitor + EventsTimer', function () {
   this.timeout(3000);
@@ -17,11 +13,12 @@ describe('Monitor + EventsTimer', function () {
     it('throw error if timer is not inistialized with correct time', async () => {
       const monitor = new Pryv.Monitor(apiEndpoint, { limit: 1 });
       try {
+        /* eslint-disable-next-line no-new */
         new Pryv.Monitor.UpdateMethod.EventsTimer(monitor, 'Rt');
       } catch (e) {
         return expect(e.message).to.equal('Monitor timer refresh rate is not valid. It should be a number > 1');
       }
-      throw new Error('Should thow error')
+      throw new Error('Should thow error');
     });
   });
 
@@ -32,7 +29,6 @@ describe('Monitor + EventsTimer', function () {
       await monitor.start();
       let count = 0;
 
-     
       // listener is added "after" so we don't get events loaded at start
       monitor.on('event', function (event) {
         expect(event.content).to.equal(eventData.content);
@@ -40,22 +36,21 @@ describe('Monitor + EventsTimer', function () {
       });
 
       const eventData = {
-        streamId: testStreamId,
+        streamId: global.testStreamId,
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };
 
-      const res = await conn.api([
+      await conn.api([
         {
           method: 'events.create',
           params: eventData
         }
       ]);
 
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       monitor.stop();
       expect(count).to.be.gt(0);
-
     });
   });
 
@@ -67,7 +62,7 @@ describe('Monitor + EventsTimer', function () {
       await monitor.start();
 
       let count = 0;
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       monitor.stop();
 
       // listener is added "after" so we don't get events loaded at start
@@ -76,21 +71,20 @@ describe('Monitor + EventsTimer', function () {
       });
 
       const eventData = {
-        streamId: testStreamId,
+        streamId: global.testStreamId,
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };
 
-      const res = await conn.api([
+      await conn.api([
         {
           method: 'events.create',
           params: eventData
         }
       ]);
 
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       expect(count).to.equals(0);
     });
   });
-
 });

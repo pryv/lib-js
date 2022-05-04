@@ -1,5 +1,5 @@
-/** 
- * Enum trigger messages 
+/**
+ * Enum trigger messages
  * @readonly
  * @enum {Pryv.Monitor.Changes}
  */

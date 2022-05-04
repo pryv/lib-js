@@ -4,7 +4,7 @@ class EventsTimer extends UpdateMethod {
   /**
    * @param {Number} updateRateMS - the refresh rate in milliseconds
    */
-  constructor(updateRateMS) {
+  constructor (updateRateMS) {
     super();
     this.timer = null;
     if (!updateRateMS || isNaN(updateRateMS) || updateRateMS < 1) {
@@ -15,8 +15,8 @@ class EventsTimer extends UpdateMethod {
 
   async ready () {
     if (this.timer != null) clearTimeout(this.timer);
-    this.timer = setTimeout(() => { 
-      if (this.monitor.started) this.monitor.updateEvents() 
+    this.timer = setTimeout(() => {
+      if (this.monitor.started) this.monitor.updateEvents();
     }, this.updateRateMS);
   }
 }

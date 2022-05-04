@@ -7,7 +7,7 @@ Monitor.Changes = Changes;
  * Load Monitor capabilities onto Pryv
  * @param {Pryv} Pryv - Pryv lib-js library @see https://github.com/pryv/lib-js
  */
-module.exports = function(Pryv) {
+module.exports = function (Pryv) {
   console.log('Pryv version', Pryv.version);
   // check version here
   if (Pryv.Monitor) {
@@ -17,7 +17,7 @@ module.exports = function(Pryv) {
   Pryv.Monitor = Monitor;
   Monitor.Pryv = Pryv;
   return Monitor;
-}
+};
 
 /**
  * @typedef Pryv.Monitor.Changes
@@ -28,7 +28,6 @@ module.exports = function(Pryv) {
  * @property {string} READY "ready"
  * @property {string} STOP "stop"
  */
-
 
 /**
  * A scope corresponding to EventGetParameters @see https://l.rec.la:4443/reference#get-events
@@ -45,4 +44,3 @@ module.exports = function(Pryv) {
  * @property {boolean} [includeDeletions]
  * @property {timestamp} modifiedSince - (in seconds) only events modified after this date
  */
-

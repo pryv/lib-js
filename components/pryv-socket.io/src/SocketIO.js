@@ -4,8 +4,7 @@ const { EventEmitter } = require('events');
 const EVENTS = ['eventsChanged', 'streamsChanged', 'accessesChanged', 'disconnect', 'error'];
 
 class SocketIO extends EventEmitter {
-  
-  constructor(connection) {
+  constructor (connection) {
     super();
     this.connection = connection;
     this.connecting = false;
@@ -17,34 +16,33 @@ class SocketIO extends EventEmitter {
    * @throws {Error} On connection failures
    * @return {SocketIO} this
    */
-  open() {
+  open () {
     return new Promise(async (resolve, reject) => {
       if (this._io) return resolve(this);
-      if (this.connecting) return reject("open() process in course");
+      if (this.connecting) return reject(new Error('open() process in course'));
       this.connecting = true;
 
       try {
         const username = await this.connection.username();
-        const socketEndpoint =  this.connection.endpoint + username + '?auth=' + this.connection.token;
+        const socketEndpoint = this.connection.endpoint + username + '?auth=' + this.connection.token;
         this._io = io(socketEndpoint, { forceNew: true });
       } catch (e) {
         this._io = null;
         this.connecting = false;
         return reject(e);
       }
-     
-      
+
       // handle failure
       for (const errcode of ['connect_error', 'connection_failed', 'error', 'connection_timeout']) {
         const myCode = errcode;
         this._io.on(errcode, (e) => {
-          if (! this.connecting) return; // do not care about errors if connected
-          
+          if (!this.connecting) return; // do not care about errors if connected
+
           this._io = null;
           this.connecting = false;
           if (e === null) { e = myCode; }
-          if (! (e instanceof Error)) { e = new Error(e); }
-          
+          if (!(e instanceof Error)) { e = new Error(e); }
+
           try { this._io.close(); } catch (ex) { }
           return reject(e);
         });
@@ -56,14 +54,13 @@ class SocketIO extends EventEmitter {
         registerListeners(this);
         resolve(this);
       });
-
     });
   }
 
   /**
    * Close the socket
    */
-  close() {
+  close () {
     checkOpen(this);
     this._io.close();
   }
@@ -74,7 +71,7 @@ class SocketIO extends EventEmitter {
    * @param {Function} listener The callback function
    * @return {EventEmitter};
    */
-  on(eventName, listener) {
+  on (eventName, listener) {
     checkOpen(this);
     if (EVENTS.indexOf(eventName) < 0) {
       throw new Error('Unkown event [' + eventName + ']. Allowed events are: ' + EVENTS);
@@ -85,28 +82,28 @@ class SocketIO extends EventEmitter {
   /**
    * Identical to Connection.api() using socket.io transport
    */
-  async api(arrayOfAPICalls, progress) {
+  async api (arrayOfAPICalls, progress) {
     checkOpen(this);
-    function httpHandler(batchCall) {
-      return new Promise((resolve, reject) => { 
+    function httpHandler (batchCall) {
+      return new Promise((resolve, reject) => {
         this._io.emit('callBatch', batchCall, function (err, res) {
           if (err) return reject(err);
           resolve(res);
         });
       });
-    };
+    }
     return await this.connection._chunkedBatchCall(arrayOfAPICalls, progress, httpHandler.bind(this));
   }
 }
 
 // private method to fence the usage of socket before being open
-function checkOpen(socket) {
+function checkOpen (socket) {
   if (!socket._io) throw new Error('Initialize socket.io with connection.socket.open() before');
 }
 
 // private method to register to all events for an open socket
 // and relay it.
-function registerListeners(socket) {
+function registerListeners (socket) {
   for (const event of EVENTS) {
     socket._io.on(event, (...args) => {
       socket.emit(event, ...args);
@@ -114,7 +111,7 @@ function registerListeners(socket) {
   }
 }
 
-module.exports = function(Connection) {
+module.exports = function (Connection) {
   Object.defineProperty(Connection.prototype, 'socket', {
     get: function () {
       if (this._socket) return this._socket;
@@ -122,4 +119,4 @@ module.exports = function(Connection) {
       return this._socket;
     }
   });
-}
+};
