@@ -1,0 +1,231 @@
+<!doctype html>
+<html>
+  <!--
+    This file is moved in dist/ during build process.
+    It should be opened in the same directory than pryv-monitor.js built 
+  -->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+    integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+  <link rel="stylesheet" type="text/css" href="https://api.pryv.com/style/pryv.min.css">
+  <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:300,400">
+
+  <title>Pryv Monitor - Javascript</title>
+  <script src="https://api.pryv.com/lib-js/pryv.js"></script>
+  <script src="https://api.pryv.com/lib-js-socket.io/pryv-socket.io.js"></script>
+  <script src="pryv-monitor.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Monitor - Pryv Examples</h1>
+    <span id="pryv-button"></span>
+    <br>
+    This example illustrates the creation, update and deletion of events as well as the monitoring of data changes (i.e.
+    real time updates). You can open a second page of this fiddle and verify that actions on either page are reflected on
+    the other.
+
+    <div class="card">
+      <div class="card-body">
+        <h2 class="card-title">Actions</h2>
+        <h5>Create</h5>
+        <input type='text' id='create-content' placeholder='Content' value='Example content' />
+        <button onClick='createNoteEvent()'>Create note event</button>
+        
+        <h5>Update</h5>
+        <input type='text' id='update-id' placeholder='Event id' value='' />
+        <input type='text' id='update-content' placeholder='Updated content' value='Updated example content' />
+        <button onClick='updateNoteEvent()'>Update event</button>
+        
+        <h5>Delete</h5>
+        <input type='text' id='delete-id' placeholder='Event id' value='' />
+        <button onClick='deleteNoteEvent()'>Trash event (2x to delete)</button>
+      </div>
+    </div>
+    <table width=100%>
+      <tr>
+        <td>
+          <div class="card">
+            <div class="card-body">
+              <h2 class="card-title">Console</h2>
+              <textarea id='console' cols=45 rows=20></textarea>
+          </div>
+        </td>
+        <td>
+          <div class="card">
+            <div class="card-body">
+              <h2 class="card-title">Monitor Events</h2>
+              <textarea id='monitor-console' cols=45 rows=20></textarea>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+    <br>
+    <small>Source code of this demo app on <a
+        href="https://github.com/pryv/lib-js-monitor.io/blob/master/examples/index.html">GitHub</a></small>
+    </div>
+</body>
+
+<script>
+  // --- usual boiler plate 
+
+  //-- UI Elements
+ var $createContent = document.getElementById('create-content'),
+    $updateId = document.getElementById('update-id'),
+    $updateContent = document.getElementById('update-content'),
+    $deleteId = document.getElementById('delete-id'),
+    $console = document.getElementById('console'),
+    $monitorConsole = document.getElementById('monitor-console');
+
+  //-- Connection will be updated upon login
+  var connection = null;
+
+  var authSettings = {
+    spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
+    onStateChange: pryvAuthStateChange, // event Listener for Authentication steps
+    authRequest: { // See: https://api.pryv.com/reference/#auth-request
+      requestingAppId: 'lib-js-monitor',
+      languageCode: 'en', // optional (default english)
+      requestedPermissions: [
+        {
+          streamId: 'test',
+          defaultName: 'Test',
+          level: 'manage'
+        }
+      ],
+      clientData: {
+        'app-web-auth:description': {
+          'type': 'note/txt', 'content': 'I\'m monitoring changes, creating, updating and deleting notes in test.'
+        }
+      }
+    }
+  };
+
+  function pryvAuthStateChange(state) { // called each time the authentication state changed
+    logToConsole('##pryvAuthStateChange ' + state.id);
+    if (state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
+      connection = new Pryv.Connection(state.apiEndpoint);
+      logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
+      initializeMonitor();
+    }
+    if (state.id === Pryv.Browser.AuthStates.LOGOUT) {
+      connection = null;
+      logToConsole('# Logout');
+      closeMonitor();
+    }
+  }
+
+  function resToJSON(res) {
+    if (res.error || (res.event == null)) {
+      if (res.eventDeletion == null)
+        return "Error: " + JSON.stringify(res);
+       return res.eventDeletion.id;
+    }
+    return res.event.id;
+  }
+
+  async function createNoteEvent() {
+    if (connection == null) { return alert('Please sign in first.'); }
+    const res = await connection.api([{
+      method: 'events.create',
+      params: {
+        streamId: 'test',
+        type: 'note/txt',
+        content: $createContent.value
+      }
+    }]);
+    logToConsole('# ACTION Creating event: ' + resToJSON(res[0]));
+  }
+
+  async function updateNoteEvent() {
+    if (!connection) { return alert('Please sign in first.'); }
+    const res = await connection.api([{
+      method: 'events.update',
+      params: {
+        id: $updateId.value,
+        update: {
+          content: $updateContent.value
+        }
+      }
+    }]);
+    logToConsole('# ACTION Updating event: ' + resToJSON(res[0]));
+  }
+
+  async function deleteNoteEvent() {
+      if (!connection) { return alert('Please sign in first.'); }
+      const res = await connection.api([{
+        method: 'events.delete',
+        params: {
+          id: $deleteId.value,
+        }
+      }]);
+      logToConsole('# ACTION Deleting event: ' + resToJSON(res[0]));
+    }
+
+  function logToConsole(text) {
+    $console.value += text + '\n';
+    $console.scrollTop = $console.scrollHeight;
+  }
+
+  function logToMonitor(text) {
+    $monitorConsole.value += text + '\n';
+    $monitorConsole.scrollTop = $console.scrollHeight;
+  }
+
+  // following the APP GUIDELINES: https://api.pryv.com/guides/app-guidelines/
+  (async function () {
+    const serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || 'https://reg.pryv.me/service/info';
+    var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
+  })();
+
+   // --- monitor specific
+  let monitor = null;
+
+  /**
+   * close monitor 
+   */
+  function closeMonitor() {
+    if (monitor == null) return;
+    try {
+      monitor.close();
+    } catch (e) {}
+    monitor = null;
+    logToConsole("# Closed Monitor");
+  }
+
+   /**
+    *  
+    */
+  function initializeMonitor() {
+   new Pryv.Monitor(connection, { limit: 2 })
+      .on(Pryv.Monitor.Changes.EVENT_DELETE, function (event) {
+        logToMonitor("> Event-DELETE: " + event.id);
+      })
+      .on(Pryv.Monitor.Changes.EVENT, function (event) {
+        logToMonitor("> Event-CHANGE-or-ADD: " + event.id + '\n - ' + event.content);
+      })
+      .on(Pryv.Monitor.Changes.STREAMS, function (streams) {
+        logToMonitor('> Event-STREAMS');
+      })
+      .on(Pryv.Monitor.Changes.STOP, function () {
+        logToMonitor('> Event-STOP');
+      })
+      .on(Pryv.Monitor.Changes.READY, function () {
+        logToMonitor('> Event-READY');
+      })
+      .on(Pryv.Monitor.Changes.ERROR, function (error) {
+        logToMonitor('> Event-ERROR: \n' + error);
+      })
+      // uncomment / comment one of the two following line to switch 
+      // between EventsTimer or Socket updater
+      //.addUpdateMethod(new Pryv.Monitor.UpdateMethod.EventsTimer(2000))
+      .addUpdateMethod(new Pryv.Monitor.UpdateMethod.Socket())
+      .start();
+    logToConsole("# Monitor Started");
+  }
+</script>
+</html>

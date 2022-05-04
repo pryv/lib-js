@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+  <!--
+    This file is moved in dist/ during build process.
+    It should be opened in the same directory than pryv-socket.io.js built 
+  -->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+    integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+  <link rel="stylesheet" type="text/css" href="https://api.pryv.com/style/pryv.min.css">
+  <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:300,400">
+
+  <title>Pryv Socket.io - Javascript</title>
+  <script src="https://api.pryv.com/lib-js/pryv.js"></script>
+  <script src="pryv-socket.io.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Socket.io - Pryv Examples</h1>
+    <div class="card">
+      <span id="pryv-button"></span>
+      <div class="card-body">
+        <h2 class="card-title">When Logged-In - create a note</h2>
+        <input type='text' id='create-note' placeholder='Content' value='' />
+        <button onClick='createNoteEvent()'>Save Note</button>
+        <h2>Console</h2>
+        <textarea id='console' cols=50 rows=20></textarea>
+        <br>
+        <small>Source code of this demo app on <a href="https://github.com/pryv/lib-js-socket.io/blob/master/examples/index.html">GitHub</a></small>
+      </div>
+    </div>
+</body>
+
+<script>
+  // --- usual boiler plate 
+  var $console = document.getElementById('console'),
+    $noteContent = document.getElementById('create-note');
+
+  var connection = null;
+
+  var authSettings = {
+    spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
+    onStateChange: pryvAuthStateChange, // event Listener for Authentication steps
+    authRequest: { // See: https://api.pryv.com/reference/#auth-request
+      requestingAppId: 'lib-js-socket-io',
+      languageCode: 'en', // optional (default english)
+      requestedPermissions: [
+        {
+          streamId: '*',
+          level: 'read'
+        },
+        {
+          streamId: 'diary',
+          defaultName: 'Diary',
+          level: 'contribute'
+        }
+      ],
+      clientData: {
+        'app-web-auth:description': {
+          'type': 'note/txt', 'content': 'I\'m watching events and adding notes to diary.'
+        }
+      }
+    }
+  };
+
+  function pryvAuthStateChange(state) { // called each time the authentication state changed
+    logToConsole('##pryvAuthStateChange ' + state.id);
+    if (state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
+      connection = new Pryv.Connection(state.apiEndpoint);
+      logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
+      initializeSocket(connection);
+    }
+    if (state.id === Pryv.Browser.AuthStates.LOGOUT) {
+      connection = null;
+      logToConsole('# Logout');
+    }
+  }
+
+  function createNoteEvent() {
+    if (connection == null) {
+      alert('Log-in first');
+      return;
+    }
+    connection.api([{
+      method: 'events.create',
+      params: {
+        streamId: 'diary',
+        type: 'note/txt',
+        content: $noteContent.value
+      }
+    }]);
+  }
+
+  function logToConsole(text) {
+    $console.value += text + '\n';
+    $console.scrollTop = $console.scrollHeight;
+  }
+
+  // following the APP GUIDELINES: https://api.pryv.com/guides/app-guidelines/
+  
+
+  // --- socket.io specific
+  (async function () {
+    const serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || 'https://reg.pryv.me/service/info';
+    var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
+  })();
+
+  async function initializeSocket() {
+    const conn = connection;
+    try {
+      await conn.socket.open();
+      conn.socket.on('eventsChanged', async () => {
+        logToConsole('Socket Received "eventsChanged" message');
+        let res = await conn.socket.api([
+          {
+            method: 'events.get',
+            params: { limit: 1 }
+          }]);
+        logToConsole('Last event' + JSON.stringify(res[0], null, 2));
+      });
+
+    } catch (e) {
+      logToConsole('Error >>>>>>' + e.message);
+    }
+  };
+</script>
+</html>
