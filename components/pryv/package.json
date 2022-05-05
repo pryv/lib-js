@@ -29,7 +29,7 @@
     "test": "mocha",
     "test-debug": "mocha --inpect-brk=40000",
     "test:browser": "npm run build; ",
-    "webserver": "./node_modules/.bin/rec-la ./dist 9443"
+    "webserver": "rec.la ./dist 9443"
   },
   "dependencies": {
     "superagent": "^7.1.2"

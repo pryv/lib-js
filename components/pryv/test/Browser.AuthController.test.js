@@ -1,7 +1,5 @@
-/* global describe, it, before, after, expect */
+/* global describe, it, before, after, expect, testData, Browser */
 /* eslint-disable no-unused-expressions */
-
-const Browser = require('zombie');
 
 const utils = require('../src/utils.js');
 const Service = require('../src/Service');

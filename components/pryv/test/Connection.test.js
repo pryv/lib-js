@@ -1,7 +1,6 @@
-/* global describe, it, xit, before, after, beforeEach, afterEach, expect, Pryv, testData, Blob, FormData */
+/* global describe, it, xit, before, after, beforeEach, afterEach, expect, Browser, Pryv, testData, Blob, FormData */
 /* eslint-disable no-unused-expressions */
 
-const Browser = require('zombie');
 const { URL, URLSearchParams } = require('universal-url');
 const cuid = require('cuid');
 

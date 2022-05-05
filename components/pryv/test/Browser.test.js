@@ -1,7 +1,5 @@
-/* global describe, it, before, after, expect, Pryv, testData */
+/* global describe, it, before, after, expect, Browser, Pryv, testData */
 /* eslint-disable no-unused-expressions */
-
-const Browser = require('zombie');
 
 function genSettings () {
   function defaultStateChange (state) {

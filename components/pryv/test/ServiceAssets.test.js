@@ -1,6 +1,4 @@
-/* global describe, it, before, after, expect, Pryv, testData */
-
-const Browser = require('zombie');
+/* global describe, it, before, after, expect, Browser, Pryv, testData */
 
 describe('ServiceAssets', function () {
   let removeZombie = false;
