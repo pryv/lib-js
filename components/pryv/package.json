@@ -26,8 +26,8 @@
     "doc": "npx jsdoc -c .jsdoc-conf.json",
     "gh-pages": "./scripts/upload",
     "setup": "./scripts/setup-dev-env",
-    "test": "mocha --reporter spec  test/**/*.test.js --timeout 3000",
-    "test-debug": "mocha --inpect-brk=40000 --reporter spec  test/**/*.test.js ",
+    "test": "mocha",
+    "test-debug": "mocha --inpect-brk=40000",
     "test:browser": "npm run build; ",
     "webserver": "./node_modules/.bin/rec-la ./dist 9443"
   },

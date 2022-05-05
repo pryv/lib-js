@@ -1,12 +1,12 @@
-/* global describe, it, before, expect, conn, apiEndpoint, prepareAndcreateBaseStreams */
+/* global describe, it, before, expect, Pryv, conn, apiEndpoint, prepareAndCreateBaseStreams */
 
-const Pryv = require('pryv');
+require('./load-helpers');
 
 describe('Monitor + EventsTimer', function () {
   this.timeout(3000);
 
   before(async () => {
-    await prepareAndcreateBaseStreams();
+    await prepareAndCreateBaseStreams();
   });
 
   describe('init', () => {

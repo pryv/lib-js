@@ -1,11 +1,11 @@
-/* global chai, describe, it, xit, before, after, beforeEach, afterEach, Browser, Pryv, Blob, FormData */
+/* global describe, it, xit, before, after, beforeEach, afterEach, expect, Pryv, testData, Blob, FormData */
 /* eslint-disable no-unused-expressions */
 
-const expect = chai.expect;
-const testData = require('./test-data.js');
-let conn = null;
+const Browser = require('zombie');
 const { URL, URLSearchParams } = require('universal-url');
 const cuid = require('cuid');
+
+let conn = null;
 
 const isNode = (typeof window === 'undefined');
 

@@ -1,12 +1,14 @@
-/* global describe, it, before, after, beforeEach, afterEach, Pryv, testData, expect */
+/* global describe, it, before, after, beforeEach, afterEach, expect, Pryv, testData */
 /* eslint-disable no-unused-expressions */
 
 const cuid = require('cuid');
 
+require('../src')(Pryv);
+
 let conn = null;
 const testStreamId = 'socket-test';
 
-describe('SocketIO', function () {
+describe('Socket.IO', function () {
   this.timeout(3000);
   let apiEndpoint;
   let apiEndpointBogusToken;

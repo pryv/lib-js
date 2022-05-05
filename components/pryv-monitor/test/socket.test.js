@@ -1,12 +1,13 @@
-/* global describe, it, before, expect, Pryv, conn, apiEndpoint, prepareAndcreateBaseStreams */
+/* global describe, it, before, expect, Pryv, conn, apiEndpoint, prepareAndCreateBaseStreams */
 
+require('./load-helpers');
 require('@pryv/socket.io')(Pryv);
 
 describe('Monitor + Socket.io', function () {
   this.timeout(3000);
 
   before(async () => {
-    await prepareAndcreateBaseStreams();
+    await prepareAndCreateBaseStreams();
   });
 
   describe('socket updates', function () {

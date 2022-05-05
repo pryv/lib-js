@@ -1,12 +1,11 @@
-/* global chai, describe, it, before, after, Browser */
+/* global describe, it, before, after, expect */
 /* eslint-disable no-unused-expressions */
 
-const expect = chai.expect;
+const Browser = require('zombie');
 
 const utils = require('../src/utils.js');
 const Service = require('../src/Service');
 const AuthController = require('../src/Auth/AuthController.js');
-const testData = require('./test-data.js');
 
 describe('Browser.LoginButton', function () {
   this.timeout(5000);

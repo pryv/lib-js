@@ -1,8 +1,6 @@
-/* global chai, describe, it, before, after, Browser, Pryv */
+/* global describe, it, before, after, expect, Pryv, testData */
 
-const expect = chai.expect;
-
-const testData = require('./test-data.js');
+const Browser = require('zombie');
 
 describe('ServiceAssets', function () {
   let removeZombie = false;

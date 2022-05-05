@@ -23,6 +23,6 @@
     "build": "webpack",
     "example": "npx rec-la ./examples",
     "setup": "./scripts/setup-environment-dev.sh",
-    "test": "mocha --reporter spec  test/*.test.js"
+    "test": "mocha"
   }
 }

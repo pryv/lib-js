@@ -1,13 +1,5 @@
-/* global chai, describe, it, before, Pryv */
+/* global describe, it, before, expect, Pryv, testData */
 /* eslint-disable no-unused-expressions */
-
-const expect = chai.expect;
-const assert = chai.assert;
-
-const chaiAsPromised = require('chai-as-promised');
-chai.use(chaiAsPromised);
-
-const testData = require('./test-data.js');
 
 describe('Service', function () {
   before(async function () {
@@ -59,8 +51,7 @@ describe('Service', function () {
   describe('Errors', async function () {
     it('Throw error with invalid content', async () => {
       const service = new Pryv.Service(null, {});
-      await assert.isRejected(service.info(),
-        'Invalid data from service/info');
+      await expect(service.info()).to.be.rejectedWith('Invalid data from service/info');
     });
 
     it('Warn if no assets', async () => {
@@ -74,8 +65,7 @@ describe('Service', function () {
     it('login() failed', async function () {
       this.timeout(5000);
       const pryvService = new Pryv.Service(testData.serviceInfoUrl);
-      await assert.isRejected(
-        pryvService.login(testData.username, 'bobby', 'jslib-test'), 'The given username/password pair is invalid.');
+      await expect(pryvService.login(testData.username, 'bobby', 'jslib-test')).to.be.rejectedWith('The given username/password pair is invalid.');
     });
   });
 });

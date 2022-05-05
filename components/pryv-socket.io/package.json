@@ -22,7 +22,7 @@
     "build": "webpack",
     "example": "npx rec-la ./examples",
     "setup": "./scripts/setup-environment-dev.sh",
-    "test": "mocha --reporter spec --exit test/*.test.js"
+    "test": "mocha"
   },
   "dependencies": {
     "socket.io-client": "^4.4.0"

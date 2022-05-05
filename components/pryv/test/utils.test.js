@@ -1,9 +1,5 @@
-/* global chai, describe, it, before, Pryv */
+/* global describe, it, before, expect, Pryv, testData */
 /* eslint-disable no-unused-expressions */
-
-const expect = chai.expect;
-
-const testData = require('./test-data.js');
 
 describe('utils', function () {
   before(async function () {

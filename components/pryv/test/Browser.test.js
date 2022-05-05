@@ -1,9 +1,7 @@
-/* global chai, describe, it, before, after, Browser, Pryv */
+/* global describe, it, before, after, expect, Pryv, testData */
 /* eslint-disable no-unused-expressions */
 
-const expect = chai.expect;
-
-const testData = require('./test-data.js');
+const Browser = require('zombie');
 
 function genSettings () {
   function defaultStateChange (state) {
