@@ -8,5 +8,4 @@ const testData = require('pryv/test/test-data.js');
 global.chai = chai;
 global.Pryv = Pryv;
 global.testData = testData;
-global.should = chai.should();
 global.expect = chai.expect;

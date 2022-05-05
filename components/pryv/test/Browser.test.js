@@ -1,7 +1,6 @@
 /* global chai, describe, it, before, after, Browser, Pryv */
 /* eslint-disable no-unused-expressions */
 
-const should = chai.should();
 const expect = chai.expect;
 
 const testData = require('./test-data.js');
@@ -51,7 +50,7 @@ describe('Browser', function () {
     const settings = genSettings();
     let AuthLoaded = false;
     settings.onStateChange = function (state) {
-      should.exist(state.id);
+      expect(state.id).to.exist;
       if (state.id === Pryv.Auth.AuthStates.LOADING) {
         AuthLoaded = true;
       }
@@ -63,11 +62,11 @@ describe('Browser', function () {
     try {
       const service = await Pryv.Auth.setupAuth(settings, testData.serviceInfoUrl);
       const serviceInfo = service.infoSync();
-      should.exist(serviceInfo.access);
-      should.exist(serviceInfo.serial);
+      expect(serviceInfo.access).to.exist;
+      expect(serviceInfo.serial).to.exist;
     } catch (error) {
       console.log(error);
-      should.not.exist(error);
+      expect(error).to.not.exist;
     }
   });
 

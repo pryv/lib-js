@@ -1,6 +1,7 @@
 /* global chai, describe, it, before, Pryv */
+/* eslint-disable no-unused-expressions */
 
-const should = chai.should();
+const expect = chai.expect;
 
 const testData = require('./test-data.js');
 
@@ -13,9 +14,9 @@ describe('utils', function () {
   it('extractTokenAndApiEndpoint', function (done) {
     const tokenAndAPI = Pryv.utils
       .extractTokenAndApiEndpoint(testData.apiEndpointWithToken);
-    testData.token.should.equals(tokenAndAPI.token);
+    expect(testData.token).to.equal(tokenAndAPI.token);
 
-    (testData.apiEndpoint).should.equals(tokenAndAPI.endpoint);
+    expect(testData.apiEndpoint).to.equal(tokenAndAPI.endpoint);
     done();
   });
 
@@ -23,9 +24,9 @@ describe('utils', function () {
     const tokenAndAPI = Pryv.utils
       .extractTokenAndApiEndpoint(testData.apiEndpoint);
 
-    should.not.exist(tokenAndAPI.token);
+    expect(tokenAndAPI.token).to.not.exist;
 
-    (testData.apiEndpoint).should.equals(tokenAndAPI.endpoint);
+    expect(testData.apiEndpoint).to.equal(tokenAndAPI.endpoint);
     done();
   });
 
@@ -37,7 +38,7 @@ describe('utils', function () {
       error = e;
       return done();
     }
-    should.exist(error);
+    expect(error).to.exist;
   });
 
   it('buildAPIEndpoint with token', function (done) {
@@ -46,7 +47,7 @@ describe('utils', function () {
         token: testData.token,
         endpoint: testData.apiEndpoint
       });
-    apiEndpoint.should.equals(testData.apiEndpointWithToken);
+    expect(apiEndpoint).to.equal(testData.apiEndpointWithToken);
     done();
   });
 
@@ -56,7 +57,7 @@ describe('utils', function () {
         token: null,
         endpoint: testData.apiEndpoint
       });
-    apiEndpoint.should.equals(testData.apiEndpoint);
+    expect(apiEndpoint).to.equal(testData.apiEndpoint);
     done();
   });
 });

@@ -84,7 +84,7 @@ describe('Monitor + EventsTimer', function () {
       ]);
 
       await new Promise(resolve => setTimeout(resolve, 1000));
-      expect(count).to.equals(0);
+      expect(count).to.equal(0);
     });
   });
 });

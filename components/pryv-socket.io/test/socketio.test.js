@@ -44,7 +44,7 @@ describe('SocketIO', function () {
         if (e.message === 'Not Found' || e.message.startsWith('getaddrinfo ENOTFOUND')) {
           return;
         }
-        throw new Error('Error message should be NotFound or ENOTFOUND and recieved: ' + e.message);
+        throw new Error('Error message should be NotFound or ENOTFOUND and received: ' + e.message);
       }
       throw new Error('Should throw an error');
     });
@@ -73,7 +73,7 @@ describe('SocketIO', function () {
       try {
         await conn.socket.api([{ method: 'events.get', params: {} }]);
       } catch (e) {
-        return expect(e.message).to.equals('Initialize socket.io with connection.socket.open() before');
+        return expect(e.message).to.equal('Initialize socket.io with connection.socket.open() before');
       }
       throw new Error('Should throw an error');
     });
@@ -82,7 +82,7 @@ describe('SocketIO', function () {
       try {
         await conn.socket.on('eventsChanged');
       } catch (e) {
-        return expect(e.message).to.equals('Initialize socket.io with connection.socket.open() before');
+        return expect(e.message).to.equal('Initialize socket.io with connection.socket.open() before');
       }
       throw new Error('Should throw an error');
     });
@@ -126,7 +126,7 @@ describe('SocketIO', function () {
       try {
         conn.socket.on('Bogus', () => {});
       } catch (e) {
-        return expect(e.message).to.equals('Unkown event [Bogus]. Allowed events are: eventsChanged,streamsChanged,accessesChanged,disconnect,error');
+        return expect(e.message).to.equal('Unkown event [Bogus]. Allowed events are: eventsChanged,streamsChanged,accessesChanged,disconnect,error');
       }
       throw new Error('Should fail');
     });

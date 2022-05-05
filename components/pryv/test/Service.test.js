@@ -1,7 +1,6 @@
 /* global chai, describe, it, before, Pryv */
 /* eslint-disable no-unused-expressions */
 
-const should = chai.should();
 const expect = chai.expect;
 const assert = chai.assert;
 
@@ -19,38 +18,38 @@ describe('Service', function () {
   it('info()', async () => {
     const pryvService = new Pryv.Service(testData.serviceInfoUrl);
     const res = await pryvService.info();
-    should.exist(res);
+    expect(res).to.exist;
 
     ['access', 'api', 'register'].forEach((key) => {
-      should.exist(res[key]);
+      expect(res[key]).to.exist;
       // all API endpoints should end with a '/';
-      res[key].slice(-1).should.equal('/');
+      expect(res[key].slice(-1)).to.equal('/');
     });
   });
 
   it('info() 2x ', async () => {
     const pryvService = new Pryv.Service(testData.serviceInfoUrl);
     const res = await pryvService.info();
-    should.exist(res);
-    should.exist(res.access);
+    expect(res).to.exist;
+    expect(res.access).to.exist;
     const res2 = await pryvService.info();
-    should.exist(res2);
-    should.exist(res2.access);
+    expect(res2).to.exist;
+    expect(res2.access).to.exist;
   });
 
   it('login()', async function () {
     this.timeout(5000);
     const pryvService = new Pryv.Service(testData.serviceInfoUrl);
     const conn = await pryvService.login(testData.username, testData.password, 'jslib-test');
-    should.exist(conn);
-    should.exist(conn.token);
-    should.exist(conn.endpoint);
+    expect(conn).to.exist;
+    expect(conn.token).to.exist;
+    expect(conn.endpoint).to.exist;
   });
 
   it('assets()', async function () {
     const pryvService = new Pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
-    should.exist(assets);
+    expect(assets).to.exist;
 
     // assets should be cached
     const assets2 = await pryvService.assets();

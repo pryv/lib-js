@@ -1,7 +1,6 @@
 /* global chai, describe, it, xit, before, after, beforeEach, afterEach, Browser, Pryv, Blob, FormData */
 /* eslint-disable no-unused-expressions */
 
-const should = chai.should();
 const expect = chai.expect;
 const testData = require('./test-data.js');
 let conn = null;
@@ -82,7 +81,7 @@ describe('Connection', () => {
   describe('.username() ', function () {
     it('return the username of this connection', async () => {
       const username = await conn.username();
-      expect(username).to.equals(testData.username);
+      expect(username).to.equal(testData.username);
     });
   });
 
@@ -96,7 +95,7 @@ describe('Connection', () => {
             params: {}
           }
         ]);
-      res.length.should.equal(1);
+      expect(res.length).to.equal(1);
     });
 
     it('.api() events.get split in chunks', async () => {
@@ -107,16 +106,16 @@ describe('Connection', () => {
           { method: 'events.get', params: {} },
           { method: 'events.get', params: {} }
         ]);
-      res.length.should.equal(3);
+      expect(res.length).to.equal(3);
     });
 
     it('.api() events.get with handleResult call', async () => {
       conn.options.chunkSize = 2;
 
-      let resultsRecievedCount = 0;
+      let resultsReceivedCount = 0;
       function oneMoreResult (res) {
-        should.exist(res.events);
-        resultsRecievedCount++;
+        expect(res.events).to.exist;
+        resultsReceivedCount++;
       }
 
       const res = await conn.api(
@@ -125,23 +124,23 @@ describe('Connection', () => {
           { method: 'events.get', params: {}, handleResult: oneMoreResult },
           { method: 'events.get', params: {}, handleResult: oneMoreResult }
         ]);
-      res.length.should.equal(3);
-      res.length.should.equal(resultsRecievedCount);
+      expect(res.length).to.equal(3);
+      expect(res.length).to.equal(resultsReceivedCount);
     });
 
     it('.api() events.get with async handleResult call', async () => {
       conn.options.chunkSize = 2;
 
-      let resultsRecievedCount = 0;
+      let resultsReceivedCount = 0;
       async function oneMoreResult (res) {
-        should.exist(res.events);
+        expect(res.events).to.exist;
 
         const promise = new Promise((resolve, reject) => {
           setTimeout(() => resolve("Now it's done!"), 100);
         });
         // wait until the promise returns us a value
         await promise;
-        resultsRecievedCount++;
+        resultsReceivedCount++;
       }
 
       const res = await conn.api(
@@ -150,8 +149,8 @@ describe('Connection', () => {
           { method: 'events.get', params: {}, handleResult: oneMoreResult },
           { method: 'events.get', params: {}, handleResult: oneMoreResult }
         ]);
-      res.length.should.equal(3);
-      res.length.should.equal(resultsRecievedCount);
+      expect(res.length).to.equal(3);
+      expect(res.length).to.equal(resultsReceivedCount);
     });
 
     it('.api() events.get split in chunks and send percentages', async () => {
@@ -164,10 +163,10 @@ describe('Connection', () => {
           { method: 'events.get', params: {} },
           { method: 'events.get', params: {} }
         ], function (percent) {
-          percent.should.equal(percentres[count]);
+          expect(percent).to.equal(percentres[count]);
           count++;
         });
-      res.length.should.equal(3);
+      expect(res.length).to.equal(3);
     });
 
     it('.api() with callbacks', (done) => {
@@ -175,10 +174,10 @@ describe('Connection', () => {
         [
           { method: 'events.get', params: {} }
         ]).then((res) => {
-        res.length.should.equal(1);
+        expect(res.length).to.equal(1);
         done();
       }, (err) => {
-        should.not.exist(err);
+        expect(err).to.not.exist;
         done();
       });
     });
@@ -192,13 +191,13 @@ describe('Connection', () => {
         streamIds: ['data']
       }, './test/Y.png');
 
-      should.exist(res);
-      should.exist(res.event);
-      should.exist(res.event.attachments);
-      res.event.attachments.length.should.equal(1);
-      res.event.attachments[0].size.should.equal(14798);
-      res.event.attachments[0].type.should.equal('image/png');
-      res.event.attachments[0].fileName.should.equal('Y.png');
+      expect(res).to.exist;
+      expect(res.event).to.exist;
+      expect(res.event.attachments).to.exist;
+      expect(res.event.attachments.length).to.equal(1);
+      expect(res.event.attachments[0].size).to.equal(14798);
+      expect(res.event.attachments[0].type).to.equal('image/png');
+      expect(res.event.attachments[0].fileName).to.equal('Y.png');
     });
 
     it('Node Only: Create event with attachment from Buffer', async function () {
@@ -210,13 +209,13 @@ describe('Connection', () => {
         streamIds: ['data']
       }, fileData, 'Y.png');
 
-      should.exist(res);
-      should.exist(res.event);
-      should.exist(res.event.attachments);
-      res.event.attachments.length.should.equal(1);
-      res.event.attachments[0].size.should.equal(14798);
-      res.event.attachments[0].type.should.equal('image/png');
-      res.event.attachments[0].fileName.should.equal('Y.png');
+      expect(res).to.exist;
+      expect(res.event).to.exist;
+      expect(res.event.attachments).to.exist;
+      expect(res.event.attachments.length).to.equal(1);
+      expect(res.event.attachments[0].size).to.equal(14798);
+      expect(res.event.attachments[0].type).to.equal('image/png');
+      expect(res.event.attachments[0].fileName).to.equal('Y.png');
     });
 
     it('Browser Only: Create event with attachment from Buffer', async function () {
@@ -228,14 +227,14 @@ describe('Connection', () => {
         streamIds: ['data']
       }, blob, 'Hello.txt');
 
-      should.exist(res);
-      should.exist(res.event);
+      expect(res).to.exist;
+      expect(res.event).to.exist;
       console.log(res.event);
-      should.exist(res.event.attachments);
-      res.event.attachments.length.should.equal(1);
-      res.event.attachments[0].size.should.equal(5);
-      res.event.attachments[0].type.should.equal('text/txt');
-      res.event.attachments[0].fileName.should.equal('Hello.txt');
+      expect(res.event.attachments).to.exist;
+      expect(res.event.attachments.length).to.equal(1);
+      expect(res.event.attachments[0].size).to.equal(5);
+      expect(res.event.attachments[0].type).to.equal('text/txt');
+      expect(res.event.attachments[0].fileName).to.equal('Hello.txt');
     });
 
     it('Browser Only: Create event with attachment formData', async function () {
@@ -250,13 +249,13 @@ describe('Connection', () => {
         streamIds: ['data']
       }, formData);
 
-      should.exist(res);
-      should.exist(res.event);
-      should.exist(res.event.attachments);
-      res.event.attachments.length.should.equal(1);
-      res.event.attachments[0].size.should.equal(5);
-      res.event.attachments[0].type.should.equal('text/txt');
-      res.event.attachments[0].fileName.should.equal('blob');
+      expect(res).to.exist;
+      expect(res.event).to.exist;
+      expect(res.event.attachments).to.exist;
+      expect(res.event.attachments.length).to.equal(1);
+      expect(res.event.attachments[0].size).to.equal(5);
+      expect(res.event.attachments[0].type).to.equal('text/txt');
+      expect(res.event.attachments[0].fileName).to.equal('blob');
     });
   });
 
@@ -269,10 +268,10 @@ describe('Connection', () => {
           streamIds: ['data']
         }
       }]);
-      should.exist(res);
-      should.exist(res[0]);
-      should.exist(res[0].event);
-      should.exist(res[0].event.id);
+      expect(res).to.exist;
+      expect(res[0]).to.exist;
+      expect(res[0].event).to.exist;
+      expect(res[0].event.id).to.exist;
       const event = res[0].event;
 
       const res2 = await conn.addPointsToHFEvent(
@@ -280,23 +279,22 @@ describe('Connection', () => {
         ['deltaTime', 'value'],
         [[0, 1], [1, 1]]);
 
-      should.exist(res2);
-      'ok'.should.equal(res2.status);
+      expect(res2).to.exist;
+      expect('ok').to.equal(res2.status);
     });
   });
 
   describe('.get()', () => {
     it('/events', async () => {
       const res = await conn.get('events', { limit: 1 });
-      res.events.length.should.equal(1);
+      expect(res.events.length).to.equal(1);
     });
   });
 
   describe('time', () => {
     it('deltatime property', async () => {
       await conn.get('events', { limit: 1 });
-      const deltaTime = conn.deltaTime;
-      expect(Math.abs(deltaTime) < 2).to.be.true;
+      expect(conn.deltaTime).to.be.within(-2, 2);
     });
   });
 
@@ -444,14 +442,14 @@ describe('Connection', () => {
     });
 
     it('has same username', () => {
-      should.exist(accessInfoUser);
-      should.exist(accessInfoUser.name);
-      should.equal(newUser.access.name, accessInfoUser.name);
+      expect(accessInfoUser).to.exist;
+      expect(accessInfoUser.name).to.exist;
+      expect(newUser.access.name).to.equal(accessInfoUser.name);
     });
 
     it('has same token', () => {
-      should.exist(accessInfoUser.token);
-      should.equal(newUser.access.token, accessInfoUser.token);
+      expect(accessInfoUser.token).to.exist;
+      expect(newUser.access.token).to.equal(accessInfoUser.token);
     });
   });
 });
