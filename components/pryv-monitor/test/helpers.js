@@ -6,7 +6,7 @@
 const chai = require('chai');
 const Pryv = require('pryv');
 require('../src')(Pryv); // Loading Monitor on Pryv
-const testData = require('../node_modules/pryv/test/test-data.js');
+const testData = require('pryv/test/test-data.js');
 global.chai = chai;
 global.Pryv = Pryv;
 global.testData = testData;
