@@ -182,7 +182,7 @@ describe('Connection', () => {
     });
   });
 
-  describe('Attachements', () => {
+  describe('Attachments', () => {
     it('Node Only: Create event with attachment from file', async function () {
       if (!isNode) { this.skip(); }
       const res = await conn.createEventWithFile({
