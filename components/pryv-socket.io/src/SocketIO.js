@@ -16,44 +16,45 @@ class SocketIO extends EventEmitter {
    * @throws {Error} On connection failures
    * @return {SocketIO} this
    */
-  open () {
-    return new Promise(async (resolve, reject) => {
+  async open () {
+    return new Promise((resolve, reject) => {
       if (this._io) return resolve(this);
       if (this.connecting) return reject(new Error('open() process in course'));
       this.connecting = true;
 
-      try {
-        const username = await this.connection.username();
-        const socketEndpoint = this.connection.endpoint + username + '?auth=' + this.connection.token;
-        this._io = io(socketEndpoint, { forceNew: true });
-      } catch (e) {
-        this._io = null;
-        this.connecting = false;
-        return reject(e);
-      }
+      this.connection.username()
+        .then(username => {
+          const socketEndpoint = this.connection.endpoint + username + '?auth=' + this.connection.token;
+          this._io = io(socketEndpoint, { forceNew: true });
 
-      // handle failure
-      for (const errcode of ['connect_error', 'connection_failed', 'error', 'connection_timeout']) {
-        const myCode = errcode;
-        this._io.on(errcode, (e) => {
-          if (!this.connecting) return; // do not care about errors if connected
+          // handle failure
+          for (const errcode of ['connect_error', 'connection_failed', 'error', 'connection_timeout']) {
+            const myCode = errcode;
+            this._io.on(errcode, (e) => {
+              if (!this.connecting) return; // do not care about errors if connected
 
+              this._io = null;
+              this.connecting = false;
+              if (e === null) { e = myCode; }
+              if (!(e instanceof Error)) { e = new Error(e); }
+
+              try { this._io.close(); } catch (ex) { }
+              return reject(e);
+            });
+          }
+
+          // handle success
+          this._io.on('connect', () => {
+            this.connecting = false;
+            registerListeners(this);
+            resolve(this);
+          });
+        })
+        .catch(e => {
           this._io = null;
           this.connecting = false;
-          if (e === null) { e = myCode; }
-          if (!(e instanceof Error)) { e = new Error(e); }
-
-          try { this._io.close(); } catch (ex) { }
           return reject(e);
         });
-      }
-
-      // handle success
-      this._io.on('connect', () => {
-        this.connecting = false;
-        registerListeners(this);
-        resolve(this);
-      });
     });
   }
 
