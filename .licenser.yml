@@ -34,6 +34,7 @@ ignore:
 - dist
 - examples
 - node_modules
+- test-browser
 
 license: |
   Copyright (c) {YEARS} {AUTHOR_NAME} {AUTHOR_WEB}

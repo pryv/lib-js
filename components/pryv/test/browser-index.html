@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Pryv JavaScript Lib – Browser Tests</title>
+  <title>Pryv JS lib browser tests</title>
   <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
 </head>
 
@@ -15,8 +15,9 @@
     mocha.checkLeaks();
   </script>
 
-  <script src="../pryv.js"></script>
-  <script src="browser-tests.js"></script>
+  <!-- Files cf. webpack config -->
+  <script src="pryv.js"></script>
+  <script src="tests.js"></script>
 
   <script>
     mocha.run();

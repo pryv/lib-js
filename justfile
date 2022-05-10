@@ -13,14 +13,19 @@ _help:
 setup-dev-env:
     scripts/setup-dev-env
 
-# Clean up `dist/`, resetting it to the currently published state
+# Clean up `dist/` (resetting it to the currently published state) and `test-browser/`
 clean:
     #!/bin/sh
     set -e
+    rm -rf test-browser
     cd dist
     git fetch origin
     git reset --hard origin/gh-pages
     git clean -fdx
+
+# Install node modules
+install *params:
+    npm install {{params}}
 
 # Compile code to `dist/`
 build *params:
@@ -53,8 +58,14 @@ test-cover component *params:
     NODE_ENV=test COMPONENT={{component}} nyc --reporter=lcov --reporter=text --report-dir=./coverage \
         components-run npx mocha -- {{params}}
 
+# Run browser tests (assumes browser files are built)
+test-browser:
+    (sleep 1 && open https://l.rec.la:8443/?pryvServiceInfoUrl=https://zouzou.com/service/info) &
+    rec.la ./test-browser 8443
+
 # Start a `rec.la` web server on `dist/`
 serve:
+    (sleep 1 && open https://l.rec.la:9443/) &
     rec.la ./dist 9443
 
 # –––––––––––––----------------------------------------------------------------

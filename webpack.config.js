@@ -108,19 +108,18 @@ module.exports = [
   { // browser test suite (ES6) TODO consider moving out of dist/
     mode: 'development',
     entry: {
-      'browser-tests': componentPath('pryv', 'test/browser-index.js')
+      'browser-tests': componentPath('pryv', 'test/browser-tests.js')
     },
     output: {
-      filename: '[name].js',
-      path: distPath('tests/'),
-      libraryTarget: 'var',
-      library: 'browserTest'
+      filename: 'tests.js',
+      path: path.join(__dirname, 'test-browser/')
     },
     plugins: [
       new webpack.IgnorePlugin({ resourceRegExp: /zombie/ }),
       new CopyPlugin({
         patterns: [
-          { from: componentPath('pryv', 'test/browser-tests.html') }
+          { from: componentPath('pryv', 'test/browser-index.html'), to: 'index.html' },
+          { from: distPath('pryv.js') }
         ]
       })
     ],
