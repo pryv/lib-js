@@ -72,14 +72,23 @@ serve:
 # Misc. utils
 # –––––––––––––----------------------------------------------------------------
 
-# Publish `dist/` (i.e. the `gh-pages` branch)
-upload commit_message:
-    scripts/upload {{commit_message}}
-
 # Run source licensing tool
 license:
     source-licenser --config-file .licenser.yml ./
 
 # Set version on all `package.json` (root’s and components’)
 version version:
-    npm version --no-git-tag-version --workspaces --include-workspace-root {{version}}
+    npm version --workspaces --include-workspace-root {{version}}
+
+# Publish all components to NPM
+publish-npm:
+    npm publish --workspaces
+
+# Publish browser files in `dist/` (i.e. the `gh-pages` branch)
+publish-browser:
+    #!/bin/sh
+    set -e
+    cd dist
+    git add --all
+    git commit -m "Updated generated files"
+    git push
