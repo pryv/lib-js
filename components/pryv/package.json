@@ -19,17 +19,7 @@
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "scripts": {
-    "build": "webpack --config webpack.config.js",
-    "clear": "rm -r dist/ && npm run setup",
-    "cover": "nyc npm run test && npm run cover:report",
-    "cover:report": "nyc report --reporter=lcov --reporter=html",
-    "doc": "npx jsdoc -c .jsdoc-conf.json",
-    "gh-pages": "./scripts/upload",
-    "setup": "./scripts/setup-dev-env",
-    "test": "mocha",
-    "test-debug": "mocha --inpect-brk=40000",
-    "test:browser": "npm run build; ",
-    "webserver": "rec.la ./dist 9443"
+    "doc": "npx jsdoc -c .jsdoc-conf.json"
   },
   "dependencies": {
     "superagent": "^7.1.2"

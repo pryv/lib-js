@@ -8,22 +8,17 @@
     "Socket.io",
     "WebSockets"
   ],
+  "homepage": "https://github.com/pryv/lib-js/blob/master/components/pryv-socket.io/",
   "bugs": {
-    "url": "https://github.com/pryv/lib-js-socket.io/issues"
+    "url": "https://github.com/pryv/lib-js/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/pryv/lib-js-socket.io"
+    "url": "git://github.com/pryv/lib-js"
   },
   "license": "BSD-3-Clause",
   "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
   "main": "src/index.js",
-  "scripts": {
-    "build": "webpack",
-    "example": "npx rec-la ./examples",
-    "setup": "./scripts/setup-environment-dev.sh",
-    "test": "mocha"
-  },
   "dependencies": {
     "socket.io-client": "^4.4.0"
   }
