@@ -1,3 +1,7 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 const utils = require('./utils.js');
 // Connection is required at the end of this file to allow circular requires.
 const Assets = require('./ServiceAssets.js');

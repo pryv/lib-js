@@ -67,7 +67,7 @@ upload commit_message:
 
 # Run source licensing tool
 license:
-    # source-licenser --config-file .licenser.yml ./
+    source-licenser --config-file .licenser.yml ./
 
 # Set version on all `package.json` (root’s and components’)
 version version:

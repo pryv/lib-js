@@ -1,3 +1,7 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 /* global describe, it, xit, before, after, beforeEach, afterEach, expect, Browser, Pryv, testData, Blob, FormData */
 /* eslint-disable no-unused-expressions */
 

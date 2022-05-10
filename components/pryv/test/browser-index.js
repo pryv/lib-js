@@ -1,4 +1,8 @@
 /**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
+/**
  * Entry point for WebPack to build test series to be run in the browser
  */
 /* global chai */

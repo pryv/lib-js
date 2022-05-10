@@ -1,4 +1,8 @@
 /**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
+/**
  * Pryv library
  * @version 1.0
  * @exports Pryv

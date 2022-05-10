@@ -39,6 +39,7 @@
     "nyc": "^15.1.0",
     "rec.la": "latest",
     "semistandard": "^16.0.1",
+    "source-licenser": "^2.0.5",
     "universal-url": "^2.0.0",
     "webpack": "^5.64.4",
     "webpack-cli": "^4.9.1",

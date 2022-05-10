@@ -1,3 +1,7 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 /* global expect, Pryv, testData */
 /* eslint-disable no-unused-expressions */
 

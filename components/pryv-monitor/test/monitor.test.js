@@ -1,3 +1,7 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 /* global describe, it, before, beforeEach, afterEach, expect, Pryv, conn, apiEndpoint, prepareAndCreateBaseStreams */
 
 require('./load-helpers');

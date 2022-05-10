@@ -1,3 +1,7 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 const Changes = require('../lib/Changes');
 /**
  * Interface for UpdateMonitor

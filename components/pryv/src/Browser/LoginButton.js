@@ -1,3 +1,7 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 const Cookies = require('./CookieUtils');
 const AuthStates = require('../Auth/AuthStates');
 const AuthController = require('../Auth/AuthController');

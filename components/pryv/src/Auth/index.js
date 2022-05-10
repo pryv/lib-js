@@ -1,3 +1,7 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 const AuthController = require('./AuthController');
 const AuthStates = require('./AuthStates');
 const LoginButton = require('../Browser/LoginButton');

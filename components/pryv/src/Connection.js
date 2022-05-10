@@ -1,3 +1,7 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 const utils = require('./utils.js');
 const jsonParser = require('./lib/json-parser');
 const browserGetEventStreamed = require('./lib/browser-getEventStreamed');

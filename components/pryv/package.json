@@ -18,9 +18,6 @@
   "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
   "main": "src/index.js",
   "types": "src/index.d.ts",
-  "scripts": {
-    "doc": "npx jsdoc -c .jsdoc-conf.json"
-  },
   "dependencies": {
     "superagent": "^7.1.2"
   }

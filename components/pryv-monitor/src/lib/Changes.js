@@ -1,4 +1,8 @@
 /**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
+/**
  * Enum trigger messages
  * @readonly
  * @enum {Pryv.Monitor.Changes}

@@ -1,3 +1,7 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 /* global describe, it, before, after, expect, Browser, Pryv, testData */
 
 describe('ServiceAssets', function () {
