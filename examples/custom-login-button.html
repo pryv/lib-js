@@ -1,15 +1,24 @@
 <!doctype html>
-<html>
+<html lang="en">
 
 <head>
-  <title>Custom Login button - Pryv JS lib</title>
+  <title>Custom login button — Pryv JS lib example</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto+Condensed:300,400,700" type="text/css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,400italic" type="text/css">
+  <link rel="stylesheet" type="text/css" href="https://api.pryv.com/style/pryv.min.css">
+  <!-- Paths assume we're in dist/examples/ (update as needed) -->
   <script src="../pryv.js"></script>
-  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-  <meta content="utf-8" http-equiv="encoding">
 </head>
 
 <body>
-  <button type="button" id="pryv-button">My custom button</button>
+  <div class="container container-narrow">
+    <h1>Example: Custom login button</h1>
+    <button type="button" id="pryv-button">My custom button</button>
+  </div>
+
   <script>
     const authSettings = {
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
@@ -146,7 +155,7 @@
   }};
   (async function () {
     let service = await Pryv.Auth.setupAuth(
-      authSettings, 
+      authSettings,
       serviceInfoUrl,
       serviceInfoJson,
       MyLoginButton,

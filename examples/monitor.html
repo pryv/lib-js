@@ -1,32 +1,29 @@
 <!doctype html>
-<html>
-  <!--
-    This file is moved in dist/ during build process.
-    It should be opened in the same directory than pryv-monitor.js built 
-  -->
+<html lang="en">
+
 <head>
+  <title>Monitor — Pryv JS lib example</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
-    integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto+Condensed:300,400,700" type="text/css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,400italic" type="text/css">
   <link rel="stylesheet" type="text/css" href="https://api.pryv.com/style/pryv.min.css">
-  <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Roboto:300,400">
-
-  <title>Pryv Monitor - Javascript</title>
-  <script src="https://api.pryv.com/lib-js/pryv.js"></script>
-  <script src="https://api.pryv.com/lib-js-socket.io/pryv-socket.io.js"></script>
-  <script src="pryv-monitor.js"></script>
+  <!-- Paths assume we're in dist/examples/ (update as needed) -->
+  <script src="../pryv.js"></script>
+  <script src="../pryv-socket.io.js"></script>
+  <script src="../pryv-monitor.js"></script>
 </head>
 
 <body>
   <div class="container">
-    <h1>Monitor - Pryv Examples</h1>
+    <h1>Example: Monitor</h1>
     <span id="pryv-button"></span>
-    <br>
-    This example illustrates the creation, update and deletion of events as well as the monitoring of data changes (i.e.
-    real time updates). You can open a second page of this fiddle and verify that actions on either page are reflected on
-    the other.
+    <p>
+      This example illustrates the creation, update and deletion of events as well as the monitoring of data changes (i.e.
+      real time updates). You can open a second page of this fiddle and verify that actions on either page are reflected on
+      the other.
+    </p>
 
     <div class="card">
       <div class="card-body">
@@ -34,12 +31,12 @@
         <h5>Create</h5>
         <input type='text' id='create-content' placeholder='Content' value='Example content' />
         <button onClick='createNoteEvent()'>Create note event</button>
-        
+
         <h5>Update</h5>
         <input type='text' id='update-id' placeholder='Event id' value='' />
         <input type='text' id='update-content' placeholder='Updated content' value='Updated example content' />
         <button onClick='updateNoteEvent()'>Update event</button>
-        
+
         <h5>Delete</h5>
         <input type='text' id='delete-id' placeholder='Event id' value='' />
         <button onClick='deleteNoteEvent()'>Trash event (2x to delete)</button>
@@ -67,11 +64,11 @@
     <br>
     <small>Source code of this demo app on <a
         href="https://github.com/pryv/lib-js-monitor.io/blob/master/examples/index.html">GitHub</a></small>
-    </div>
+  </div>
 </body>
 
 <script>
-  // --- usual boiler plate 
+  // --- usual boiler plate
 
   //-- UI Elements
  var $createContent = document.getElementById('create-content'),
@@ -186,7 +183,7 @@
   let monitor = null;
 
   /**
-   * close monitor 
+   * close monitor
    */
   function closeMonitor() {
     if (monitor == null) return;
@@ -198,7 +195,7 @@
   }
 
    /**
-    *  
+    *
     */
   function initializeMonitor() {
    new Pryv.Monitor(connection, { limit: 2 })
@@ -220,7 +217,7 @@
       .on(Pryv.Monitor.Changes.ERROR, function (error) {
         logToMonitor('> Event-ERROR: \n' + error);
       })
-      // uncomment / comment one of the two following line to switch 
+      // uncomment / comment one of the two following line to switch
       // between EventsTimer or Socket updater
       //.addUpdateMethod(new Pryv.Monitor.UpdateMethod.EventsTimer(2000))
       .addUpdateMethod(new Pryv.Monitor.UpdateMethod.Socket())
@@ -228,4 +225,5 @@
     logToConsole("# Monitor Started");
   }
 </script>
+
 </html>

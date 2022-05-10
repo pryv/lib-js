@@ -1,1 +1,0 @@
-../dist/pryv-socket.io.js
