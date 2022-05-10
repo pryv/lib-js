@@ -5,7 +5,34 @@
 const path = require('path');
 const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
-const { webpackBabelConfig } = require('@pryv/lib-js-common');
+
+const webpackBabelConfig = {
+  rules: [
+    {
+      test: /\.m?js$/,
+      exclude: /(node_modules)/,
+      use: {
+        loader: 'babel-loader',
+        options: {
+          sourceType: 'unambiguous',
+          presets: [
+            [
+              '@babel/preset-env',
+              {
+                useBuiltIns: 'entry',
+                corejs: '3.0.0',
+                targets: {
+                  browsers: '> 0.25%, not dead'
+                }
+              }
+            ]
+          ],
+          plugins: ['@babel/plugin-transform-runtime']
+        }
+      }
+    }
+  ]
+};
 
 module.exports = [
   { // ES6
