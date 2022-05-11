@@ -5,7 +5,7 @@
   "keywords": [
     "Pryv",
     "Pryv.io",
-    "Socket.io",
+    "Socket.IO",
     "WebSockets"
   ],
   "homepage": "https://github.com/pryv/lib-js/blob/master/components/pryv-socket.io/",

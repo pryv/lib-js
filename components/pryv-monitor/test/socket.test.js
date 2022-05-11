@@ -7,7 +7,7 @@
 require('./load-helpers');
 require('@pryv/socket.io')(pryv);
 
-describe('Monitor + Socket.io', function () {
+describe('Monitor + Socket.IO', function () {
   this.timeout(3000);
 
   before(async () => {
