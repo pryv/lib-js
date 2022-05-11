@@ -1,66 +1,63 @@
-# Socket.io add-on for Pryv lib-js
+# Socket.IO add-on for `pryv`
 
-Extends Pryv's [lib-js](https://github.com/pryv/lib-js) with socket.io transport and notifications.
-
-## Setup
-
-This library extends the `Pryv.Connection` class with a `connection.socket` property.
-
-### Node.js
-
-`npm install pryv @pryv/socket.io`
-
-In you project files, load it **one time only**. The Pryv javascript package will be patched with socket.io capabilities.
-
-```javascript
-const Pryv = require('pryv');
-require('@pryv/socket.io')(Pryv);
-```
-
-### Browser
-
-Note: `pryv-socket.io.js` must be loaded **after** `pryv.js`
-
-
-```html
-<script src="https://api.pryv.com/lib-js/pryv.js"></script>
-<script src="https://api.pryv.com/lib-js-socket.io/pryv-socket.io.js"></script>
-```
-
-#### Others distributions for browsers:
-
-- ES6: `https://api.pryv.com/lib-js-socket.io/pryv-socket.io-es6.js` 
-- Socket.io + Monitor + Lib-js: `https://api.pryv.com/lib-js/pryv-socket.io-monitor.js`. 
+Extends the [Pryv JavaScript library](https://github.com/pryv/lib-js) with Socket.IO transport and notifications.
 
 
 ## Usage
 
-Once Socket.io has been setup, `Pryv.Connection` instances expose the `.socket` property.
+The add-on extends `pryv.Connection` instances with a `socket` property.
 
-- `Connection.socket.open()` is an asynchronous call that opens the socket.io connection. It throws errors on failure.
 
-- `Connection.socket.api()` is identical to `Connection.api()` using the socket.io transport [lib-js:API calls](https://github.com/pryv/lib-js#api-calls)
+### Importing
 
-- `Connection.socket.on({event-name}, callback)` registers an event listener.
+#### NPM
 
-  Possible `event-name` values are:
+`npm install --save pryv @pryv/socket.io`, then in your code (the add-on must be loaded **once only**):
 
-  - `eventsChanged` :  Fired when one or multiples events are deleted, changed or added.
-  - `streamsChanged`: Fired when one or multiples streams are deleted, changed or added.
-  - `accessChanged`: Fired when an access is deleted or added.
-  - `error`: Fired on error. The callback will eventually receive the error as first argument.
+```js
+const pryv = require('pryv');
+require('@pryv/socket.io')(pryv);
+```
 
-## Examples
+#### `<script>` tag
 
-### Node.js
+`pryv-socket.io.js` must be loaded **after** `pryv.js`:
 
-```javascript
-const Pryv = require('pryv');
-require('@pryv/socket.io')(Pryv);
+```html
+<script src="https://api.pryv.com/lib-js/pryv.js"></script>
+<script src="https://api.pryv.com/lib-js/pryv-socket.io.js"></script>
+```
+
+Other distributions available:
+
+- ES6 version: `https://api.pryv.com/lib-js-socket.io/pryv-socket.io-es6.js`
+- `pryv` library bundled with Socket.IO and Monitor add-ons: `https://api.pryv.com/lib-js/pryv-socket.io-monitor.js`.
+
+
+### Using `connection.socket`
+
+Once the add-on is loaded, `pryv.Connection` instances expose the `socket` property.
+
+- `connection.socket.open()` (asynchronous) opens the Socket.IO connection. It throws errors on failure.
+- `connection.socket.api()` is identical to `Connection.api()` but using the Socket.IO transport (see the [library README](https://github.com/pryv/lib-js#api-calls))
+- `connection.socket.on({event-name}, callback)` registers an event listener. Possible event names are:
+  - `eventsChanged`: when one or multiples events are deleted, changed or added.
+  - `streamsChanged`: when one or multiples streams are deleted, changed or added.
+  - `accessChanged`: when an access is deleted or added.
+  - `error`: on error. The callback will receive the error as first argument.
+
+
+### Examples
+
+#### Node.js
+
+```js
+const pryv = require('pryv');
+require('@pryv/socket.io')(pryv);
 
 const apiEndpoint = 'https://{token}@my-computer.rec.la:4443/{username}/';
-(async () => { 
-  const conn = new Pryv.Connection(apiEndpoint);
+(async () => {
+  const conn = new pryv.Connection(apiEndpoint);
   try {
     await conn.socket.open();
     conn.socket.on('eventsChanged', async () => {
@@ -73,7 +70,7 @@ const apiEndpoint = 'https://{token}@my-computer.rec.la:4443/{username}/';
 })();
 ```
 
-### Browser
+#### Browser
 
 ```html
 <script src="https://api.pryv.com/lib-js/pryv.js"></script>
@@ -95,19 +92,16 @@ const apiEndpoint = 'https://{token}@my-computer.rec.la:4443/{username}/';
 </script>
 ```
 
-### Example web app
+#### Example web app
 
-![Screenshot](examples/screenshot.png)
+See [here](`../../examples/socket.io.html`) for a simple app that allows to log in a Pryv.io platform, register to monitor events changes and create notes. You can try it running [there](https://api.pryv.com/lib-js/examples/socket.io.html).
 
-The `./examples/index.html` file is a simple demo app that allows to log in a Pryv.io platform, register to monitor events changes and create notes. 
 
-It can be tested on [http://pryv.github.io/lib-js-socket.io](http://pryv.github.io/lib-js-socket.io) 
+## Contributing
 
-## Contribute
+See the [Pryv JavaScript library README](https://github.com/pryv/lib-js#contributing)
 
-*Prerequisites*: Node 12
 
-- Setup: `npm run setup`
-- Build pryv.js library for browsers: `npm run build`, the result is published in `./dist`
-- Node Tests: `npm run test`
+## License
 
+[BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)

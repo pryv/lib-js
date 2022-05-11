@@ -41,7 +41,7 @@
 
   var authSettings = {
     spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
-    onStateChange: authStateChange, // event Listener for Authentication steps
+    onStateChange: authStateChanged, // event Listener for Authentication steps
     authRequest: { // See: https://api.pryv.com/reference/#auth-request
       requestingAppId: 'lib-js-socket-io',
       languageCode: 'en', // optional (default english)
@@ -64,8 +64,8 @@
     }
   };
 
-  function authStateChange(state) { // called each time the authentication state changed
-    logToConsole('##authStateChange ' + state.id);
+  function authStateChanged(state) { // called each time the authentication state changed
+    logToConsole('# Auth state changed: ' + state.id);
     if (state.id === pryv.Browser.AuthStates.AUTHORIZED) {
       connection = new pryv.Connection(state.apiEndpoint);
       logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
@@ -73,7 +73,7 @@
     }
     if (state.id === pryv.Browser.AuthStates.LOGOUT) {
       connection = null;
-      logToConsole('# Logout');
+      logToConsole('# Signed out');
     }
   }
 

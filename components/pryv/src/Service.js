@@ -13,7 +13,7 @@ const Assets = require('./ServiceAssets.js');
  * `pryv.Service` exposes tools to interact with Pryv.io at a "Platform" level.
  *
  *  ##### Initizalization with a service info URL
-```javascript
+```js
 const service = new pryv.Service('https://reg.pryv.me/service/info');
 ```
 
@@ -21,7 +21,7 @@ const service = new pryv.Service('https://reg.pryv.me/service/info');
 
 Service information properties can be overriden with specific values. This might be usefull to test new designs on production platforms.
 
-```javascript
+```js
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
 const serviceCustomizations = {
   name: 'Pryv Lab 2',

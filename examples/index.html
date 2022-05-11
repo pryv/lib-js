@@ -43,13 +43,13 @@
 
   <script>
     // will handle the connection
-    var connection = null;
+    let connection = null;
 
-    var serviceCustomizations = {
-        assets: {
-          definitions:  'https://pryv.github.io/assets-pryv.me/index.json'
-        }
-      };
+    const serviceCustomizations = {
+      assets: {
+        definitions:  'https://pryv.github.io/assets-pryv.me/index.json'
+      }
+    };
 
     let serviceInfoUrl = 'https://reg.pryv.me/service/infos';
     // override serviceInfo if provided in the url.
@@ -57,7 +57,7 @@
 
     var authSettings = {
       spanButtonID: 'pryv-button',
-      onStateChange: authStateChange,
+      onStateChange: authStateChanged,
       authRequest: { // See: http://api.pryv.com/reference/#auth-request
         languageCode: 'fr',
         requestingAppId: 'test-value-notes',
@@ -76,27 +76,26 @@
       }
     };
 
-    var $console = document.getElementById('console'),
-      $events = document.getElementById('events'),
-      $noteContent = document.getElementById('create-note'),
-      $valueContent = document.getElementById('create-value'),
-      $fileContent = document.getElementById('create-file')
-      ;
+    const $console = document.getElementById('console'),
+          $events = document.getElementById('events'),
+          $noteContent = document.getElementById('create-note'),
+          $valueContent = document.getElementById('create-value'),
+          $fileContent = document.getElementById('create-file');
 
     (async function () {
       const service = await pryv.Auth.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
       (await service.assets()).setAllDefaults();
     })();
 
-    function authStateChange(state) {
-      console.log('##authStateChange', state);
+    function authStateChanged(state) {
+      console.log('# Auth state changed:', state);
       if (state.id === pryv.Auth.AuthStates.AUTHORIZED) {
         connection = new pryv.Connection(state.apiEndpoint);
         logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
       }
       if (state.id === pryv.Auth.AuthStates.SIGNOUT) {
         connection = null;
-        logToConsole('# Logout');
+        logToConsole('# Signed out');
       }
     }
 

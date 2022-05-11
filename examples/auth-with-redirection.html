@@ -20,9 +20,9 @@
   </div>
 
   <script>
-    let authSettings = {
+    const authSettings = {
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
-      onStateChange: function authStateChange(state) { // called each time the authentication state changed
+      onStateChange: function authStateChanged(state) { // called each time the authentication state changed
         switch(state.id) {
           case pryv.Auth.AuthStates.LOADING:
             console.log('Loading service information...');
