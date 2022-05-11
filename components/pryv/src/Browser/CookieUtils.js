@@ -6,8 +6,8 @@
 const utils = require('../utils');
 
 /**
- * @memberof Pryv.Browser
- * @namespace Pryv.Browser.CookieUtils
+ * @memberof pryv.Browser
+ * @namespace pryv.Browser.CookieUtils
  */
 module.exports = {
   get,
@@ -17,7 +17,7 @@ module.exports = {
 
 /**
   * Set a local cookie
-  * @memberof Pryv.Browser.CookieUtils
+  * @memberof pryv.Browser.CookieUtils
   * @param {string} cookieKey - The key for the cookie
   * @param {mixed} value - The Value
   * @param {number} expireInDays - Expiration date in days from now
@@ -40,7 +40,7 @@ function set (cookieKey, value, expireInDays) {
 
 /**
  * Return the value of a local cookie
- * @memberof Pryv.Browser.CookieUtils
+ * @memberof pryv.Browser.CookieUtils
  * @param cookieKey - The key
  */
 function get (cookieKey) {
@@ -53,7 +53,7 @@ function get (cookieKey) {
 
 /**
  * Delete a local cookie
- * @memberof Pryv.Browser.CookieUtils
+ * @memberof pryv.Browser.CookieUtils
  * @param cookieKey - The key
  */
 function del (cookieKey) {

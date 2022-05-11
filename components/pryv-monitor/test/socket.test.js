@@ -2,10 +2,10 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, expect, Pryv, conn, apiEndpoint, prepareAndCreateBaseStreams */
+/* global describe, it, before, expect, pryv, conn, apiEndpoint, prepareAndCreateBaseStreams */
 
 require('./load-helpers');
-require('@pryv/socket.io')(Pryv);
+require('@pryv/socket.io')(pryv);
 
 describe('Monitor + Socket.io', function () {
   this.timeout(3000);
@@ -17,8 +17,8 @@ describe('Monitor + Socket.io', function () {
   describe('socket updates', function () {
     this.timeout(5000);
     it('Detect new events added', async function () {
-      const monitor = new Pryv.Monitor(apiEndpoint, { limit: 1 })
-        .addUpdateMethod(new Pryv.Monitor.UpdateMethod.Socket());
+      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
+        .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
       await monitor.start();
 
       let count = 0;
@@ -50,8 +50,8 @@ describe('Monitor + Socket.io', function () {
   describe('stop', () => {
     it('Monitor stops when requested', async function () {
       this.timeout(4000);
-      const monitor = new Pryv.Monitor(apiEndpoint, { limit: 1 })
-        .addUpdateMethod(new Pryv.Monitor.UpdateMethod.Socket());
+      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
+        .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
       await monitor.start();
       let count = 0;
       await new Promise(resolve => setTimeout(resolve, 1000));

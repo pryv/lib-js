@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, xit, before, after, beforeEach, afterEach, expect, Browser, Pryv, testData, Blob, FormData */
+/* global describe, it, xit, before, after, beforeEach, afterEach, expect, Browser, pryv, testData, Blob, FormData */
 /* eslint-disable no-unused-expressions */
 
 const { URL, URLSearchParams } = require('universal-url');
@@ -21,7 +21,7 @@ describe('Connection', () => {
   before(async function () {
     this.timeout(5000);
     await testData.prepare();
-    conn = new Pryv.Connection(testData.apiEndpointWithToken);
+    conn = new pryv.Connection(testData.apiEndpointWithToken);
 
     // create some events
     const toBeDeletedId = cuid();
@@ -75,9 +75,9 @@ describe('Connection', () => {
   });
 
   describe('.service', function () {
-    it('return a Pryv.Service object', async () => {
+    it('return a pryv.Service object', async () => {
       const service = conn.service;
-      expect(service instanceof Pryv.Service).to.equal(true);
+      expect(service instanceof pryv.Service).to.equal(true);
     });
   });
 
@@ -429,7 +429,7 @@ describe('Connection', () => {
       const regexAPIandToken = /(.+):\/\/(.+)/gm;
       const res = regexAPIandToken.exec(testData.apiEndpoint);
       const apiEndpointWithToken = res[1] + '://' + newUser.access.token + '@' + res[2];
-      const newConn = new Pryv.Connection(apiEndpointWithToken);
+      const newConn = new pryv.Connection(apiEndpointWithToken);
       accessInfoUser = await newConn.accessInfo();
     });
 

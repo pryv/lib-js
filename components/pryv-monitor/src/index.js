@@ -8,23 +8,24 @@ const Changes = require('./lib/Changes');
 Monitor.Changes = Changes;
 
 /**
- * Load Monitor capabilities onto Pryv
- * @param {Pryv} Pryv - Pryv lib-js library @see https://github.com/pryv/lib-js
+ * Load Monitor capabilities onto `pryv`
+ * @param {pryv} pryv `pryv` library @see https://github.com/pryv/lib-js
  */
-module.exports = function (Pryv) {
-  console.log('Pryv version', Pryv.version);
+module.exports = function (pryv) {
+  console.log('Pryv version', pryv.version);
   // check version here
-  if (Pryv.Monitor) {
+  if (pryv.Monitor) {
     throw new Error('Monitor already loaded');
   }
   // sharing cross references
-  Pryv.Monitor = Monitor;
-  Monitor.Pryv = Pryv;
+  pryv.Monitor = Monitor;
+  // TODO: remove deprecated `Pryv` alias with next major version
+  Monitor.pryv = Monitor.Pryv = pryv;
   return Monitor;
 };
 
 /**
- * @typedef Pryv.Monitor.Changes
+ * @typedef pryv.Monitor.Changes
  * @property {string} EVENT "event" fired on new or changed event
  * @property {string} EVENT_DELETE "eventDelete"
  * @property {string} STREAMS "streams"
@@ -36,7 +37,7 @@ module.exports = function (Pryv) {
 /**
  * A scope corresponding to EventGetParameters @see https://l.rec.la:4443/reference#get-events
  * Property `limit` cannot be specified;
- * @typedef {Object} Pryv.Monitor.Scope
+ * @typedef {Object} pryv.Monitor.Scope
  * @property {timestamp} [fromTime=TIMERANGE_MIN] (in seconds)
  * @property {timestamp} [toTime=TIMERANGE_MAX] (in seconds)
  * @property {string[]} [streams] - array of streamIds

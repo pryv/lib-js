@@ -5,7 +5,7 @@
 /**
  * Enum trigger messages
  * @readonly
- * @enum {Pryv.Monitor.Changes}
+ * @enum {pryv.Monitor.Changes}
  */
 const Changes = {
   EVENT: 'event',

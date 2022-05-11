@@ -11,7 +11,7 @@ const utils = require('./utils.js');
  *
  * It's returned by `service.assets()`
  *
- * @memberof Pryv
+ * @memberof pryv
  **/
 class ServiceAssets {
   /**

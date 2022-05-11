@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, expect, Pryv, testData */
+/* global describe, it, before, expect, pryv, testData */
 /* eslint-disable no-unused-expressions */
 
 describe('utils', function () {
@@ -11,18 +11,18 @@ describe('utils', function () {
     await testData.prepare();
   });
 
-  it('extractTokenAndApiEndpoint', function (done) {
-    const tokenAndAPI = Pryv.utils
-      .extractTokenAndApiEndpoint(testData.apiEndpointWithToken);
+  it('extractTokenAndAPIEndpoint', function (done) {
+    const tokenAndAPI = pryv.utils
+      .extractTokenAndAPIEndpoint(testData.apiEndpointWithToken);
     expect(testData.token).to.equal(tokenAndAPI.token);
 
     expect(testData.apiEndpoint).to.equal(tokenAndAPI.endpoint);
     done();
   });
 
-  it('extractTokenAndApiEndpoint should work without token', function (done) {
-    const tokenAndAPI = Pryv.utils
-      .extractTokenAndApiEndpoint(testData.apiEndpoint);
+  it('extractTokenAndAPIEndpoint should work without token', function (done) {
+    const tokenAndAPI = pryv.utils
+      .extractTokenAndAPIEndpoint(testData.apiEndpoint);
 
     expect(tokenAndAPI.token).to.not.exist;
 
@@ -30,10 +30,10 @@ describe('utils', function () {
     done();
   });
 
-  it('extractTokenAndApiEndpoint should fail on invalid url', function (done) {
+  it('extractTokenAndAPIEndpoint should fail on invalid url', function (done) {
     let error = null;
     try {
-      Pryv.utils.extractTokenAndApiEndpoint('blip');
+      pryv.utils.extractTokenAndAPIEndpoint('blip');
     } catch (e) {
       error = e;
       return done();
@@ -42,8 +42,8 @@ describe('utils', function () {
   });
 
   it('buildAPIEndpoint with token', function (done) {
-    const apiEndpoint = Pryv.utils
-      .buildPryvApiEndpoint({
+    const apiEndpoint = pryv.utils
+      .buildAPIEndpoint({
         token: testData.token,
         endpoint: testData.apiEndpoint
       });
@@ -52,8 +52,8 @@ describe('utils', function () {
   });
 
   it('buildAPIEndpoint without token', function (done) {
-    const apiEndpoint = Pryv.utils
-      .buildPryvApiEndpoint({
+    const apiEndpoint = pryv.utils
+      .buildAPIEndpoint({
         token: null,
         endpoint: testData.apiEndpoint
       });

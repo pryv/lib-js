@@ -39,9 +39,9 @@ module.exports = [
     mode: 'production',
     entry: {
       pryv: {
-        import: componentPath('pryv', 'src/index.js'),
+        import: componentPath('pryv', 'src/browser-index.js'),
         library: {
-          name: 'Pryv',
+          name: 'pryv',
           type: 'var'
         }
       },
@@ -58,9 +58,9 @@ module.exports = [
     mode: 'production',
     entry: {
       pryv: {
-        import: componentPath('pryv', 'src/index.js'),
+        import: componentPath('pryv', 'src/browser-index.js'),
         library: {
-          name: 'Pryv',
+          name: 'pryv',
           type: 'var'
         }
       },
@@ -85,9 +85,9 @@ module.exports = [
     mode: 'production',
     entry: {
       'pryv-socket.io-monitor': {
-        import: componentPath('pryv', 'src/index-socket.io-monitor.js'),
+        import: componentPath('pryv', 'src/browser-index-bundle.js'),
         library: {
-          name: 'Pryv',
+          name: 'pryv',
           type: 'var'
         }
       }
@@ -105,7 +105,7 @@ module.exports = [
       }
     }
   },
-  { // browser test suite (ES6) TODO consider moving out of dist/
+  { // browser test suite (ES6)
     mode: 'development',
     entry: {
       'browser-tests': componentPath('pryv', 'test/browser-tests.js')

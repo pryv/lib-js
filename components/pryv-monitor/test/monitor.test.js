@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, beforeEach, afterEach, expect, Pryv, conn, apiEndpoint, prepareAndCreateBaseStreams */
+/* global describe, it, before, beforeEach, afterEach, expect, pryv, conn, apiEndpoint, prepareAndCreateBaseStreams */
 
 require('./load-helpers');
 
@@ -16,12 +16,12 @@ describe('Monitor', function () {
 
   describe('init', () => {
     it('can be initialized with an apiEndpoint', async () => {
-      const monitor = new Pryv.Monitor(apiEndpoint, { limit: 1 });
+      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 });
       await monitor.start();
     });
 
     it('can be initialized with a connection', async () => {
-      const monitor = new Pryv.Monitor(conn, { limit: 1 });
+      const monitor = new pryv.Monitor(conn, { limit: 1 });
       await monitor.start();
     });
 
@@ -29,7 +29,7 @@ describe('Monitor', function () {
       let passed = true;
       try {
         /* eslint-disable-next-line no-unused-vars */
-        const monitor = new Pryv.Monitor('BlipBlop', { limit: 1 });
+        const monitor = new pryv.Monitor('BlipBlop', { limit: 1 });
         passed = false;
       } catch (e) {
 
@@ -41,7 +41,7 @@ describe('Monitor', function () {
   describe('notifications', () => {
     let monitor = null;
     beforeEach(async () => {
-      monitor = new Pryv.Monitor(conn, { limit: 1 });
+      monitor = new pryv.Monitor(conn, { limit: 1 });
     });
 
     afterEach(async () => {

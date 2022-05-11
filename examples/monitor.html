@@ -83,7 +83,7 @@
 
   var authSettings = {
     spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
-    onStateChange: pryvAuthStateChange, // event Listener for Authentication steps
+    onStateChange: authStateChange, // event Listener for Authentication steps
     authRequest: { // See: https://api.pryv.com/reference/#auth-request
       requestingAppId: 'lib-js-monitor',
       languageCode: 'en', // optional (default english)
@@ -102,14 +102,14 @@
     }
   };
 
-  function pryvAuthStateChange(state) { // called each time the authentication state changed
-    logToConsole('##pryvAuthStateChange ' + state.id);
-    if (state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
-      connection = new Pryv.Connection(state.apiEndpoint);
+  function authStateChange(state) { // called each time the authentication state changed
+    logToConsole('##authStateChange ' + state.id);
+    if (state.id === pryv.Browser.AuthStates.AUTHORIZED) {
+      connection = new pryv.Connection(state.apiEndpoint);
       logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
       initializeMonitor();
     }
-    if (state.id === Pryv.Browser.AuthStates.LOGOUT) {
+    if (state.id === pryv.Browser.AuthStates.LOGOUT) {
       connection = null;
       logToConsole('# Logout');
       closeMonitor();
@@ -175,8 +175,8 @@
 
   // following the APP GUIDELINES: https://api.pryv.com/guides/app-guidelines/
   (async function () {
-    const serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || 'https://reg.pryv.me/service/info';
-    var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
+    const serviceInfoUrl = pryv.Browser.serviceInfoFromUrl() || 'https://reg.pryv.me/service/info';
+    var service = await pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
   })();
 
    // --- monitor specific
@@ -198,29 +198,29 @@
     *
     */
   function initializeMonitor() {
-   new Pryv.Monitor(connection, { limit: 2 })
-      .on(Pryv.Monitor.Changes.EVENT_DELETE, function (event) {
+   new pryv.Monitor(connection, { limit: 2 })
+      .on(pryv.Monitor.Changes.EVENT_DELETE, function (event) {
         logToMonitor("> Event-DELETE: " + event.id);
       })
-      .on(Pryv.Monitor.Changes.EVENT, function (event) {
+      .on(pryv.Monitor.Changes.EVENT, function (event) {
         logToMonitor("> Event-CHANGE-or-ADD: " + event.id + '\n - ' + event.content);
       })
-      .on(Pryv.Monitor.Changes.STREAMS, function (streams) {
+      .on(pryv.Monitor.Changes.STREAMS, function (streams) {
         logToMonitor('> Event-STREAMS');
       })
-      .on(Pryv.Monitor.Changes.STOP, function () {
+      .on(pryv.Monitor.Changes.STOP, function () {
         logToMonitor('> Event-STOP');
       })
-      .on(Pryv.Monitor.Changes.READY, function () {
+      .on(pryv.Monitor.Changes.READY, function () {
         logToMonitor('> Event-READY');
       })
-      .on(Pryv.Monitor.Changes.ERROR, function (error) {
+      .on(pryv.Monitor.Changes.ERROR, function (error) {
         logToMonitor('> Event-ERROR: \n' + error);
       })
       // uncomment / comment one of the two following line to switch
       // between EventsTimer or Socket updater
-      //.addUpdateMethod(new Pryv.Monitor.UpdateMethod.EventsTimer(2000))
-      .addUpdateMethod(new Pryv.Monitor.UpdateMethod.Socket())
+      //.addUpdateMethod(new pryv.Monitor.UpdateMethod.EventsTimer(2000))
+      .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket())
       .start();
     logToConsole("# Monitor Started");
   }

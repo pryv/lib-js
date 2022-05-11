@@ -8,8 +8,8 @@ const LoginButton = require('../Browser/LoginButton');
 const Service = require('../Service');
 
 /**
- * @memberof Pryv
- * @namespace Pryv.Auth
+ * @memberof pryv
+ * @namespace pryv.Auth
  */
 module.exports = {
   setupAuth,
@@ -20,7 +20,7 @@ module.exports = {
 /**
  * Start an authentication process
  *
- * @memberof Pryv.Auth
+ * @memberof pryv.Auth
  * @param {Object} settings
  * @param {Object} settings.authRequest See https://api.pryv.com/reference/#data-structure-access
  * @param {string} [settings.authRequest.languageCode] Language code, as per LoginButton Messages: 'en', 'fr
@@ -33,7 +33,7 @@ module.exports = {
  * @param {string} [settings.returnURL=auto#]  Set to "self#" to disable popup and force using the same page. Set a custom url when process is finished (specific use cases). Should always end by # ? or &
  * @param {string} serviceInfoUrl
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl
- * @returns {Pryv.Service}
+ * @returns {pryv.Service}
  */
 async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, HumanInteraction = LoginButton) {
   const service = new Service(serviceInfoUrl, serviceCustomizations);

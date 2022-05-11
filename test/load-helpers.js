@@ -11,5 +11,5 @@ chai.use(require('chai-as-promised'));
 
 global.expect = chai.expect;
 global.Browser = require('zombie');
-global.Pryv = require('pryv');
+global.pryv = require('pryv');
 global.testData = require('./test-data');

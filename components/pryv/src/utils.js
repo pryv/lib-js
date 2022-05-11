@@ -7,21 +7,21 @@ const regexSchemaAndPath = /(.+):\/\/(.+)/gm;
 
 /**
  * Utilities to access Pryv API.
- * Exposes superagent and methods to manipulate Pryv's api endpoints
- * @memberof Pryv
- * @namespace Pryv.utils
+ * Exposes superagent and methods to manipulate API endpoints
+ * @memberof pryv
+ * @namespace pryv.utils
  */
-module.exports = {
+const utils = module.exports = {
   /**
    * Exposes superagent https://visionmedia.github.io/superagent/
-   * @memberof Pryv.utils
+   * @memberof pryv.utils
    * @property {Superagent} superagent
    */
   superagent: require('superagent'),
 
   /**
    * Returns true is run in a browser
-   * @memberof Pryv.utils
+   * @memberof pryv.utils
    * @returns {boolean}
    */
   isBrowser: function () {
@@ -29,14 +29,14 @@ module.exports = {
   },
 
   /**
-   * From a PryvApiEndpoint URL, return an object (TokenAndAPI) with two properties
-   * @memberof Pryv.utils
-   * @param {PryvApiEndpoint} pryvApiEndpoint
+   * From a APIEndpoint URL, return an object (TokenAndAPI) with two properties
+   * @memberof pryv.utils
+   * @param {APIEndpoint} apiEndpoint
    * @returns {TokenAndEndpoint}
    */
-  extractTokenAndApiEndpoint: function (pryvApiEndpoint) {
+  extractTokenAndAPIEndpoint: function (apiEndpoint) {
     regexAPIandToken.lastIndex = 0;
-    const res = regexAPIandToken.exec(pryvApiEndpoint);
+    const res = regexAPIandToken.exec(apiEndpoint);
 
     if (res !== null) { // has token
       // add a trailing '/' to end point if missing
@@ -47,7 +47,7 @@ module.exports = {
     }
     // else check if valid url
     regexSchemaAndPath.lastIndex = 0;
-    const res2 = regexSchemaAndPath.exec(pryvApiEndpoint);
+    const res2 = regexSchemaAndPath.exec(apiEndpoint);
     if (res2 === null) {
       throw new Error('Cannot find endpoint, invalid URL format');
     }
@@ -60,26 +60,26 @@ module.exports = {
   },
 
   /**
-   * Get a PryvApiEndpoint URL from a TokenAndAPI object
-   * @memberof Pryv.utils
-   * @param {TokenAndEndpoint} tokenAndApi
-   * @returns {PryvApiEndpoint}
+   * Get a APIEndpoint URL from a TokenAndAPI object
+   * @memberof pryv.utils
+   * @param {TokenAndEndpoint} tokenAndAPI
+   * @returns {APIEndpoint}
    */
-  buildPryvApiEndpoint: function (tokenAndApi) {
-    if (!tokenAndApi.token) {
-      let res = tokenAndApi.endpoint + '';
-      if (!tokenAndApi.endpoint.endsWith('/')) {
+  buildAPIEndpoint: function (tokenAndAPI) {
+    if (!tokenAndAPI.token) {
+      let res = tokenAndAPI.endpoint + '';
+      if (!tokenAndAPI.endpoint.endsWith('/')) {
         res += '/';
       }
       return res;
     }
     regexSchemaAndPath.lastIndex = 0;
-    const res = regexSchemaAndPath.exec(tokenAndApi.endpoint);
+    const res = regexSchemaAndPath.exec(tokenAndAPI.endpoint);
     // add a trailing '/' to end point if missing
     if (!res[2].endsWith('/')) {
       res[2] += '/';
     }
-    return res[1] + '://' + tokenAndApi.token + '@' + res[2];
+    return res[1] + '://' + tokenAndAPI.token + '@' + res[2];
   },
 
   /**
@@ -112,18 +112,31 @@ module.exports = {
   }
 };
 
+// TODO: remove following deprecated aliases with next major version
+
+/**
+ * @deprecated Renamed to `extractTokenAndAPIEndpoint()`
+ */
+utils.extractTokenAndApiEndpoint = utils.extractTokenAndAPIEndpoint;
+
+/**
+ * @deprecated Renamed to `buildAPIEndpoint()`
+ */
+// TODO: remove deprecated alias with next major version
+utils.buildPryvApiEndpoint = utils.buildAPIEndpoint;
+
 // --------------- typedfs ------------------------------- //
 
 /**
  * An object with two properties: token & apiEndpoint
  * @typedef {Object} TokenAndEndpoint
- * @property {string}  [token] Authorization token
- * @property {string}  endpoint url of Pryv api endpoint
+ * @property {string} [token] Authorization token
+ * @property {string} endpoint url of API endpoint
  */
 
 /**
  * A String url of the form http(s)://{token}@{apiEndpoint}
- * @typedef {string} PryvApiEndpoint
+ * @typedef {string} APIEndpoint
  */
 
 /**

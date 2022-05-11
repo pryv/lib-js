@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, expect, Pryv, testData */
+/* global describe, it, before, expect, pryv, testData */
 /* eslint-disable no-unused-expressions */
 
 describe('Service', function () {
@@ -12,7 +12,7 @@ describe('Service', function () {
   });
 
   it('info()', async () => {
-    const pryvService = new Pryv.Service(testData.serviceInfoUrl);
+    const pryvService = new pryv.Service(testData.serviceInfoUrl);
     const res = await pryvService.info();
     expect(res).to.exist;
 
@@ -24,7 +24,7 @@ describe('Service', function () {
   });
 
   it('info() 2x ', async () => {
-    const pryvService = new Pryv.Service(testData.serviceInfoUrl);
+    const pryvService = new pryv.Service(testData.serviceInfoUrl);
     const res = await pryvService.info();
     expect(res).to.exist;
     expect(res.access).to.exist;
@@ -35,7 +35,7 @@ describe('Service', function () {
 
   it('login()', async function () {
     this.timeout(5000);
-    const pryvService = new Pryv.Service(testData.serviceInfoUrl);
+    const pryvService = new pryv.Service(testData.serviceInfoUrl);
     const conn = await pryvService.login(testData.username, testData.password, 'jslib-test');
     expect(conn).to.exist;
     expect(conn.token).to.exist;
@@ -43,7 +43,7 @@ describe('Service', function () {
   });
 
   it('assets()', async function () {
-    const pryvService = new Pryv.Service(null, testData.serviceInfo);
+    const pryvService = new pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     expect(assets).to.exist;
 
@@ -54,21 +54,21 @@ describe('Service', function () {
 
   describe('Errors', async function () {
     it('Throw error with invalid content', async () => {
-      const service = new Pryv.Service(null, {});
+      const service = new pryv.Service(null, {});
       await expect(service.info()).to.be.rejectedWith('Invalid data from service/info');
     });
 
     it('Warn if no assets', async () => {
       const serviceInfoCopy = Object.assign({}, testData.serviceInfo);
       delete serviceInfoCopy.assets;
-      const pryvService = new Pryv.Service(null, serviceInfoCopy);
+      const pryvService = new pryv.Service(null, serviceInfoCopy);
       const assets = await pryvService.assets();
       expect(assets).to.be.null;
     });
 
     it('login() failed', async function () {
       this.timeout(5000);
-      const pryvService = new Pryv.Service(testData.serviceInfoUrl);
+      const pryvService = new pryv.Service(testData.serviceInfoUrl);
       await expect(pryvService.login(testData.username, 'bobby', 'jslib-test')).to.be.rejectedWith('The given username/password pair is invalid.');
     });
   });

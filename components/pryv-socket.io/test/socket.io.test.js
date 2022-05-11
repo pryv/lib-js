@@ -2,12 +2,12 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, after, beforeEach, afterEach, expect, Pryv, testData */
+/* global describe, it, before, after, beforeEach, afterEach, expect, pryv, testData */
 /* eslint-disable no-unused-expressions */
 
 const cuid = require('cuid');
 
-require('../src')(Pryv);
+require('../src')(pryv);
 
 let conn = null;
 const testStreamId = 'socket-test';
@@ -22,12 +22,12 @@ describe('Socket.IO', function () {
     this.timeout(5000);
     await testData.prepare();
     apiEndpoint = testData.apiEndpointWithToken;
-    apiEndpointBogusToken = Pryv.Service.buildAPIEndpoint(testData.serviceInfo, testData.username, 'toto');
-    apiEndpointBogusUsername = Pryv.Service.buildAPIEndpoint(testData.serviceInfo, 'totototototo', testData.token);
+    apiEndpointBogusToken = pryv.Service.buildAPIEndpoint(testData.serviceInfo, testData.username, 'toto');
+    apiEndpointBogusUsername = pryv.Service.buildAPIEndpoint(testData.serviceInfo, 'totototototo', testData.token);
   });
 
   before(async () => {
-    conn = new Pryv.Connection(apiEndpoint);
+    conn = new pryv.Connection(apiEndpoint);
     const res = await conn.api([{
       method: 'streams.create',
       params: {
@@ -43,7 +43,7 @@ describe('Socket.IO', function () {
 
   describe('init on invalid endpoint', () => {
     it('Should throw an error "Not Found" or ENOTFOUND when user is not known', async () => {
-      conn = new Pryv.Connection(apiEndpointBogusUsername);
+      conn = new pryv.Connection(apiEndpointBogusUsername);
       try {
         await conn.socket.open();
       } catch (e) {
@@ -56,7 +56,7 @@ describe('Socket.IO', function () {
     });
 
     it('Should throw an error "Unauthorized" when token is invalid', async () => {
-      conn = new Pryv.Connection(apiEndpointBogusToken);
+      conn = new pryv.Connection(apiEndpointBogusToken);
       try {
         await conn.socket.open();
       } catch (e) {
@@ -68,7 +68,7 @@ describe('Socket.IO', function () {
 
   describe('init on valid endpoint', () => {
     beforeEach(async () => {
-      conn = new Pryv.Connection(apiEndpoint);
+      conn = new pryv.Connection(apiEndpoint);
     });
 
     afterEach(() => {
@@ -101,7 +101,7 @@ describe('Socket.IO', function () {
 
   describe('socket.api', () => {
     before(async () => {
-      conn = new Pryv.Connection(apiEndpoint);
+      conn = new pryv.Connection(apiEndpoint);
       await conn.socket.open();
     });
 
@@ -115,12 +115,12 @@ describe('Socket.IO', function () {
       expect(res[0].streams).to.exist;
     });
 
-    // we don't test further .api() as it relies on the implementation of Pryv.Connection
+    // we don't test further .api() as it relies on the implementation of pryv.Connection
   });
 
   describe('notification', () => {
     before(async () => {
-      conn = new Pryv.Connection(apiEndpoint);
+      conn = new pryv.Connection(apiEndpoint);
       await conn.socket.open();
     });
 

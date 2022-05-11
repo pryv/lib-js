@@ -7,8 +7,8 @@ const CookieUtils = require('./CookieUtils');
 const utils = require('../utils');
 
 /**
- * @memberof Pryv
- * @namespace Pryv.Browser
+ * @memberof pryv
+ * @namespace pryv.Browser
  */
 module.exports = {
   LoginButton,
@@ -25,5 +25,6 @@ module.exports = {
  */
 function getServiceInfoFromURL (url) {
   const queryParams = utils.getQueryParamsFromURL(url || window.location.href);
-  return queryParams.pryvServiceInfoUrl;
+  // TODO: remove deprecated param `pryvServiceInfoUrl` with next major version
+  return queryParams.serviceInfoUrl ?? queryParams.pryvServiceInfoUrl;
 }

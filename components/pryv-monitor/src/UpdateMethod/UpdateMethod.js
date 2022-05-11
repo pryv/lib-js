@@ -5,7 +5,7 @@
 const Changes = require('../lib/Changes');
 /**
  * Interface for UpdateMonitor
- * @memberof Pryv.Monitor
+ * @memberof pryv.Monitor
  * @constructor {Monitor~UpdateMethod} updateMethod.setMonitor - set only once
  */
 class UpdateMethod {

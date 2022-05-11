@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, after, expect, Browser, Pryv, testData */
+/* global describe, it, before, after, expect, Browser, pryv, testData */
 /* eslint-disable no-unused-expressions */
 
 function genSettings () {
@@ -32,7 +32,7 @@ describe('Browser', function () {
     if (typeof document !== 'undefined') return; // in browser
     removeZombie = true;
     const browser = new Browser();
-    browser.visit('./?pryvServiceInfoUrl=https://zouzou.com/service/info');
+    browser.visit('./?serviceInfoUrl=https://zouzou.com/service/info');
     global.document = browser.document;
     global.window = browser.window;
     global.location = browser.location;
@@ -51,16 +51,16 @@ describe('Browser', function () {
     let AuthLoaded = false;
     settings.onStateChange = function (state) {
       expect(state.id).to.exist;
-      if (state.id === Pryv.Auth.AuthStates.LOADING) {
+      if (state.id === pryv.Auth.AuthStates.LOADING) {
         AuthLoaded = true;
       }
-      if (state.id === Pryv.Auth.AuthStates.INITIALIZED) {
+      if (state.id === pryv.Auth.AuthStates.INITIALIZED) {
         expect(AuthLoaded).to.true;
       }
     };
 
     try {
-      const service = await Pryv.Auth.setupAuth(settings, testData.serviceInfoUrl);
+      const service = await pryv.Auth.setupAuth(settings, testData.serviceInfoUrl);
       const serviceInfo = service.infoSync();
       expect(serviceInfo.access).to.exist;
       expect(serviceInfo.serial).to.exist;
@@ -71,6 +71,6 @@ describe('Browser', function () {
   });
 
   it('serviceInfoFromUrl()', async () => {
-    expect('https://zouzou.com/service/info').to.equal(Pryv.Browser.serviceInfoFromUrl());
+    expect('https://zouzou.com/service/info').to.equal(pryv.Browser.serviceInfoFromUrl());
   });
 });

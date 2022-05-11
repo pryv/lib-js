@@ -7,7 +7,7 @@
  * ERROR, LOADING, INITIALIZED, NEED_SIGNIN, AUTHORIZED, SIGNOUT, REFUSED
  * @readonly
  * @enum {string}
- * @memberof Pryv.Browser
+ * @memberof pryv.Browser
  */
 module.exports = {
   ERROR: 'ERROR',

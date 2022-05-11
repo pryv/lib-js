@@ -14,20 +14,20 @@ const browserGetEventStreamed = require('./lib/browser-getEventStreamed');
  *
  * @example
  * create a connection for the user 'tom' on 'pryv.me' backend with the token 'TTZycvBTiq'
- * const conn = new Pryv.Connection('https://TTZycvBTiq@tom.pryv.me');
+ * const conn = new pryv.Connection('https://TTZycvBTiq@tom.pryv.me');
  *
  * @property {string} [token]
  * @property {string} endpoint
- * @memberof Pryv
+ * @memberof pryv
  *
  * @constructor
  * @this {Connection}
- * @param {PryvApiEndpoint} pryvApiEndpoint
- * @param {Pryv.Service} [service] - eventually initialize Connection with a Service
+ * @param {APIEndpoint} apiEndpoint
+ * @param {pryv.Service} [service] - eventually initialize Connection with a Service
  */
 class Connection {
-  constructor (pryvApiEndpoint, service) {
-    const { token, endpoint } = utils.extractTokenAndApiEndpoint(pryvApiEndpoint);
+  constructor (apiEndpoint, service) {
+    const { token, endpoint } = utils.extractTokenAndAPIEndpoint(apiEndpoint);
     this.token = token;
     this.endpoint = endpoint;
     this.options = {};
@@ -40,9 +40,9 @@ class Connection {
   }
 
   /**
-   * get Pryv.Service object relative to this connection
+   * get pryv.Service object relative to this connection
    * @readonly
-   * @property {Pryv.Service} service
+   * @property {pryv.Service} service
    */
   get service () {
     if (this._service) return this._service;
@@ -89,7 +89,7 @@ class Connection {
    */
   async _chunkedBatchCall (arrayOfAPICalls, progress, callHandler) {
     if (!Array.isArray(arrayOfAPICalls)) {
-      throw new Error('Pryv.api() takes an array as input');
+      throw new Error('Connection.api() takes an array as input');
     }
 
     const res = [];
@@ -219,7 +219,7 @@ class Connection {
     } else if (typeof fetch !== 'undefined' && !(typeof navigator !== 'undefined' && navigator.product === 'ReactNative')) { // browser supports fetch and it is not react native
       res = await browserGetEventStreamed(this, queryParams, myParser);
     } else { // browser no fetch supports
-      console.log('WARNING: Browser does not support fetch() required by Pryv.Connection.getEventsStreamed()');
+      console.log('WARNING: Browser does not support fetch() required by pryv.Connection.getEventsStreamed()');
       res = await this.getRaw('events', queryParams);
       res.body.eventsCount = 0;
       if (res.body.events) {
@@ -295,12 +295,12 @@ class Connection {
   }
 
   /**
-   * Pryv API Endpoint of this connection
+   * API Endpoint of this connection
    * @readonly
-   * @property {PryvApiEndpoint} deltaTime
+   * @property {APIEndpoint} deltaTime
    */
   get apiEndpoint () {
-    return utils.buildPryvApiEndpoint(this);
+    return utils.buildAPIEndpoint(this);
   }
 
   // private method that handle meta data parsing

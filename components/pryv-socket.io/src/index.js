@@ -5,16 +5,16 @@
 const SocketIO = require('./SocketIO');
 
 /**
- * Load SocketIO capabilities onto Pryv
- * @param {Pryv} Pryv - Pryv lib-js library @see https://github.com/pryv/lib-js
+ * Load Socket.IO capabilities onto `pryv`
+ * @param {pryv} pryv `pryv` library @see https://github.com/pryv/lib-js
  */
-module.exports = function (Pryv) {
-  console.log('lib-js version', Pryv.version);
+module.exports = function (pryv) {
+  console.log('"pryv" lib version', pryv.version);
   // check version here
-  if (Pryv.Connection.SocketIO) {
-    throw new Error('SocketIO already loaded');
+  if (pryv.Connection.SocketIO) {
+    throw new Error('Socket.IO add-on already loaded');
   }
   // sharing cross references
-  Pryv.Connection.SocketIO = SocketIO;
-  SocketIO(Pryv.Connection);
+  pryv.Connection.SocketIO = SocketIO;
+  SocketIO(pryv.Connection);
 };

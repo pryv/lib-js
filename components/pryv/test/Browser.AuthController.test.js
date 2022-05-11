@@ -18,7 +18,7 @@ describe('Browser.LoginButton', function () {
     if (typeof document !== 'undefined') return; // in browser
     removeZombie = true;
     const browser = new Browser();
-    browser.visit('./?pryvServiceInfoUrl=https://zouzou.com/service/info');
+    browser.visit('./?serviceInfoUrl=https://zouzou.com/service/info');
     global.document = browser.document;
     global.window = browser.window;
     global.location = browser.location;
@@ -80,8 +80,8 @@ describe('Browser.LoginButton', function () {
     expect('https://my.Url.com/?bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 
-    expect('https://my.Url.com/?pryvServiceInfoUrl=zzz').to.equal(utils.cleanURLFromPrYvParams(
-      'https://my.Url.com/?pryvServiceInfoUrl=zzz#prYvZoutOu=1&prYvstatus=2jsadh'));
+    expect('https://my.Url.com/?serviceInfoUrl=zzz').to.equal(utils.cleanURLFromPrYvParams(
+      'https://my.Url.com/?serviceInfoUrl=zzz#prYvZoutOu=1&prYvstatus=2jsadh'));
 
     expect('https://my.Url.com/').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?prYvstatus=2jsadh'));

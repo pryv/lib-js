@@ -49,7 +49,7 @@
 
       this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
 
-      this.auth = new Pryv.Auth.AuthController(this.authSettings, this.service, this);
+      this.auth = new pryv.Auth.AuthController(this.authSettings, this.service, this);
       await this.auth.init();
     }
 
@@ -59,13 +59,13 @@
 
     async onStateChange (state) {
       switch (state.status) {
-        case Pryv.Auth.AuthStates.LOADING:
+        case pryv.Auth.AuthStates.LOADING:
           this.text = 'Loading visual assets';
           break;
-        case Pryv.Auth.AuthStates.INITIALIZED:
+        case pryv.Auth.AuthStates.INITIALIZED:
           this.text = 'Sign into: ' + this.serviceInfo.name;
           break;
-        case Pryv.Auth.AuthStates.NEED_SIGNIN:
+        case pryv.Auth.AuthStates.NEED_SIGNIN:
           const loginUrl = state.authUrl || state.url; // .url is deprecated
           if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup)
             location.href = loginUrl;
@@ -74,21 +74,21 @@
             startLoginScreen(this, loginUrl);
           }
           break;
-        case Pryv.Auth.AuthStates.AUTHORIZED:
+        case pryv.Auth.AuthStates.AUTHORIZED:
           this.text = 'Signed in as ' + state.username;
           this.saveAuthorizationData({
             apiEndpoint: state.apiEndpoint,
             username: state.username
           });
           break;
-        case Pryv.Auth.AuthStates.SIGNOUT:
+        case pryv.Auth.AuthStates.SIGNOUT:
           const message = 'Do you wish to sign out?';
           if (confirm(message)) {
             this.deleteAuthorizationData();
             this.auth.init();
           }
           break;
-        case Pryv.Auth.AuthStates.ERROR:
+        case pryv.Auth.AuthStates.ERROR:
           this.text = getErrorMessage(this, state.message);
           break;
         default:
@@ -104,7 +104,7 @@
     }
 
     getAuthorizationData() {
-      return Pryv.Browser.CookieUtils.get(this._cookieKey);
+      return pryv.Browser.CookieUtils.get(this._cookieKey);
     }
 
     async deleteAuthorizationData() {
@@ -154,7 +154,7 @@
       "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
   }};
   (async function () {
-    let service = await Pryv.Auth.setupAuth(
+    let service = await pryv.Auth.setupAuth(
       authSettings,
       serviceInfoUrl,
       serviceInfoJson,

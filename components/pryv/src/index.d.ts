@@ -168,7 +168,7 @@ declare module 'pryv' {
 
   type EditMetadata = 'created' | 'createdBy' | 'modified' | 'modifiedBy';
 
-  export type ApiCallMethods = {
+  export type APICallMethods = {
     // mfa
     'mfa.challenge': {
       params: null;
@@ -516,20 +516,20 @@ declare module 'pryv' {
   ) extends (k: infer I) => any
     ? I
     : never;
-  type ApiCallResultUnion = ApiCallMethods[keyof ApiCallMethods]['res'];
-  type ApiCallResultTypes = UnionToIntersection<
-    NonNullable<ApiCallResultUnion>
+  type APICallResultUnion = APICallMethods[keyof APICallMethods]['res'];
+  type APICallResultTypes = UnionToIntersection<
+    NonNullable<APICallResultUnion>
   >;
 
   type PossibleError = {
     error?: Error;
   };
 
-  type ApiCallResult<K extends keyof ApiCallMethods> =
-    ApiCallMethods[K]['res'] & PossibleError;
+  type APICallResult<K extends keyof APICallMethods> =
+    APICallMethods[K]['res'] & PossibleError;
 
-  export type ApiCallResultHandler<K extends keyof ApiCallMethods> = (
-    result: ApiCallResult<K>,
+  export type APICallResultHandler<K extends keyof APICallMethods> = (
+    result: APICallResult<K>,
   ) => Promise<any>;
   export type StreamedEventsHandler = (event: Event) => void;
 
@@ -546,36 +546,36 @@ declare module 'pryv' {
   export type EventFileCreationParams = Partial<
     Omit<Event, 'attachments' | EditMetadata>
   >;
-  export type ApiCall<K extends keyof ApiCallMethods = keyof ApiCallMethods> =
-    K extends keyof ApiCallMethods
+  export type APICall<K extends keyof APICallMethods = keyof APICallMethods> =
+    K extends keyof APICallMethods
       ? {
           method: K;
-          params: ApiCallMethods[K]['params'];
-          handleResult?: ApiCallResultHandler<K>;
+          params: APICallMethods[K]['params'];
+          handleResult?: APICallResultHandler<K>;
         }
       : never;
 
-  export type TypedApiCallResult = ApiCallResultTypes & PossibleError;
+  export type TypedAPICallResult = APICallResultTypes & PossibleError;
 
-  export type ApiCallProgressHandler = (percentage: number) => void;
+  export type APICallProgressHandler = (percentage: number) => void;
 
   interface AccessInfo extends Access {
     calls: KeyValue;
     user: KeyValue;
   }
 
-  type EventApiCallRes = {
+  type EventAPICallRes = {
     event?: Event;
   } & PossibleError;
 
   export interface Connection {
-    new (pryvApiEndpoint: string, service?: Service): Connection;
+    new (apiEndpoint: string, service?: Service): Connection;
     get service(): Service;
     username(): Promise<string>;
-    api<Calls extends ApiCall[] = ApiCall[]>(
+    api<Calls extends APICall[] = APICall[]>(
       apiCalls: Calls,
-      res?: ApiCallProgressHandler[],
-    ): Promise<Array<TypedApiCallResult>>;
+      res?: APICallProgressHandler[],
+    ): Promise<Array<TypedAPICallResult>>;
     getEventsStreamed(
       queryParams: Partial<EventQueryParamsStreamQuery>,
       forEachEvent: StreamedEventsHandler,
@@ -583,16 +583,16 @@ declare module 'pryv' {
     createEventWithFile(
       params: EventFileCreationParams,
       filePath: string | Buffer | Blob,
-    ): Promise<EventApiCallRes>;
+    ): Promise<EventAPICallRes>;
     createEventWithFormData(
       params: EventFileCreationParams,
       formData: FormData,
-    ): Promise<EventApiCallRes>;
+    ): Promise<EventAPICallRes>;
     createEventWithFileFromBuffer(
       params: EventFileCreationParams,
       bufferData: string | Buffer,
       filename: string,
-    ): Promise<EventApiCallRes>;
+    ): Promise<EventAPICallRes>;
     addPointsToHFEvent(
       id: Identifier,
       fields: string[],
@@ -615,7 +615,7 @@ declare module 'pryv' {
     };
   };
 
-  export type PryvServiceInfo = {
+  export type ServiceInfo = {
     register: string;
     access: string;
     api: string;
@@ -625,6 +625,10 @@ declare module 'pryv' {
     terms: string;
     eventTypes: string;
     version: string;
+    assets: {
+      definitions: string;
+    };
+    serial: string;
   };
 
   export type AssetsConfig = {
@@ -650,10 +654,10 @@ declare module 'pryv' {
       serviceInfoUrl: string,
       serviceCustomizations?: serviceCustomizations,
     ): Service;
-    info(forceFetch?: boolean): Promise<PryvServiceInfo>;
-    setServiceInfo(serviceInfo: Partial<PryvServiceInfo>): Promise<void>;
+    info(forceFetch?: boolean): Promise<ServiceInfo>;
+    setServiceInfo(serviceInfo: Partial<ServiceInfo>): Promise<void>;
     assets(forceFetch?: boolean): Promise<AssetsConfig>;
-    infoSync(): PryvServiceInfo | null;
+    infoSync(): ServiceInfo | null;
     apiEndpointFor(username: string, token: string): Promise<string>;
     login(
       username: string,
@@ -675,22 +679,6 @@ declare module 'pryv' {
     | 'NEED_SIGNIN'
     | 'ACCEPTED'
     | 'SIGNOUT';
-
-  type ServiceInfo = {
-    access: string;
-    api: string;
-    assets: {
-      definitions: string;
-    };
-    eventTypes: string;
-    home: string;
-    name: string;
-    register: string;
-    serial: string;
-    support: string;
-    terms: string;
-    version: string;
-  };
 
   type StateChangeTypes = {
     LOADING: {};
@@ -816,15 +804,15 @@ declare module 'pryv' {
     serviceInfoFromUrl: getServiceInfoFromURL;
   }
 
-  type TokenAndApiEndpoint = {
+  type TokenAndAPIEndpoint = {
     endpoint: string;
     token: string;
   };
 
   export interface utils {
     isBrowser(): boolean;
-    extractTokenAndApiEndpoint(pryvApiEndpoint: string): TokenAndApiEndpoint;
-    buildPryvApiEndpoint(tokenAndApi: TokenAndApiEndpoint): string;
+    extractTokenAndAPIEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
+    buildAPIEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
     browserIsMobileOrTablet(navigator: string): boolean;
     cleanURLFromPrYvParams(url: string): string;
     getQueryParamsFromURL(url: string): KeyValue;
@@ -832,7 +820,7 @@ declare module 'pryv' {
 
   type version = string;
 
-  let Pryv: {
+  let pryv: {
     Service: Service;
     Connection: Connection;
     Auth: Auth;
@@ -841,5 +829,5 @@ declare module 'pryv' {
     version: version;
   };
 
-  export default Pryv;
+  export default pryv;
 }

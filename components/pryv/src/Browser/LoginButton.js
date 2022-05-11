@@ -11,7 +11,7 @@ const utils = require('../utils');
 /* global location, confirm */
 
 /**
- * @memberof Pryv.Browser
+ * @memberof pryv.Browser
  */
 class LoginButton {
   constructor (authSettings, service) {
@@ -171,7 +171,7 @@ function setupButton (loginBtn) {
   loginBtn.loginButtonSpan = document.getElementById(loginBtn.authSettings.spanButtonID);
 
   if (!loginBtn.loginButtonSpan) {
-    console.log('WARNING: Pryv.Browser initialized with no spanButtonID');
+    console.log('WARNING: pryv.Browser initialized with no spanButtonID');
   } else {
     // up to the time the button is loaded use the Span to display eventual
     // error messages

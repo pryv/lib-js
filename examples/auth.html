@@ -22,21 +22,21 @@
   <script>
     const authSettings = {
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
-      onStateChange: function pryvAuthStateChange(state) { // called each time the authentication state changed
+      onStateChange: function authStateChange(state) { // called each time the authentication state changed
         switch(state.id) {
-          case Pryv.Auth.AuthStates.LOADING:
+          case pryv.Auth.AuthStates.LOADING:
             console.log('Loading service information...');
             break;
-          case Pryv.Auth.AuthStates.INITIALIZED:
+          case pryv.Auth.AuthStates.INITIALIZED:
             console.log('Service information is retrieved so authorization can start. You can display login / registration screen or redirect to the our hosted app - web - auth application.');
             break;
-          case Pryv.Auth.AuthStates.AUTHORIZED:
+          case pryv.Auth.AuthStates.AUTHORIZED:
             console.log('User is authorized and can access his personal data');
             break;
-          case Pryv.Auth.AuthStates.SIGNOUT:
+          case pryv.Auth.AuthStates.SIGNOUT:
             console.log('User just logged off, please delete all the session related data');
             break;
-          case Pryv.Auth.AuthStates.ERROR:
+          case pryv.Auth.AuthStates.ERROR:
             console.log('Error:', state?.message);
             break;
           }
@@ -74,7 +74,7 @@
         "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
     }};
     (async function () {
-      service = await Pryv.Auth.setupAuth(
+      service = await pryv.Auth.setupAuth(
         authSettings,
         serviceInfoUrl,
         serviceInfoJson

@@ -7,14 +7,14 @@ const utils = require('./utils.js');
 const Assets = require('./ServiceAssets.js');
 
 /**
- * @class Pryv.Service
+ * @class pryv.Service
  * A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a service, deployed with the domain name **pryv.me**.
  *
- * `Pryv.Service` exposes tools to interact with Pryv.io at a "Platform" level.
+ * `pryv.Service` exposes tools to interact with Pryv.io at a "Platform" level.
  *
  *  ##### Initizalization with a service info URL
 ```javascript
-const service = new Pryv.Service('https://reg.pryv.me/service/info');
+const service = new pryv.Service('https://reg.pryv.me/service/info');
 ```
 
 - With the content of a serviceInfo configuration
@@ -29,20 +29,20 @@ const serviceCustomizations = {
     definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
   }
 }
-const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
+const service = new pryv.Service(serviceInfoUrl, serviceCustomizations);
 ```
 
- * @memberof Pryv
+ * @memberof pryv
  *
  * @constructor
  * @param {string} serviceInfoUrl Url point to /service/info of a Pryv platform see: {@link https://api.pryv.com/reference/#service-info}
  */
 class Service {
   constructor (serviceInfoUrl, serviceCustomizations) {
-    this._pryvServiceInfo = null;
+    this._serviceInfo = null;
     this._assets = null;
     this._polling = false;
-    this._pryvServiceInfoUrl = serviceInfoUrl;
+    this._serviceInfoUrl = serviceInfoUrl;
     this._pryvServiceCustomizations = serviceCustomizations;
   }
 
@@ -51,26 +51,26 @@ class Service {
    * Example
    *  - name of a platform
    *    `const serviceName = await service.info().name`
-   * @see PryvServiceInfo For details on available properties.
+   * @see ServiceInfo For details on available properties.
    * @param {boolean?} forceFetch If true, will force fetching service info.
-   * @returns {Promise<PryvServiceInfo>} Promise to Service info Object
+   * @returns {Promise<ServiceInfo>} Promise to Service info Object
    */
   async info (forceFetch) {
-    if (forceFetch || !this._pryvServiceInfo) {
+    if (forceFetch || !this._serviceInfo) {
       let baseServiceInfo = {};
-      if (this._pryvServiceInfoUrl) {
-        const res = await utils.superagent.get(this._pryvServiceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
+      if (this._serviceInfoUrl) {
+        const res = await utils.superagent.get(this._serviceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
         baseServiceInfo = res.body;
       }
       Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
       this.setServiceInfo(baseServiceInfo);
     }
-    return this._pryvServiceInfo;
+    return this._serviceInfo;
   }
 
   /**
    * @private
-   * @param {PryvServiceInfo} serviceInfo
+   * @param {ServiceInfo} serviceInfo
    */
   setServiceInfo (serviceInfo) {
     if (!serviceInfo.name) {
@@ -83,7 +83,7 @@ class Service {
         serviceInfo[key] += '/';
       }
     });
-    this._pryvServiceInfo = serviceInfo;
+    this._serviceInfo = serviceInfo;
   }
 
   /**
@@ -107,17 +107,17 @@ class Service {
 
   /**
    * Return service info parameters info known or null if not yet loaded
-   * @returns {PryvServiceInfo} Service Info definition
+   * @returns {ServiceInfo} Service Info definition
    */
   infoSync () {
-    return this._pryvServiceInfo;
+    return this._serviceInfo;
   }
 
   /**
    * Return an API Endpoint from a username and token
    * @param {string} username
    * @param {string} [token]
-   * @return {PryvApiEndpoint}
+   * @return {APIEndpoint}
    */
   async apiEndpointFor (username, token) {
     const serviceInfo = await this.info();
@@ -125,16 +125,16 @@ class Service {
   }
 
   /**
-   * Return an API Endpoint from a username and token and a PryvServiceInfo.
+   * Return an API Endpoint from a username and token and a ServiceInfo.
    * This is method is rarely used. See **apiEndpointFor** as an alternative.
-   * @param {PryvServiceInfo} serviceInfo
+   * @param {ServiceInfo} serviceInfo
    * @param {string} username
    * @param {string} [token]
-   * @return {PryvApiEndpoint}
+   * @return {APIEndpoint}
    */
   static buildAPIEndpoint (serviceInfo, username, token) {
     const endpoint = serviceInfo.api.replace('{username}', username);
-    return utils.buildPryvApiEndpoint({ endpoint: endpoint, token: token });
+    return utils.buildAPIEndpoint({ endpoint: endpoint, token: token });
   }
 
   /**
@@ -185,7 +185,7 @@ const Connection = require('./Connection');
 
 /**
  * Object to handle Pryv Service Informations https://api.pryv.com/reference/#service-info
- * @typedef {Object} PryvServiceInfo
+ * @typedef {Object} ServiceInfo
  * @property {string} register The URL of the register service.
  * @property {string} access The URL of the access page.
  * @property {string} api The API endpoint format.

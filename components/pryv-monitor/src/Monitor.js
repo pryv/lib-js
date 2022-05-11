@@ -9,17 +9,17 @@ const _updateStreams = require('./lib/updateStreams');
 const Changes = require('./lib/Changes');
 
 /**
- * @memberof Pryv
+ * @memberof pryv
  */
 class Monitor extends EventEmitter {
   /**
    *
-   * @param {(Pryv.PryvApiEndpoint|Pryv.Connection)} apiEndpointOrConnection ApiEnpoint or connection to use.
-   * @param {Pryv.Monitor.Scope} [eventsGetScope={}] The Scope to monitor
+   * @param {(pryv.APIEndpoint|pryv.Connection)} apiEndpointOrConnection APIEndoint or connection to use
+   * @param {pryv.Monitor.Scope} [eventsGetScope={}] The Scope to monitor
    */
   constructor (apiEndpointOrConnection, eventsGetScope = {}) {
     super();
-    if (!Monitor.Pryv) {
+    if (!Monitor.pryv) {
       throw new Error('package \'@pryv/monitor\' must loaded after package \'pryv\'');
     }
 
@@ -30,10 +30,10 @@ class Monitor extends EventEmitter {
     };
     Object.assign(this.eventsGetScope, eventsGetScope);
 
-    if (apiEndpointOrConnection instanceof Monitor.Pryv.Connection) {
+    if (apiEndpointOrConnection instanceof Monitor.pryv.Connection) {
       this.connection = apiEndpointOrConnection;
     } else {
-      this.connection = new Monitor.Pryv.Connection(apiEndpointOrConnection);
+      this.connection = new Monitor.pryv.Connection(apiEndpointOrConnection);
     }
     this.states = {
       started: false,

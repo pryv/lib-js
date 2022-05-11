@@ -41,7 +41,7 @@
 
   var authSettings = {
     spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
-    onStateChange: pryvAuthStateChange, // event Listener for Authentication steps
+    onStateChange: authStateChange, // event Listener for Authentication steps
     authRequest: { // See: https://api.pryv.com/reference/#auth-request
       requestingAppId: 'lib-js-socket-io',
       languageCode: 'en', // optional (default english)
@@ -64,14 +64,14 @@
     }
   };
 
-  function pryvAuthStateChange(state) { // called each time the authentication state changed
-    logToConsole('##pryvAuthStateChange ' + state.id);
-    if (state.id === Pryv.Browser.AuthStates.AUTHORIZED) {
-      connection = new Pryv.Connection(state.apiEndpoint);
+  function authStateChange(state) { // called each time the authentication state changed
+    logToConsole('##authStateChange ' + state.id);
+    if (state.id === pryv.Browser.AuthStates.AUTHORIZED) {
+      connection = new pryv.Connection(state.apiEndpoint);
       logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
       initializeSocket(connection);
     }
-    if (state.id === Pryv.Browser.AuthStates.LOGOUT) {
+    if (state.id === pryv.Browser.AuthStates.LOGOUT) {
       connection = null;
       logToConsole('# Logout');
     }
@@ -102,8 +102,8 @@
 
   // --- socket.io specific
   (async function () {
-    const serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || 'https://reg.pryv.me/service/info';
-    var service = await Pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
+    const serviceInfoUrl = pryv.Browser.serviceInfoFromUrl() || 'https://reg.pryv.me/service/info';
+    var service = await pryv.Browser.setupAuth(authSettings, serviceInfoUrl);
   })();
 
   async function initializeSocket() {

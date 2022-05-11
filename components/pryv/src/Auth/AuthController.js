@@ -52,7 +52,7 @@ class AuthController {
   /**
    * async function to call right after instanciating object
    *
-   * @returns {PryvService}
+   * @returns {Service}
    */
   async init () {
     this.serviceInfo = this.service.infoSync();
