@@ -11,8 +11,8 @@
 - `utils.buildPryvApiEndpoint()`, renamed to `utils.buildAPIEndpoint()`
 
 ### Changed
-- _Dev_: Grouped library and add-ons (Socket.IO & Monitor) in monorepo
-- _Dev_: run tasks with `just`, lint with `semistandard`, license with `source-licenser`
+- _Dev: Grouped library and add-ons (Socket.IO & Monitor) in monorepo_
+- _Dev: run tasks with `just`, lint with `semistandard`, license with `source-licenser`_
 
 ### Removed
 - JSDoc generated docs (to avoid confusion with docs in READMEs)
@@ -26,7 +26,7 @@
 ## [2.1.7](https://github.com/pryv/lib-js/compare/2.1.0...2.1.7) – 2021-05-10
 
 ### Removed
-- _Dev_: Removed `jsdoc` dependency for security reason
+- _Dev: Removed `jsdoc` dependency for security reason_
 
 
 ## [2.1.0](https://github.com/pryv/lib-js/compare/2.0.3...2.1.0) – 2020-10-22
@@ -50,4 +50,4 @@
 - Various dependencies upgrades
 
 
-## [2.0.1] Initial release – 2020-04-06
+## 2.0.1 Initial release – 2020-04-06

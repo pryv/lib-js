@@ -1,6 +1,6 @@
-# JavaScript library for Pryv.io
+# `pryv`: JS library for Pryv.io
 
-Pryv JavaScript library and add-ons for writing Node.js and browser apps connecting to a Pryv.io platform. It follows the [Pryv.io app guidelines](https://api.pryv.com/guides/app-guidelines/).
+JavaScript library and add-ons for writing Node.js and browser apps connecting to a Pryv.io platform. It follows the [Pryv.io app guidelines](https://api.pryv.com/guides/app-guidelines/).
 
 
 ## Table of Contents <!-- omit in toc -->
@@ -708,7 +708,7 @@ to run the tests in a browser window.
 
 ### Publishing
 
-Assuming browser files are built and everything is up-to-date:
+Assuming browser files are built and everything is up-to-date, including the READMEs and [changelog](CHANGELOG.md):
 
 ```
 just version <version>
