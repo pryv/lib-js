@@ -142,7 +142,7 @@ describe('Socket.IO', function () {
         return done();
       }
       conn.socket.on('eventsChanged', onEventChanged);
-      conn.api([{ method: 'events.create', params: { type: 'note/txt', streamId: testStreamId } }]);
+      conn.api([{ method: 'events.create', params: { type: 'note/txt', streamId: testStreamId, content: 'hello' } }]);
     });
 
     it('Catches streamChanges', (done) => {
