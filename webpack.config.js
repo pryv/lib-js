@@ -108,7 +108,7 @@ module.exports = [
   { // browser test suite (ES6)
     mode: 'development',
     entry: {
-      'browser-tests': componentPath('pryv', 'test/browser-tests.js')
+      'browser-tests': './test/browser-tests.js'
     },
     output: {
       filename: 'tests.js',
