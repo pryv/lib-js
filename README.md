@@ -350,7 +350,7 @@ Programmatically created content:
 ```js
 var formData = new FormData();
 var blob = new Blob(['Hello'], { type: "text/txt" });
-formData.append("webmasterfile", blob);
+formData.append("file", blob);
 
 connect.createEventWithFormData({
   type: 'file/attached',

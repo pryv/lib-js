@@ -590,7 +590,7 @@ declare module 'pryv' {
     ): Promise<EventAPICallRes>;
     createEventWithFileFromBuffer(
       params: EventFileCreationParams,
-      bufferData: string | Buffer,
+      bufferData: string | Buffer | Blob,
       filename: string,
     ): Promise<EventAPICallRes>;
     addPointsToHFEvent(

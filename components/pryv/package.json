@@ -19,6 +19,6 @@
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "dependencies": {
-    "superagent": "^7.1.2"
+    "superagent": "^7.1.6"
   }
 }

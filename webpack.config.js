@@ -119,7 +119,8 @@ module.exports = [
       new CopyPlugin({
         patterns: [
           { from: componentPath('pryv', 'test/browser-index.html'), to: 'index.html' },
-          { from: distPath('pryv.js') }
+          { from: distPath('pryv.js') },
+          { from: distPath('pryv.js.map') }
         ]
       })
     ],

@@ -257,19 +257,26 @@ class Connection {
 
   /**
    * Create an event from a Buffer
-   * NODE.jS ONLY
    * @param {Event} event
-   * @param {Buffer} bufferData
+   * @param {Buffer|Blob} bufferData - Buffer for node, Blob for browser
    * @param {string} fileName
    */
   async createEventWithFileFromBuffer (event, bufferData, filename) {
-    const res = await this._post('events')
-      .field('event', JSON.stringify(event))
-      .attach('file', bufferData, filename);
+    if (typeof window === 'undefined') { // node
+      const res = await this._post('events')
+        .field('event', JSON.stringify(event))
+        .attach('file', bufferData, filename);
 
-    const now = Date.now() / 1000;
-    this._handleMeta(res.body, now);
-    return res.body;
+      const now = Date.now() / 1000;
+      this._handleMeta(res.body, now);
+      return res.body;
+    } else {
+      /* global FormData */
+      const formData = new FormData();
+      formData.append('file', bufferData, filename);
+      const body = await this.createEventWithFormData(event, formData);
+      return body;
+    }
   }
 
   /**
