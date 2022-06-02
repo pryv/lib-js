@@ -132,7 +132,7 @@ class Connection {
    * @returns {Promise<Array|Object>} Promise to result.body
    */
   async post (path, data, queryParams) {
-    const now = Date.now() / 1000;
+    const now = getTimestamp();
     const res = await this.postRaw(path, data, queryParams);
     this._handleMeta(res.body, now);
     return res.body;
@@ -164,7 +164,7 @@ class Connection {
    * @returns {Promise<Array|Object>}  Promise to result.body
    */
   async get (path, queryParams) {
-    const now = Date.now() / 1000;
+    const now = getTimestamp();
     const res = await this.getRaw(path, queryParams);
     this._handleMeta(res.body, now);
     return res.body;
@@ -234,7 +234,7 @@ class Connection {
       }
     }
 
-    const now = Date.now() / 1000;
+    const now = getTimestamp();
     this._handleMeta(res.body, now);
     return res.body;
   }
@@ -250,7 +250,7 @@ class Connection {
       .field('event', JSON.stringify(event))
       .attach('file', filePath);
 
-    const now = Date.now() / 1000;
+    const now = getTimestamp();
     this._handleMeta(res.body, now);
     return res.body;
   }
@@ -267,7 +267,7 @@ class Connection {
         .field('event', JSON.stringify(event))
         .attach('file', bufferData, filename);
 
-      const now = Date.now() / 1000;
+      const now = getTimestamp();
       this._handleMeta(res.body, now);
       return res.body;
     } else {
@@ -321,6 +321,10 @@ class Connection {
 }
 
 module.exports = Connection;
+
+function getTimestamp () {
+  return Date.now() / 1000;
+}
 
 // service is require "after" to allow circular require
 const Service = require('./Service');
