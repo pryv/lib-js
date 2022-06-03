@@ -232,7 +232,6 @@ describe('Connection', () => {
 
       expect(res).to.exist;
       expect(res.event).to.exist;
-      console.log(res.event);
       expect(res.event.attachments).to.exist;
       expect(res.event.attachments.length).to.equal(1);
       expect(res.event.attachments[0].size).to.equal(5);

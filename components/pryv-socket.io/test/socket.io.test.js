@@ -7,7 +7,7 @@
 
 const cuid = require('cuid');
 
-require('../src')(pryv);
+require('@pryv/socket.io')(pryv);
 
 let conn = null;
 const testStreamId = 'socket-test';
@@ -48,6 +48,10 @@ describe('Socket.IO', function () {
         await conn.socket.open();
       } catch (e) {
         if (e.message === 'Not Found' || e.message.startsWith('getaddrinfo ENOTFOUND')) {
+          return;
+        }
+        if (typeof document !== 'undefined') { // in browser
+          console.warn('Error found by messages are not consistent among browsers:', e.message);
           return;
         }
         throw new Error('Error message should be NotFound or ENOTFOUND and received: ' + e.message);
