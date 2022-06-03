@@ -25,5 +25,11 @@ describe('Pryv', function () {
 });
 
 describe('Socket.io', function () {
-  // require('pryv-socket.io/test/socket.io.test.js');
+  require('../components/pryv-socket.io/test/socket.io.test.js');
+});
+
+describe('Monitor', function () {
+  require('../components/pryv-monitor/test/monitor.test.js');
+  require('../components/pryv-monitor/test/socket.test.js');
+  require('../components/pryv-monitor/test/timer.test.js');
 });
