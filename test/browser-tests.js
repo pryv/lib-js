@@ -15,7 +15,7 @@ global.testData = require('./test-data');
 
 // the tests
 
-describe('Pryv', function () {
+describe('pryv', function () {
   require('pryv/test/utils.test.js');
   require('pryv/test/Connection.test.js');
   require('pryv/test/Service.test.js');
@@ -24,11 +24,11 @@ describe('Pryv', function () {
   require('pryv/test/Browser.AuthController.test.js');
 });
 
-describe('Socket.io', function () {
+describe('@pryv/socket.io', function () {
   require('../components/pryv-socket.io/test/socket.io.test.js');
 });
 
-describe('Monitor', function () {
+describe('@pryv/monitor', function () {
   require('../components/pryv-monitor/test/monitor.test.js');
   require('../components/pryv-monitor/test/socket.test.js');
   require('../components/pryv-monitor/test/timer.test.js');
