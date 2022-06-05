@@ -32,7 +32,7 @@ describe('Browser', function () {
     if (typeof document !== 'undefined') return; // in browser
     removeZombie = true;
     const browser = new Browser();
-    browser.visit('./?pryvServiceInfoUrl=https://zouzou.com/service/info');
+    browser.visit('./?pryvServiceInfoUrl=https://zou.zou/service/info');
     global.document = browser.document;
     global.window = browser.window;
     global.location = browser.location;
@@ -71,6 +71,6 @@ describe('Browser', function () {
   });
 
   it('serviceInfoFromUrl()', async () => {
-    expect('https://zouzou.com/service/info').to.equal(pryv.Browser.serviceInfoFromUrl());
+    expect('https://zou.zou/service/info').to.equal(pryv.Browser.serviceInfoFromUrl());
   });
 });

@@ -60,7 +60,7 @@ test-cover component *params:
 
 # Run browser tests (assumes browser files are built)
 test-browser:
-    (sleep 1 && open https://l.rec.la:8443/?serviceInfoUrl=https://zouzou.com/service/info) &
+    (sleep 1 && open https://l.rec.la:8443/?serviceInfoUrl=https://zou.zou/service/info) &
     rec.la ./test-browser 8443
 
 # Start a `rec.la` web server on `dist/`
