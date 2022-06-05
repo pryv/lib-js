@@ -32,7 +32,7 @@ describe('Browser', function () {
     if (typeof document !== 'undefined') return; // in browser
     removeZombie = true;
     const browser = new Browser();
-    browser.visit('./?serviceInfoUrl=https://zouzou.com/service/info');
+    browser.visit('./?pryvServiceInfoUrl=https://zouzou.com/service/info');
     global.document = browser.document;
     global.window = browser.window;
     global.location = browser.location;

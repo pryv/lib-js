@@ -25,6 +25,5 @@ module.exports = {
  */
 function getServiceInfoFromURL (url) {
   const queryParams = utils.getQueryParamsFromURL(url || window.location.href);
-  // TODO: remove deprecated param `pryvServiceInfoUrl` with next major version
-  return queryParams.serviceInfoUrl ?? queryParams.pryvServiceInfoUrl;
+  return queryParams.pryvServiceInfoUrl;
 }
