@@ -1,0 +1,25 @@
+{
+  "name": "@pryv/socket.io",
+  "version": "1.0.6",
+  "description": "Extends `pryv` with Socket.IO transport",
+  "keywords": [
+    "Pryv",
+    "Pryv.io",
+    "Socket.IO",
+    "WebSockets"
+  ],
+  "homepage": "https://github.com/pryv/lib-js/tree/master/components/pryv-socket.io#readme",
+  "bugs": {
+    "url": "https://github.com/pryv/lib-js/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pryv/lib-js"
+  },
+  "license": "BSD-3-Clause",
+  "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
+  "main": "src/index.js",
+  "dependencies": {
+    "socket.io-client": "^4.4.0"
+  }
+}

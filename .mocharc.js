@@ -1,13 +1,12 @@
+const path = require('path');
+
 module.exports = {
-  diff: true,
-  extension: ['js'],
-  opts: false,
-  package: './package.json',
-  reporter: 'spec',
+  exit: true,
   slow: 75,
-  timeout: 2000,
-  require: 'test/helpers.js',
+  timeout: 3000,
   ui: 'bdd',
-  'watch-files': ['lib/**/*.js', 'test/**/*.js'],
-  'watch-ignore': ['lib/vendor']
+  diff: true,
+  reporter: 'spec',
+  require: path.join(__dirname, 'test/load-helpers.js'),
+  spec: 'test/**/*.test.js'
 };

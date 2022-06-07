@@ -2,4 +2,5 @@
 set -e
 
 # no need to manage dir path: Git sets working dir to repo root already
-npx semistandard
+just lint
+just license

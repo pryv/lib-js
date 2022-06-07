@@ -1,124 +1,97 @@
-# JavaScript library for Pryv.io
+# `pryv`: JS library for Pryv.io
 
-This JavaScript library is meant to facilitate writing Node.js and browser apps for a Pryv.io platform. It follows the [Pryv.io App Guidelines](https://api.pryv.com/guides/app-guidelines/).
+JavaScript library and add-ons for writing Node.js and browser apps connecting to a Pryv.io platform. It follows the [Pryv.io app guidelines](https://api.pryv.com/guides/app-guidelines/).
 
 
-## Contribute
+## Table of Contents <!-- omit in toc -->
 
-*Prerequisite*: Node 12+
-
-- Setup: `npm run setup`
-
-- Build pryv.js library for browsers: `npm run build`, the result is published in `./dist`
-
-- Build documentation: `npm run doc`, the result is published in `./dist/docs`
-
-  Note: as per v2.1.7 `jsdoc` dev dependency has been removed from package.json .. it should be installed with `npm install jsoc --dev`
-
-- Node Tests: `npm run test`
-
-- Coverage: `npm run cover`, the result is visible in `./coverage`
-
-- Browser tests: **build**, then `npm run webserver` and open [https://l.rec.la:9443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info](https://l.rec.la:9443/tests/browser-tests.html?pryvServiceInfoUrl=https://zouzou.com/service/info)
-
-- Update on CDN: After running **setup** and **build** scripts, run `npm run gh-pages ${COMMIT_MESSAGE}`. If this fails, run `npm run clear` to rebuild a fresh `dist/` folder
-
-The code follows the [Semi-Standard](https://github.com/standard/semistandard) style.
+1. [Usage](#usage)
+   1. [Importing](#importing)
+   2. [Quick example](#quick-example)
+   3. [Obtaining a `pryv.Connection`](#obtaining-a-pryvconnection)
+   4. [API calls](#api-calls)
+   5. [Get events streamed](#get-events-streamed)
+   6. [Events with attachments](#events-with-attachments)
+   7. [High Frequency (HF) events](#high-frequency-hf-events)
+   8. [Service information and assets](#service-information-and-assets)
+   9. [`pryv.Browser` & visual assets](#pryvbrowser--visual-assets)
+   10. [Customize the authentication process](#customize-the-authentication-process)
+   11. [Running examples locally](#running-examples-locally)
+2. [Contributing](#contributing)
+   1. [Installation](#installation)
+   2. [Dev environment basics](#dev-environment-basics)
+   3. [Building for the browser](#building-for-the-browser)
+   4. [Testing](#testing)
+   5. [Publishing](#publishing)
+3. [Changelog](#changelog)
+4. [License](#license)
 
 
 ## Usage
 
-### Table of Contents
 
-+ [Import](#import)
-  - [Browser](#browser)
-  - [Node.js](#nodejs)
-+ [Obtaining a Pryv.Connection](#obtaining-a-pryvconnection)
-  - [Using an API endpoint](#using-an-api-endpoint)
-  - [Using a Username & Token (knowing the service information URL)](#using-a-username--token-knowing-the-service-information-url)
-  - [Within a WebPage with a login button](#within-a-webpage-with-a-login-button)
-  - [Fetch access info](#fetch-access-info)
-  - [Using Service.login() *(trusted apps only)*](#using-servicelogin-trusted-apps-only)
-  - [Performing the authentication request with your own UI](#customize-auth-process)
-+ [API calls](#api-calls)
-+ [Advanced usage of API calls with optional individual result and progress callbacks](#advanced-usage-of-api-calls-with-optional-individual-result-and-progress-callbacks)
-+ [Get Events Streamed](#get-events-streamed)
-  - [Example](#example)
-  - [result](#result)
-+ [Events with Attachments](#events-with-attachments)
-  - [Node.js](#nodejs-1)
-  - [Browser](#browser-1)
-+ [High Frequency Events](#high-frequency-events)
-+ [Service Information and assets](#service-information-and-assets)
-  - [Pryv.Service](#pryvservice)
-    * [Initizalization with a service info URL](#initizalization-with-a-service-info-url)
-    * [Usage of Pryv.Service.](#usage-of-pryvservice)
-+ [Pryv.Browser & Visual assets](#pryvbrowser--visual-assets)
-  - [Pryv.Browser - retrieve serviceInfo from query URL](#pryvbrowser---retrieve-serviceinfo-from-query-url)
-  - [Visual assets](#visual-assets)
-+ [Customize Auth process](#customize-auth-process)
-  - [Using a custom login button](using-a-custom-login-button)
-  - [Redirect user to the authentication page](#redirect-user-to-the-authentication-page)
-+ [Launch web demos locally](#launch-web-demos-locally)
+### Importing
 
-### Import
+#### NPM
 
-#### Browser
+`npm install --save pryv`, then in your code:
+
+```js
+const pryv = require('pryv');
+```
+
+#### `<script>` tag
 
 ```html
 <script src="https://api.pryv.com/lib-js/pryv.js"></script>
 ```
 
-#### Others distributions for browsers & extensions:
+Other distributions available:
 
 - ES6: `https://api.pryv.com/lib-js/pryv-es6.js`
-- Bundle: (Socket.io + Monitor + Lib-js) `https://api.pryv.com/lib-js/pryv-socket.io-monitor.js`.
-  This library can be extended with two packages:
-  - Socket.io extension: [https://github.com/pryv/lib-js-socket.io](https://github.com/pryv/lib-js-socket.io)
-  - Monitor extension: [https://github.com/pryv/lib-js-monitor](https://github.com/pryv/lib-js-monitor)
+- Library bundled with Socket.IO and Monitor add-ons: `https://api.pryv.com/lib-js/pryv-socket.io-monitor.js`.
 
-#### Example on code pen:
+#### Add-ons
 
-- Save notes and measure simple form: [Example on codepen.io](https://codepen.io/pryv/pen/ExVYemE)
+- Socket.IO: [NPM package](https://www.npmjs.com/package/@pryv/socket.io), [README](https://github.com/pryv/lib-js/tree/master/components/pryv-socket.io#readme)
+- Monitor: [NPM package](https://www.npmjs.com/package/@pryv/monitor), [README](https://github.com/pryv/lib-js/tree/master/components/pryv-monitor#readme)
 
-#### Node.js
 
-Install with:  `npm install pryv --save `
+### Quick example
 
-```javascript
-const Pryv = require('pryv');
-```
+- [A simple form to save notes and measurements (CodePen)](https://codepen.io/pryv/pen/ExVYemE)
 
-### Obtaining a Pryv.Connection
+
+### Obtaining a `pryv.Connection`
 
 A connection is an authenticated link to a Pryv.io account.
 
-#### Using an API endpoint
+#### With an API endpoint
 
-The format of the API endpoint can be found in your platform's [service information](https://api.pryv.com/reference/#service-info) under the `api` property. The most frequent one has the following format: `https://{token}@{api-endpoint}`
+The format of the API endpoint can be found in your platform's [service information](https://api.pryv.com/reference/#service-info) under the `api` property. It usually looks like: `https://{token}@{hostname}`
 
-```javascript
+```js
 const apiEndpoint = 'https://ck6bwmcar00041ep87c8ujf90@drtom.pryv.me';
-const connection = new Pryv.Connection(apiEndpoint);
+const connection = new pryv.Connection(apiEndpoint);
 ```
 
-#### Using a Username & Token (knowing the service information URL)
+#### With username & token (knowing the service information URL)
 
-```javascript
-const service = new Pryv.Service('https://reg.pryv.me/service/info');
+```js
+const service = new pryv.Service('https://reg.pryv.me/service/info');
 const apiEndpoint = await service.apiEndpointFor(username, token);
-const connection = new Pryv.Connection(apiEndpoint);
+const connection = new pryv.Connection(apiEndpoint);
 ```
 
-#### Within a WebPage with a login button
+#### Within a web page with a login button
 
-The following code is an implementation of the [Pryv.io Authentication process](https://api.pryv.com/reference/#authenticate-your-app).
+Here is an implementation of the [Pryv.io authentication process](https://api.pryv.com/reference/#authenticate-your-app):
 
 ```html
 <!doctype html>
 <html>
 <head>
-  <title>Pryv - Javascript Lib</title>
+  <title>Pryv authentication example</title>
   <script src="https://api.pryv.com/lib-js/pryv.js"></script>
 </head>
 <body>
@@ -127,11 +100,11 @@ The following code is an implementation of the [Pryv.io Authentication process](
     var connection = null;
 
     var authSettings = {
-      spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
-      onStateChange: pryvAuthStateChange, // event Listener for Authentication steps
+      spanButtonID: 'pryv-button', // id of the <span> that will be replaced by the service-specific button
+      onStateChange: authStateChanged, // event listener for authentication steps
       authRequest: { // See: https://api.pryv.com/reference/#auth-request
         requestingAppId: 'lib-js-test',
-        languageCode: 'fr', // optional (default english)
+        languageCode: 'fr', // optional (default: 'en')
         requestedPermissions: [
           {
             streamId: 'test',
@@ -147,53 +120,56 @@ The following code is an implementation of the [Pryv.io Authentication process](
         // referer: 'my test with lib-js', // optional string to track registration source
       }
     };
+    var serviceInfoUrl = 'https://api.pryv.com/lib-js/examples/service-info.json';
+    (async function () {
+      var service = await pryv.Auth.setupAuth(authSettings, serviceInfoUrl);
+    })();
 
-    function pryvAuthStateChange(state) { // called each time the authentication state changed
-      console.log('##pryvAuthStateChange', state);
-      if (state.id === Pryv.Auth.AuthStates.AUTHORIZED) {
-        connection = new Pryv.Connection(state.apiEndpoint);
+    function authStateChanged(state) { // called each time the authentication state changes
+      console.log('# Auth state changed:', state);
+      if (state.id === pryv.Auth.AuthStates.AUTHORIZED) {
+        connection = new pryv.Connection(state.apiEndpoint);
         logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
       }
-      if (state.id === Pryv.Auth.AuthStates.SIGNOUT) {
+      if (state.id === pryv.Auth.AuthStates.SIGNOUT) {
         connection = null;
-        logToConsole('# Logout');
+        logToConsole('# Signed out');
       }
-  }
-    var serviceInfoUrl = 'https://api.pryv.com/lib-js/demos/service-info.json';
-    (async function () {
-      var service = await Pryv.Auth.setupAuth(authSettings, serviceInfoUrl);
-    })();
+    }
   </script>
 </body>
 </html>
 ```
 
-#### Fetch access info
+#### Fetching access info
 
-Implementation of [access info](https://api.pryv.com/reference/#access-info).
+[API reference](https://api.pryv.com/reference/#access-info).
 
 ```js
 const apiEndpoint = 'https://ck6bwmcar00041ep87c8ujf90@drtom.pryv.me';
-const connection = new Pryv.Connection(apiEndpoint);
+const connection = new pryv.Connection(apiEndpoint);
 const accessInfo = await connection.accessInfo();
 ```
 
-#### Using Service.login() *(trusted apps only)*
+#### Using `pryv.Service.login()` _(trusted apps only)_
 
-[auth.login reference](https://api.pryv.com/reference-full/#login-user)
+[API reference](https://api.pryv.com/reference-full/#login-user)
 
-```javascript
+```js
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
 const appId = 'lib-js-sample';
-const service = new Pryv.Service(serviceInfoUrl);
+const service = new pryv.Service(serviceInfoUrl);
 const connection = await service.login(username, password, appId);
 ```
 
+
 ### API calls
 
-Api calls are based on the `batch` call specifications: [Call batch API reference](https://api.pryv.com/reference/#call-batch)
+API calls are based on the "batch" call specification: [Call batch API reference](https://api.pryv.com/reference/#call-batch)
 
-```javascript
+#### Simple usage
+
+```js
 const apiCalls = [
   {
     "method": "streams.create",
@@ -216,9 +192,9 @@ try {
 }
 ```
 
-### Advanced usage of API calls with optional individual result and progress callbacks
+#### Advanced usage with optional individual result and progress callbacks
 
-```javascript
+```js
 let count = 0;
 // the following will be called on each API method result it was provided for
 function handleResult(result) { console.log('Got result ' + count++ + ': ' + JSON.stringify(result)); }
@@ -249,18 +225,18 @@ try {
 }
 ```
 
-### Get Events Streamed
+
+### Get events streamed
 
 When `events.get` will provide a large result set, it is recommended to use a method that streams the result instead of the batch API call.
 
-`Pryv.Connection.getEventsStreamed()` parses the response JSON as soon as data is available and calls the `forEachEvent()` callback on each event object.
+`pryv.Connection.getEventsStreamed()` parses the response JSON as soon as data is available and calls the `forEachEvent` callback for each event object.
 
-The callback is meant to store the events data, as the function does not return the API call result, which could overflow memory in case of JSON deserialization of a very large data set.
-Instead, the function returns an events count and eventually event deletions count as well as the [common metadata](https://api.pryv.com/reference/#common-metadata).
+The callback is meant to store the events data, as the function does not return the API call result, which could overflow memory in case of JSON deserialization of a very large data set. Instead, the function returns an events count and possibly event deletions count as well as the [common metadata](https://api.pryv.com/reference/#common-metadata).
 
-#### Example:
+#### Example
 
-``````  javascript
+```js
 const now = (new Date()).getTime() / 1000;
 const queryParams = { fromTime: 0, toTime: now, limit: 10000};
 const events = [];
@@ -273,11 +249,11 @@ try {
 } catch (e) {
   // handle error
 }
-``````
+```
 
-#### result:
+`result`:
 
-```javascript
+```js
 {
   eventsCount: 10000,
   meta:
@@ -289,15 +265,15 @@ try {
 }
 ```
 
-#### Example with Includes deletion:
+#### Example including deletions
 
-``````  javascript
+```js
 const now = (new Date()).getTime() / 1000;
 const queryParams = { fromTime: 0, toTime: now, includeDeletions: true, modifiedSince: 0};
 const events = [];
 function forEachEvent(event) {
   events.push(event);
-  // events with .deleted or/and .trashed properties can be tracked here
+  // events with `deleted` or/and `trashed` properties can be tracked here
 }
 
 try {
@@ -305,11 +281,11 @@ try {
 } catch (e) {
   // handle error
 }
-``````
+```
 
-#### result:
+`result`:
 
-```javascript
+```js
 {
   eventDeletionsCount: 150,
   eventsCount: 10000,
@@ -323,120 +299,91 @@ try {
 ```
 
 
+### Events with attachments
 
-
-
-### Events with Attachments
-
-This shortcut allows to create an event with an attachment in a single API call.
+You can create an event with an attachment in a single API call.
 
 #### Node.js
 
-```javascript
+```js
 const filePath = './test/my_image.png';
-const result = await connection.createEventWithFile(
-  {
-    type: 'picture/attached',
-    streamIds: ['data']
-  },
-  filePath
-);
+const result = await connection.createEventWithFile({
+  type: 'picture/attached',
+  streamIds: ['data']
+}, filePath);
 ```
 
-or from a Buffer
+Or from a `Buffer`:
 
-```javascript
+```js
 const filePath = './test/my_image.png';
 const bufferData = fs.readFileSync(filePath);
 
-const result = await connection.createEventWithFileFromBuffer(
-  {
-    type: 'picture/attached',
-    streamIds: ['data']
-  },
-  bufferData,
-  'my_image.png' // filename
-);
+const result = await connection.createEventWithFileFromBuffer({
+  type: 'picture/attached',
+  streamIds: ['data']
+}, bufferData, 'my_image.png' /* ← filename */);
 ```
 
 #### Browser
 
-From an Input field
+From an `<input>`:
 
 ```html
 <input type="file" id="file-upload"><button onClick='uploadFile()'>Save Value</button>
 
 <script>
   var formData = new FormData();
-  formData.append(
-    'file0',
-    document.getElementById('create-file').files[0]
-) ;
+  formData.append('file0', document.getElementById('create-file').files[0]) ;
 
-  connection.createEventWithFormData(
-    {
-      type: 'file/attached',
-      streamIds: ['test']
-    },
-    formData)
-    .then(function (res, err) {
-      // handle result here
-    }
-  );
+  connection.createEventWithFormData({
+    type: 'file/attached',
+    streamIds: ['test']
+  }, formData).then(function (res, err) {
+    // handle result
+  });
 </script>
 ```
 
-Progamatically created content:
+Programmatically created content:
 
-```javascript
+```js
 var formData = new FormData();
-var blob = new Blob(
-  ['Hello'],
-  { type: "text/txt" }
-);
-formData.append("webmasterfile", blob);
+var blob = new Blob(['Hello'], { type: "text/txt" });
+formData.append("file", blob);
 
-connect.createEventWithFormData(
-  {
-    type: 'file/attached',
-    streamIds: ['data']
-  },
-  formData)
-  .then(function (res, err) {
-    // handle result here
-  }
-);
+connect.createEventWithFormData({
+  type: 'file/attached',
+  streamIds: ['data']
+}, formData).then(function (res, err) {
+  // handle result
+});
 
-// -- alternative with a filename
+// Alternative with a filename
 
-connect.createEventWithFileFromBuffer(
-  {
-    type: 'file/attached',
-    streamIds: ['data']
-  },
-  blob, 'filename.txt')  // here we can directly use the blob
-  .then(function (res, err) {
-    // handle result here
-  }
-);
-
-
+connect.createEventWithFileFromBuffer({
+  type: 'file/attached',
+  streamIds: ['data']
+}, blob /* ← here we can directly use the blob*/, 'filename.txt').then(function (res, err) {
+  // handle result
+});
 ```
 
-### High Frequency Events
 
-Reference: [https://api.pryv.com/reference/#hf-events](https://api.pryv.com/reference/#hf-events)
+### High Frequency (HF) events
 
-```javascript
-function generateSerie() {
-  const serie = [];
+[API reference](https://api.pryv.com/reference/#hf-events)
+
+```js
+function generateSeries() {
+  const series = [];
   for (let t = 0; t < 100000, t++) { // t will be the deltaTime in seconds
-    serie.push([t, Math.sin(t/1000)]);
+    series.push([t, Math.sin(t/1000)]);
   }
-  return serie;
+  return series;
 }
-const pointsA = generateSerie();
-const pointsB = generateSerie();
+const pointsA = generateSeries();
+const pointsB = generateSeries();
 
 function postHFData(points) { // must return a Promise
    return async function (result) { // will be called each time an HF event is created
@@ -455,121 +402,113 @@ const apiCalls = [
   },
   {
     method: 'events.create',
-    params: { streamIds: ['signal1'], type: 'serie:frequency/bpm' },
+    params: { streamIds: ['signal1'], type: 'series:frequency/bpm' },
     handleResult: postHFData(pointsA)
   },
   {
     method: 'events.create',
-    params: { streamIds: ['signal2'], type: 'serie:frequency/bpm' },
+    params: { streamIds: ['signal2'], type: 'series:frequency/bpm' },
     handleResult: postHFData(pointsB)
   }
-]
+];
 
 try {
-  const result = await connection.api(apiCalls)
+  const result = await connection.api(apiCalls);
 } catch (e) {
   // handle error
 }
-
 ```
 
-### Service Information and assets
 
-A Pryv.io deployment is a unique "Service", as an example **Pryv Lab** is a service, deployed on the **pryv.me** domain name.
+### Service information and assets
 
-It relies on the content of a **service information** configuration, See: [Service Information API reference](https://api.pryv.com/reference/#service-info)
+Each Pryv.io platform is considered a "service"; for example **Pryv Lab**, which is deployed on the **pryv.me** domain.
+It is described by a **service information** settings object (see the [service info API reference](https://api.pryv.com/reference/#service-info)).
 
-#### Pryv.Service
+`pryv.Service` exposes tools to interact with Pryv.io at the "platform" level.
 
-Exposes tools to interact with Pryv.io at a "Platform" level.
+#### Initializing with a service info URL
 
-##### Initizalization with a service info URL
-
-```javascript
-const service = new Pryv.Service('https://reg.pryv.me/service/info');
+```js
+const service = new pryv.Service('https://reg.pryv.me/service/info');
 ```
 
-##### Initialization with the content of a service info configuration
+#### Initializing with a service info settings object
 
-Service information properties can be overriden with specific values. This might be useful to test new designs on production platforms.
+Service information properties can be overridden, which can be useful to test new designs on production platforms.
 
-```javascript
+```js
 const serviceInfoUrl = 'https://reg.pryv.me/service/info';
-const serviceCustomizations = {
+const overrides = {
   name: 'Pryv Lab 2',
   assets: {
     definitions: 'https://pryv.github.io/assets-pryv.me/index.json'
   }
 }
-const service = new Pryv.Service(serviceInfoUrl, serviceCustomizations);
+const service = new pryv.Service(serviceInfoUrl, overrides);
 ```
 
-##### Usage of Pryv.Service.
+#### Methods
 
-See: [Pryv.Service](https://pryv.github.io/js-lib/docs/Pryv.Service.html) for more details
-
-- `service.info()` - returns the content of the serviceInfo in a Promise
-
-  ```javascript
-  // example: get the name of the platform
+- `service.info()` returns the service information in a Promise
+  ```js
+  // get the name of the platform
   const serviceName = await service.info().name
   ```
+- `service.infoSync()` returns the cached service info; requires `service.info()` to be called beforehand
+- `service.apiEndpointFor(username, token)` returns the corresponding API endpoint for the provided credentials (`token` is optional)
 
-- `service.infoSync()`: returns the cached content of the serviceInfo, requires `service.info()` to be called first.
 
-- `service.apiEndpointFor(username, token)` Will return the corresponding API endpoint for the provided credentials, `token` can be omitted.
+### `pryv.Browser` & visual assets
 
-### Pryv.Browser & Visual assets
+#### Retrieving the service info from a query parameter
 
-#### Pryv.Browser - retrieve serviceInfo from query URL
+A single web app might need to run on different Pryv.io platforms (this is the case of most Pryv.io example apps).
 
-A single Web App might need to be run on different Pryv.io platforms. This is the case of most Pryv.io demonstrators.
+The Pryv.io platform can be specified by passing the service information URL in a query parameter `serviceInfoUrl` (as per the [Pryv app guidelines](https://api.pryv.com/guides/app-guidelines/)), which can be extracted with `pryv.Browser.serviceInfoFromUrl()`.
 
-The corresponding Pryv.io platform can be specified by providing the Service Information URL as query parameter `pryvServiceInfoUrl` as per the [Pryv App Guidelines](https://api.pryv.com/guides/app-guidelines/). It can be extracted using `Pryv.Browser.serviceInfoFromUrl()` .
+For example: `https://api.pryv.com/app-web-access/?serviceInfoUrl=https://reg.pryv.me/service/info`
 
-Example of usage for web App with the url https://api.pryv.com/app-web-access/?pryvServiceInfoUrl=https://reg.pryv.me/service/info
-
-```javascript
+```js
 let defaultServiceInfoUrl = 'https://reg.pryv.me/service/info';
-// if present override serviceInfoURL from URL query param "?pryvServiceInfoUrl=.."
-serviceInfoUrl = Pryv.Browser.serviceInfoFromUrl() || defaultServiceInfoUrl;
+// if present, override serviceInfoURL from query param `serviceInfoUrl`
+serviceInfoUrl = pryv.Browser.serviceInfoFromUrl() || defaultServiceInfoUrl;
 
 (async function () {
-	var service = await Pryv.Auth.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
+	var service = await pryv.Auth.setupAuth(authSettings, serviceInfoUrl, serviceCustomizations);
 })();
 ```
 
 #### Visual assets
 
-To customize assets and visuals refer to: [pryv.me assets github](https://github.com/pryv/assets-pryv.me)
+To customize visual assets, please refer to the [pryv.me assets repository](https://github.com/pryv/assets-pryv.me). For example, see [how to customize the sign-in button](https://github.com/pryv/assets-pryv.me/tree/master/lib-js/).
 
-To customize the Sign in Button refer to: [sign in button in pryv.me assets](https://github.com/pryv/assets-pryv.me/tree/master/lib-js/)
+`(await service.assets()).setAllDefaults()` loads the `css` and `favicon` properties of assets definitions:
 
-`(service.assets()).setAllDefaults()`: loads the `css` and `favicon` properties of assets definitions.
-
-```javascript
+```js
 (async function () {
-  const service = await Pryv.Auth.setupAuth(authSettings, serviceInfoUrl);
-  (await service.assets()).setAllDefaults(); // will load the default Favicon and CSS for this platform
+  const service = await pryv.Auth.setupAuth(authSettings, serviceInfoUrl);
+  (await service.assets()).setAllDefaults(); // will load the default favicon and CSS for this platform
 })();
 ```
 
-### Customize Auth process
 
-You can customize the authentication process at different levels:
+### Customize the authentication process
 
-1. [Using a custom login button](#using-your-own-login-button) to launch the [Pryv.io Authentication process](https://api.pryv.com/reference/#authenticate-your-app).
-2. Using a custom UI for the [Pryv.io Authentication process](https://api.pryv.com/reference/#authenticate-your-app), including the flow of [app-web-auth3](https://github.com/pryv/app-web-auth3).
+You can customize the authentication process ([API reference](https://api.pryv.com/reference/#authenticate-your-app)) at different levels:
+
+- Using a custom login button
+- Using a custom UI, including the flow of [app-web-auth3](https://github.com/pryv/app-web-auth3)
 
 #### Using a custom login button
 
-You will need to implement a class that instanciates an [AuthController](src/Auth/AuthController.js) object and implements a few methods. We will go through this guide using the Browser's default [Login Button](src/Browser/LoginButton.js) provided with this library as example.
+You will need to implement a class that instanciates an [AuthController](src/Auth/AuthController.js) object and implements a few methods. We will go through this guide using the Browser's default [login button](src/Browser/LoginButton.js) provided with this library as example.
 
 ##### Initialization
 
-You should provide it `authSettings` (See [Obtain a Pryv.Connection](#within-a-webpage-with-a-login-button)) and an instance of [Service](src/Service.js) at initialization. As this phase might contain asynchronous calls, we like to split it between the constructor and an `async init()` function. In particular, you will need to instanciate an [AuthController](src/Auth/AuthController.js) object.
+You should provide auth settings (see [obtaining a `pryv.Connection`](#within-a-webpage-with-a-login-button)) and an instance of [pryv.Service](src/Service.js) at initialization. As this phase might contain asynchronous calls, we like to split it between the constructor and an `async init()` function. In particular, you will need to instanciate an [AuthController](src/Auth/AuthController.js) object.
 
-```javascript
+```js
 constructor(authSettings, service) {
   this.authSettings = authSettings;
   this.service = service;
@@ -591,9 +530,9 @@ async init () {
 
 ##### Authorization data
 
-At initialization, the [AuthController](src/Auth/AuthController.js) will attempt to fetch some persisted authorization credentials, using `LoginButton.getAuthorizationData()`. In the browser case, we are using a client-side cookie. For other frameworks, use an appropriate secure storage.
+At initialization, the [AuthController](src/Auth/AuthController.js) will attempt to fetch persisted authorization credentials, using `LoginButton.getAuthorizationData()`. In the browser, we are using a client-side cookie. For other frameworks, use an appropriate secure storage.
 
-```javascript
+```js
 getAuthorizationData () {
   return Cookies.get(this._cookieKey);
 }
@@ -601,18 +540,18 @@ getAuthorizationData () {
 
 ##### Authentication lifecycle
 
-The [authentication process](https://api.pryv.com/reference/#authenticate-your-app) implementation on the frontend is defined in the following states:
+The [authentication process](https://api.pryv.com/reference/#authenticate-your-app) implementation on the frontend can go through the following states:
 
-1. Loading: while the visual assets are loading
-2. Initialized: visuals assets are loaded, or when [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Refused**
-3. Need sign in: From the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
-4. Authorized: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
-5. Sign out: When the user triggers a deletion of the client-side authorization credentials, usually by clicking the button after being signed in
-6. Error: See message for more information
+1. `LOADING`: while the visual assets are loading
+2. `INITIALIZED`: visuals assets are loaded, or when [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Refused**
+3. `NEED_SIGNIN`: from the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
+4. `AUTHORIZED`: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
+5. `SIGNOUT`: when the user triggers a deletion of the client-side authorization credentials, usually by clicking the button after being signed in
+6. `ERROR`: see message for more information
 
-You will need to provide a function to act depending on the state. The states`NEED_SIGNIN` and `AUTHORIZED` contain the same fields as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only contain `status`. The `ERROR` state carries a `message` property.
+You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only have `status`. The `ERROR` state carries a `message` property.
 
-```javascript
+```js
 async onStateChange (state) {
   switch (state.status) {
     case AuthStates.LOADING:
@@ -660,14 +599,14 @@ async onStateChange (state) {
 
 The button actions should be handled by the [AuthController](src/Auth/AuthController.js) in the following way:
 
-```javascript
+```js
 // LoginButton.js
 onClick () {
   this.auth.handleClick();
 }
 ```
 
-```javascript
+```js
 // AuthController.js
 async handleClick () {
   if (isAuthorized.call(this)) {
@@ -685,10 +624,10 @@ async handleClick () {
 
 ##### Custom button usage
 
-You must then provide this class as following:
+You must then provide this class as follows:
 
-```javascript
-let service = await Pryv.Auth.setupAuth(
+```js
+let service = await pryv.Auth.setupAuth(
   authSettings, // See https://github.com/pryv/lib-js#within-a-webpage-with-a-login-button
   serviceInfoUrl,
   serviceCustomizations,
@@ -696,52 +635,100 @@ let service = await Pryv.Auth.setupAuth(
 );
 ```
 
-You will find a working example in  [`./web-demos/custom-login-button.html`](./web-demos/custom-login-button.html). You can run this code at [https://api.pryv.com/lib-js/demos/custom-login-button.html](https://api.pryv.com/lib-js/demos/custom-login-button.html).
+You will find a working example [here](./examples/custom-login-button.html), and try it running [there](https://api.pryv.com/lib-js/examples/custom-login-button.html). To run these examples locally, see below.
 
-Follow the instructions below on [how to run these examples locally](#launch-web-demos-locally).
-
-For a more advanced scenario, you can check the default button implementation at [`./src/Browser/LoginButton.js`](/src/Browser/LoginButton.js).
+For a more advanced scenario, you can check the default button implementation in [`./src/Browser/LoginButton.js`](/src/Browser/LoginButton.js).
 
 #### Redirect user to the authentication page
 
-There is a possibility that you would like to register the user in another page. You can check the [`./web-demos/auth-with-redirection.html`](./web-demos/auth-with-redirection.html) example.
-Also you can try the same code in [https://api.pryv.com/lib-js/demos/auth-with-redirection.html](https://api.pryv.com/lib-js/demos/auth-with-redirection.html).
-Here is the explanation how to [launch web-demos locally](#launch-web-demos-locally)
-
-### Launch web demos locally
-
-You can find html examples in the [`./web-demos`](/web-demos) directory. You can launch them in 2 ways:
-
-1. using [rec-la](https://github.com/pryv/rec-la) that allows to run your code with a valid SSL certificate (this requires to have run `npm run build` prior). To launch the server you simply need to run:
-
-    ```bash
-    npm run webserver
-    ```
-
-    and open an example with the following URL **https://l.rec.la:9443/demos/EXAMPLE_NAME.html**, like: [https://l.rec.la:9443/demos/auth.html](https://l.rec.la:9443/demos/auth.html)
-
-2. as a simple html file (service information must be passed as JSON to avoid CORS problem).
+There is a possibility that you would like to register the user in another page. You can find an example [here](./examples/auth-with-redirection.html), and try it running [there](https://api.pryv.com/lib-js/examples/auth-with-redirection.html). Again, to run these examples locally, see below.
 
 
-## Change Log
+### Running examples locally
 
-### 2.2.0
+You can find HTML examples in the [`./examples`](/examples) directory. You can run them in two ways:
 
-- Added TypeScript typings – contribution from @ovesco
+1. With [rec.la](https://github.com/pryv/rec.la), which allows to run local code with a valid SSL certificate (you must have run `just build` beforehand):
+   ```
+   just serve
+   ```
+   then open the desired example page (e.g. [https://l.rec.la:9443/examples/auth.html](https://l.rec.la:9443/examples/auth.html)
+2. As a simple HTML file, passing service information as JSON to avoid CORS issues
 
-### 2.1.7
 
-- Removed JSDOC dev dependency for security reason
+## Contributing
 
-### 2.1.0
+### Installation
 
-- UI separated from the Authentication logic
-- Extendable UI feature was added
+Prerequisites: [Node.js](https://nodejs.org/en/download/) 16, [just](https://github.com/casey/just#installation)
 
-### 2.0.3
+Then:
+1. `just setup-dev-env`
+2. `just install` to install node modules
+3. `just build` for the initial webpack build
 
-- Added Connection.username()
-- Various dependencies upgrades
-- Fixing Origin header in Browser distribution
+Running `just` with no argument displays the available commands (defined in `justfile`).
 
-### 2.0.1 Initial Release
+### Dev environment basics
+
+The project is structured as a monorepo with components (a.k.a. workspaces in NPM), each component defining its `package.json`, tests, etc. in `components/`:
+- `pryv`: the library
+- `pryv-socket.io`: Socket.IO add-on
+- `pryv-monitor`: Monitor add-on
+
+The code follows the [Semi-Standard](https://github.com/standard/semistandard) style.
+
+### Building for the browser
+
+```
+just build[-watch]
+```
+to build the library, add-ons and examples into `dist/`, and the browser tests into `test-browser/`
+
+### Testing
+
+#### Node.js
+
+```
+just test <component> [...params]
+```
+- `component` is an existing component's name, or `all` to run tests on all components
+- Extra parameters at the end are passed on to [Mocha](https://mochajs.org/) (default settings are defined in `.mocharc.js` files)
+- Replace `test` with `test-debug`, `test-cover` for common presets
+
+#### Browser
+
+Assuming browser files have been built (see above):
+```
+just test-browser
+```
+to run the tests in a browser window.
+
+- Update on CDN: After running **setup** and **build** scripts, run `npm run gh-pages ${COMMIT_MESSAGE}`. If this fails, run `npm run clear` to rebuild a fresh `dist/` folder
+
+### Publishing
+
+Assuming browser files are built and everything is up-to-date, including the READMEs and [changelog](CHANGELOG.md):
+
+```
+just version <version>
+```
+to update the version number of the lib and add-ons in lockstep, git commit and tag included
+
+```
+just publish-npm
+```
+to publish the new versions of the lib and add-ons to NPM
+
+```
+just publish-browser
+```
+to commit and push the `gh-pages` branch from `dist/`, publishing the browser files to be served via CDN on `api.pryv.com/lib-js`
+
+
+## [Changelog](CHANGELOG.md)
+
+
+## License
+
+[BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)

@@ -1,53 +1,100 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
 const path = require('path');
 const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
-const { webpackBabelConfig } = require('@pryv/lib-js-common');
+
+const webpackBabelConfig = {
+  rules: [
+    {
+      test: /\.m?js$/,
+      exclude: /(node_modules)/,
+      use: {
+        loader: 'babel-loader',
+        options: {
+          sourceType: 'unambiguous',
+          presets: [
+            [
+              '@babel/preset-env',
+              {
+                useBuiltIns: 'entry',
+                corejs: '3.0.0',
+                targets: {
+                  browsers: '> 0.25%, not dead'
+                }
+              }
+            ]
+          ],
+          plugins: ['@babel/plugin-transform-runtime']
+        }
+      }
+    }
+  ]
+};
 
 module.exports = [
-  { // es6 version
+  { // ES6
     mode: 'production',
     entry: {
-      pryv: ['./src/index.js']
+      pryv: {
+        import: componentPath('pryv', 'src/browser-index.js'),
+        library: {
+          name: 'pryv',
+          type: 'var'
+        }
+      },
+      'pryv-monitor': componentPath('pryv-monitor', 'src/browser-index.js'),
+      'pryv-socket.io': componentPath('pryv-socket.io', 'src/browser-index.js')
     },
     output: {
       filename: '[name]-es6.js',
-      path: path.resolve(__dirname, 'dist'),
-      libraryTarget: 'var',
-      library: 'Pryv'
+      path: distPath()
+    },
+    devtool: 'source-map'
+  },
+  { // ES5
+    mode: 'production',
+    entry: {
+      pryv: {
+        import: componentPath('pryv', 'src/browser-index.js'),
+        library: {
+          name: 'pryv',
+          type: 'var'
+        }
+      },
+      'pryv-monitor': ['core-js/stable', componentPath('pryv-monitor', 'src/browser-index.js')],
+      'pryv-socket.io': componentPath('pryv-socket.io', 'src/browser-index.js')
+    },
+    output: {
+      filename: '[name].js',
+      path: distPath()
     },
     plugins: [
       new CopyPlugin({
         patterns: [
-          { from: 'web-demos', to: 'demos' }
+          { from: 'examples', to: 'examples' }
         ]
       })
     ],
-    devtool: 'source-map'
-  },
-  { // es5 version
-    mode: 'production',
-    entry: {
-      pryv: ['./src/index.js']
-    },
-    output: {
-      filename: '[name].js',
-      path: path.resolve(__dirname, 'dist'),
-      libraryTarget: 'var',
-      library: 'Pryv'
-    },
     devtool: 'source-map',
     module: webpackBabelConfig
   },
-  { // es5 version including socket.io and monitors
+  { // ES5 all-in-one bundle (with socket.io and monitor)
     mode: 'production',
     entry: {
-      'pryv-socket.io-monitor': ['./src/index-socket.io-monitor.js']
+      'pryv-socket.io-monitor': {
+        import: componentPath('pryv', 'src/browser-index-bundle.js'),
+        library: {
+          name: 'pryv',
+          type: 'var'
+        }
+      }
     },
     output: {
       filename: '[name].js',
-      path: path.resolve(__dirname, 'dist'),
-      libraryTarget: 'var',
-      library: 'Pryv'
+      path: distPath()
     },
     devtool: 'source-map',
     module: webpackBabelConfig,
@@ -58,22 +105,22 @@ module.exports = [
       }
     }
   },
-  { // browser test suite (es6)
+  { // browser test suite (ES6)
     mode: 'development',
     entry: {
-      'browser-tests': './test/browser-index.js'
+      'browser-tests': './test/browser-tests.js'
     },
     output: {
-      filename: '[name].js',
-      path: path.resolve(__dirname, 'dist/tests/'),
-      libraryTarget: 'var',
-      library: 'browserTest'
+      filename: 'tests.js',
+      path: path.join(__dirname, 'test-browser/')
     },
     plugins: [
       new webpack.IgnorePlugin({ resourceRegExp: /zombie/ }),
       new CopyPlugin({
         patterns: [
-          { from: 'test/browser-tests.html' }
+          { from: componentPath('pryv', 'test/browser-index.html'), to: 'index.html' },
+          { from: distPath('pryv.js') },
+          { from: distPath('pryv.js.map') }
         ]
       })
     ],
@@ -86,3 +133,11 @@ module.exports = [
     }
   }
 ];
+
+function componentPath (component, ...subPath) {
+  return './' + path.join('./components', component, ...subPath);
+}
+
+function distPath (...subPath) {
+  return path.join(__dirname, 'dist', ...subPath);
+}

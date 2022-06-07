@@ -1,60 +1,54 @@
 {
-  "name": "pryv",
+  "name": "lib-js",
   "version": "2.2.0",
-  "homepage": "https://github.com/pryv/lib-js",
-  "description": "Pryv Javascript Library",
+  "private": true,
+  "description": "Pryv JavaScript library and add-ons",
   "keywords": [
-    "Pryv"
+    "Pryv",
+    "Pryv.io"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/pryv/lib-js"
-  },
+  "homepage": "https://github.com/pryv/lib-js#readme",
   "bugs": {
     "url": "https://github.com/pryv/lib-js/issues"
   },
-  "author": {
-    "name": "Pryv S.A."
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pryv/lib-js.git"
   },
-  "main": "src/index.js",
-  "types": "src/index.d.ts",
   "license": "BSD-3-Clause",
-  "scripts": {
-    "setup": "./scripts/setup-dev-env",
-    "build": "webpack --config webpack.config.js",
-    "doc": "npx jsdoc -c .jsdoc-conf.json",
-    "test": "mocha --reporter spec  test/**/*.test.js --timeout 3000",
-    "test-debug": "mocha --inpect-brk=40000 --reporter spec  test/**/*.test.js ",
-    "test:browser": "npm run build; ",
-    "cover": "nyc npm run test && npm run cover:report",
-    "cover:report": "nyc report --reporter=lcov --reporter=html",
-    "webserver": "./node_modules/.bin/rec-la ./dist 9443",
-    "gh-pages": "./scripts/upload",
-    "clear": "rm -r dist/ && npm run setup"
-  },
-  "contributors": [
-    {
-      "name": "Pierre-Mikael Legris",
-      "email": "perki@pryv.com"
-    }
+  "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
+  "workspaces": [
+    "components/*"
   ],
-  "dependencies": {
-    "superagent": "^7.1.2"
+  "scripts": {
+    "test": "echo 'This project doesn’t use npm scripts – enter `just` for the available development commands\n' && exit 1"
   },
   "devDependencies": {
-    "@pryv/lib-js-common": "github:pryv/lib-js-common#1.0.6",
-    "@pryv/monitor": "^1.0.6",
-    "@pryv/socket.io": "^1.0.6",
+    "@babel/core": "^7.16.0",
+    "@babel/plugin-transform-runtime": "^7.16.4",
+    "@babel/preset-env": "^7.16.4",
+    "@pryv/dev-utils": "github:pryv/dev-utils",
+    "babel-loader": "^8.2.3",
     "chai": "^4.3.6",
     "chai-as-promised": "^7.1.1",
+    "copy-webpack-plugin": "^10.0.0",
+    "core-js": "^3.19.2",
     "cuid": "^2.1.8",
     "mocha": "^9.2.2",
     "node-fetch": "^3.2.3",
     "nyc": "^15.1.0",
     "rec.la": "latest",
     "semistandard": "^16.0.1",
+    "source-licenser": "^2.0.5",
     "universal-url": "^2.0.0",
+    "webpack": "^5.64.4",
+    "webpack-cli": "^4.9.1",
     "whatwg-url": "^11.0.0",
     "zombie": "^6.1.4"
+  },
+  "semistandard": {
+    "ignore": [
+      "components/*/examples/pryv-*.js"
+    ]
   }
 }

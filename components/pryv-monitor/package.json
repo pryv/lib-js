@@ -1,0 +1,23 @@
+{
+  "name": "@pryv/monitor",
+  "version": "1.0.6",
+  "description": "Extends `pryv` with event-driven notifications for changes on a Pryv.io account",
+  "keywords": [
+    "Pryv",
+    "Pryv.io",
+    "Notification",
+    "Scope",
+    "Monitor"
+  ],
+  "homepage": "https://github.com/pryv/lib-js/tree/master/components/pryv-monitor#readme",
+  "bugs": {
+    "url": "https://github.com/pryv/lib-js/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pryv/lib-js"
+  },
+  "license": "BSD-3-Clause",
+  "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
+  "main": "src/index.js"
+}

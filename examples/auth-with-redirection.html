@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <title>Auth with redirection — Pryv JS lib example</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto+Condensed:300,400,700" type="text/css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,400italic" type="text/css">
+  <link rel="stylesheet" type="text/css" href="https://api.pryv.com/style/pryv.min.css">
+  <!-- Paths assume we're in dist/examples/ (update as needed) -->
+  <script src="../pryv.js"></script>
+</head>
+
+<body>
+  <div class="container container-narrow">
+    <h1>Example: Auth with redirection</h1>
+    <span id="pryv-button"></span>
+  </div>
+
+  <script>
+    const authSettings = {
+      spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
+      onStateChange: function authStateChanged(state) { // called each time the authentication state changed
+        switch(state.id) {
+          case pryv.Auth.AuthStates.LOADING:
+            console.log('Loading service information...');
+            break;
+          case pryv.Auth.AuthStates.INITIALIZED:
+            console.log('Service information is retrieved so authorization can start. You can display login / registration screen or redirect to the our hosted app - web - auth application.');
+            break;
+          case pryv.Auth.AuthStates.AUTHORIZED:
+            console.log('User is authorized and can access his personal data');
+            break;
+          case pryv.Auth.AuthStates.SIGNOUT:
+            console.log('User just logged off, please delete all the session related data');
+            break;
+          case pryv.Auth.AuthStates.ERROR:
+            console.log('Error:', state?.message);
+            break;
+          }
+      }, // event Listener for Authentication steps
+      authRequest: { // See: https://api.pryv.com/reference/#auth-request
+        requestingAppId: 'lib-js-test',
+        languageCode: 'fr', // optional (default english)
+        returnURL: 'auto#',
+        requestedPermissions: [{
+          streamId: 'test',
+          defaultName: 'Test',
+          level: 'read',
+        }],
+        // the login page where user will be redirected
+        returnURL: 'https://l.rec.la:9443/demos/auth-with-redirection.html#'
+      }
+    };
+
+    const serviceInfoUrl = null; // 'https://api.pryv.com/lib-js/demos/service-info.json';
+    const serviceInfoJson = {
+      "register": "https://reg.pryv.me",
+      "access": "https://access.pryv.me/access",
+      "api": "https://{username}.pryv.me/",
+      "name": "Pryv Lab",
+      "home": "https://www.pryv.com",
+     "support": "https://pryv.com/helpdesk",
+      "terms": "https://pryv.com/pryv-lab-terms-of-use/",
+      "eventTypes": "https://api.pryv.com/event-types/flat.json",
+      "assets": {
+        "definitions": "https://pryv.github.io/assets-pryv.me/index.json"
+     }};
+    (async function () {
+      let service = await pryv.Auth.setupAuth(
+        authSettings,
+        serviceInfoUrl,
+        serviceInfoJson
+        );
+    })();
+  </script>
+</body>
+
+</html>

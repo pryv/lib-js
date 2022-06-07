@@ -1,7 +1,8 @@
-.nyc*
 .DS_Store
-node_modules/
-dist/
-coverage/
-# PyCharm IDE
 .idea
+.nyc*
+.vscode
+coverage/
+dist/
+node_modules/
+test-browser/
