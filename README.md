@@ -465,13 +465,13 @@ const service = new pryv.Service(serviceInfoUrl, overrides);
 
 A single web app might need to run on different Pryv.io platforms (this is the case of most Pryv.io example apps).
 
-The Pryv.io platform can be specified by passing the service information URL in a query parameter `serviceInfoUrl` (as per the [Pryv app guidelines](https://api.pryv.com/guides/app-guidelines/)), which can be extracted with `pryv.Browser.serviceInfoFromUrl()`.
+The Pryv.io platform can be specified by passing the service information URL in a query parameter `pryvServiceInfoUrl` (as per the [Pryv app guidelines](https://api.pryv.com/guides/app-guidelines/)), which can be extracted with `pryv.Browser.serviceInfoFromUrl()`.
 
-For example: `https://api.pryv.com/app-web-access/?serviceInfoUrl=https://reg.pryv.me/service/info`
+For example: `https://api.pryv.com/app-web-access/?pryvServiceInfoUrl=https://reg.pryv.me/service/info`
 
 ```js
 let defaultServiceInfoUrl = 'https://reg.pryv.me/service/info';
-// if present, override serviceInfoURL from query param `serviceInfoUrl`
+// if present, override serviceInfoURL from query param `pryvServiceInfoUrl`
 serviceInfoUrl = pryv.Browser.serviceInfoFromUrl() || defaultServiceInfoUrl;
 
 (async function () {
