@@ -3,7 +3,10 @@
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
 
-## [Unreleased](https://github.com/pryv/lib-js/compare/2.2.0...HEAD)
+## [Unreleased](https://github.com/pryv/lib-js/compare/2.3.0...HEAD)
+
+
+## [2.3.0](https://github.com/pryv/lib-js/compare/2.2.0...2.3.0)
 
 ### Deprecated
 - `global.Pryv`, renamed to `global.pryv` (when loaded with `<script>`)
@@ -16,6 +19,7 @@
 
 ### Removed
 - JSDoc generated docs (to avoid confusion with docs in READMEs)
+
 
 ## [2.2.0](https://github.com/pryv/lib-js/compare/2.1.7...2.2.0) – 2022-01-10
 
