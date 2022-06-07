@@ -635,18 +635,18 @@ let service = await pryv.Auth.setupAuth(
 );
 ```
 
-You will find a working example [here](./examples/custom-login-button.html), and try it running [there](https://api.pryv.com/lib-js/examples/custom-login-button.html). To run these examples locally, see below.
+You will find a working example [here](https://github.com/pryv/lib-js/blob/master/examples/custom-login-button.html), and try it running [there](https://api.pryv.com/lib-js/examples/custom-login-button.html). To run these examples locally, see below.
 
 For a more advanced scenario, you can check the default button implementation in [`./src/Browser/LoginButton.js`](/src/Browser/LoginButton.js).
 
 #### Redirect user to the authentication page
 
-There is a possibility that you would like to register the user in another page. You can find an example [here](./examples/auth-with-redirection.html), and try it running [there](https://api.pryv.com/lib-js/examples/auth-with-redirection.html). Again, to run these examples locally, see below.
+There is a possibility that you would like to register the user in another page. You can find an example [here](https://github.com/pryv/lib-js/blob/master/examples/auth-with-redirection.html), and try it running [there](https://api.pryv.com/lib-js/examples/auth-with-redirection.html). Again, to run these examples locally, see below.
 
 
 ### Running examples locally
 
-You can find HTML examples in the [`./examples`](/examples) directory. You can run them in two ways:
+You can find HTML examples in the [`./examples`](https://github.com/pryv/lib-js/blob/master/examples) directory. You can run them in two ways:
 
 1. With [rec.la](https://github.com/pryv/rec.la), which allows to run local code with a valid SSL certificate (you must have run `just build` beforehand):
    ```
@@ -708,7 +708,7 @@ to run the tests in a browser window.
 
 ### Publishing
 
-Assuming browser files are built and everything is up-to-date, including the READMEs and [changelog](CHANGELOG.md):
+Assuming browser files are built and everything is up-to-date, including the READMEs and [changelog](https://github.com/pryv/lib-js/blob/master/CHANGELOG.md):
 
 ```
 just version <version>

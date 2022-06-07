@@ -199,7 +199,7 @@ const apiEndpoint = 'https://ck60yn9yv00011hd3vu1ocpi7@jslibtest.pryv.me';
 
 #### Example web app
 
-See [here](`../../examples/monitor.html`) for a simple app that allows to sign in to a Pryv.io platform, register to monitor events changes and create notes. You can try it running [there](https://api.pryv.com/lib-js/examples/monitor.html).
+See [here](../../examples/monitor.html) for a simple app that allows to sign in to a Pryv.io platform, register to monitor events changes and create notes. You can try it running [there](https://api.pryv.com/lib-js/examples/monitor.html).
 
 
 ## Contributing
