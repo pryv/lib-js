@@ -1,6 +1,6 @@
 {
   "name": "lib-js",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "private": true,
   "description": "Pryv JavaScript library and add-ons",
   "keywords": [
@@ -50,5 +50,6 @@
     "ignore": [
       "components/*/examples/pryv-*.js"
     ]
-  }
+  },
+  "tag-version-prefix": ""
 }
