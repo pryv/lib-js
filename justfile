@@ -78,7 +78,7 @@ license:
 
 # Set version on all `package.json` (root’s and components’)
 version version:
-    npm version --workspaces --include-workspace-root {{version}}
+    npm version --no-git-tag-version --workspaces --include-workspace-root {{version}}
 
 # Publish all components to NPM
 publish-npm:
