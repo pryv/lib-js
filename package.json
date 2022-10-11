@@ -35,7 +35,7 @@
     "core-js": "^3.22.8",
     "cuid": "^2.1.8",
     "mocha": "^10.0.0",
-    "node-fetch": "^3.2.5",
+    "node-fetch": "^3.2.10",
     "nyc": "^15.1.0",
     "rec.la": "^0.3.1",
     "semistandard": "^16.0.1",
