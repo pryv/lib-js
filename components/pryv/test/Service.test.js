@@ -66,10 +66,16 @@ describe('Service', function () {
       expect(assets).to.be.null;
     });
 
-    it('login() failed', async function () {
+    it('login() failed on wrong password', async function () {
       this.timeout(5000);
       const pryvService = new pryv.Service(testData.serviceInfoUrl);
       await expect(pryvService.login(testData.username, 'bobby', 'jslib-test')).to.be.rejectedWith('The given username/password pair is invalid.');
+    });
+
+    it('login() failed on wrong username', async function () {
+      this.timeout(5000);
+      const pryvService = new pryv.Service(testData.serviceInfoUrl);
+      await expect(pryvService.login('wrong-username', 'bobby', 'jslib-test')).to.be.rejectedWith('getaddrinfo ENOTFOUND wrong');
     });
   });
 });

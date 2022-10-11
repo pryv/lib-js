@@ -174,6 +174,7 @@ class Service {
           e.response.body.error.message) {
         throw new Error(e.response.body.error.message);
       }
+      throw (e);
     }
   }
 }
