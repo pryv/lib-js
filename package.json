@@ -1,6 +1,6 @@
 {
   "name": "lib-js",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "private": true,
   "description": "Pryv JavaScript library and add-ons",
   "keywords": [
@@ -24,30 +24,30 @@
     "test": "echo 'This project doesn’t use npm scripts – enter `just` for the available development commands\n' && exit 1"
   },
   "dependencies": {
-    "socket.io-client": "^4.5.3",
-    "superagent": "^8.0.3"
+    "socket.io-client": "^4.5.4",
+    "superagent": "^8.0.6"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.2",
+    "@babel/core": "^7.20.12",
     "@babel/plugin-transform-runtime": "^7.19.6",
     "@babel/preset-env": "^7.20.2",
     "@pryv/dev-utils": "github:pryv/dev-utils",
-    "babel-loader": "^9.1.0",
+    "babel-loader": "^9.1.2",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
     "copy-webpack-plugin": "^11.0.0",
-    "core-js": "^3.26.0",
+    "core-js": "^3.27.1",
     "cuid": "^2.1.8",
-    "mocha": "^10.1.0",
-    "node-fetch": "^3.2.10",
+    "mocha": "^10.2.0",
+    "node-fetch": "^3.3.0",
     "nyc": "^15.1.0",
     "rec.la": "^0.3.2",
     "semistandard": "^16.0.1",
     "source-licenser": "^2.0.5",
     "universal-url": "^2.0.0",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0",
-    "whatwg-url": "^11.0.0",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1",
+    "whatwg-url": "^12.0.0",
     "zombie": "^6.1.4"
   },
   "semistandard": {
