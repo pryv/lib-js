@@ -292,8 +292,8 @@ class Connection {
   }
 
   /**
-   * Difference in second between the API and locatime
-   * deltaTime is refined at each (non Raw) API call
+   * Difference in seconds between the Pryv.io API and local time
+   * deltaTime is refined at each (non-raw) API call
    * @readonly
    * @property {number} deltaTime
    */
@@ -302,7 +302,7 @@ class Connection {
   }
 
   /**
-   * API Endpoint of this connection
+   * API endpoint of this connection
    * @readonly
    * @property {APIEndpoint} deltaTime
    */

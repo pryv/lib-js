@@ -114,7 +114,7 @@ class Service {
   }
 
   /**
-   * Return an API Endpoint from a username and token
+   * Return an API endpoint from a username and token
    * @param {string} username
    * @param {string} [token]
    * @return {APIEndpoint}
@@ -125,7 +125,7 @@ class Service {
   }
 
   /**
-   * Return an API Endpoint from a username and token and a ServiceInfo.
+   * Return an API endpoint from a username and token and a ServiceInfo.
    * This is method is rarely used. See **apiEndpointFor** as an alternative.
    * @param {ServiceInfo} serviceInfo
    * @param {string} username
