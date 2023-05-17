@@ -2,11 +2,12 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, xit, before, after, beforeEach, afterEach, expect, Browser, pryv, testData, Blob, FormData */
+/* global describe, it, xit, before, after, beforeEach, afterEach, expect, Browser, pryv, Blob, FormData */
 /* eslint-disable no-unused-expressions */
 
 const { URL, URLSearchParams } = require('universal-url');
 const cuid = require('cuid');
+const testData = require('../../../test/test-data');
 
 let conn = null;
 
@@ -302,8 +303,10 @@ describe('Connection', () => {
 
   describe('API', () => {
     it('endpoint property', async () => {
+      const [protocol, hostPath] = testData.serviceInfo.api.split('://');
+      const challenge = protocol + '://' + conn.token + '@' + hostPath.replace('{username}', testData.username);
       const apiEndpoint = conn.apiEndpoint;
-      expect(apiEndpoint.startsWith('https://' + conn.token + '@')).to.be.true;
+      expect(apiEndpoint).to.equal(challenge);
     });
   });
 
