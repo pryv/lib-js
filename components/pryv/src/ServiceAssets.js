@@ -36,7 +36,7 @@ class ServiceAssets {
 
   /**
    * get a value from path separated by `:`
-   * exemple of key `lib-js:buttonSignIn`
+   * example of key `lib-js:buttonSignIn`
    * @param {string} [keyPath] if null, will return the all assets
    */
   get (keyPath) {
@@ -53,7 +53,7 @@ class ServiceAssets {
   /**
    * get an Url from path separated by `:`
    * identical to doing assets.relativeURL(assets.get(keyPath))
-   * exemple of key `lib-js:buttonSignIn`
+   * example of key `lib-js:buttonSignIn`
    * @param {string} [keyPath] if null, will return the all assets
    */
   getUrl (keyPath) {

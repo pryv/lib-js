@@ -696,19 +696,17 @@ just test <component> [...params]
 - Extra parameters at the end are passed on to [Mocha](https://mochajs.org/) (default settings are defined in `.mocharc.js` files)
 - Replace `test` with `test-debug`, `test-cover` for common presets
 
-By default tests are done against [Pryv Lab](https://www.pryv.com/pryvlab/) with serviceInfo Url `https://reg.pryv.me/service/info`.
+By default, tests are run against [Pryv Lab](https://www.pryv.com/pryvlab/) with service information URL `https://reg.pryv.me/service/info`.
 
-To run test suite against another Pryv instance use `TEST_PRYVLIB_SERVICEINFO_URL` environement variable.  
+To run the tests against another Pryv.io platform, set the `TEST_PRYVLIB_SERVICEINFO_URL` environment variable; for example:
 
-Exemple:
-```
+```bash
 TEST_PRYVLIB_SERVICEINFO_URL="https://reg.${DOMAIN}/service/info" just test all
 ```
 
-To test **in-development** api-server components, e.g. Open-Source or Entreprise. `TEST_PRYVLIB_DNSLESS_URL` may be used.
+To run the tests against _in-development_ API server components (e.g. open-source or Entreprise), set `TEST_PRYVLIB_DNSLESS_URL`; for example:
 
-Exemple:
-```
+```bash
 TEST_PRYVLIB_DNSLESS_URL="http://l.rec.la:3000/ just test all
 ```
 
