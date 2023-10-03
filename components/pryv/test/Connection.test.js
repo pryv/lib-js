@@ -262,7 +262,13 @@ describe('Connection', () => {
     });
   });
 
-  describe('HF events', () => {
+  describe('HF events', async function () {
+    before(async function () {
+      if (!await conn.service.supportsHF()) {
+        this.skip();
+      }
+    });
+
     it('Add data points to HF event', async () => {
       const res = await conn.api([{
         method: 'events.create',

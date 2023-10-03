@@ -69,6 +69,26 @@ class Service {
   }
 
   /**
+   * Check if a service supports High Frequency Data Sets
+   * @return true if yes
+   */
+  async supportsHF () {
+    const infos = await this.info();
+    return (infos.features == null || infos.features.noHF !== true);
+  }
+
+  /**
+   * Check if a service has username in the hostname or in the path of the api
+   * @return true if the service does not rely on DNS to find a host related to a username
+   */
+  async isDnsLess () {
+    const infos = await this.info();
+    const hostname = infos.api.split('/')[2];
+    console.log('XXXXX', hostname);
+    return !hostname.includes('{username}');
+  }
+
+  /**
    * @private
    * @param {ServiceInfo} serviceInfo
    */

@@ -75,7 +75,12 @@ describe('Service', function () {
     it('login() failed on wrong username', async function () {
       this.timeout(5000);
       const pryvService = new pryv.Service(testData.serviceInfoUrl);
-      await expect(pryvService.login('wrong-username', 'bobby', 'jslib-test')).to.be.rejectedWith('getaddrinfo ENOTFOUND wrong');
+      // check if username is in path or domain
+      if (await pryvService.isDnsLess()) {
+        await expect(pryvService.login('wrong-username', 'bobby', 'jslib-test')).to.be.rejectedWith('Unknown user "wrong-username"');
+      } else {
+        await expect(pryvService.login('wrong-username', 'bobby', 'jslib-test')).to.be.rejectedWith('getaddrinfo ENOTFOUND wrong');
+      }
     });
   });
 });
