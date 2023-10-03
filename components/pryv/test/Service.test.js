@@ -5,6 +5,8 @@
 /* global describe, it, before, expect, pryv, testData */
 /* eslint-disable no-unused-expressions */
 
+const isNode = (typeof window === 'undefined');
+
 describe('Service', function () {
   before(async function () {
     this.timeout(5000);
@@ -76,11 +78,18 @@ describe('Service', function () {
       this.timeout(5000);
       const pryvService = new pryv.Service(testData.serviceInfoUrl);
       // check if username is in path or domain
-      if (await pryvService.isDnsLess()) {
-        await expect(pryvService.login('wrong-username', 'bobby', 'jslib-test')).to.be.rejectedWith('Unknown user "wrong-username"');
-      } else {
-        await expect(pryvService.login('wrong-username', 'bobby', 'jslib-test')).to.be.rejectedWith('getaddrinfo ENOTFOUND wrong');
+      try {
+        await pryvService.login('wrong-username', 'bobby', 'jslib-test');
+      } catch (error) {
+        let errorMessage = isNode ? 'getaddrinfo ENOTFOUND wrong' : 'Request has been terminated';
+        if (await pryvService.isDnsLess()) {
+          errorMessage = 'Unknown user "wrong-username"';
+        }
+        const receivedMessage = error.message.slice(0, errorMessage.length);
+        expect(receivedMessage).to.be.equal(errorMessage);
+        return;
       }
+      throw new Error('Should fail');
     });
   });
 });

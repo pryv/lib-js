@@ -84,7 +84,6 @@ class Service {
   async isDnsLess () {
     const infos = await this.info();
     const hostname = infos.api.split('/')[2];
-    console.log('XXXXX', hostname);
     return !hostname.includes('{username}');
   }
 

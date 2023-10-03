@@ -122,6 +122,9 @@ module.exports = [
           { from: distPath('pryv.js') },
           { from: distPath('pryv.js.map') }
         ]
+      }),
+      new webpack.ProvidePlugin({
+        process: 'process/browser'
       })
     ],
     devtool: 'source-map',
