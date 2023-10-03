@@ -1,6 +1,6 @@
 {
   "name": "lib-js",
-  "version": "2.3.6",
+  "version": "2.3.7",
   "private": true,
   "description": "Pryv JavaScript library and add-ons",
   "keywords": [
@@ -24,6 +24,7 @@
     "test": "echo 'This project doesn’t use npm scripts – enter `just` for the available development commands\n' && exit 1"
   },
   "dependencies": {
+    "process": "^0.11.10",
     "socket.io-client": "^4.5.4",
     "superagent": "^8.0.6"
   },
