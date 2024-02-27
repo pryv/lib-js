@@ -60,13 +60,13 @@ test-cover component *params:
 
 # Run browser tests (assumes browser files are built)
 test-browser:
-    (sleep 1 && open https://l.rec.la:8443/?pryvServiceInfoUrl=https://zou.zou/service/info) &
-    rec.la ./test-browser 8443
+    (sleep 1 && open https://l.backloop.dev:8443/?pryvServiceInfoUrl=https://zou.zou/service/info) &
+    backloop.dev ./test-browser 8443
 
-# Start a `rec.la` web server on `dist/`
+# Start a `backloop.dev` web server on `dist/`
 serve:
-    (sleep 1 && open https://l.rec.la:9443/) &
-    rec.la ./dist 9443
+    (sleep 1 && open https://l.backloop.dev:9443/) &
+    backloop.dev ./dist 9443
 
 # –––––––––––––----------------------------------------------------------------
 # Misc. utils

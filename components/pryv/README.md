@@ -648,11 +648,11 @@ There is a possibility that you would like to register the user in another page.
 
 You can find HTML examples in the [`./examples`](https://github.com/pryv/lib-js/blob/master/examples) directory. You can run them in two ways:
 
-1. With [rec.la](https://github.com/pryv/rec.la), which allows to run local code with a valid SSL certificate (you must have run `just build` beforehand):
+1. With [backloop.dev](https://github.com/pryv/backloop.dev), which allows to run local code with a valid SSL certificate (you must have run `just build` beforehand):
    ```
    just serve
    ```
-   then open the desired example page (e.g. [https://l.rec.la:9443/examples/auth.html](https://l.rec.la:9443/examples/auth.html)
+   then open the desired example page (e.g. [https://l.backloop.dev:9443/examples/auth.html](https://l.backloop.dev:9443/examples/auth.html)
 2. As a simple HTML file, passing service information as JSON to avoid CORS issues
 
 
@@ -675,6 +675,8 @@ The project is structured as a monorepo with components (a.k.a. workspaces in NP
 - `pryv`: the library
 - `pryv-socket.io`: Socket.IO add-on
 - `pryv-monitor`: Monitor add-on
+
+
 
 The code follows the [Semi-Standard](https://github.com/standard/semistandard) style.
 
@@ -707,7 +709,7 @@ TEST_PRYVLIB_SERVICEINFO_URL="https://reg.${DOMAIN}/service/info" just test all
 To run the tests against _in-development_ API server components (e.g. open-source or Entreprise), set `TEST_PRYVLIB_DNSLESS_URL`; for example:
 
 ```bash
-TEST_PRYVLIB_DNSLESS_URL="http://l.rec.la:3000/ just test all
+TEST_PRYVLIB_DNSLESS_URL="http://l.backloop.dev:3000/ just test all
 ```
 
 #### Browser

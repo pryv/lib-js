@@ -66,7 +66,7 @@ async function prepare () {
 
   // login user
   const headers = {};
-  if (typeof window === 'undefined') { headers.Origin = 'https://l.rec.la'; } // node only
+  if (typeof window === 'undefined') { headers.Origin = 'https://l.backloop.dev'; } // node only
   const loginRes = await superagent.post(apiEndpoint + 'auth/login')
     .set(headers)
     .send({ username: username, password: username, appId: 'js-lib-test' });

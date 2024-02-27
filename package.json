@@ -1,6 +1,6 @@
 {
   "name": "lib-js",
-  "version": "2.3.7",
+  "version": "2.3.8",
   "private": true,
   "description": "Pryv JavaScript library and add-ons",
   "keywords": [
@@ -42,7 +42,7 @@
     "mocha": "^10.2.0",
     "node-fetch": "^3.3.0",
     "nyc": "^15.1.0",
-    "rec.la": "^0.3.2",
+    "backloop.dev": "latest",
     "semistandard": "^16.0.1",
     "source-licenser": "^2.0.5",
     "universal-url": "^2.0.0",

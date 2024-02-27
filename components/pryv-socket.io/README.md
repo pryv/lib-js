@@ -55,7 +55,7 @@ Once the add-on is loaded, `pryv.Connection` instances expose the `socket` prope
 const pryv = require('pryv');
 require('@pryv/socket.io')(pryv);
 
-const apiEndpoint = 'https://{token}@my-computer.rec.la:4443/{username}/';
+const apiEndpoint = 'https://{token}@my-computer.backloop.dev:4443/{username}/';
 (async () => {
   const conn = new pryv.Connection(apiEndpoint);
   try {
@@ -77,7 +77,7 @@ const apiEndpoint = 'https://{token}@my-computer.rec.la:4443/{username}/';
 <script src="https://api.pryv.com/lib-js-socket.io/pryv-socket.io.js"></script>
 
 <script>
-const apiEndpoint = 'https://{token}@my-computer.rec.la:4443/{username}/';
+const apiEndpoint = 'https://{token}@my-computer.backloop.dev:4443/{username}/';
 (async function () { 
   try {
     await conn.socket.open();

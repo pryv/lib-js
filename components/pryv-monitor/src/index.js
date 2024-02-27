@@ -35,7 +35,7 @@ module.exports = function (pryv) {
  */
 
 /**
- * A scope corresponding to EventGetParameters @see https://l.rec.la:4443/reference#get-events
+ * A scope corresponding to EventGetParameters @see https://l.backloop.dev:4443/reference#get-events
  * Property `limit` cannot be specified;
  * @typedef {Object} pryv.Monitor.Scope
  * @property {timestamp} [fromTime=TIMERANGE_MIN] (in seconds)
