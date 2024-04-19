@@ -36,7 +36,7 @@ jobs:
 
     - name: Run tests on all components
       run: |
-        IS_CI=true just test-cover all
+        IS_CI=true just test-cover-ci
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4.0.1

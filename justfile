@@ -58,6 +58,10 @@ test-cover component *params:
     NODE_ENV=test COMPONENT={{component}} nyc --reporter=lcov --reporter=text --report-dir=./coverage \
         components-run npx mocha -- {{params}}
 
+# Run tests for ci 
+test-cover-ci:
+    NODE_ENV=test COMPONENT=all nyc --reporter=lcov components-run npx mocha 
+
 # Run browser tests (assumes browser files are built)
 test-browser:
     (sleep 1 && open https://l.backloop.dev:8443/?pryvServiceInfoUrl=https://zou.zou/service/info) &
