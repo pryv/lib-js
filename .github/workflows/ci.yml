@@ -1,0 +1,45 @@
+name: Open Pryv.io CI
+
+on:
+  pull_request:
+    branches:
+      - '*'
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      matrix:
+        node-version: [18.16.0]
+
+    steps:
+    - name: Install `just`
+      uses: extractions/setup-just@v1
+
+    - name: Checkout repository with submodules
+      uses: actions/checkout@v4
+
+    - name: Install Node.js with version ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+
+    - name: Setup Dev Env
+      run: |
+        just setup-dev-env
+        npm install
+
+    - name: Run tests on all components
+      run: |
+        IS_CI=true just test-cover all
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: pryv/lib-js
