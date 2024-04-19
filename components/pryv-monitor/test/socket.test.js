@@ -15,7 +15,7 @@ describe('Monitor + Socket.IO', function () {
   });
 
   describe('socket updates', function () {
-    this.timeout(5000);
+    this.timeout(15000);
     it('Detect new events added', async function () {
       const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());

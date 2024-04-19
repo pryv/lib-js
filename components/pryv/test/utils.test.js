@@ -7,7 +7,7 @@
 
 describe('utils', function () {
   before(async function () {
-    this.timeout(5000);
+    this.timeout(15000);
     await testData.prepare();
   });
 

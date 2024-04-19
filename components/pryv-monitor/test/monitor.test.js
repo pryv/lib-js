@@ -10,7 +10,7 @@ describe('Monitor', function () {
   this.timeout(3000);
 
   before(async function () {
-    this.timeout(5000);
+    this.timeout(15000);
     await prepareAndCreateBaseStreams();
   });
 

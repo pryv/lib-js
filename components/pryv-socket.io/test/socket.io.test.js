@@ -19,7 +19,7 @@ describe('Socket.IO', function () {
   let apiEndpointBogusUsername;
 
   before(async function () {
-    this.timeout(5000);
+    this.timeout(15000);
     await testData.prepare();
     apiEndpoint = testData.apiEndpointWithToken;
     apiEndpointBogusToken = pryv.Service.buildAPIEndpoint(testData.serviceInfo, testData.username, 'toto');

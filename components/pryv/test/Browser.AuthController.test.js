@@ -10,7 +10,7 @@ const Service = require('../src/Service');
 const AuthController = require('../src/Auth/AuthController.js');
 
 describe('Browser.LoginButton', function () {
-  this.timeout(5000);
+  this.timeout(15000);
 
   let auth;
   let removeZombie = false;

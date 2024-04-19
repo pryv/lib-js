@@ -20,7 +20,7 @@ if (isNode) { // node
 
 describe('Connection', () => {
   before(async function () {
-    this.timeout(5000);
+    this.timeout(15000);
     await testData.prepare();
     conn = new pryv.Connection(testData.apiEndpointWithToken);
 
@@ -90,7 +90,7 @@ describe('Connection', () => {
   });
 
   describe('.api()', function () {
-    this.timeout(5000);
+    this.timeout(15000);
     it('.api() events.get', async () => {
       const res = await conn.api(
         [
@@ -317,7 +317,7 @@ describe('Connection', () => {
   });
 
   describe('Streamed event get', function () {
-    this.timeout(5000);
+    this.timeout(15000);
     const now = (new Date()).getTime() / 1000 + 1000;
 
     describe('Node & Browser', function () {

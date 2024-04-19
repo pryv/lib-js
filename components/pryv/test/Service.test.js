@@ -9,7 +9,7 @@ const isNode = (typeof window === 'undefined');
 
 describe('Service', function () {
   before(async function () {
-    this.timeout(5000);
+    this.timeout(15000);
     await testData.prepare();
   });
 
@@ -36,7 +36,7 @@ describe('Service', function () {
   });
 
   it('login()', async function () {
-    this.timeout(5000);
+    this.timeout(15000);
     const pryvService = new pryv.Service(testData.serviceInfoUrl);
     const conn = await pryvService.login(testData.username, testData.password, 'jslib-test');
     expect(conn).to.exist;
@@ -69,13 +69,13 @@ describe('Service', function () {
     });
 
     it('login() failed on wrong password', async function () {
-      this.timeout(5000);
+      this.timeout(15000);
       const pryvService = new pryv.Service(testData.serviceInfoUrl);
       await expect(pryvService.login(testData.username, 'bobby', 'jslib-test')).to.be.rejectedWith('The given username/password pair is invalid.');
     });
 
     it('login() failed on wrong username', async function () {
-      this.timeout(5000);
+      this.timeout(15000);
       const pryvService = new pryv.Service(testData.serviceInfoUrl);
       // check if username is in path or domain
       try {

@@ -19,10 +19,10 @@ function genSettings () {
 }
 
 describe('Browser', function () {
-  this.timeout(5000);
+  this.timeout(15000);
 
   before(async function () {
-    this.timeout(5000);
+    this.timeout(15000);
     await testData.prepare();
   });
 

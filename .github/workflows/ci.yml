@@ -31,7 +31,6 @@ jobs:
 
     - name: Setup Dev Env
       run: |
-        just setup-dev-env
         npm install
 
     - name: Run tests on all components
