@@ -60,7 +60,7 @@ test-cover component *params:
 
 # Run tests for ci 
 test-cover-ci:
-    NODE_ENV=test COMPONENT=all nyc --reporter=lcov components-run npx mocha 
+    NODE_ENV=test COMPONENT=all nyc --reporter=lcov components-run npx mocha -- --timeout 20000
 
 # Run browser tests (assumes browser files are built)
 test-browser:

@@ -421,7 +421,7 @@ describe('Connection', () => {
         {
           method: 'accesses.create',
           params: {
-            name: 'test',
+            name: 'test' + Math.round(Math.random() * 10000),
             permissions: [
               {
                 streamId: 'data',
