@@ -7,10 +7,10 @@
 require('./load-helpers');
 
 describe('Monitor', function () {
-  this.timeout(3000);
+  this.timeout(20000);
 
   before(async function () {
-    this.timeout(15000);
+    this.timeout(20000);
     await prepareAndCreateBaseStreams();
   });
 

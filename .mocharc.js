@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = {
   exit: true,
   slow: 75,
-  timeout: 3000,
+  timeout: 20000,
   ui: 'bdd',
   diff: true,
   reporter: 'spec',

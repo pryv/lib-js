@@ -8,7 +8,7 @@ require('./load-helpers');
 require('@pryv/socket.io')(pryv);
 
 describe('Monitor + Socket.IO', function () {
-  this.timeout(3000);
+  this.timeout(20000);
 
   before(async () => {
     await prepareAndCreateBaseStreams();

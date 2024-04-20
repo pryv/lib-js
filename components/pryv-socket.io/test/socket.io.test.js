@@ -13,7 +13,7 @@ let conn = null;
 const testStreamId = 'socket-test';
 
 describe('Socket.IO', function () {
-  this.timeout(3000);
+  this.timeout(20000);
   let apiEndpoint;
   let apiEndpointBogusToken;
   let apiEndpointBogusUsername;

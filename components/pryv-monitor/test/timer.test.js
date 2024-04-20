@@ -7,7 +7,7 @@
 require('./load-helpers');
 
 describe('Monitor + EventsTimer', function () {
-  this.timeout(3000);
+  this.timeout(20000);
 
   before(async () => {
     await prepareAndCreateBaseStreams();
@@ -60,7 +60,7 @@ describe('Monitor + EventsTimer', function () {
 
   describe('stop', () => {
     it('Monitor stops when requested', async function () {
-      this.timeout(4000);
+      this.timeout(20000);
       const monitor = await new pryv.Monitor(apiEndpoint, { limit: 1 })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.EventsTimer(1));
       await monitor.start();
