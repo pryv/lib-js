@@ -1,5 +1,7 @@
 # `pryv`: JS library for Pryv.io
 
+[![codecov](https://codecov.io/gh/pryv/lib-js/graph/badge.svg?token=IDE5F6NFZR)](https://codecov.io/gh/pryv/lib-js)
+
 JavaScript library and add-ons for writing Node.js and browser apps connecting to a Pryv.io platform. It follows the [Pryv.io app guidelines](https://api.pryv.com/guides/app-guidelines/).
 
 
