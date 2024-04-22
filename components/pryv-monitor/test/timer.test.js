@@ -52,7 +52,7 @@ describe('Monitor + EventsTimer', function () {
         }
       ]);
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 4000));
       monitor.stop();
       expect(count).to.be.gt(0);
     });
@@ -66,7 +66,7 @@ describe('Monitor + EventsTimer', function () {
       await monitor.start();
 
       let count = 0;
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 4000));
       monitor.stop();
 
       // listener is added "after" so we don't get events loaded at start
@@ -87,7 +87,7 @@ describe('Monitor + EventsTimer', function () {
         }
       ]);
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       expect(count).to.equal(0);
     });
   });

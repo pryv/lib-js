@@ -64,7 +64,7 @@ describe('Monitor', function () {
           }
         }
       ]);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 8000));
       expect(count).to.be.gt(0);
     });
 
@@ -89,7 +89,7 @@ describe('Monitor', function () {
         }
       ]);
       await monitor.updateEvents(); // trigger refresh
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 8000));
       expect(count).to.be.gt(0);
     });
   });

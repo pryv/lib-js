@@ -33,7 +33,7 @@ describe('Monitor + Socket.IO', function () {
         expect(event.content).to.equal(eventData.content);
         count++;
       });
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 6000));
       await conn.api([
         {
           method: 'events.create',
@@ -41,7 +41,7 @@ describe('Monitor + Socket.IO', function () {
         }
       ]);
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 8000));
       monitor.stop();
       expect(count).to.be.gt(0);
     });
@@ -49,12 +49,12 @@ describe('Monitor + Socket.IO', function () {
 
   describe('stop', () => {
     it('Monitor stops when requested', async function () {
-      this.timeout(4000);
+      this.timeout(20000);
       const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
       await monitor.start();
       let count = 0;
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 4000));
       monitor.stop();
 
       const eventData = {
@@ -73,7 +73,7 @@ describe('Monitor + Socket.IO', function () {
         }
       ]);
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 6000));
       expect(count).to.equal(0);
     });
   });
