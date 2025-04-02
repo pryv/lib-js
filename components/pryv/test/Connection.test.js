@@ -369,6 +369,11 @@ describe('Connection', () => {
 
     if (typeof window === 'undefined') {
       describe('Browser mock', function () {
+        const isNotAvailable = {
+          URL: global.URL == null,
+          URLSearchParams: global.URLSearchParams == null,
+          fetch: global.fetch == null
+        };
         beforeEach(function () {
           const browser = new Browser();
           browser.visit('./');
@@ -378,18 +383,18 @@ describe('Connection', () => {
           function fetch (...args) {
             return browser.fetch(...args);
           }
-          global.fetch = fetch;
-          global.URL = URL;
-          global.URLSearchParams = URLSearchParams;
+          if (isNotAvailable.fetch) global.fetch = fetch;
+          if (isNotAvailable.URL) global.URL = URL;
+          if (isNotAvailable.URLSearchParams) global.URLSearchParams = URLSearchParams;
         });
 
         afterEach(function () {
           delete global.document;
           delete global.window;
           delete global.location;
-          delete global.fetch;
-          delete global.URL;
-          delete global.URLSearchParams;
+          if (isNotAvailable.fetch) delete global.fetch;
+          if (isNotAvailable.URL) delete global.URL;
+          if (isNotAvailable.URLSearchParams) delete global.URLSearchParams;
         });
 
         it(' without fetch', async () => {
