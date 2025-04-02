@@ -1,7 +1,7 @@
 {
   "name": "lib-js",
   "version": "2.3.8",
-  "private": true,
+  "private": false,
   "description": "Pryv JavaScript library and add-ons",
   "keywords": [
     "Pryv",
