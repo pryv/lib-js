@@ -1,10 +1,10 @@
 declare module 'pryv' {
   type Timestamp = number;
   type Identifier = string;
-  type Level = 'read' | 'contribute' | 'manage' | 'create-only';
-  type KeyValue = { [key: string]: string | number };
+  export type Level = 'read' | 'contribute' | 'manage' | 'create-only';
+  export type KeyValue = { [key: string]: string | number };
 
-  type Attachment = {
+  export type Attachment = {
     id: Identifier;
     fileName: string;
     type: string;
@@ -12,7 +12,7 @@ declare module 'pryv' {
     readToken: string;
   };
 
-  type Stream = {
+  export type Stream = {
     id: Identifier;
     name: string;
     parentId?: Identifier;
@@ -25,7 +25,7 @@ declare module 'pryv' {
     modifiedBy: Identifier;
   };
 
-  type Event = {
+  export type Event = {
     id: Identifier;
     streamIds: Identifier[];
     streamId: Identifier;
@@ -44,14 +44,14 @@ declare module 'pryv' {
     modifiedBy: Identifier;
   };
 
-  type Permission = {
+  export type Permission = {
     streamId: Identifier;
     level: Level;
     feature?: 'selfRevoke';
     setting?: 'forbidden';
   };
 
-  type Access = {
+  export type Access = {
     id: Identifier;
     token: string;
     type?: 'personal' | 'app' | 'shared';
@@ -77,7 +77,7 @@ declare module 'pryv' {
     accessToken: string;
   };
 
-  type AccountInformation = {
+  export type AccountInformation = {
     username: string;
     email: string;
     language: string;
@@ -101,7 +101,7 @@ declare module 'pryv' {
     errorId?: string;
   };
 
-  type HFSeries = {
+  export type HFSeries = {
     format: 'flatJSON';
     fields: string[];
     points: Array<number | string>;
@@ -112,7 +112,7 @@ declare module 'pryv' {
     timestamp: Timestamp;
   };
 
-  type WebHook = {
+  export type WebHook = {
     id: Identifier;
     accessId: Identifier;
     url: string;
@@ -130,25 +130,25 @@ declare module 'pryv' {
     modifiedBy: Identifier;
   };
 
-  type ItemDeletion = {
+  export type ItemDeletion = {
     id: Identifier;
     deleted?: Timestamp;
   };
 
-  type Error = {
+  export type Error = {
     id: string;
     message: string;
     data?: any;
     subErrors?: Error[];
   };
 
-  type StreamsQuery = {
+  export type StreamsQuery = {
     any?: Identifier[];
     all?: Identifier[];
     not?: Identifier[];
   };
 
-  type EventQueryParams = {
+  export type EventQueryParams = {
     fromTime: Timestamp;
     toTime: Timestamp;
     streams: string[];
@@ -163,11 +163,11 @@ declare module 'pryv' {
     includeDeletion: boolean;
   };
 
-  type EventQueryParamsStreamQuery = Omit<EventQueryParams, 'streams'> & {
+  export type EventQueryParamsStreamQuery = Omit<EventQueryParams, 'streams'> & {
     streams: string[] | StreamsQuery;
   };
 
-  type EditMetadata = 'created' | 'createdBy' | 'modified' | 'modifiedBy';
+  export type EditMetadata = 'created' | 'createdBy' | 'modified' | 'modifiedBy';
 
   export type APICallMethods = {
     // mfa
@@ -534,7 +534,7 @@ declare module 'pryv' {
   ) => Promise<any>;
   export type StreamedEventsHandler = (event: Event) => void;
 
-  type StreamedEventsResult = {
+  export type StreamedEventsResult = {
     eventsCount?: number;
     eventsDeletionsCount?: number;
     meta: {
@@ -560,12 +560,12 @@ declare module 'pryv' {
 
   export type APICallProgressHandler = (percentage: number) => void;
 
-  interface AccessInfo extends Access {
+  export interface AccessInfo extends Access {
     calls: KeyValue;
     user: KeyValue;
   }
 
-  type EventAPICallRes = {
+  export type EventAPICallRes = {
     event?: Event;
   } & PossibleError;
 
@@ -681,7 +681,7 @@ declare module 'pryv' {
     | 'ACCEPTED'
     | 'SIGNOUT';
 
-  type StateChangeTypes = {
+  export type StateChangeTypes = {
     LOADING: {};
     INITIALIZED: {
       serviceInfo: ServiceInfo;
