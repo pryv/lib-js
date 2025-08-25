@@ -560,7 +560,7 @@ declare module 'pryv' {
 
   export type APICallProgressHandler = (percentage: number) => void;
 
-  export interface AccessInfo extends Access {
+  export class AccessInfo extends Access {
     calls: KeyValue;
     user: KeyValue;
   }
@@ -569,8 +569,8 @@ declare module 'pryv' {
     event?: Event;
   } & PossibleError;
 
-  export interface Connection {
-    new (apiEndpoint: string, service?: Service): Connection;
+  export class Connection {
+    constructor (apiEndpoint: string, service?: Service): Connection;
     get service(): Service;
     username(): Promise<string>;
     api<Calls extends APICall[] = APICall[]>(
@@ -650,11 +650,11 @@ declare module 'pryv' {
     [key: string]: any;
   };
 
-  export interface Service {
-    new (
+  export class Service {
+    constructor (
       serviceInfoUrl: string,
       serviceCustomizations?: serviceCustomizations,
-    ): Service;
+    );
     info(forceFetch?: boolean): Promise<ServiceInfo>;
     setServiceInfo(serviceInfo: Partial<ServiceInfo>): Promise<void>;
     assets(forceFetch?: boolean): Promise<AssetsConfig>;
@@ -732,7 +732,7 @@ declare module 'pryv' {
     };
   };
 
-  type SetupAuth = (
+  export type SetupAuth = (
     settings: AuthSettings,
     serviceInfoUrl: string,
     serviceCustomizations?: serviceCustomizations,
@@ -754,7 +754,7 @@ declare module 'pryv' {
     message?: string;
   };
 
-  export interface CustomLoginButton {
+  export type CustomLoginButton = {
     init?: () => Promise<void>;
     getAuthorizationData(): string;
     onStateChange(state: AuthStatePayload): Promise<void>;
@@ -763,12 +763,12 @@ declare module 'pryv' {
     deleteAuthorizationData?: () => Promise<void>;
   }
 
-  export interface AuthController {
-    new (
+  export class AuthController {
+    constructor (
       authSettings: AuthSettings,
       service: Service,
       loginButton: CustomLoginButton,
-    ): AuthController;
+    );
     init(): Promise<void>;
     stopAuthRequest(msg: string): void;
     handleClick(): Promise<void>;
@@ -783,21 +783,21 @@ declare module 'pryv' {
     get state(): AuthStatePayload;
   }
 
-  export interface Auth {
+  export type Auth = {
     setupAuth: SetupAuth;
     AuthStates: AuthStates;
     AuthController: AuthController;
   }
 
-  export interface CookieUtils {
+  export type CookieUtils = {
     set(cookieKey: string, value: any, expireInDays: number): void;
     get(cookieKey: string): any;
     del(cookieKey: string): void;
   }
 
-  type getServiceInfoFromURL = (url: string) => string;
+  export type getServiceInfoFromURL = (url: string) => string;
 
-  export interface Browser {
+  export type Browser = {
     LoginButton: CustomLoginButton;
     CookieUtils: CookieUtils;
     AuthStates: AuthStates;
@@ -805,12 +805,12 @@ declare module 'pryv' {
     serviceInfoFromUrl: getServiceInfoFromURL;
   }
 
-  type TokenAndAPIEndpoint = {
+  export type TokenAndAPIEndpoint = {
     endpoint: string;
     token: string;
   };
 
-  export interface utils {
+  export type utils = {
     isBrowser(): boolean;
     extractTokenAndAPIEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
     buildAPIEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
