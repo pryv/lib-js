@@ -560,7 +560,7 @@ declare module 'pryv' {
 
   export type APICallProgressHandler = (percentage: number) => void;
 
-  export class AccessInfo extends Access {
+  export type AccessInfo =  Access & {
     calls: KeyValue;
     user: KeyValue;
   }
@@ -570,7 +570,7 @@ declare module 'pryv' {
   } & PossibleError;
 
   export class Connection {
-    constructor (apiEndpoint: string, service?: Service): Connection;
+    constructor (apiEndpoint: string, service?: Service);
     get service(): Service;
     username(): Promise<string>;
     api<Calls extends APICall[] = APICall[]>(
@@ -783,23 +783,21 @@ declare module 'pryv' {
     get state(): AuthStatePayload;
   }
 
-  export type Auth = {
+  export const Auth: {
     setupAuth: SetupAuth;
     AuthStates: AuthStates;
     AuthController: AuthController;
   }
 
-  export type CookieUtils = {
-    set(cookieKey: string, value: any, expireInDays: number): void;
-    get(cookieKey: string): any;
-    del(cookieKey: string): void;
-  }
-
   export type getServiceInfoFromURL = (url: string) => string;
 
-  export type Browser = {
+  export const Browser: {
     LoginButton: CustomLoginButton;
-    CookieUtils: CookieUtils;
+    CookieUtils: {
+      set(cookieKey: string, value: any, expireInDays: number): void;
+      get(cookieKey: string): any;
+      del(cookieKey: string): void;
+    };
     AuthStates: AuthStates;
     setupAuth: SetupAuth;
     serviceInfoFromUrl: getServiceInfoFromURL;
@@ -810,7 +808,7 @@ declare module 'pryv' {
     token: string;
   };
 
-  export type utils = {
+  export const utils: {
     isBrowser(): boolean;
     extractTokenAndAPIEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
     buildAPIEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
@@ -822,11 +820,6 @@ declare module 'pryv' {
   type version = string;
 
   let pryv: {
-    Service: Service;
-    Connection: Connection;
-    Auth: Auth;
-    Browser: Browser;
-    utils: utils;
     version: version;
   };
 
