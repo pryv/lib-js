@@ -732,7 +732,7 @@ declare module 'pryv' {
     };
   };
 
-  export type SetupAuth = (
+  export const SetupAuth: (
     settings: AuthSettings,
     serviceInfoUrl: string,
     serviceCustomizations?: serviceCustomizations,
