@@ -1,7 +1,7 @@
 declare module 'pryv' {
   type Timestamp = number;
   type Identifier = string;
-  export type Level = 'read' | 'contribute' | 'manage' | 'create-only';
+  export type PermissionLevel = 'read' | 'contribute' | 'manage' | 'create-only';
   export type KeyValue = { [key: string]: string | number };
 
   export type Attachment = {
@@ -46,7 +46,7 @@ declare module 'pryv' {
 
   export type Permission = {
     streamId: Identifier;
-    level: Level;
+    level: PermissionLevel;
     feature?: 'selfRevoke';
     setting?: 'forbidden';
   };
@@ -671,7 +671,7 @@ declare module 'pryv' {
   export type AuthRequestedPermission = {
     streamId: Identifier;
     defaultName: string;
-    level: Level;
+    level: PermissionLevel;
   };
 
   export type States =
@@ -697,7 +697,7 @@ declare module 'pryv' {
       poll_rate_ms: number;
       requestedPermissions: Array<{
         streamId: string;
-        level: Level;
+        level: PermissionLevel;
         defaultName: string;
       }>;
       requestingAppId: string;
@@ -732,7 +732,7 @@ declare module 'pryv' {
     };
   };
 
-  export const SetupAuth: (
+  export type SetupAuth = (
     settings: AuthSettings,
     serviceInfoUrl: string,
     serviceCustomizations?: serviceCustomizations,
