@@ -575,7 +575,7 @@ declare module 'pryv' {
     username(): Promise<string>;
     api<Calls extends APICall[] = APICall[]>(
       apiCalls: Calls,
-      res?: APICallProgressHandler[],
+      progress?: APICallProgressHandler,
     ): Promise<Array<TypedAPICallResult>>;
     getEventsStreamed(
       queryParams: Partial<EventQueryParamsStreamQuery>,
@@ -598,8 +598,11 @@ declare module 'pryv' {
       id: Identifier,
       fields: string[],
       values: Array<string | number>,
-    ): Promise<void>;
+    ): Promise<any>;
     accessInfo(): Promise<AccessInfo>;
+
+    readonly deltaTime: number;
+    readonly apiEndpoint: string;
 
     post(
       path: string,
@@ -650,14 +653,27 @@ declare module 'pryv' {
     [key: string]: any;
   };
 
+  export class ServiceAssets {
+    static setup(pryvServiceAssetsSourceUrl: string): Promise<ServiceAssets>;
+    get(keyPath?: string): any;
+    getUrl(keyPath?: string): string;
+    relativeURL(url: string): string;
+    setAllDefaults(): Promise<void>;
+    setFavicon(): void;
+    loadCSS(): Promise<void>;
+    loginButtonLoadCSS(): Promise<void>;
+    loginButtonGetHTML(): Promise<string>;
+    loginButtonGetMessages(): Promise<KeyValue>;
+  }
+
   export class Service {
     constructor (
       serviceInfoUrl: string,
       serviceCustomizations?: serviceCustomizations,
     );
     info(forceFetch?: boolean): Promise<ServiceInfo>;
-    setServiceInfo(serviceInfo: Partial<ServiceInfo>): Promise<void>;
-    assets(forceFetch?: boolean): Promise<AssetsConfig>;
+    setServiceInfo(serviceInfo: Partial<ServiceInfo>): void;
+    assets(forceFetch?: boolean): Promise<ServiceAssets | null>;
     infoSync(): ServiceInfo | null;
     apiEndpointFor(username: string, token: string): Promise<string>;
     login(
@@ -666,6 +682,9 @@ declare module 'pryv' {
       appId: string,
       originHeader?: string,
     ): Promise<Connection>;
+
+    supportsHF(): Promise<boolean>;
+    isDnsLess(): Promise<boolean>;
   }
 
   export type AuthRequestedPermission = {
@@ -755,12 +774,13 @@ declare module 'pryv' {
   };
 
   export type CustomLoginButton = {
-    init?: () => Promise<void>;
-    getAuthorizationData(): string;
+    init?: () => Promise<Service>;
+    getAuthorizationData(): any;
     onStateChange(state: AuthStatePayload): Promise<void>;
     onClick(): void;
-    saveAuthorizationData?: (authData: string) => void;
+    saveAuthorizationData?: (authData: any) => void;
     deleteAuthorizationData?: () => Promise<void>;
+    finishAuthProcessAfterRedirection?: (authController: AuthController) => Promise<void>;
   }
 
   export class AuthController {
@@ -769,16 +789,15 @@ declare module 'pryv' {
       service: Service,
       loginButton: CustomLoginButton,
     );
-    init(): Promise<void>;
+    init(): Promise<Service>;
     stopAuthRequest(msg: string): void;
     handleClick(): Promise<void>;
     getReturnURL(
       returnURL: string,
-      windowLocationForTest: string,
-      navigatorForTests: string,
+      windowLocationForTest?: string,
+      navigatorForTests?: string,
     ): string | boolean;
     startAuthRequest(): Promise<any>;
-    doPolling(): Promise<void>;
     set state(newState: AuthStatePayload);
     get state(): AuthStatePayload;
   }
@@ -805,7 +824,7 @@ declare module 'pryv' {
 
   export type TokenAndAPIEndpoint = {
     endpoint: string;
-    token: string;
+    token: string | null;
   };
 
   export const utils: {
@@ -820,6 +839,32 @@ declare module 'pryv' {
   type version = string;
 
   let pryv: {
+    Service: typeof Service;
+    Connection: typeof Connection;
+    Auth: {
+      setupAuth: SetupAuth;
+      AuthStates: AuthStates;
+      AuthController: typeof AuthController;
+    };
+    Browser: {
+      LoginButton: CustomLoginButton;
+      CookieUtils: {
+        set(cookieKey: string, value: any, expireInDays: number): void;
+        get(cookieKey: string): any;
+        del(cookieKey: string): void;
+      };
+      AuthStates: AuthStates;
+      setupAuth: SetupAuth;
+      serviceInfoFromUrl: getServiceInfoFromURL;
+    };
+    utils: {
+      isBrowser(): boolean;
+      extractTokenAndAPIEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
+      buildAPIEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
+      browserIsMobileOrTablet(navigator: string): boolean;
+      cleanURLFromPrYvParams(url: string): string;
+      getQueryParamsFromURL(url: string): KeyValue;
+    };
     version: version;
   };
 
