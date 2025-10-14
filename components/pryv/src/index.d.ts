@@ -577,6 +577,15 @@ declare module 'pryv' {
       apiCalls: Calls,
       progress?: APICallProgressHandler,
     ): Promise<Array<TypedAPICallResult>>;
+    apiOne(
+      method: keyof APICallMethods, 
+      params: APICallMethods[keyof APICallMethods], 
+    ): Promise<TypedAPICallResult>;
+    apiOne(
+      method: keyof APICallMethods, 
+      params: APICallMethods[keyof APICallMethods], 
+      expectedKey: string
+    ): Promise<TypedAPICallResult[keyof TypedAPICallResult]>;
     getEventsStreamed(
       queryParams: Partial<EventQueryParamsStreamQuery>,
       forEachEvent: StreamedEventsHandler,
@@ -600,7 +609,7 @@ declare module 'pryv' {
       values: Array<string | number>,
     ): Promise<any>;
     accessInfo(): Promise<AccessInfo>;
-
+    revoke(throwOnFail?: boolean, usingConnection?: Connection)
     readonly deltaTime: number;
     readonly apiEndpoint: string;
 

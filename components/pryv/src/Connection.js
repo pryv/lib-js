@@ -81,7 +81,69 @@ class Connection {
     function httpHandler (batchCall) {
       return this.post('', batchCall);
     }
-    return await this._chunkedBatchCall(arrayOfAPICalls, progress, httpHandler.bind(this));
+    return await this._chunkedBatchCall(
+      arrayOfAPICalls,
+      progress,
+      httpHandler.bind(this)
+    );
+  }
+
+  /**
+   * Make one api Api call
+   * @param {string} method - methodId
+   * @param {Object|Array} [params] - the params associated with this methodId
+   * @param {string} [resultKey] - if given, returns the value or throws an error if not present
+   * @throws {Error} if .error is present the response
+   */
+  async apiOne (method, params = {}, expectedKey) {
+    const result = await this.api([{ method, params }]);
+    if (
+      result[0] == null ||
+      result[0].error ||
+      (expectedKey != null && result[0][expectedKey] == null)
+    ) {
+      const innerObject = result[0]?.error || result;
+      const error = new Error(
+        `Error for api method: "${method}" with params: ${JSON.stringify(
+          params
+        )} >> Result: ${JSON.stringify(innerObject)}"`
+      );
+      error.innerObject = innerObject;
+      throw error;
+    }
+    if (expectedKey != null) return result[0][expectedKey];
+    return result[0];
+  }
+
+  /**
+   * Revoke : Delete the accessId
+   * - Do not thow error if access is already revoked, just return null;
+   * @param {boolean} [throwOnFail = true] - if set to false do not throw Error on failure
+   * @param {Connection} [usingConnection] - specify which connection issues the revoke, might be necessary when selfRovke
+   */
+  async revoke (throwOnFail = true, usingConnection) {
+    usingConnection = usingConnection || this;
+    let accessInfo = null;
+    // get accessId
+    try {
+      accessInfo = await this.accessInfo();
+    } catch (e) {
+      if (e.response?.body?.error?.id === 'invalid-access-token') {
+        return null; // Already revoked OK..
+      }
+      if (throwOnFail) throw e;
+      return null;
+    }
+    // delete access
+    try {
+      const result = usingConnection.apiOne('accesses.delete', {
+        id: accessInfo.id
+      });
+      return result;
+    } catch (e) {
+      if (throwOnFail) throw e;
+      return null;
+    }
   }
 
   /**
@@ -94,32 +156,52 @@ class Connection {
 
     const res = [];
     let percent = 0;
-    for (let cursor = 0; arrayOfAPICalls.length >= cursor; cursor += this.options.chunkSize) {
+    for (
+      let cursor = 0;
+      arrayOfAPICalls.length >= cursor;
+      cursor += this.options.chunkSize
+    ) {
       const thisBatch = [];
-      const cursorMax = Math.min(cursor + this.options.chunkSize, arrayOfAPICalls.length);
+      const cursorMax = Math.min(
+        cursor + this.options.chunkSize,
+        arrayOfAPICalls.length
+      );
       // copy only method and params into a back call to be exuted
       for (let i = cursor; i < cursorMax; i++) {
-        thisBatch.push({ method: arrayOfAPICalls[i].method, params: arrayOfAPICalls[i].params });
+        thisBatch.push({
+          method: arrayOfAPICalls[i].method,
+          params: arrayOfAPICalls[i].params
+        });
       }
       const resRequest = await callHandler(thisBatch);
 
       // result checks
       if (!resRequest || !Array.isArray(resRequest.results)) {
-        throw new Error('API call result is not an Array: ' + JSON.stringify(resRequest));
+        throw new Error(
+          'API call result is not an Array: ' + JSON.stringify(resRequest)
+        );
       }
       if (resRequest.results.length !== thisBatch.length) {
-        throw new Error('API call result Array does not match request: ' + JSON.stringify(resRequest));
+        throw new Error(
+          'API call result Array does not match request: ' +
+            JSON.stringify(resRequest)
+        );
       }
 
       // eventually call handleResult
       for (let i = 0; i < resRequest.results.length; i++) {
         if (arrayOfAPICalls[i + cursor].handleResult) {
-          await arrayOfAPICalls[i + cursor].handleResult.call(null, resRequest.results[i]);
+          await arrayOfAPICalls[i + cursor].handleResult.call(
+            null,
+            resRequest.results[i]
+          );
         }
       }
       Array.prototype.push.apply(res, resRequest.results);
-      percent = Math.round(100 * res.length / arrayOfAPICalls.length);
-      if (progress) { progress(percent, res); }
+      percent = Math.round((100 * res.length) / arrayOfAPICalls.length);
+      if (progress) {
+        progress(percent, res);
+      }
     }
     return res;
   }
@@ -146,13 +228,12 @@ class Connection {
    * @returns {request.superagent}  Promise from superagent's post request
    */
   async postRaw (path, data, queryParams) {
-    return this._post(path)
-      .query(queryParams)
-      .send(data);
+    return this._post(path).query(queryParams).send(data);
   }
 
   _post (path) {
-    return utils.superagent.post(this.endpoint + path)
+    return utils.superagent
+      .post(this.endpoint + path)
       .set('Authorization', this.token)
       .set('accept', 'json');
   }
@@ -178,7 +259,8 @@ class Connection {
    */
   getRaw (path, queryParams) {
     path = path || '';
-    return utils.superagent.get(this.endpoint + path)
+    return utils.superagent
+      .get(this.endpoint + path)
       .set('Authorization', this.token)
       .set('accept', 'json')
       .query(queryParams);
@@ -189,12 +271,11 @@ class Connection {
    * https://api.pryv.com/reference/#add-hf-series-data-points
    */
   async addPointsToHFEvent (eventId, fields, points) {
-    const res = await this.post('events/' + eventId + '/series',
-      {
-        format: 'flatJSON',
-        fields: fields,
-        points: points
-      });
+    const res = await this.post('events/' + eventId + '/series', {
+      format: 'flatJSON',
+      fields: fields,
+      points: points
+    });
     if (!res.status === 'ok') {
       throw new Error('Failed loading serie: ' + JSON.stringify(res.status));
     }
@@ -212,14 +293,22 @@ class Connection {
   async getEventsStreamed (queryParams, forEachEvent) {
     const myParser = jsonParser(forEachEvent, queryParams.includeDeletions);
     let res = null;
-    if (typeof window === 'undefined') { // node
+    if (typeof window === 'undefined') {
+      // node
       res = await this.getRaw('events', queryParams)
         .buffer(false)
         .parse(myParser);
-    } else if (typeof fetch !== 'undefined' && !(typeof navigator !== 'undefined' && navigator.product === 'ReactNative')) { // browser supports fetch and it is not react native
+    } else if (
+      typeof fetch !== 'undefined' &&
+      !(typeof navigator !== 'undefined' && navigator.product === 'ReactNative')
+    ) {
+      // browser supports fetch and it is not react native
       res = await browserGetEventStreamed(this, queryParams, myParser);
-    } else { // browser no fetch supports
-      console.log('WARNING: Browser does not support fetch() required by pryv.Connection.getEventsStreamed()');
+    } else {
+      // browser no fetch supports
+      console.log(
+        'WARNING: Browser does not support fetch() required by pryv.Connection.getEventsStreamed()'
+      );
       res = await this.getRaw('events', queryParams);
       res.body.eventsCount = 0;
       if (res.body.events) {
@@ -227,7 +316,8 @@ class Connection {
         res.body.eventsCount += res.body.events.length;
         delete res.body.events;
       }
-      if (res.body.eventDeletions) { // deletions are in a seprated Array
+      if (res.body.eventDeletions) {
+        // deletions are in a seprated Array
         res.body.eventDeletions.forEach(forEachEvent);
         res.body.eventsCount += res.body.eventDeletions.length;
         delete res.body.eventDeletions;
@@ -262,7 +352,8 @@ class Connection {
    * @param {string} fileName
    */
   async createEventWithFileFromBuffer (event, bufferData, filename) {
-    if (typeof window === 'undefined') { // node
+    if (typeof window === 'undefined') {
+      // node
       const res = await this._post('events')
         .field('event', JSON.stringify(event))
         .attach('file', bufferData, filename);
@@ -280,11 +371,11 @@ class Connection {
   }
 
   /**
- * Create an event with attached formData
- * !! BROWSER ONLY
- * @param {Event} event
- * @param {FormData} formData https://developer.mozilla.org/en-US/docs/Web/API/FormData/FormData
- */
+   * Create an event with attached formData
+   * !! BROWSER ONLY
+   * @param {Event} event
+   * @param {FormData} formData https://developer.mozilla.org/en-US/docs/Web/API/FormData/FormData
+   */
   async createEventWithFormData (event, formData) {
     formData.append('event', JSON.stringify(event));
     const res = await this._post('events').send(formData);
@@ -313,10 +404,14 @@ class Connection {
   // private method that handle meta data parsing
   _handleMeta (res, requestLocalTimestamp) {
     if (!res.meta) throw new Error('Cannot find .meta in response.');
-    if (!res.meta.serverTime) throw new Error('Cannot find .meta.serverTime in response.');
+    if (!res.meta.serverTime) { throw new Error('Cannot find .meta.serverTime in response.'); }
 
     // update deltaTime and weight it
-    this._deltaTime.value = (this._deltaTime.value * this._deltaTime.weight + res.meta.serverTime - requestLocalTimestamp) / ++this._deltaTime.weight;
+    this._deltaTime.value =
+      (this._deltaTime.value * this._deltaTime.weight +
+        res.meta.serverTime -
+        requestLocalTimestamp) /
+      ++this._deltaTime.weight;
   }
 }
 

@@ -89,6 +89,18 @@ describe('Connection', () => {
     });
   });
 
+  describe('.apiOne()', function () {
+    this.timeout(15000);
+    it('.apiOne("events.get")', async () => {
+      const res = await conn.apiOne('events.get');
+      expect(res.events).to.exist;
+    });
+    it('.apiOne("events.get")', async () => {
+      const res = await conn.apiOne('events.get', {}, 'events');
+      expect(Array.isArray(res)).to.equal(true);
+    });
+  });
+
   describe('.api()', function () {
     this.timeout(15000);
     it('.api() events.get', async () => {

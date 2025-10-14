@@ -3,8 +3,12 @@
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
 
-## [Unreleased](https://github.com/pryv/lib-js/compare/2.3.1...HEAD)
+## [Unreleased](https://github.com/pryv/lib-js/compare/2.4.5...HEAD)
 
+## [2.4.5](https://github.com/pryv/lib-js/compare/2.3.1...2.4.5)
+- Enhanced typescripts definition
+- Adding `Connextion.apiOne()` and `Connextion.apiOne()`
+- Some untracked changes
 
 ## [2.3.1](https://github.com/pryv/lib-js/compare/2.2.0...2.3.1)
 
