@@ -17,7 +17,7 @@ declare module 'pryv' {
     name: string;
     parentId?: Identifier;
     clientData?: KeyValue;
-    children: Identifier[];
+    children: Stream[];
     trashed?: boolean;
     created: Timestamp;
     createdBy: Identifier;
@@ -577,15 +577,15 @@ declare module 'pryv' {
       apiCalls: Calls,
       progress?: APICallProgressHandler,
     ): Promise<Array<TypedAPICallResult>>;
-    apiOne(
-      method: keyof APICallMethods, 
-      params: APICallMethods[keyof APICallMethods], 
-    ): Promise<TypedAPICallResult>;
-    apiOne(
-      method: keyof APICallMethods, 
-      params: APICallMethods[keyof APICallMethods], 
-      expectedKey: string
-    ): Promise<TypedAPICallResult[keyof TypedAPICallResult]>;
+    apiOne<T extends keyof APICallMethods>(
+      method: T, 
+      params: APICallMethods[T]['params'], 
+    ): Promise<APICallMethods[T]['res']>;
+    apiOne<T extends keyof APICallMethods, U extends keyof APICallMethods[T]['res']>(
+      method: T, 
+      params: APICallMethods[T]['params'], 
+      expectedKey: U
+    ): Promise<APICallMethods[T]['res'][U]>;
     getEventsStreamed(
       queryParams: Partial<EventQueryParamsStreamQuery>,
       forEachEvent: StreamedEventsHandler,
