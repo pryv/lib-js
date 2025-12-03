@@ -1,6 +1,6 @@
 {
   "name": "@pryv/socket.io",
-  "version": "2.4.5",
+  "version": "2.4.6",
   "description": "Extends `pryv` with Socket.IO transport",
   "keywords": [
     "Pryv",
@@ -19,6 +19,7 @@
   "license": "BSD-3-Clause",
   "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
   "main": "src/index.js",
+  "types": "src/index.d.ts",
   "dependencies": {
     "socket.io-client": "^4.5.1"
   }

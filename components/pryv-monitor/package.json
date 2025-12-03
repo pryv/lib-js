@@ -1,6 +1,6 @@
 {
   "name": "@pryv/monitor",
-  "version": "2.4.5",
+  "version": "2.4.6",
   "description": "Extends `pryv` with event-driven notifications for changes on a Pryv.io account",
   "keywords": [
     "Pryv",
@@ -19,5 +19,6 @@
   },
   "license": "BSD-3-Clause",
   "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
-  "main": "src/index.js"
+  "main": "src/index.js",
+  "types": "src/index.d.ts"
 }
