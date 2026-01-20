@@ -129,8 +129,9 @@ describe('Connection', () => {
       conn.options.chunkSize = 2;
 
       let resultsReceivedCount = 0;
-      function oneMoreResult (res) {
+      function oneMoreResult (res, apiCall) {
         expect(res.events).to.exist;
+        expect(apiCall.method).to.equal('events.get');
         resultsReceivedCount++;
       }
 

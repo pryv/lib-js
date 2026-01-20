@@ -1,6 +1,6 @@
 {
   "name": "@pryv/socket.io",
-  "version": "2.4.6",
+  "version": "2.4.7",
   "description": "Extends `pryv` with Socket.IO transport",
   "keywords": [
     "Pryv",

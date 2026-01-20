@@ -199,7 +199,7 @@ try {
 ```js
 let count = 0;
 // the following will be called on each API method result it was provided for
-function handleResult(result) { console.log('Got result ' + count++ + ': ' + JSON.stringify(result)); }
+function handleResult(result, apiCall) { console.log('Got result ' + count++ + ': ' + JSON.stringify(result) + ' For call ' + JSON.stringify(apiCall)); }
 
 function progress(percentage) { console.log('Processed: ' + percentage + '%'); }
 

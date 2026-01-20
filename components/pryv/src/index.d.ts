@@ -530,7 +530,7 @@ declare module 'pryv' {
     APICallMethods[K]['res'] & PossibleError;
 
   export type APICallResultHandler<K extends keyof APICallMethods> = (
-    result: APICallResult<K>,
+    result: APICallResult<K>, apicall: APICall<K>
   ) => Promise<any>;
   export type StreamedEventsHandler = (event: Event) => void;
 

@@ -193,7 +193,8 @@ class Connection {
         if (arrayOfAPICalls[i + cursor].handleResult) {
           await arrayOfAPICalls[i + cursor].handleResult.call(
             null,
-            resRequest.results[i]
+            resRequest.results[i],
+            thisBatch[i] // request
           );
         }
       }
