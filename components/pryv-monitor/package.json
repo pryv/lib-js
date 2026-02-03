@@ -1,6 +1,6 @@
 {
   "name": "@pryv/monitor",
-  "version": "2.4.7",
+  "version": "3.0.0",
   "description": "Extends `pryv` with event-driven notifications for changes on a Pryv.io account",
   "keywords": [
     "Pryv",

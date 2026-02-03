@@ -5,6 +5,7 @@
 ## [3.0.0](https://github.com/pryv/lib-js/compare/2.4.5...3.0.0)
 - Removing superagent dependency (breaking change)
 - Enhancing test suite
+- Changing linter & typescript coverage
 
 ## [2.4.5](https://github.com/pryv/lib-js/compare/2.3.1...2.4.5)
 - Enhanced typescripts definition
