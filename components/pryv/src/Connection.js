@@ -174,7 +174,6 @@ class Connection {
         });
       }
       const resRequest = await callHandler(thisBatch);
-
       // result checks
       if (!resRequest || !Array.isArray(resRequest.results)) {
         throw new Error(
@@ -210,33 +209,47 @@ class Connection {
   /**
    * Post to API return results
    * @param {(Array | Object)} data
-   * @param {Object} queryParams
    * @param {string} path
    * @returns {Promise<Array|Object>} Promise to result.body
    */
-  async post (path, data, queryParams) {
+  async post (path, data) {
     const now = getTimestamp();
-    const res = await this.postRaw(path, data, queryParams);
+    const res = await this.postFetch(path, data);
     this._handleMeta(res.body, now);
     return res.body;
   }
 
   /**
-   * Raw Post to API return superagent object
+   * Post object as JSON to API
    * @param {Array | Object} data
-   * @param {Object} queryParams
    * @param {string} path
-   * @returns {request.superagent}  Promise from superagent's post request
    */
-  async postRaw (path, data, queryParams) {
-    return this._post(path).query(queryParams).send(data);
+  async postFetch (path, data) {
+    return this.postFetchRaw(path, JSON.stringify(data), 'application/json');
   }
 
-  _post (path) {
-    return utils.superagent
-      .post(this.endpoint + path)
-      .set('Authorization', this.token)
-      .set('accept', 'json');
+  /**
+   * Raw Post to API
+   * @param {Array | Object} data
+   * @param {string} path
+   */
+  async postFetchRaw (path, data, contentType) {
+    const headers = {
+      Authorization: this.token,
+      Accept: 'application/json'
+    };
+    // optional for form-data llowing fetch to
+    // automatically set multipart/form-data with the correct boundary
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+    const response = await fetch(this.endpoint + path, {
+      method: 'POST',
+      headers,
+      body: data
+    });
+    const body = await response.json();
+    return { response, body };
   }
 
   /**
@@ -293,38 +306,7 @@ class Connection {
    */
   async getEventsStreamed (queryParams, forEachEvent) {
     const myParser = jsonParser(forEachEvent, queryParams.includeDeletions);
-    let res = null;
-    if (typeof window === 'undefined') {
-      // node
-      res = await this.getRaw('events', queryParams)
-        .buffer(false)
-        .parse(myParser);
-    } else if (
-      typeof fetch !== 'undefined' &&
-      !(typeof navigator !== 'undefined' && navigator.product === 'ReactNative')
-    ) {
-      // browser supports fetch and it is not react native
-      res = await browserGetEventStreamed(this, queryParams, myParser);
-    } else {
-      // browser no fetch supports
-      console.log(
-        'WARNING: Browser does not support fetch() required by pryv.Connection.getEventsStreamed()'
-      );
-      res = await this.getRaw('events', queryParams);
-      res.body.eventsCount = 0;
-      if (res.body.events) {
-        res.body.events.forEach(forEachEvent);
-        res.body.eventsCount += res.body.events.length;
-        delete res.body.events;
-      }
-      if (res.body.eventDeletions) {
-        // deletions are in a seprated Array
-        res.body.eventDeletions.forEach(forEachEvent);
-        res.body.eventsCount += res.body.eventDeletions.length;
-        delete res.body.eventDeletions;
-      }
-    }
-
+    const res = await browserGetEventStreamed(this, queryParams, myParser);
     const now = getTimestamp();
     this._handleMeta(res.body, now);
     return res.body;
@@ -337,13 +319,21 @@ class Connection {
    * @param {string} filePath
    */
   async createEventWithFile (event, filePath) {
-    const res = await this._post('events')
-      .field('event', JSON.stringify(event))
-      .attach('file', filePath);
+    const { openAsBlob } = require('fs');
+    const path = require('path');
+
+    const fileName = path.basename(filePath);
+    const mimeType = getMimeType(path.extname(filePath));
+    const fileBlob = await openAsBlob(filePath, { type: mimeType });
+
+    const formData = new FormData();
+    formData.append('event', JSON.stringify(event));
+    formData.append('file', fileBlob, fileName);
 
     const now = getTimestamp();
-    this._handleMeta(res.body, now);
-    return res.body;
+    const { body } = await this.postFetchRaw('events', formData);
+    this._handleMeta(body, now);
+    return body;
   }
 
   /**
@@ -353,22 +343,16 @@ class Connection {
    * @param {string} fileName
    */
   async createEventWithFileFromBuffer (event, bufferData, filename) {
-    if (typeof window === 'undefined') {
-      // node
-      const res = await this._post('events')
-        .field('event', JSON.stringify(event))
-        .attach('file', bufferData, filename);
+    const path = require('path');
+    const mimeType = getMimeType(path.extname(filename));
+    const fileBlob = bufferData instanceof Blob
+      ? bufferData
+      : new Blob([bufferData], { type: mimeType });
 
-      const now = getTimestamp();
-      this._handleMeta(res.body, now);
-      return res.body;
-    } else {
-      /* global FormData */
-      const formData = new FormData();
-      formData.append('file', bufferData, filename);
-      const body = await this.createEventWithFormData(event, formData);
-      return body;
-    }
+    const formData = new FormData();
+    formData.append('file', fileBlob, filename);
+    const body = await this.createEventWithFormData(event, formData);
+    return body;
   }
 
   /**
@@ -379,8 +363,8 @@ class Connection {
    */
   async createEventWithFormData (event, formData) {
     formData.append('event', JSON.stringify(event));
-    const res = await this._post('events').send(formData);
-    return res.body;
+    const { body } = await this.postFetchRaw('events', formData);
+    return body;
   }
 
   /**
@@ -420,6 +404,40 @@ module.exports = Connection;
 
 function getTimestamp () {
   return Date.now() / 1000;
+}
+
+const MIME_TYPES = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp',
+  '.ico': 'image/x-icon',
+  '.pdf': 'application/pdf',
+  '.json': 'application/json',
+  '.xml': 'application/xml',
+  '.zip': 'application/zip',
+  '.gz': 'application/gzip',
+  '.tar': 'application/x-tar',
+  '.txt': 'text/plain',
+  '.html': 'text/html',
+  '.htm': 'text/html',
+  '.css': 'text/css',
+  '.js': 'application/javascript',
+  '.mjs': 'application/javascript',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.avi': 'video/x-msvideo',
+  '.mov': 'video/quicktime'
+};
+
+function getMimeType (ext) {
+  return MIME_TYPES[ext.toLowerCase()] || 'application/octet-stream';
 }
 
 // service is require "after" to allow circular require

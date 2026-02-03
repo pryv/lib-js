@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, xit, before, after, beforeEach, afterEach, expect, Browser, pryv, Blob, FormData */
+/* global describe, it, before, after, beforeEach, afterEach, expect, Browser, pryv, Blob, FormData */
 /* eslint-disable no-unused-expressions */
 
 const { URL, URLSearchParams } = require('universal-url');
@@ -410,17 +410,8 @@ describe('Connection', () => {
           if (isNotAvailable.URLSearchParams) delete global.URLSearchParams;
         });
 
-        it(' without fetch', async () => {
-          delete global.fetch;
-          const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
-          let eventsCount = 0;
-          function forEachEvent (event) { eventsCount++; }
-          const res = await conn.getEventsStreamed(queryParams, forEachEvent);
-          expect(eventsCount).to.equal(res.eventsCount);
-        });
-
         // HACK: skip until a solution is found to Zombie's `fetch()` not accepting URLs
-        xit(' with fetch', async () => {
+        it(' with fetch', async () => {
           const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
           let eventsCount = 0;
           function forEachEvent (event) { eventsCount++; }
