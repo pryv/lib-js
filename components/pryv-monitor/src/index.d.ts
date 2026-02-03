@@ -1,5 +1,17 @@
-import pryv from 'pryv';
+import pryv, { Service, Connection, Auth, Browser, utils } from 'pryv';
 import { EventEmitter } from 'events';
+
+/**
+ * Type for the pryv library parameter - accepts both default and namespace imports
+ */
+export type PryvLibrary = {
+  Service: typeof Service;
+  Connection: typeof Connection;
+  Auth: typeof Auth;
+  Browser: typeof Browser;
+  utils: typeof utils;
+  version?: string;
+};
 
 /**
  * Extends a `pryv` instance with monitoring capabilities.
@@ -22,7 +34,7 @@ import { EventEmitter } from 'events';
  * await mon.start();
  * ```
  */
-export default function extendPryvMonitor(pryvLib: typeof pryv): typeof pryv.Monitor;
+export default function extendPryvMonitor(pryvLib: PryvLibrary): typeof pryv.Monitor;
 
 declare module 'pryv' {
 

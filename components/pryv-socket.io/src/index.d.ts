@@ -1,5 +1,17 @@
-import pryv from 'pryv';
+import pryv, { Service, Connection, Auth, Browser, utils } from 'pryv';
 import { EventEmitter } from 'events';
+
+/**
+ * Type for the pryv library parameter - accepts both default and namespace imports
+ */
+export type PryvLibrary = {
+  Service: typeof Service;
+  Connection: typeof Connection;
+  Auth: typeof Auth;
+  Browser: typeof Browser;
+  utils: typeof utils;
+  version?: string;
+};
 
 /**
  * Extends a `pryv` instance with Socket.IO capabilities.
@@ -18,7 +30,7 @@ import { EventEmitter } from 'events';
  * });
  * ```
  */
-export default function extendPryvSocketIO(pryvLib: typeof pryv): void;
+export default function extendPryvSocketIO(pryvLib: PryvLibrary): void;
 
 declare module 'pryv' {
   export type SocketIOEventName =
