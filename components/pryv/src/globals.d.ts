@@ -63,9 +63,13 @@ declare global {
     export type LoginButton = PryvModule.LoginButton;
   }
 
-  // Extended Error type with innerObject property
-  interface Error {
-    innerObject?: any;
+  /**
+   * Custom error class for Pryv library errors
+   */
+  class PryvError extends Error {
+    constructor(message: string, innerError?: Error | object);
+    name: 'PryvError';
+    innerError?: Error | object;
   }
 }
 

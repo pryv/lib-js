@@ -5,6 +5,7 @@
 const utils = require('./utils.js');
 const jsonParser = require('./lib/json-parser');
 const libGetEventStreamed = require('./lib/getEventStreamed');
+const PryvError = require('./lib/PryvError');
 
 /**
  * @class Connection
@@ -58,10 +59,10 @@ class Connection {
   async username () {
     const accessInfo = await this.accessInfo();
     if (accessInfo.error) {
-      const err = new Error('Failed fetching accessinfo: ' + accessInfo.error.message);
-      // @ts-ignore - custom error property
-      err.innerObject = accessInfo.error;
-      throw err;
+      throw new PryvError(
+        'Failed fetching accessinfo: ' + accessInfo.error.message,
+        accessInfo.error
+      );
     }
     // @ts-ignore - username is always a string
     return accessInfo.user.username;
@@ -110,15 +111,13 @@ class Connection {
       result[0].error ||
       (expectedKey != null && result[0][expectedKey] == null)
     ) {
-      const innerObject = result[0]?.error || result;
-      const error = new Error(
+      const innerError = result[0]?.error || result;
+      throw new PryvError(
         `Error for api method: "${method}" with params: ${JSON.stringify(
           params
-        )} >> Result: ${JSON.stringify(innerObject)}"`
+        )} >> Result: ${JSON.stringify(innerError)}"`,
+        innerError
       );
-      // @ts-ignore - custom error property
-      error.innerObject = innerObject;
-      throw error;
     }
     if (expectedKey != null) return result[0][expectedKey];
     return result[0];
