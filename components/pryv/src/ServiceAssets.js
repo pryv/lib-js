@@ -30,8 +30,8 @@ class ServiceAssets {
    * @returns {ServiceAssets}
    */
   static async setup (pryvServiceAssetsSourceUrl) {
-    const res = await utils.superagent.get(pryvServiceAssetsSourceUrl).set('accept', 'json');
-    return new ServiceAssets(res.body, pryvServiceAssetsSourceUrl);
+    const { body } = await utils.fetchGet(pryvServiceAssetsSourceUrl);
+    return new ServiceAssets(body, pryvServiceAssetsSourceUrl);
   }
 
   /**
@@ -112,16 +112,16 @@ class ServiceAssets {
    * Get HTML for Login Button
    */
   async loginButtonGetHTML () {
-    const res = await utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.html)).set('accept', 'html');
-    return res.text;
+    const { text } = await utils.fetchGetText(this.relativeURL(this._assets['lib-js'].buttonSignIn.html));
+    return text;
   }
 
   /**
    * Get Messages strings for Login Button
    */
   async loginButtonGetMessages () {
-    const res = await utils.superagent.get(this.relativeURL(this._assets['lib-js'].buttonSignIn.messages)).set('accept', 'json');
-    return res.body;
+    const { body } = await utils.fetchGet(this.relativeURL(this._assets['lib-js'].buttonSignIn.messages));
+    return body;
   }
 }
 

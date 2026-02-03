@@ -59,8 +59,8 @@ class Service {
     if (forceFetch || !this._serviceInfo) {
       let baseServiceInfo = {};
       if (this._serviceInfoUrl) {
-        const res = await utils.superagent.get(this._serviceInfoUrl).set('Access-Control-Allow-Origin', '*').set('accept', 'json');
-        baseServiceInfo = res.body;
+        const { body } = await utils.fetchGet(this._serviceInfoUrl);
+        baseServiceInfo = body;
       }
       Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
       this.setServiceInfo(baseServiceInfo);
@@ -169,32 +169,31 @@ class Service {
   async login (username, password, appId, originHeader) {
     const apiEndpoint = await this.apiEndpointFor(username);
 
-    try {
-      const headers = { accept: 'json' };
-      originHeader = originHeader || (await this.info()).register;
-      if (!utils.isBrowser()) {
-        headers.Origin = originHeader;
-      }
-      const res = await utils.superagent.post(apiEndpoint + 'auth/login')
-        .set(headers)
-        .send({ username: username, password: password, appId: appId });
-
-      if (!res.body.token) {
-        throw new Error('Invalid login response: ' + res.body);
-      }
-      return new Connection(
-        Service.buildAPIEndpoint(await this.info(), username, res.body.token),
-        this // Pre load Connection with service
-      );
-    } catch (e) {
-      if (e.response &&
-          e.response.body &&
-          e.response.body.error &&
-          e.response.body.error.message) {
-        throw new Error(e.response.body.error.message);
-      }
-      throw (e);
+    const headers = {};
+    originHeader = originHeader || (await this.info()).register;
+    if (!utils.isBrowser()) {
+      headers.Origin = originHeader;
     }
+    const { response, body } = await utils.fetchPost(
+      apiEndpoint + 'auth/login',
+      { username, password, appId },
+      headers
+    );
+
+    if (!response.ok) {
+      if (body?.error?.message) {
+        throw new Error(body.error.message);
+      }
+      throw new Error('Login failed: ' + JSON.stringify(body));
+    }
+
+    if (!body.token) {
+      throw new Error('Invalid login response: ' + JSON.stringify(body));
+    }
+    return new Connection(
+      Service.buildAPIEndpoint(await this.info(), username, body.token),
+      this // Pre load Connection with service
+    );
   }
 }
 

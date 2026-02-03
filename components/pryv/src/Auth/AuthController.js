@@ -161,10 +161,14 @@ class AuthController {
 
     async function postAccess () {
       try {
-        const res = await utils.superagent
-          .post(this.serviceInfo.access)
-          .send(this.settings.authRequest);
-        return res.body;
+        const { response, body } = await utils.fetchPost(
+          this.serviceInfo.access,
+          this.settings.authRequest
+        );
+        if (!response.ok) {
+          throw new Error('Access request failed: ' + JSON.stringify(body));
+        }
+        return body;
       } catch (e) {
         this.state = {
           status: AuthStates.ERROR,
@@ -189,17 +193,13 @@ class AuthController {
 
       async function pollAccess (pollUrl) {
         try {
-          const res = await utils.superagent.get(pollUrl);
-          return res.body;
-        } catch (e) {
-          if (e.response &&
-              e.response.status === 403 &&
-              e.response.body &&
-              e.response.body.status === 'REFUSED') {
+          const { response, body } = await utils.fetchGet(pollUrl);
+          if (response.status === 403 && body?.status === 'REFUSED') {
             return { status: AuthStates.INITIALIZED };
-          } else {
-            return { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
           }
+          return body;
+        } catch (e) {
+          return { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
         }
       }
     }

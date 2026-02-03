@@ -6,8 +6,7 @@
 const EVENTMARKERS = ['"events":[', '"eventDeletions":['];
 
 /**
- * Customize superagent parser
- * Work on 'node.js' and use by browser-getEventStreamed
+ * Stremed JSON parser for events
  */
 module.exports = function (foreachEvent, includeDeletions) {
   let eventOrEventDeletions = 0; // start with event

@@ -6,12 +6,6 @@
 
 module.exports = getEventStreamed;
 
-/**
- * @private
- * Replacement for getEventStreamed for Browser
- * To be used as long as superagent does not propose it.
- *
- */
 async function getEventStreamed (conn, queryParam, parser) {
   /**
    * Holds Parser's settings

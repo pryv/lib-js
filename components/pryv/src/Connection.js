@@ -266,7 +266,6 @@ class Connection {
   }
 
   /**
-   * Raw Get to API return superagent object
    * @param {Object} queryParams
    * @param {string} path
    */

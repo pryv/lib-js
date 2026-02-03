@@ -5,8 +5,6 @@
 /* global describe, it, before, expect, pryv, testData */
 /* eslint-disable no-unused-expressions */
 
-const isNode = (typeof window === 'undefined');
-
 describe('Service', function () {
   before(async function () {
     this.timeout(15000);
@@ -81,12 +79,13 @@ describe('Service', function () {
       try {
         await pryvService.login('wrong-username', 'bobby', 'jslib-test');
       } catch (error) {
-        let errorMessage = isNode ? 'getaddrinfo ENOTFOUND wrong' : 'Request has been terminated';
-        if (await pryvService.isDnsLess()) {
-          errorMessage = 'Unknown user "wrong-username"';
+        const isDnsLess = await pryvService.isDnsLess();
+        if (isDnsLess) {
+          expect(error.message).to.include('Unknown user');
+        } else {
+          // fetch throws 'fetch failed' for DNS errors, superagent threw 'getaddrinfo ENOTFOUND'
+          expect(error.message).to.match(/fetch failed|getaddrinfo ENOTFOUND|Request has been terminated/);
         }
-        const receivedMessage = error.message.slice(0, errorMessage.length);
-        expect(receivedMessage).to.be.equal(errorMessage);
         return;
       }
       throw new Error('Should fail');

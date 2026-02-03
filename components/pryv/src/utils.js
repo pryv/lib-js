@@ -13,6 +13,52 @@ const regexSchemaAndPath = /(.+):\/\/(.+)/gm;
  */
 const utils = module.exports = {
   /**
+   * @param {string} url
+   * @param {{}} [queryParams={}]
+   * @param {{}} [headers={}]
+   */
+  async fetchGet (url, queryParams = {}, headers = {}) {
+    let queryStr = '';
+    if (queryParams && Object.keys(queryParams).length > 0) {
+      queryStr = '?' + new URLSearchParams(queryParams).toString();
+    }
+    const myHeaders = Object.assign({ Accept: 'application/json' }, headers);
+    const response = await fetch(url + queryStr, { headers: myHeaders });
+    const body = await response.json();
+    return { response, body };
+  },
+
+  /**
+   * @param {string} url
+   * @param {{}} [headers={}]
+   */
+  async fetchGetText (url, headers = {}) {
+    const myHeaders = Object.assign({ Accept: 'text/html' }, headers);
+    const response = await fetch(url, { headers: myHeaders });
+    const text = await response.text();
+    return { response, text };
+  },
+
+  /**
+   * @param {string} url
+   * @param {{}} [data]
+   * @param {{}} [headers={}]
+   */
+  async fetchPost (url, data, headers = {}) {
+    const myHeaders = Object.assign({
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
+    }, headers);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: myHeaders,
+      body: JSON.stringify(data)
+    });
+    const body = await response.json();
+    return { response, body };
+  },
+
+  /**
    * Exposes superagent https://visionmedia.github.io/superagent/
    * @memberof pryv.utils
    * @property {Superagent} superagent

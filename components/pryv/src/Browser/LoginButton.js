@@ -114,8 +114,8 @@ class LoginButton {
     const pollUrl = retrievePollUrl(url);
     if (pollUrl !== null) {
       try {
-        const res = await utils.superagent.get(pollUrl);
-        authController.state = res.body;
+        const { body } = await utils.fetchGet(pollUrl);
+        authController.state = body;
       } catch (e) {
         authController.state = {
           status: AuthStates.ERROR,
