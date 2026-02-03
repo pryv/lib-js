@@ -166,12 +166,12 @@ declare module 'pryv' {
 
   /**
    * Custom error class for Pryv library errors.
-   * Includes an innerError property for wrapping underlying errors.
+   * Includes an innerObject property for wrapping underlying errors.
    */
   export class PryvError extends globalThis.Error {
-    constructor(message: string, innerError?: globalThis.Error | object);
+    constructor(message: string, innerObject?: globalThis.Error | object);
     name: 'PryvError';
-    innerError?: globalThis.Error | object;
+    innerObject?: globalThis.Error | object;
   }
 
   export type StreamsQuery = {

@@ -9,7 +9,7 @@
  * @property {pryv.Connection} Connection - To interact with an individual's (user) data set
  * @property {pryv.Browser} Browser - Browser Tools - Access request helpers and visuals (button)
  * @property {pryv.utils} utils - Exposes some utils for HTTP calls and tools to manipulate Pryv's API endpoints
- * @property {pryv.PryvError} PryvError - Custom error class with innerError support
+ * @property {pryv.PryvError} PryvError - Custom error class with innerObject support
  */
 module.exports = {
   Service: require('./Service'),

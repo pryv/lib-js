@@ -111,12 +111,12 @@ class Connection {
       result[0].error ||
       (expectedKey != null && result[0][expectedKey] == null)
     ) {
-      const innerError = result[0]?.error || result;
+      const innerObject = result[0]?.error || result;
       throw new PryvError(
         `Error for api method: "${method}" with params: ${JSON.stringify(
           params
-        )} >> Result: ${JSON.stringify(innerError)}"`,
-        innerError
+        )} >> Result: ${JSON.stringify(innerObject)}"`,
+        innerObject
       );
     }
     if (expectedKey != null) return result[0][expectedKey];

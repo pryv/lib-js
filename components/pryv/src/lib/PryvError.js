@@ -5,20 +5,20 @@
 
 /**
  * Custom error class for Pryv library errors.
- * Includes an innerError property for wrapping underlying errors.
+ * Includes an innerObject property for wrapping underlying errors.
  * @extends Error
  */
 class PryvError extends Error {
   /**
    * Create a PryvError
    * @param {string} message - Error message
-   * @param {Error|Object} [innerError] - The underlying error or object that caused this error
+   * @param {Error|Object} [innerObject] - The underlying error or object that caused this error
    */
-  constructor (message, innerError) {
+  constructor (message, innerObject) {
     super(message);
     this.name = 'PryvError';
     /** @type {Error|Object|undefined} */
-    this.innerError = innerError;
+    this.innerObject = innerObject;
 
     // Maintains proper stack trace for where error was thrown (only in V8)
     if (Error.captureStackTrace) {

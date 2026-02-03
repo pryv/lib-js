@@ -67,9 +67,9 @@ declare global {
    * Custom error class for Pryv library errors
    */
   class PryvError extends Error {
-    constructor(message: string, innerError?: Error | object);
+    constructor(message: string, innerObject?: Error | object);
     name: 'PryvError';
-    innerError?: Error | object;
+    innerObject?: Error | object;
   }
 }
 
