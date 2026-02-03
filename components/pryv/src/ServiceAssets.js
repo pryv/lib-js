@@ -25,9 +25,9 @@ class ServiceAssets {
   }
 
   /**
-   * Load Assets definition
-   * @param {string} pryvServiceAssetsSourceUrl
-   * @returns {ServiceAssets}
+   * Load Assets definition from URL
+   * @param {string} pryvServiceAssetsSourceUrl - URL to the assets definition JSON
+   * @returns {Promise<ServiceAssets>} Promise resolving to ServiceAssets instance
    */
   static async setup (pryvServiceAssetsSourceUrl) {
     const { body } = await utils.fetchGet(pryvServiceAssetsSourceUrl);
@@ -110,6 +110,7 @@ class ServiceAssets {
 
   /**
    * Get HTML for Login Button
+   * @returns {Promise<string>} Promise resolving to HTML string
    */
   async loginButtonGetHTML () {
     const { text } = await utils.fetchGetText(this.relativeURL(this._assets['lib-js'].buttonSignIn.html));
@@ -118,6 +119,7 @@ class ServiceAssets {
 
   /**
    * Get Messages strings for Login Button
+   * @returns {Promise<Object.<string, string>>} Promise resolving to messages object
    */
   async loginButtonGetMessages () {
     const { body } = await utils.fetchGet(this.relativeURL(this._assets['lib-js'].buttonSignIn.messages));

@@ -51,10 +51,9 @@ class Connection {
   }
 
   /**
-   * get username.
-   * It's async as in it constructed from access info
-   * @param {*} arrayOfAPICalls
-   * @param {*} progress
+   * Get username for this connection.
+   * It's async as it's constructed from access info.
+   * @returns {Promise<string>} Promise resolving to the username
    */
   async username () {
     const accessInfo = await this.accessInfo();
@@ -67,8 +66,9 @@ class Connection {
   }
 
   /**
-   * get access info
-   * It's async as it is constructed with get function.
+   * Get access info for this connection.
+   * It's async as it is fetched from the API.
+   * @returns {Promise<AccessInfo>} Promise resolving to the access info
    */
   async accessInfo () {
     return this.get('access-info', null);
@@ -94,11 +94,12 @@ class Connection {
   }
 
   /**
-   * Make one api Api call
-   * @param {string} method - methodId
-   * @param {Object|Array} [params] - the params associated with this methodId
-   * @param {string} [resultKey] - if given, returns the value or throws an error if not present
-   * @throws {Error} if .error is present the response
+   * Make one API call
+   * @param {string} method - Method ID (e.g., 'events.get', 'streams.create')
+   * @param {Object|Array} [params={}] - The params associated with this method
+   * @param {string} [expectedKey] - If given, returns the value of this key or throws an error if not present
+   * @returns {Promise<Object>} Promise resolving to the API result or the value of expectedKey
+   * @throws {Error} If .error is present in the response or expectedKey is missing
    */
   async apiOne (method, params = {}, expectedKey) {
     const result = await this.api([{ method, params }]);
@@ -122,9 +123,10 @@ class Connection {
 
   /**
    * Revoke : Delete the accessId
-   * - Do not thow error if access is already revoked, just return null;
-   * @param {boolean} [throwOnFail = true] - if set to false do not throw Error on failure
-   * @param {Connection} [usingConnection] - specify which connection issues the revoke, might be necessary when selfRovke
+   * - Do not throw error if access is already revoked, just return null;
+   * @param {boolean} [throwOnFail=true] - if set to false do not throw Error on failure
+   * @param {Connection} [usingConnection] - specify which connection issues the revoke, might be necessary when selfRevoke
+   * @returns {Promise<Object|null>} Promise resolving to deletion result or null if already revoked/failed
    */
   async revoke (throwOnFail = true, usingConnection) {
     usingConnection = usingConnection || this;
@@ -212,33 +214,38 @@ class Connection {
   }
 
   /**
-   * Post to API return results
-   * @param {(Array | Object)} data
-   * @param {string} path
-   * @returns {Promise<Array|Object>} Promise to result.body
+   * Post to API and return results
+   * @param {string} path - API path
+   * @param {(Array | Object)} data - Data to post
+   * @returns {Promise<Object|Object[]>} Promise to result.body
    */
   async post (path, data) {
     const now = getTimestamp();
-    const res = await this.postFetch(path, data);
+    const res = await this._postFetch(path, data);
     this._handleMeta(res.body, now);
     return res.body;
   }
 
   /**
+   * @private
    * Post object as JSON to API
-   * @param {Array | Object} data
-   * @param {string} path
+   * @param {string} path - API path
+   * @param {Array | Object} data - Data to post as JSON
+   * @returns {Promise<{response: Response, body: Object|Object[]}>} Promise to response and body
    */
-  async postFetch (path, data) {
-    return this.postFetchRaw(path, JSON.stringify(data), 'application/json');
+  async _postFetch (path, data) {
+    return this._postFetchRaw(path, JSON.stringify(data), 'application/json');
   }
 
   /**
+   * @private
    * Raw Post to API
-   * @param {Array | Object} data
-   * @param {string} path
+   * @param {string} path - API path
+   * @param {any} data - Raw data to post
+   * @param {string} [contentType] - Content-Type header (optional, allows fetch to set it for FormData)
+   * @returns {Promise<{response: Response, body: Object|Object[]}>} Promise to response and body
    */
-  async postFetchRaw (path, data, contentType) {
+  async _postFetchRaw (path, data, contentType) {
     const headers = {
       Authorization: this.token,
       Accept: 'application/json'
@@ -258,23 +265,26 @@ class Connection {
   }
 
   /**
-   * Post to API return results
-   * @param {Object} queryParams
-   * @param {string} path
-   * @returns {Promise<Array|Object>}  Promise to result.body
+   * GET from API and return results
+   * @param {string} path - API path
+   * @param {Object} [queryParams] - Query parameters
+   * @returns {Promise<Object|Object[]>} Promise to result.body
    */
   async get (path, queryParams) {
     const now = getTimestamp();
-    const res = await this.getFetchRaw(path, queryParams);
+    const res = await this._getFetchRaw(path, queryParams);
     this._handleMeta(res.body, now);
     return res.body;
   }
 
   /**
-   * @param {Object} queryParams
-   * @param {string} path
+   * @private
+   * Raw GET from API
+   * @param {string} path - API path
+   * @param {Object} [queryParams={}] - Query parameters
+   * @returns {Promise<{response: Response, body: Object|Object[]}>} Promise to response and body
    */
-  async getFetchRaw (path, queryParams = {}) {
+  async _getFetchRaw (path, queryParams = {}) {
     path = path || '';
     let queryStr = '';
     if (queryParams && Object.keys(queryParams).length > 0) {
@@ -344,7 +354,7 @@ class Connection {
     formData.append('file', fileBlob, fileName);
 
     const now = getTimestamp();
-    const { body } = await this.postFetchRaw('events', formData);
+    const { body } = await this._postFetchRaw('events', formData);
     this._handleMeta(body, now);
     return body;
   }
@@ -375,7 +385,7 @@ class Connection {
    */
   async createEventWithFormData (event, formData) {
     formData.append('event', JSON.stringify(event));
-    const { body } = await this.postFetchRaw('events', formData);
+    const { body } = await this._postFetchRaw('events', formData);
     return body;
   }
 
@@ -390,9 +400,9 @@ class Connection {
   }
 
   /**
-   * API endpoint of this connection
+   * API endpoint of this connection (includes token if present)
    * @readonly
-   * @property {APIEndpoint} deltaTime
+   * @property {APIEndpoint} apiEndpoint
    */
   get apiEndpoint () {
     return utils.buildAPIEndpoint(this);

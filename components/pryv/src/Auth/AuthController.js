@@ -7,13 +7,15 @@ const AuthStates = require('./AuthStates');
 const Messages = require('./LoginMessages');
 
 /**
- * @private
+ * Controller for authentication flow
+ * @memberof pryv.Auth
  */
 class AuthController {
   /**
-   *
-   * @param {*} settings
-   * @param {*} service
+   * Create an AuthController
+   * @param {AuthSettings} settings - Authentication settings
+   * @param {Service} service - Pryv service instance
+   * @param {CustomLoginButton} loginButton - Login button implementation
    */
   constructor (settings, service, loginButton) {
     this.settings = settings;
@@ -50,9 +52,8 @@ class AuthController {
   }
 
   /**
-   * async function to call right after instanciating object
-   *
-   * @returns {Service}
+   * Initialize the auth controller. Call this right after instantiation.
+   * @returns {Promise<Service>} Promise resolving to the Service instance
    */
   async init () {
     this.serviceInfo = this.service.infoSync();
@@ -87,7 +88,8 @@ class AuthController {
   }
 
   /**
-   * Triggered when button is pressed
+   * Handle button click - triggers appropriate action based on current state
+   * @returns {Promise<void>}
    */
   async handleClick () {
     if (isAuthorized.call(this)) {
@@ -113,11 +115,12 @@ class AuthController {
   }
 
   /**
-   * Used only to retrieve returnUrl in browser environments
-   *
-   * @param {*} returnURL
-   * @param {*} windowLocationForTest
-   * @param {*} navigatorForTests
+   * Compute the return URL for authentication redirect.
+   * Used only in browser environments.
+   * @param {string} [returnURL] - The return URL setting ('auto#', 'self#', or custom URL)
+   * @param {string} [windowLocationForTest] - Mock window.location.href for testing
+   * @param {string|Navigator} [navigatorForTests] - Mock navigator for testing
+   * @returns {string|boolean} The computed return URL, or false if using popup mode
    */
   getReturnURL (
     returnURL,
@@ -154,6 +157,10 @@ class AuthController {
     }
   }
 
+  /**
+   * Start the authentication request and polling process
+   * @returns {Promise<void>}
+   */
   async startAuthRequest () {
     this.state = await postAccess.call(this);
 

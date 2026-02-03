@@ -12,9 +12,11 @@ const regexSchemaAndPath = /(.+):\/\/(.+)/gm;
  */
 const utils = module.exports = {
   /**
-   * @param {string} url
-   * @param {{}} [queryParams={}]
-   * @param {{}} [headers={}]
+   * Perform a GET request and parse JSON response
+   * @param {string} url - URL to fetch
+   * @param {Object} [queryParams={}] - Query parameters to append
+   * @param {Object} [headers={}] - Additional headers
+   * @returns {Promise<{response: Response, body: Object}>} Promise resolving to response and parsed body
    */
   async fetchGet (url, queryParams = {}, headers = {}) {
     let queryStr = '';
@@ -28,8 +30,10 @@ const utils = module.exports = {
   },
 
   /**
-   * @param {string} url
-   * @param {{}} [headers={}]
+   * Perform a GET request and return text response
+   * @param {string} url - URL to fetch
+   * @param {Object} [headers={}] - Additional headers
+   * @returns {Promise<{response: Response, text: string}>} Promise resolving to response and text body
    */
   async fetchGetText (url, headers = {}) {
     const myHeaders = Object.assign({ Accept: 'text/html' }, headers);
@@ -39,9 +43,11 @@ const utils = module.exports = {
   },
 
   /**
-   * @param {string} url
-   * @param {{}} [data]
-   * @param {{}} [headers={}]
+   * Perform a POST request with JSON data
+   * @param {string} url - URL to post to
+   * @param {Object} [data] - Data to send as JSON
+   * @param {Object} [headers={}] - Additional headers
+   * @returns {Promise<{response: Response, body: Object}>} Promise resolving to response and parsed body
    */
   async fetchPost (url, data, headers = {}) {
     const myHeaders = Object.assign({
@@ -121,8 +127,10 @@ const utils = module.exports = {
   },
 
   /**
-   *
-   * @param {Object} [navigatorForTests] mock navigator var only for testing purposes
+   * Check if the browser is running on a mobile device or tablet
+   * @memberof pryv.utils
+   * @param {string|Navigator} [navigator] - Navigator object or user agent string (for testing)
+   * @returns {boolean} True if mobile or tablet
    */
   browserIsMobileOrTablet: function (navigator) {
     if (navigator == null) {
@@ -134,11 +142,23 @@ const utils = module.exports = {
     return check;
   },
 
+  /**
+   * Remove Pryv-specific query parameters from URL
+   * @memberof pryv.utils
+   * @param {string} url - URL to clean
+   * @returns {string} URL without prYv* parameters
+   */
   cleanURLFromPrYvParams: function (url) {
     const PRYV_REGEXP = /[?#&]+prYv([^=&]+)=([^&]*)/g;
     return url.replace(PRYV_REGEXP, '');
   },
 
+  /**
+   * Extract query parameters from a URL
+   * @memberof pryv.utils
+   * @param {string} url - URL to parse
+   * @returns {Object.<string, string>} Object with key-value pairs of query parameters
+   */
   getQueryParamsFromURL: function (url) {
     const vars = {};
     const QUERY_REGEXP = /[?#&]+([^=&]+)=([^&]*)/g;

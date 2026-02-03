@@ -70,7 +70,7 @@ class Service {
 
   /**
    * Check if a service supports High Frequency Data Sets
-   * @return true if yes
+   * @returns {Promise<boolean>} Promise resolving to true if HF is supported
    */
   async supportsHF () {
     const infos = await this.info();
@@ -78,8 +78,8 @@ class Service {
   }
 
   /**
-   * Check if a service has username in the hostname or in the path of the api
-   * @return true if the service does not rely on DNS to find a host related to a username
+   * Check if a service has username in the hostname or in the path of the API.
+   * @returns {Promise<boolean>} Promise resolving to true if the service does not rely on DNS to find a host related to a username
    */
   async isDnsLess () {
     const infos = await this.info();
@@ -134,9 +134,9 @@ class Service {
 
   /**
    * Return an API endpoint from a username and token
-   * @param {string} username
-   * @param {string} [token]
-   * @return {APIEndpoint}
+   * @param {string} username - The username
+   * @param {string} [token] - Optional authorization token
+   * @returns {Promise<APIEndpoint>} Promise resolving to the API endpoint URL
    */
   async apiEndpointFor (username, token) {
     const serviceInfo = await this.info();
@@ -144,12 +144,12 @@ class Service {
   }
 
   /**
-   * Return an API endpoint from a username and token and a ServiceInfo.
-   * This is method is rarely used. See **apiEndpointFor** as an alternative.
-   * @param {ServiceInfo} serviceInfo
-   * @param {string} username
-   * @param {string} [token]
-   * @return {APIEndpoint}
+   * Return an API endpoint from a username, token and ServiceInfo.
+   * This method is rarely used. See **apiEndpointFor** as an alternative.
+   * @param {ServiceInfo} serviceInfo - The service info object containing API URL template
+   * @param {string} username - The username
+   * @param {string} [token] - Optional authorization token
+   * @returns {APIEndpoint} The constructed API endpoint URL
    */
   static buildAPIEndpoint (serviceInfo, username, token) {
     const endpoint = serviceInfo.api.replace('{username}', username);

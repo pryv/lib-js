@@ -2,8 +2,9 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
-
-## [Unreleased](https://github.com/pryv/lib-js/compare/2.4.5...HEAD)
+## [3.0.0](https://github.com/pryv/lib-js/compare/2.4.5...3.0.0)
+- Removing superagent dependency (breaking change)
+- Enhancing test suite
 
 ## [2.4.5](https://github.com/pryv/lib-js/compare/2.3.1...2.4.5)
 - Enhanced typescripts definition

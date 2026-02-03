@@ -609,16 +609,18 @@ declare module 'pryv' {
       values: Array<string | number>,
     ): Promise<any>;
     accessInfo(): Promise<AccessInfo>;
-    revoke(throwOnFail?: boolean, usingConnection?: Connection)
+    revoke(throwOnFail?: boolean, usingConnection?: Connection): Promise<any>;
     readonly deltaTime: number;
     readonly apiEndpoint: string;
+    readonly token: string | null;
+    readonly endpoint: string;
+    options: { chunkSize: number };
 
     post(
       path: string,
       data: Object | any[],
-      queryParams: Object,
     ): Promise<Object | Object[]>;
-    get(path: string, queryParams: Object): Promise<Object | Object[]>;
+    get(path: string, queryParams?: Object): Promise<Object | Object[]>;
   }
 
   export type serviceCustomizations = {
@@ -637,11 +639,15 @@ declare module 'pryv' {
     support: string;
     terms: string;
     eventTypes: string;
-    version: string;
-    assets: {
+    version?: string;
+    assets?: {
       definitions: string;
     };
-    serial: string;
+    serial?: string;
+    features?: {
+      noHF?: boolean;
+      [key: string]: any;
+    };
   };
 
   export type AssetsConfig = {
@@ -684,7 +690,7 @@ declare module 'pryv' {
     setServiceInfo(serviceInfo: Partial<ServiceInfo>): void;
     assets(forceFetch?: boolean): Promise<ServiceAssets | null>;
     infoSync(): ServiceInfo | null;
-    apiEndpointFor(username: string, token: string): Promise<string>;
+    apiEndpointFor(username: string, token?: string): Promise<string>;
     login(
       username: string,
       password: string,
@@ -694,6 +700,12 @@ declare module 'pryv' {
 
     supportsHF(): Promise<boolean>;
     isDnsLess(): Promise<boolean>;
+
+    static buildAPIEndpoint(
+      serviceInfo: ServiceInfo,
+      username: string,
+      token?: string,
+    ): string;
   }
 
   export type AuthRequestedPermission = {
@@ -703,13 +715,19 @@ declare module 'pryv' {
   };
 
   export type States =
+    | 'ERROR'
     | 'LOADING'
     | 'INITIALIZED'
     | 'NEED_SIGNIN'
     | 'ACCEPTED'
-    | 'SIGNOUT';
+    | 'SIGNOUT'
+    | 'REFUSED';
 
   export type StateChangeTypes = {
+    ERROR: {
+      message?: string;
+      error?: any;
+    };
     LOADING: {};
     INITIALIZED: {
       serviceInfo: ServiceInfo;
@@ -739,6 +757,7 @@ declare module 'pryv' {
       token: string;
     };
     SIGNOUT: {};
+    REFUSED: {};
   };
 
   export type StateChange<K extends States> = StateChangeTypes[K] & {
@@ -790,6 +809,28 @@ declare module 'pryv' {
     saveAuthorizationData?: (authData: any) => void;
     deleteAuthorizationData?: () => Promise<void>;
     finishAuthProcessAfterRedirection?: (authController: AuthController) => Promise<void>;
+  };
+
+  export class LoginButton implements CustomLoginButton {
+    constructor(authSettings: AuthSettings, service: Service);
+    auth: AuthController;
+    authSettings: AuthSettings;
+    service: Service;
+    serviceInfo: ServiceInfo;
+    languageCode: string;
+    messages: KeyValue;
+    text: string;
+    popup?: Window | null;
+    loginButtonSpan?: HTMLElement;
+    loginButtonText?: HTMLElement;
+
+    init(): Promise<Service>;
+    onClick(): void;
+    onStateChange(state: AuthStatePayload): Promise<void>;
+    getAuthorizationData(): any;
+    saveAuthorizationData(authData: any): void;
+    deleteAuthorizationData(): Promise<void>;
+    finishAuthProcessAfterRedirection(authController: AuthController): Promise<void>;
   }
 
   export class AuthController {
@@ -798,11 +839,20 @@ declare module 'pryv' {
       service: Service,
       loginButton: CustomLoginButton,
     );
+    settings: AuthSettings;
+    service: Service;
+    serviceInfo: ServiceInfo | null;
+    assets: ServiceAssets | null;
+    loginButton: CustomLoginButton;
+    languageCode: string;
+    messages: KeyValue;
+    stateChangeListeners: Array<(state: AuthStatePayload) => void>;
+
     init(): Promise<Service>;
     stopAuthRequest(msg: string): void;
     handleClick(): Promise<void>;
     getReturnURL(
-      returnURL: string,
+      returnURL?: string,
       windowLocationForTest?: string,
       navigatorForTests?: string,
     ): string | boolean;
@@ -814,15 +864,15 @@ declare module 'pryv' {
   export const Auth: {
     setupAuth: SetupAuth;
     AuthStates: AuthStates;
-    AuthController: AuthController;
+    AuthController: typeof AuthController;
   }
 
   export type getServiceInfoFromURL = (url: string) => string;
 
   export const Browser: {
-    LoginButton: CustomLoginButton;
+    LoginButton: typeof LoginButton;
     CookieUtils: {
-      set(cookieKey: string, value: any, expireInDays: number): void;
+      set(cookieKey: string, value: any, expireInDays?: number): void;
       get(cookieKey: string): any;
       del(cookieKey: string): void;
     };
@@ -840,9 +890,13 @@ declare module 'pryv' {
     isBrowser(): boolean;
     extractTokenAndAPIEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
     buildAPIEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
-    browserIsMobileOrTablet(navigator: string): boolean;
+    browserIsMobileOrTablet(navigator?: string | Navigator): boolean;
     cleanURLFromPrYvParams(url: string): string;
     getQueryParamsFromURL(url: string): KeyValue;
+    /** @deprecated Use extractTokenAndAPIEndpoint instead */
+    extractTokenAndApiEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
+    /** @deprecated Use buildAPIEndpoint instead */
+    buildPryvApiEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
   }
 
   type version = string;
@@ -856,9 +910,9 @@ declare module 'pryv' {
       AuthController: typeof AuthController;
     };
     Browser: {
-      LoginButton: CustomLoginButton;
+      LoginButton: typeof LoginButton;
       CookieUtils: {
-        set(cookieKey: string, value: any, expireInDays: number): void;
+        set(cookieKey: string, value: any, expireInDays?: number): void;
         get(cookieKey: string): any;
         del(cookieKey: string): void;
       };
@@ -870,7 +924,7 @@ declare module 'pryv' {
       isBrowser(): boolean;
       extractTokenAndAPIEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
       buildAPIEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
-      browserIsMobileOrTablet(navigator: string): boolean;
+      browserIsMobileOrTablet(navigator?: string | Navigator): boolean;
       cleanURLFromPrYvParams(url: string): string;
       getQueryParamsFromURL(url: string): KeyValue;
     };
