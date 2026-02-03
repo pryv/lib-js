@@ -35,6 +35,7 @@
     "@pryv/dev-utils": "github:pryv/dev-utils",
     "babel-loader": "^9.1.2",
     "backloop.dev": "latest",
+    "baseline-browser-mapping": "^2.9.19",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
     "copy-webpack-plugin": "^11.0.0",

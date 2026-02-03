@@ -47,7 +47,7 @@ describe('Socket.IO', function () {
       try {
         await conn.socket.open();
       } catch (e) {
-        if (e.message === 'Not Found' || e.message.startsWith('getaddrinfo ENOTFOUND')) {
+        if (e.message === 'Not Found' || e.message.startsWith('getaddrinfo ENOTFOUND') || e.message === 'fetch failed') {
           return;
         }
         if (typeof document !== 'undefined') { // in browser
@@ -64,7 +64,7 @@ describe('Socket.IO', function () {
       try {
         await conn.socket.open();
       } catch (e) {
-        return expect(e.response.text).to.include('Cannot find access from token.');
+        return expect(e.message).to.include('Cannot find access from token.');
       }
       throw new Error('Should throw an error');
     });

@@ -52,7 +52,13 @@ module.exports = [
       filename: '[name]-es6.js',
       path: distPath()
     },
-    devtool: 'source-map'
+    devtool: 'source-map',
+    resolve: {
+      fallback: {
+        fs: false,
+        path: false
+      }
+    }
   },
   { // ES5
     mode: 'production',
@@ -79,7 +85,13 @@ module.exports = [
       })
     ],
     devtool: 'source-map',
-    module: webpackBabelConfig
+    module: webpackBabelConfig,
+    resolve: {
+      fallback: {
+        fs: false,
+        path: false
+      }
+    }
   },
   { // ES5 all-in-one bundle (with socket.io and monitor)
     mode: 'production',

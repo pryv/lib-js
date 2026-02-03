@@ -83,8 +83,8 @@ describe('Service', function () {
         if (isDnsLess) {
           expect(error.message).to.include('Unknown user');
         } else {
-          // fetch throws 'fetch failed' for DNS errors, superagent threw 'getaddrinfo ENOTFOUND'
-          expect(error.message).to.match(/fetch failed|getaddrinfo ENOTFOUND|Request has been terminated/);
+          // fetch throws 'fetch failed'
+          expect(error.message).to.match(/Load failed|fetch failed|getaddrinfo ENOTFOUND|Request has been terminated/);
         }
         return;
       }

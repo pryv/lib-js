@@ -58,6 +58,11 @@ class Connection {
    */
   async username () {
     const accessInfo = await this.accessInfo();
+    if (accessInfo.error) {
+      const err = new Error('Failed fetching accessinfo: ' + accessInfo.error.message);
+      err.innerObject = accessInfo.error;
+      throw err;
+    }
     return accessInfo.user.username;
   }
 
@@ -323,12 +328,16 @@ class Connection {
    * @param {string} filePath
    */
   async createEventWithFile (event, filePath) {
-    const { openAsBlob } = require('fs');
+    const fs = require('fs');
     const path = require('path');
+
+    if (!fs || !path) {
+      throw new Error('createEventWithFile is only available in Node.js. Use createEventWithFormData in browser.');
+    }
 
     const fileName = path.basename(filePath);
     const mimeType = getMimeType(path.extname(filePath));
-    const fileBlob = await openAsBlob(filePath, { type: mimeType });
+    const fileBlob = await fs.openAsBlob(filePath, { type: mimeType });
 
     const formData = new FormData();
     formData.append('event', JSON.stringify(event));
@@ -347,8 +356,7 @@ class Connection {
    * @param {string} fileName
    */
   async createEventWithFileFromBuffer (event, bufferData, filename) {
-    const path = require('path');
-    const mimeType = getMimeType(path.extname(filename));
+    const mimeType = getMimeType(getExtname(filename));
     const fileBlob = bufferData instanceof Blob
       ? bufferData
       : new Blob([bufferData], { type: mimeType });
@@ -442,6 +450,11 @@ const MIME_TYPES = {
 
 function getMimeType (ext) {
   return MIME_TYPES[ext.toLowerCase()] || 'application/octet-stream';
+}
+
+function getExtname (filename) {
+  const lastDot = filename.lastIndexOf('.');
+  return lastDot >= 0 ? filename.slice(lastDot) : '';
 }
 
 // service is require "after" to allow circular require
