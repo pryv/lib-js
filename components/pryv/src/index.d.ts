@@ -1,6 +1,19 @@
 declare module 'pryv' {
   type Timestamp = number;
   type Identifier = string;
+
+  /**
+   * Common metadata returned by all API responses
+   * @see https://api.pryv.com/reference/#in-method-results
+   */
+  export type ApiMeta = {
+    /** API version in format {major}.{minor}.{revision} */
+    apiVersion: string;
+    /** Current server time as Unix timestamp in seconds */
+    serverTime: Timestamp;
+    /** Serial that changes when core or register is updated */
+    serial: string;
+  };
   export type PermissionLevel = 'read' | 'contribute' | 'manage' | 'create-only';
   export type KeyValue = { [key: string]: string | number };
 
@@ -104,7 +117,16 @@ declare module 'pryv' {
   export type HFSeries = {
     format: 'flatJSON';
     fields: string[];
-    points: Array<number | string>;
+    points: Array<Array<number | string>>;
+  };
+
+  /**
+   * Response from adding data points to an HF series event
+   * @see https://api.pryv.com/reference/#add-hf-series-data-points
+   */
+  export type HFSeriesAddResult = {
+    status: 'ok';
+    meta: ApiMeta;
   };
 
   type Run = {
@@ -537,11 +559,7 @@ declare module 'pryv' {
   export type StreamedEventsResult = {
     eventsCount?: number;
     eventsDeletionsCount?: number;
-    meta: {
-      apiVersion: string;
-      serverTime: number;
-      serial: string;
-    };
+    meta: ApiMeta;
   };
 
   export type EventFileCreationParams = Partial<
@@ -604,10 +622,10 @@ declare module 'pryv' {
       filename: string,
     ): Promise<EventAPICallRes>;
     addPointsToHFEvent(
-      id: Identifier,
+      eventId: Identifier,
       fields: string[],
-      values: Array<string | number>,
-    ): Promise<any>;
+      points: Array<Array<number | string>>,
+    ): Promise<HFSeriesAddResult>;
     accessInfo(): Promise<AccessInfo>;
     revoke(throwOnFail?: boolean, usingConnection?: Connection): Promise<any>;
     readonly deltaTime: number;
@@ -726,7 +744,7 @@ declare module 'pryv' {
   export type StateChangeTypes = {
     ERROR: {
       message?: string;
-      error?: any;
+      error?: Error | unknown;
     };
     LOADING: {};
     INITIALIZED: {
@@ -734,11 +752,11 @@ declare module 'pryv' {
     };
     NEED_SIGNIN: {
       authUrl: string;
-      clientData: any;
-      code: number;
+      clientData?: KeyValue;
+      code?: number;
       key: string;
       lang: string;
-      oauthState: any;
+      oauthState?: string;
       poll: string;
       poll_rate_ms: number;
       requestedPermissions: Array<{
@@ -747,22 +765,46 @@ declare module 'pryv' {
         defaultName: string;
       }>;
       requestingAppId: string;
-      returnUrl: any;
-      serviceInfo: ServiceInfo;
+      returnUrl?: string | null;
+      serviceInfo?: ServiceInfo;
     };
     ACCEPTED: {
-      serviceInfo: ServiceInfo;
+      serviceInfo?: ServiceInfo;
       apiEndpoint: string;
       username: string;
-      token: string;
+      token?: string;
     };
     SIGNOUT: {};
-    REFUSED: {};
+    REFUSED: {
+      reasonID?: string;
+      message?: string;
+      serviceInfo?: ServiceInfo;
+    };
   };
 
   export type StateChange<K extends States> = StateChangeTypes[K] & {
     id: K;
     status: K;
+  };
+
+  /**
+   * Response from auth-request POST endpoint
+   * @see https://pryv.github.io/reference/#auth-request
+   */
+  export type AuthRequestResponse = {
+    status: 'NEED_SIGNIN';
+    authUrl: string;
+    /** @deprecated Use authUrl instead */
+    url?: string;
+    key: string;
+    poll: string;
+    poll_rate_ms: number;
+    requestingAppId: string;
+    requestedPermissions: AuthRequestedPermission[];
+    lang?: string;
+    returnURL?: string;
+    clientData?: KeyValue;
+    serviceInfo?: ServiceInfo;
   };
 
   export type AuthSettings = {
@@ -775,15 +817,23 @@ declare module 'pryv' {
       requestedPermissions: AuthRequestedPermission[];
       returnUrl?: string | boolean;
       referer?: string;
-      clientData?: Object;
+      clientData?: KeyValue;
+      deviceName?: string;
+      expireAfter?: number;
+      serviceInfo?: Partial<ServiceInfo>;
     };
   };
+
+  export type LoginButtonConstructor = new (
+    authSettings: AuthSettings,
+    service: Service,
+  ) => CustomLoginButton;
 
   export type SetupAuth = (
     settings: AuthSettings,
     serviceInfoUrl: string,
     serviceCustomizations?: serviceCustomizations,
-    humanInteraction?: any,
+    humanInteraction?: LoginButtonConstructor,
   ) => Promise<Service>;
 
   export type AuthStates = {
@@ -799,14 +849,20 @@ declare module 'pryv' {
   type AuthStatePayload = {
     status: AuthStates[keyof AuthStates];
     message?: string;
+    error?: Error | unknown;
   };
+
+  export type StoredAuthorizationData = {
+    apiEndpoint: string;
+    username: string;
+  } | null;
 
   export type CustomLoginButton = {
     init?: () => Promise<Service>;
-    getAuthorizationData(): any;
+    getAuthorizationData(): StoredAuthorizationData;
     onStateChange(state: AuthStatePayload): Promise<void>;
     onClick(): void;
-    saveAuthorizationData?: (authData: any) => void;
+    saveAuthorizationData?: (authData: StoredAuthorizationData) => void;
     deleteAuthorizationData?: () => Promise<void>;
     finishAuthProcessAfterRedirection?: (authController: AuthController) => Promise<void>;
   };
@@ -827,8 +883,8 @@ declare module 'pryv' {
     init(): Promise<Service>;
     onClick(): void;
     onStateChange(state: AuthStatePayload): Promise<void>;
-    getAuthorizationData(): any;
-    saveAuthorizationData(authData: any): void;
+    getAuthorizationData(): StoredAuthorizationData;
+    saveAuthorizationData(authData: StoredAuthorizationData): void;
     deleteAuthorizationData(): Promise<void>;
     finishAuthProcessAfterRedirection(authController: AuthController): Promise<void>;
   }
@@ -856,7 +912,7 @@ declare module 'pryv' {
       windowLocationForTest?: string,
       navigatorForTests?: string,
     ): string | boolean;
-    startAuthRequest(): Promise<any>;
+    startAuthRequest(): Promise<AuthRequestResponse>;
     set state(newState: AuthStatePayload);
     get state(): AuthStatePayload;
   }
@@ -872,8 +928,8 @@ declare module 'pryv' {
   export const Browser: {
     LoginButton: typeof LoginButton;
     CookieUtils: {
-      set(cookieKey: string, value: any, expireInDays?: number): void;
-      get(cookieKey: string): any;
+      set<T = unknown>(cookieKey: string, value: T, expireInDays?: number): void;
+      get<T = unknown>(cookieKey: string): T | undefined;
       del(cookieKey: string): void;
     };
     AuthStates: AuthStates;
@@ -912,8 +968,8 @@ declare module 'pryv' {
     Browser: {
       LoginButton: typeof LoginButton;
       CookieUtils: {
-        set(cookieKey: string, value: any, expireInDays?: number): void;
-        get(cookieKey: string): any;
+        set<T = unknown>(cookieKey: string, value: T, expireInDays?: number): void;
+        get<T = unknown>(cookieKey: string): T | undefined;
         del(cookieKey: string): void;
       };
       AuthStates: AuthStates;

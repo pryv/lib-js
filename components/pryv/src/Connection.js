@@ -301,8 +301,12 @@ class Connection {
   }
 
   /**
-   * ADD Data Points to HFEvent (flatJSON format)
-   * https://api.pryv.com/reference/#add-hf-series-data-points
+   * Add data points to an HF (High Frequency) series event (flatJSON format)
+   * @param {string} eventId - The HF event ID
+   * @param {string[]} fields - Array of field names for the series
+   * @param {Array<Array<number|string>>} points - Array of data points, each point is an array of values
+   * @returns {Promise<HFSeriesAddResult>} Promise resolving to status response
+   * @see https://api.pryv.com/reference/#add-hf-series-data-points
    */
   async addPointsToHFEvent (eventId, fields, points) {
     const res = await this.post('events/' + eventId + '/series', {

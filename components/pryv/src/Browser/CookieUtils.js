@@ -18,9 +18,10 @@ module.exports = {
 /**
   * Set a local cookie
   * @memberof pryv.Browser.CookieUtils
+  * @template T
   * @param {string} cookieKey - The key for the cookie
-  * @param {mixed} value - The Value
-  * @param {number} expireInDays - Expiration date in days from now
+  * @param {T} value - The value (will be JSON stringified)
+  * @param {number} [expireInDays=365] - Expiration date in days from now
   */
 function set (cookieKey, value, expireInDays) {
   if (!utils.isBrowser()) return;
@@ -41,7 +42,9 @@ function set (cookieKey, value, expireInDays) {
 /**
  * Return the value of a local cookie
  * @memberof pryv.Browser.CookieUtils
- * @param cookieKey - The key
+ * @template T
+ * @param {string} cookieKey - The key
+ * @returns {T|undefined} The parsed cookie value or undefined if not found
  */
 function get (cookieKey) {
   const name = encodeURIComponent(cookieKey);
@@ -54,7 +57,7 @@ function get (cookieKey) {
 /**
  * Delete a local cookie
  * @memberof pryv.Browser.CookieUtils
- * @param cookieKey - The key
+ * @param {string} cookieKey - The key
  */
 function del (cookieKey) {
   set(cookieKey, { deleted: true }, -1);

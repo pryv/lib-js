@@ -159,7 +159,8 @@ class AuthController {
 
   /**
    * Start the authentication request and polling process
-   * @returns {Promise<void>}
+   * @returns {Promise<AuthRequestResponse>} Promise resolving to the auth request response
+   * @see https://pryv.github.io/reference/#auth-request
    */
   async startAuthRequest () {
     this.state = await postAccess.call(this);
