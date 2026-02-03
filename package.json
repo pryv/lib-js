@@ -17,9 +17,6 @@
   },
   "license": "BSD-3-Clause",
   "author": "Pryv S.A. <info@pryv.com> (https://pryv.com)",
-  "engines": {
-    "node": ">=20.0.0"
-  },
   "workspaces": [
     "components/*"
   ],
@@ -50,6 +47,9 @@
     "webpack": "^5.76.0",
     "webpack-cli": "^5.0.1",
     "zombie": "^6.1.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "semistandard": {
     "ignore": [
