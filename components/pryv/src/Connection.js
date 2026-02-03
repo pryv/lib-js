@@ -260,7 +260,7 @@ class Connection {
    */
   async get (path, queryParams) {
     const now = getTimestamp();
-    const res = await this.getRaw(path, queryParams);
+    const res = await this.getFetchRaw(path, queryParams);
     this._handleMeta(res.body, now);
     return res.body;
   }
@@ -269,15 +269,21 @@ class Connection {
    * Raw Get to API return superagent object
    * @param {Object} queryParams
    * @param {string} path
-   * @returns {request.superagent}  Promise from superagent's get request
    */
-  getRaw (path, queryParams) {
+  async getFetchRaw (path, queryParams = {}) {
     path = path || '';
-    return utils.superagent
-      .get(this.endpoint + path)
-      .set('Authorization', this.token)
-      .set('accept', 'json')
-      .query(queryParams);
+    let queryStr = '';
+    if (queryParams && Object.keys(queryParams).length > 0) {
+      queryStr = '?' + new URLSearchParams(queryParams).toString();
+    }
+    const response = await fetch(this.endpoint + path + queryStr, {
+      headers: {
+        Authorization: this.token,
+        Accept: 'application/json'
+      }
+    });
+    const body = await response.json();
+    return { response, body };
   }
 
   /**
