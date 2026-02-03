@@ -59,9 +59,11 @@ class Connection {
     const accessInfo = await this.accessInfo();
     if (accessInfo.error) {
       const err = new Error('Failed fetching accessinfo: ' + accessInfo.error.message);
+      // @ts-ignore - custom error property
       err.innerObject = accessInfo.error;
       throw err;
     }
+    // @ts-ignore - username is always a string
     return accessInfo.user.username;
   }
 
@@ -114,6 +116,7 @@ class Connection {
           params
         )} >> Result: ${JSON.stringify(innerObject)}"`
       );
+      // @ts-ignore - custom error property
       error.innerObject = innerObject;
       throw error;
     }
@@ -314,7 +317,7 @@ class Connection {
       fields,
       points
     });
-    if (!res.status === 'ok') {
+    if (res.status !== 'ok') {
       throw new Error('Failed loading serie: ' + JSON.stringify(res.status));
     }
     return res;
@@ -365,14 +368,15 @@ class Connection {
 
   /**
    * Create an event from a Buffer
-   * @param {Event} event
+   * @param {Object} event
    * @param {Buffer|Blob} bufferData - Buffer for node, Blob for browser
-   * @param {string} fileName
+   * @param {string} filename
    */
   async createEventWithFileFromBuffer (event, bufferData, filename) {
     const mimeType = getMimeType(getExtname(filename));
     const fileBlob = bufferData instanceof Blob
       ? bufferData
+      // @ts-ignore - Buffer is valid for Blob in Node.js
       : new Blob([bufferData], { type: mimeType });
 
     const formData = new FormData();

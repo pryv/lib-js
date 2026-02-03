@@ -74,6 +74,7 @@ class AuthController {
     }
 
     if (loginButton != null && loginButton.finishAuthProcessAfterRedirection != null) {
+      // @ts-ignore - this is a valid AuthController
       await loginButton.finishAuthProcessAfterRedirection(this);
     }
 
@@ -159,18 +160,22 @@ class AuthController {
 
   /**
    * Start the authentication request and polling process
-   * @returns {Promise<AuthRequestResponse>} Promise resolving to the auth request response
+   * @returns {Promise<void>}
    * @see https://pryv.github.io/reference/#auth-request
    */
   async startAuthRequest () {
+    // @ts-ignore - postAccess uses .call(this) for context
     this.state = await postAccess.call(this);
 
     await doPolling.call(this);
 
+    /** @this {AuthController} */
     async function postAccess () {
       try {
         const { response, body } = await utils.fetchPost(
+          // @ts-ignore - this is bound via .call()
           this.serviceInfo.access,
+          // @ts-ignore - this is bound via .call()
           this.settings.authRequest
         );
         if (!response.ok) {
@@ -187,14 +192,18 @@ class AuthController {
       }
     }
 
+    /** @this {AuthController} */
     async function doPolling () {
-      if (this.state.status !== AuthStates.NEED_SIGNIN) {
+      // @ts-ignore - this is bound via .call()
+      if (this.state?.status !== AuthStates.NEED_SIGNIN) {
         return;
       }
-      const pollResponse = await pollAccess(this.state.poll);
+      // @ts-ignore - this is bound via .call()
+      const pollResponse = await pollAccess(this.state?.poll);
 
       if (pollResponse.status === AuthStates.NEED_SIGNIN) {
-        setTimeout(await doPolling.bind(this), this.state.poll_rate_ms);
+        // @ts-ignore - this is bound via .call()
+        setTimeout(await doPolling.bind(this), this.state?.poll_rate_ms);
       } else {
         this.state = pollResponse;
       }

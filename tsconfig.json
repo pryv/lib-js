@@ -21,6 +21,7 @@
     }
   },
   "include": [
+    "components/pryv/src/globals.d.ts",
     "components/*/src/**/*.js",
     "components/*/src/**/*.d.ts"
   ],

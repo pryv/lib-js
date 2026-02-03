@@ -52,7 +52,7 @@ class Service {
    *  - name of a platform
    *    `const serviceName = await service.info().name`
    * @see ServiceInfo For details on available properties.
-   * @param {boolean?} forceFetch If true, will force fetching service info.
+   * @param {boolean} [forceFetch] If true, will force fetching service info.
    * @returns {Promise<ServiceInfo>} Promise to Service info Object
    */
   async info (forceFetch) {
@@ -63,6 +63,7 @@ class Service {
         baseServiceInfo = body;
       }
       Object.assign(baseServiceInfo, this._pryvServiceCustomizations);
+      // @ts-ignore - baseServiceInfo is populated from body or customizations
       this.setServiceInfo(baseServiceInfo);
     }
     return this._serviceInfo;
@@ -107,8 +108,8 @@ class Service {
 
   /**
    * Return assets property content
-   * @param {boolean?} forceFetch If true, will force fetching service info.
-   * @returns {Promise<ServiceAssets>} Promise to ServiceAssets
+   * @param {boolean} [forceFetch] If true, will force fetching service info.
+   * @returns {Promise<ServiceAssets|null>} Promise to ServiceAssets
    */
   async assets (forceFetch) {
     if (!forceFetch && this._assets) {
@@ -214,5 +215,7 @@ const Connection = require('./Connection');
  * @property {string} terms The terms and conditions, in plain text or the URL displaying them.
  * @property {string} eventTypes The URL of the list of validated event types.
  * @property {Object} [assets] Holder for service specific Assets (icons, css, ...)
- * @property {String} [assets.definitions] URL to json object with assets definitions
+ * @property {string} [assets.definitions] URL to json object with assets definitions
+ * @property {Object} [features] Platform feature flags
+ * @property {boolean} [features.noHF] True if HF data is not supported
  */

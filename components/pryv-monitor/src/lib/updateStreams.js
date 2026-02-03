@@ -7,7 +7,7 @@ const Changes = require('./Changes');
 module.exports = async function _updateStreams (monitor) {
   try {
     const result = await monitor.connection.get('streams');
-    if (!result.streams) { throw new Error('Invalid response ' + JSON.streams(result)); }
+    if (!result.streams) { throw new Error('Invalid response ' + JSON.stringify(result)); }
     monitor.emit(Changes.STREAMS, result.streams);
   } catch (e) {
     monitor.emit(Changes.ERROR, e);

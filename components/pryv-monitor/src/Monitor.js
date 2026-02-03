@@ -22,6 +22,7 @@ class Monitor extends EventEmitter {
    */
   constructor (apiEndpointOrConnection, eventsGetScope = {}) {
     super();
+    // @ts-ignore - pryv is set at runtime by extendPryvMonitor
     if (!Monitor.pryv) {
       throw new Error('package \'@pryv/monitor\' must loaded after package \'pryv\'');
     }
@@ -33,9 +34,11 @@ class Monitor extends EventEmitter {
     };
     Object.assign(this.eventsGetScope, eventsGetScope);
 
+    // @ts-ignore - pryv is set at runtime
     if (apiEndpointOrConnection instanceof Monitor.pryv.Connection) {
       this.connection = apiEndpointOrConnection;
     } else {
+      // @ts-ignore - pryv is set at runtime
       this.connection = new Monitor.pryv.Connection(apiEndpointOrConnection);
     }
     this.states = {
@@ -161,16 +164,10 @@ class Monitor extends EventEmitter {
   }
 
   /**
-   * Initialize the updateMethods with this Monitor
-   * @callback Monitor~UpdateMethod
-   * @param {Monitor} setMonitor
-   */
-
-  /**
    * @private
-   * Called my UpdateMethod to share cross references
+   * Called by UpdateMethod to share cross references
    * Set a custom update method
-   * @param {Monitor~UpdateMethod} updateMethod - the auto-update method
+   * @param {Object} updateMethod - the auto-update method
    * @returns {Monitor} this
    */
   addUpdateMethod (updateMethod) {

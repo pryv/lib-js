@@ -16,8 +16,8 @@ const utils = require('./utils.js');
 class ServiceAssets {
   /**
    * Private => use ServiceAssets.setup()
-   * @param { object} assets The content of service/info.assets properties.
-   * @param { string } pryvServiceAssetsSourceUrl Url point to assets of the service of a Pryv platform: https://api.pryv.com/reference/#service-info property `assets.src`
+   * @param {Object} assets The content of service/info.assets properties.
+   * @param {string} assetsURL Url point to assets of the service of a Pryv platform
    */
   constructor (assets, assetsURL) {
     this._assets = assets;
@@ -85,6 +85,8 @@ class ServiceAssets {
    * Set service Favicon to Web Page
    */
   setFavicon () {
+    /** @type {HTMLLinkElement} */
+    // @ts-ignore - querySelector returns Element but we know it's HTMLLinkElement
     const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
     link.type = 'image/x-icon';
     link.rel = 'shortcut icon';
@@ -155,8 +157,10 @@ function loadCSS (url) {
   \*/
 
 function relPathToAbs (baseUrlString, sRelPath) {
+  /** @type {Location|HTMLAnchorElement} */
   var baseLocation = location;
   if (baseUrlString) {
+    // @ts-ignore - HTMLAnchorElement has compatible URL properties
     baseLocation = document.createElement('a');
     baseLocation.href = baseUrlString;
   }

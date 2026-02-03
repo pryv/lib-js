@@ -28,6 +28,7 @@ class LoginButton {
     setupButton(this);
     this.languageCode = this.authSettings.authRequest.languageCode || 'en';
     this.messages = Messages(this.languageCode);
+    // @ts-ignore - loginButtonText is set by setupButton
     if (this.loginButtonText) {
       await loadAssets(this);
     }
@@ -84,7 +85,9 @@ class LoginButton {
       default:
         console.log('WARNING Unhandled state for Login: ' + state.status);
     }
+    // @ts-ignore - loginButtonText is set by setupButton
     if (this.loginButtonText) {
+      // @ts-ignore
       this.loginButtonText.innerHTML = this.text;
     }
   }
@@ -148,8 +151,8 @@ async function startLoginScreen (loginButton, authUrl) {
   const outerHeight = typeof window.outerHeight !== 'undefined' ? window.outerHeight : (document.body.clientHeight - 22);
   const width = 400;
   const height = 620;
-  const left = parseInt(screenX + ((outerWidth - width) / 2), 10);
-  const top = parseInt(screenY + ((outerHeight - height) / 2.5), 10);
+  const left = Math.floor(screenX + ((outerWidth - width) / 2));
+  const top = Math.floor(screenY + ((outerHeight - height) / 2.5));
   const features = (
     'width=' + width +
     ',height=' + height +

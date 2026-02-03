@@ -19,7 +19,9 @@ class UpdateMethod {
       throw new Error('An update Method can be assigned to one monitor only');
     }
     this.monitor = monitor;
+    // @ts-ignore - Changes.READY and Changes.STOP are valid event names
     monitor.on(Changes.READY, this.ready.bind(this));
+    // @ts-ignore
     monitor.on(Changes.STOP, this.stop.bind(this));
     if (monitor.started) {
       this.ready();

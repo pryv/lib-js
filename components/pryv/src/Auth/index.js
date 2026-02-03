@@ -29,11 +29,11 @@ module.exports = {
  * @param {string | boolean} settings.authRequest.returnURL : false, // set this if you don't want a popup
  * @param {string} [settings.authRequest.referer] To track registration source
  * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
- * @param {Browser.AuthStateChangeHandler} settings.onStateChange
- * @param {string} [settings.returnURL=auto#]  Set to "self#" to disable popup and force using the same page. Set a custom url when process is finished (specific use cases). Should always end by # ? or &
+ * @param {Function} settings.onStateChange
+ * @param {string} [settings.returnURL] Set to "self#" to disable popup and force using the same page
  * @param {string} serviceInfoUrl
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl
- * @returns {pryv.Service}
+ * @returns {Promise<Service>}
  */
 async function setupAuth (settings, serviceInfoUrl, serviceCustomizations, HumanInteraction = LoginButton) {
   const service = new Service(serviceInfoUrl, serviceCustomizations);

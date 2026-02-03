@@ -43,7 +43,7 @@ async function getEventStreamed (conn, queryParam, parser) {
 
   // ------------   fetch ------------------- //
   const url = new URL(conn.endpoint + 'events');
-  url.search = new URLSearchParams(queryParam);
+  url.search = new URLSearchParams(queryParam).toString();
   const fetchParams = { method: 'GET', headers: { Accept: 'application/json' } };
   if (conn.token) fetchParams.headers.Authorization = conn.token;
 
@@ -68,6 +68,7 @@ async function getEventStreamed (conn, queryParam, parser) {
     headers: {}
   };
   // add headers to result
+  // @ts-ignore - Headers.entries() exists in modern environments
   for (const pair of response.headers.entries()) {
     result.headers[pair[0]] = pair[1];
   }

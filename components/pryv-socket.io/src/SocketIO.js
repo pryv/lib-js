@@ -40,6 +40,7 @@ class SocketIO extends EventEmitter {
       this.connection.username()
         .then(username => {
           const socketEndpoint = this.connection.endpoint + username + '?auth=' + this.connection.token;
+          // @ts-ignore - io is callable in socket.io-client
           this._io = io(socketEndpoint, { forceNew: true });
 
           // handle failure
@@ -87,11 +88,13 @@ class SocketIO extends EventEmitter {
    * @param {Function} listener - The callback function
    * @returns {SocketIO} this
    */
+  // @ts-ignore - overriding EventEmitter.on with restricted signature
   on (eventName, listener) {
     checkOpen(this);
     if (EVENTS.indexOf(eventName) < 0) {
       throw new Error('Unkown event [' + eventName + ']. Allowed events are: ' + EVENTS);
     }
+    // @ts-ignore
     return super.on(eventName, listener);
   }
 

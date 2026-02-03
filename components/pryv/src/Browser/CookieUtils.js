@@ -32,7 +32,7 @@ function set (cookieKey, value, expireInDays) {
   myDate.setDate(myDate.getDate() + expireInDays);
   let cookieStr = encodeURIComponent(cookieKey) + '=' +
     encodeURIComponent(JSON.stringify(value)) +
-    ';expires=' + myDate.toGMTString() +
+    ';expires=' + myDate.toUTCString() +
     ';domain=.' + hostName + ';path=' + path;
   // do not add SameSite when removing a cookie
   if (expireInDays >= 0) cookieStr += ';SameSite=Strict';

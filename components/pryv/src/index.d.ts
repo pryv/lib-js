@@ -639,6 +639,13 @@ declare module 'pryv' {
       data: Object | any[],
     ): Promise<Object | Object[]>;
     get(path: string, queryParams?: Object): Promise<Object | Object[]>;
+
+    /** @internal */
+    _chunkedBatchCall(
+      apiCalls: APICall[],
+      progress?: APICallProgressHandler,
+      httpHandler?: (batch: any[]) => Promise<any>
+    ): Promise<any[]>;
   }
 
   export type serviceCustomizations = {

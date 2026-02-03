@@ -15,9 +15,11 @@ const Changes = require('../lib/Changes');
 class Socket extends UpdateMethod {
   async ready () {
     if (this.socket) return;
+    // @ts-ignore - socket is added by @pryv/socket.io extension
     if (!this.monitor.connection.socket) {
       throw new Error('You should load package @pryv/socket.io to use monitor with websockets');
     }
+    // @ts-ignore - socket is added by @pryv/socket.io extension
     this.socket = await this.monitor.connection.socket.open();
     this.socket.on('eventsChanged', () => { this.monitor.updateEvents(); });
     this.socket.on('streamsChanged', () => { this.monitor.updateStreams(); });
