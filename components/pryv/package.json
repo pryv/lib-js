@@ -19,6 +19,5 @@
   "main": "src/index.js",
   "types": "src/index.d.ts",
   "dependencies": {
-    "superagent": "^9.0.0"
   }
 }

@@ -5,7 +5,7 @@
 /* global describe, it, before, after, beforeEach, afterEach, expect, Browser, pryv, Blob, FormData */
 /* eslint-disable no-unused-expressions */
 
-const { URL, URLSearchParams } = require('universal-url');
+// URL and URLSearchParams are native in Node.js and browsers
 const cuid = require('cuid');
 const testData = require('../../../test/test-data');
 

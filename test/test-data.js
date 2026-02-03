@@ -2,7 +2,6 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-const superagent = require('superagent');
 
 const username = 'jslibtest6';
 
@@ -38,7 +37,7 @@ async function prepare () {
   console.log('Preparing test Data..');
 
   // fetch serviceInfo
-  const serviceInfo = (await superagent.get(serviceInfoUrl)).body;
+  const serviceInfo = await fetchGet(serviceInfoUrl);
   if (serviceInfo.api == null) throw new Error('Invalid service Info ' + JSON.stringify(serviceInfo));
   console.log('Testing on ' + serviceInfo.name + ' > register: ' + serviceInfo.register);
   await getHost(serviceInfo);
@@ -47,16 +46,15 @@ async function prepare () {
 
     try {
       // create user
-      await superagent.post(host + 'users')
-        .send({
-          appId: 'js-lib-test',
-          username: username,
-          password: username,
-          email: username + '@pryv.io',
-          invitationtoken: 'enjoy',
-          languageCode: 'en',
-          referer: 'test-suite'
-        });
+      await fetchPost(host + 'users', {
+        appId: 'js-lib-test',
+        username: username,
+        password: username,
+        email: username + '@pryv.io',
+        invitationtoken: 'enjoy',
+        languageCode: 'en',
+        referer: 'test-suite'
+      });
     } catch (e) {
       console.log('Failed creating user ', e);
       throw new Error('Failed creating user ' + host + 'users');
@@ -67,21 +65,23 @@ async function prepare () {
   // login user
   const headers = {};
   if (typeof window === 'undefined') { headers.Origin = 'https://l.backloop.dev'; } // node only
-  const loginRes = await superagent.post(apiEndpoint + 'auth/login')
-    .set(headers)
-    .send({ username: username, password: username, appId: 'js-lib-test' });
+  const loginRes = await fetchPost(apiEndpoint + 'auth/login', {
+    username: username,
+    password: username,
+    appId: 'js-lib-test'
+  }, headers);
 
   // create data stream
   try {
-    await superagent.post(apiEndpoint + 'streams').set('authorization', loginRes.body.token).send({
+    await fetchPost(apiEndpoint + 'streams', {
       id: 'data',
       name: 'Data'
-    });
+    }, { authorization: loginRes.token });
   } catch (e) {
   }
-  if ((loginRes.body == null) || (loginRes.body.token == null)) throw Error('Failed login process during testData prepare' + loginRes.text);
+  if (loginRes?.token == null) throw Error('Failed login process during testData prepare' + JSON.stringify(loginRes));
   testData.serviceInfo = serviceInfo;
-  testData.token = loginRes.body.token;
+  testData.token = loginRes.token;
 
   const regexAPIandToken = /(.+):\/\/(.+)/gm;
   const res = regexAPIandToken.exec(apiEndpoint);
@@ -93,9 +93,9 @@ async function testUserExists (serviceInfo, username) {
   if (coreDnsLessUrl != null) {
     const coreApi = serviceInfo.api.replace('{username}', username);
     try {
-      await superagent.get(coreApi + 'service/info');
+      await fetchGet(coreApi + 'service/info');
     } catch (e) {
-      if (e.response?.body?.error?.id === 'unknown-resource') {
+      if (e.body?.error?.id === 'unknown-resource') {
         return false;
       }
       throw new Error('Error testUserExists fetching: ' + coreApi + '/service/info');
@@ -104,7 +104,7 @@ async function testUserExists (serviceInfo, username) {
   }
   // test if user exists
   try {
-    const userExists = (await superagent.get(serviceInfo.register + username + '/check_username')).body;
+    const userExists = await fetchGet(serviceInfo.register + username + '/check_username');
     if (typeof userExists.reserved === 'undefined') throw Error('Invalid user exists ' + JSON.stringify(userExists));
     return userExists.reserved;
   } catch (e) {
@@ -117,7 +117,7 @@ async function getHost (serviceInfo) {
     return coreDnsLessUrl;
   }
   // get available hosting
-  const hostings = (await superagent.get(serviceInfo.register + 'hostings').set('accept', 'json')).body;
+  const hostings = await fetchGet(serviceInfo.register + 'hostings');
   let hostingCandidate = null;
   findOneHostingKey(hostings, 'N');
   function findOneHostingKey (o, parentKey) {
@@ -136,4 +136,38 @@ async function getHost (serviceInfo) {
   }
   if (hostingCandidate == null) throw Error('Cannot find hosting in: ' + JSON.stringify(hostings));
   return hostingCandidate.availableCore;
+}
+
+// -- fetch helpers --
+
+async function fetchGet (url) {
+  const response = await fetch(url, {
+    headers: { Accept: 'application/json' }
+  });
+  const body = await response.json();
+  if (!response.ok) {
+    const error = new Error('GET ' + url + ' failed: ' + response.status);
+    error.body = body;
+    throw error;
+  }
+  return body;
+}
+
+async function fetchPost (url, data, headers = {}) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...headers
+    },
+    body: JSON.stringify(data)
+  });
+  const body = await response.json();
+  if (!response.ok) {
+    const error = new Error('POST ' + url + ' failed: ' + response.status);
+    error.body = body;
+    throw error;
+  }
+  return body;
 }

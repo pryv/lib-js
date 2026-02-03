@@ -7,7 +7,6 @@ const regexSchemaAndPath = /(.+):\/\/(.+)/gm;
 
 /**
  * Utilities to access Pryv API.
- * Exposes superagent and methods to manipulate API endpoints
  * @memberof pryv
  * @namespace pryv.utils
  */
@@ -57,13 +56,6 @@ const utils = module.exports = {
     const body = await response.json();
     return { response, body };
   },
-
-  /**
-   * Exposes superagent https://visionmedia.github.io/superagent/
-   * @memberof pryv.utils
-   * @property {Superagent} superagent
-   */
-  superagent: require('superagent'),
 
   /**
    * Returns true is run in a browser
