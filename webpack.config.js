@@ -20,7 +20,7 @@ const webpackBabelConfig = {
               '@babel/preset-env',
               {
                 useBuiltIns: 'entry',
-                corejs: '3.0.0',
+                corejs: '3.40',
                 targets: {
                   browsers: '> 0.25%, not dead'
                 }
