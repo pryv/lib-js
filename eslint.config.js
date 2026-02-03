@@ -1,4 +1,8 @@
 /**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
+/**
  * ESLint flat config - replaces semistandard with modern tooling
  * Style: StandardJS with semicolons + TypeScript checks
  */
