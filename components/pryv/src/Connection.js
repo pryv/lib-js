@@ -4,7 +4,7 @@
  */
 const utils = require('./utils.js');
 const jsonParser = require('./lib/json-parser');
-const browserGetEventStreamed = require('./lib/browser-getEventStreamed');
+const libGetEventStreamed = require('./lib/getEventStreamed');
 
 /**
  * @class Connection
@@ -304,7 +304,6 @@ class Connection {
 
   /**
    * Streamed get Event.
-   * Fallbacks to not streamed, for browsers that does not support `fetch()` API
    * @see https://api.pryv.com/reference/#get-events
    * @param {Object} queryParams See `events.get` parameters
    * @param {Function} forEachEvent Function taking one event as parameter. Will be called for each event
@@ -312,7 +311,7 @@ class Connection {
    */
   async getEventsStreamed (queryParams, forEachEvent) {
     const myParser = jsonParser(forEachEvent, queryParams.includeDeletions);
-    const res = await browserGetEventStreamed(this, queryParams, myParser);
+    const res = await libGetEventStreamed(this, queryParams, myParser);
     const now = getTimestamp();
     this._handleMeta(res.body, now);
     return res.body;
