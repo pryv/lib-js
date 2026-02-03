@@ -24,10 +24,10 @@
     "test": "echo 'This project doesn’t use npm scripts – enter `just` for the available development commands\n' && exit 1"
   },
   "dependencies": {
-    "process": "^0.11.10",
     "socket.io-client": "^4.5.4"
   },
   "devDependencies": {
+    "process": "^0.11.10",
     "@babel/core": "^7.29.0",
     "@babel/plugin-transform-runtime": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
@@ -39,13 +39,13 @@
     "copy-webpack-plugin": "^13.0.0",
     "core-js": "^3.40.0",
     "cuid": "^2.1.8",
+    "jsdom": "^26.0.0",
     "mocha": "^10.2.0",
     "nyc": "^15.1.0",
     "semistandard": "^16.0.1",
     "source-licenser": "^2.0.5",
     "webpack": "^5.104.0",
-    "webpack-cli": "^6.0.0",
-    "jsdom": "^26.0.0"
+    "webpack-cli": "^6.0.0"
   },
   "engines": {
     "node": ">=20.0.0"
