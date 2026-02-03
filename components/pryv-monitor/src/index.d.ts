@@ -7,19 +7,19 @@ import { EventEmitter } from 'events';
  * Typical usage:
  * ```ts
  * import pryv from 'pryv';
- * import monitor from '@pryv/monitor';
+ * import extendPryvMonitor from '@pryv/monitor';
  *
  * extendPryvMonitor(pryv);
  *
- * const monitor = new pryv.Monitor('https://token@user.pryv.me', {
+ * const mon = new pryv.Monitor('https://token@user.pryv.me', {
  *   streams: ['data'],
  * });
  *
- * monitor.on(pryv.Monitor.Changes.EVENT, (event) => {
+ * mon.on(pryv.Monitor.Changes.EVENT, (event) => {
  *   // handle new or changed event
  * });
  *
- * await monitor.start();
+ * await mon.start();
  * ```
  */
 export default function extendPryvMonitor(pryvLib: typeof pryv): typeof pryv.Monitor;
@@ -60,6 +60,9 @@ declare module 'pryv' {
   export class Monitor extends EventEmitter {
     constructor(apiEndpointOrConnection: APIEndpoint | Connection, eventsGetScope?: MonitorScope);
 
+    /** The connection used by this monitor */
+    readonly connection: Connection;
+
     /**
      * Start the monitor and perform initial sync.
      * Resolves with the same monitor instance.
@@ -93,6 +96,7 @@ declare module 'pryv' {
 
     /**
      * Attach an auto-update method implementation.
+     * @param updateMethod - The update method to use (e.g., EventsTimer, Socket)
      */
     addUpdateMethod(updateMethod: MonitorUpdateMethod): Monitor;
 
@@ -101,19 +105,18 @@ declare module 'pryv' {
      *
      * Events:
      * - `event`        – new or updated event
-     * - `eventDelete`  – deleted event
+     * - `eventDelete`  – deleted event (with id property)
      * - `streams`      – updated streams list
      * - `error`        – error object
      * - `ready`        – monitor is ready for next update
      * - `stop`         – monitor has been stopped
      */
     on(event: 'event', listener: (event: Event) => void): this;
-    on(event: 'eventDelete', listener: (event: Event) => void): this;
+    on(event: 'eventDelete', listener: (deletion: ItemDeletion) => void): this;
     on(event: 'streams', listener: (streams: Stream[]) => void): this;
-    on(event: 'error', listener: (error: any) => void): this;
+    on(event: 'error', listener: (error: Error | unknown) => void): this;
     on(event: 'ready', listener: () => void): this;
     on(event: 'stop', listener: () => void): this;
-    on(event: string, listener: (...args: any[]) => void): this;
 
     /**
      * Static access to available update methods.
@@ -128,15 +131,35 @@ declare module 'pryv' {
      * Static enum of change names.
      */
     static Changes: typeof MonitorChanges;
+
+    /** Reference to pryv library (set during extension) */
+    static pryv: typeof pryv;
   }
 
   /**
-   * Base interface for update methods used by Monitor.
+   * Base class for update methods used by Monitor.
+   * Subclass this to create custom update strategies.
    */
   export class MonitorUpdateMethod {
+    /** The monitor this update method is attached to */
     protected monitor?: Monitor;
+
+    /**
+     * Assign a Monitor to this updater.
+     * Usually called by the monitor itself on monitor.addUpdateMethod()
+     * @param monitor - The monitor to attach to
+     */
     setMonitor(monitor: Monitor): void;
+
+    /**
+     * Called when all update tasks are done and monitor is ready for next update.
+     * Override in subclasses to implement custom behavior.
+     */
     ready(): Promise<void>;
+
+    /**
+     * Called when monitor is stopped. Override to clean up resources.
+     */
     stop(): Promise<void>;
   }
 
@@ -144,13 +167,23 @@ declare module 'pryv' {
    * Update method that polls for event changes at a fixed interval.
    */
   export class EventsTimerUpdateMethod extends MonitorUpdateMethod {
+    /**
+     * @param updateRateMS - The refresh rate in milliseconds (must be > 1)
+     */
     constructor(updateRateMS: number);
+
+    /** The configured update rate in milliseconds */
+    readonly updateRateMS: number;
   }
 
   /**
-   * Update method that uses @pryv/socket.io events.
+   * Update method that uses @pryv/socket.io events for real-time updates.
+   * Requires @pryv/socket.io to be loaded.
    */
-  export class SocketUpdateMethod extends MonitorUpdateMethod {}
+  export class SocketUpdateMethod extends MonitorUpdateMethod {
+    /** The socket instance (set after ready() is called) */
+    protected socket?: SocketIO;
+  }
 }
 
 

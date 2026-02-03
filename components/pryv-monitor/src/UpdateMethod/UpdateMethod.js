@@ -4,15 +4,15 @@
  */
 const Changes = require('../lib/Changes');
 /**
- * Interface for UpdateMonitor
+ * Base class for update methods used by Monitor.
+ * Subclass this to create custom update strategies.
  * @memberof pryv.Monitor
- * @constructor {Monitor~UpdateMethod} updateMethod.setMonitor - set only once
  */
 class UpdateMethod {
   /**
    * Assign a Monitor to this updater.
    * Usually called by the monitor itself on monitor.addUpdateMethod()
-   * @param {Monitor} monitor
+   * @param {Monitor} monitor - The monitor to attach to
    */
   setMonitor (monitor) {
     if (this.monitor) {
@@ -27,15 +27,15 @@ class UpdateMethod {
   }
 
   /**
-   * Should be overwritten by subclases
-   * Called with no params, when all update tasks are done.
-   * Also used at "start" call
+   * Called when all update tasks are done and monitor is ready for next update.
+   * Override in subclasses to implement custom behavior.
+   * @returns {Promise<void>}
    */
   async ready () { }
 
   /**
-   * Should be overwritten by subclases
-   * Called with no params, when monitor is stoped: updater should be stoped too.
+   * Called when monitor is stopped. Override to clean up resources.
+   * @returns {Promise<void>}
    */
   async stop () { }
 }

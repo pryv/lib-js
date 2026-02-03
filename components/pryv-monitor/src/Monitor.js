@@ -9,13 +9,16 @@ const _updateStreams = require('./lib/updateStreams');
 const Changes = require('./lib/Changes');
 
 /**
+ * Monitor changes on a Pryv.io account.
+ * Emits events when data changes are detected.
  * @memberof pryv
+ * @extends EventEmitter
  */
 class Monitor extends EventEmitter {
   /**
-   *
-   * @param {(pryv.APIEndpoint|pryv.Connection)} apiEndpointOrConnection APIEndoint or connection to use
-   * @param {pryv.Monitor.Scope} [eventsGetScope={}] The Scope to monitor
+   * Create a new Monitor
+   * @param {(string|Connection)} apiEndpointOrConnection - API endpoint URL or Connection instance
+   * @param {MonitorScope} [eventsGetScope={}] - The scope to monitor (events.get parameters)
    */
   constructor (apiEndpointOrConnection, eventsGetScope = {}) {
     super();
@@ -44,8 +47,8 @@ class Monitor extends EventEmitter {
   }
 
   /**
-   * Start the monitor
-   * @returns {Monitor} this
+   * Start the monitor and perform initial sync
+   * @returns {Promise<Monitor>} Promise resolving to this Monitor instance
    */
   async start () {
     if (this.states.started || this.states.starting) return this;
@@ -63,8 +66,8 @@ class Monitor extends EventEmitter {
   }
 
   /**
-   * request and update of events
-   * @returns {Monitor} this
+   * Request an events update according to the current scope
+   * @returns {Promise<Monitor>} Promise resolving to this Monitor instance
    */
   async updateEvents () {
     if (!this.states.started) {
@@ -95,8 +98,8 @@ class Monitor extends EventEmitter {
   }
 
   /**
-   * request and update of streams
-   * @returns {Monitor} this
+   * Request a streams update
+   * @returns {Promise<Monitor>} Promise resolving to this Monitor instance
    */
   async updateStreams () {
     if (!this.states.started) {

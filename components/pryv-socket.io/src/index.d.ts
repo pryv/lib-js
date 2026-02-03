@@ -21,6 +21,13 @@ import { EventEmitter } from 'events';
 export default function extendPryvSocketIO(pryvLib: typeof pryv): void;
 
 declare module 'pryv' {
+  export type SocketIOEventName =
+    | 'eventsChanged'
+    | 'streamsChanged'
+    | 'accessesChanged'
+    | 'disconnect'
+    | 'error';
+
   /**
    * Socket.IO transport for a `Connection`.
    *
@@ -29,6 +36,12 @@ declare module 'pryv' {
    */
   export class SocketIO extends EventEmitter {
     constructor(connection: Connection);
+
+    /** The connection this socket is bound to */
+    readonly connection: Connection;
+
+    /** True while the socket is in the process of connecting */
+    readonly connecting: boolean;
 
     /**
      * Open the Socket.IO stream.
@@ -54,21 +67,18 @@ declare module 'pryv' {
      * Listen to Socket.IO events emitted by the Pryv.io backend.
      *
      * Supported events:
-     * - `eventsChanged`
-     * - `streamsChanged`
-     * - `accessesChanged`
-     * - `disconnect`
-     * - `error`
+     * - `eventsChanged` - Events have been modified
+     * - `streamsChanged` - Streams have been modified
+     * - `accessesChanged` - Accesses have been modified
+     * - `disconnect` - Socket disconnected
+     * - `error` - An error occurred
      */
-    on(
-      eventName:
-        | 'eventsChanged'
-        | 'streamsChanged'
-        | 'accessesChanged'
-        | 'disconnect'
-        | 'error',
-      listener: (...args: any[]) => void
-    ): this;
+    on(event: 'eventsChanged', listener: () => void): this;
+    on(event: 'streamsChanged', listener: () => void): this;
+    on(event: 'accessesChanged', listener: () => void): this;
+    on(event: 'disconnect', listener: (reason: string) => void): this;
+    on(event: 'error', listener: (error: Error | unknown) => void): this;
+    on(event: SocketIOEventName, listener: (...args: unknown[]) => void): this;
   }
 
   export class Connection {

@@ -7,18 +7,29 @@ const { EventEmitter } = require('events');
 
 const EVENTS = ['eventsChanged', 'streamsChanged', 'accessesChanged', 'disconnect', 'error'];
 
+/**
+ * Socket.IO transport for a Connection.
+ * Use connection.socket to access the instance associated with a Connection.
+ * @memberof pryv
+ * @extends EventEmitter
+ */
 class SocketIO extends EventEmitter {
+  /**
+   * @param {Connection} connection - The connection to bind to
+   */
   constructor (connection) {
     super();
+    /** @type {Connection} */
     this.connection = connection;
+    /** @type {boolean} */
     this.connecting = false;
     this._io = null;
   }
 
   /**
-   * Open the scocket stream
+   * Open the Socket.IO stream
    * @throws {Error} On connection failures
-   * @return {SocketIO} this
+   * @returns {Promise<SocketIO>} Promise resolving to this SocketIO instance
    */
   async open () {
     return new Promise((resolve, reject) => {
@@ -71,10 +82,10 @@ class SocketIO extends EventEmitter {
   }
 
   /**
-   * Add listner
-   * @param {string} eventName - one of 'eventsChanged', 'streamsChanged', 'accessesChanged', 'disconnect', 'error'
-   * @param {Function} listener The callback function
-   * @return {EventEmitter};
+   * Add listener for Socket.IO events
+   * @param {('eventsChanged'|'streamsChanged'|'accessesChanged'|'disconnect'|'error')} eventName - The event to listen for
+   * @param {Function} listener - The callback function
+   * @returns {SocketIO} this
    */
   on (eventName, listener) {
     checkOpen(this);
@@ -85,7 +96,10 @@ class SocketIO extends EventEmitter {
   }
 
   /**
-   * Identical to Connection.api() using socket.io transport
+   * Identical to Connection.api() but using Socket.IO transport
+   * @param {Array<MethodCall>} arrayOfAPICalls - Array of Method Calls
+   * @param {Function} [progress] - Return percentage of progress (0 - 100)
+   * @returns {Promise<Array>} Promise to Array of results matching each method call in order
    */
   async api (arrayOfAPICalls, progress) {
     checkOpen(this);

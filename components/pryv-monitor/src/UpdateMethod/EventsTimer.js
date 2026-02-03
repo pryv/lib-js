@@ -4,9 +4,14 @@
  */
 const UpdateMethod = require('./UpdateMethod');
 
+/**
+ * Update method that polls for event changes at a fixed interval.
+ * @memberof pryv.Monitor
+ * @extends UpdateMethod
+ */
 class EventsTimer extends UpdateMethod {
   /**
-   * @param {Number} updateRateMS - the refresh rate in milliseconds
+   * @param {number} updateRateMS - The refresh rate in milliseconds (must be > 1)
    */
   constructor (updateRateMS) {
     super();

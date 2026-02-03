@@ -6,6 +6,12 @@
 const UpdateMethod = require('./UpdateMethod');
 const Changes = require('../lib/Changes');
 
+/**
+ * Update method that uses @pryv/socket.io events for real-time updates.
+ * Requires @pryv/socket.io to be loaded.
+ * @memberof pryv.Monitor
+ * @extends UpdateMethod
+ */
 class Socket extends UpdateMethod {
   async ready () {
     if (this.socket) return;
