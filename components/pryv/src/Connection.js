@@ -311,8 +311,8 @@ class Connection {
   async addPointsToHFEvent (eventId, fields, points) {
     const res = await this.post('events/' + eventId + '/series', {
       format: 'flatJSON',
-      fields: fields,
-      points: points
+      fields,
+      points
     });
     if (!res.status === 'ok') {
       throw new Error('Failed loading serie: ' + JSON.stringify(res.status));

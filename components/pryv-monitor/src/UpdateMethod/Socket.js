@@ -21,8 +21,7 @@ class Socket extends UpdateMethod {
     this.socket = await this.monitor.connection.socket.open();
     this.socket.on('eventsChanged', () => { this.monitor.updateEvents(); });
     this.socket.on('streamsChanged', () => { this.monitor.updateStreams(); });
-    /* eslint-disable-next-line node/handle-callback-err */
-    this.socket.on('error', (error) => { this.monitor.emit(Changes.ERROR.error); });
+    this.socket.on('error', (error) => { this.monitor.emit(Changes.ERROR, error); });
   }
 
   async stop () {

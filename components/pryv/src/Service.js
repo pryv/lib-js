@@ -153,7 +153,7 @@ class Service {
    */
   static buildAPIEndpoint (serviceInfo, username, token) {
     const endpoint = serviceInfo.api.replace('{username}', username);
-    return utils.buildAPIEndpoint({ endpoint: endpoint, token: token });
+    return utils.buildAPIEndpoint({ endpoint, token });
   }
 
   /**

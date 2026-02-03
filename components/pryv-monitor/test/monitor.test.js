@@ -28,8 +28,7 @@ describe('Monitor', function () {
     it('throw Error on invalid apiEndpoint', async () => {
       let passed = true;
       try {
-        /* eslint-disable-next-line no-unused-vars */
-        const monitor = new pryv.Monitor('BlipBlop', { limit: 1 });
+        pryv.Monitor('BlipBlop', { limit: 1 });
         passed = false;
       } catch (e) {
 

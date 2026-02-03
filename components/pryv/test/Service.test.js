@@ -3,7 +3,6 @@
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
 /* global describe, it, before, expect, pryv, testData */
-/* eslint-disable no-unused-expressions */
 
 describe('Service', function () {
   before(async function () {

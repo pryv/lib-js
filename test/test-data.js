@@ -22,9 +22,9 @@ if (process.env.TEST_PRYVLIB_DNSLESS_URL != null) {
  * Data used for tests
  */
 const testData = module.exports = {
-  username: username,
+  username,
   password: username,
-  serviceInfoUrl: serviceInfoUrl,
+  serviceInfoUrl,
   token: null,
   serviceInfo: null,
   apiEndpoint: null,
@@ -48,7 +48,7 @@ async function prepare () {
       // create user
       await fetchPost(host + 'users', {
         appId: 'js-lib-test',
-        username: username,
+        username,
         password: username,
         email: username + '@pryv.io',
         invitationtoken: 'enjoy',
@@ -66,7 +66,7 @@ async function prepare () {
   const headers = {};
   if (typeof window === 'undefined') { headers.Origin = 'https://l.backloop.dev'; } // node only
   const loginRes = await fetchPost(apiEndpoint + 'auth/login', {
-    username: username,
+    username,
     password: username,
     appId: 'js-lib-test'
   }, headers);

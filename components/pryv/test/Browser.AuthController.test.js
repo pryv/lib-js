@@ -3,7 +3,6 @@
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
 /* global describe, it, before, after, expect, testData, JSDOM */
-/* eslint-disable no-unused-expressions */
 
 const utils = require('../src/utils.js');
 const Service = require('../src/Service');

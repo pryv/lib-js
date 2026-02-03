@@ -41,7 +41,15 @@ build-watch *params:
 
 # Run code linting
 lint *params:
-    semistandard {{params}}
+    eslint . {{params}}
+
+# Run code linting and fix auto-fixable issues
+lint-fix *params:
+    eslint . --fix {{params}}
+
+# Run TypeScript type checking (no emit)
+typecheck:
+    npx tsc --noEmit -p tsconfig.json
 
 # Run tests on the given component ('all' for all components) with optional extra parameters
 test component *params:

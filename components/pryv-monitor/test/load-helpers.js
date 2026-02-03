@@ -3,7 +3,6 @@
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
 /* global expect, pryv, testData */
-/* eslint-disable no-unused-expressions */
 
 require('../src')(pryv);
 const testStreamId = global.testStreamId = 'monitor-test';

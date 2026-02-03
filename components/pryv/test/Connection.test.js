@@ -3,7 +3,6 @@
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
 /* global describe, it, before, after, beforeEach, afterEach, expect, JSDOM, pryv, Blob, FormData */
-/* eslint-disable no-unused-expressions */
 
 // URL and URLSearchParams are native in Node.js and browsers
 const cuid = require('cuid');

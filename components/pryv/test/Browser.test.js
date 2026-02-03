@@ -3,7 +3,6 @@
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
 /* global describe, it, before, after, expect, JSDOM, pryv, testData */
-/* eslint-disable no-unused-expressions */
 
 function genSettings () {
   function defaultStateChange (state) {
