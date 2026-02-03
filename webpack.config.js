@@ -127,7 +127,7 @@ module.exports = [
       path: path.join(__dirname, 'test-browser/')
     },
     plugins: [
-      new webpack.IgnorePlugin({ resourceRegExp: /zombie/ }),
+      new webpack.IgnorePlugin({ resourceRegExp: /jsdom/ }),
       new CopyPlugin({
         patterns: [
           { from: componentPath('pryv', 'test/browser-index.html'), to: 'index.html' },

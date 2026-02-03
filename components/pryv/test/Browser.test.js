@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, after, expect, Browser, pryv, testData */
+/* global describe, it, before, after, expect, JSDOM, pryv, testData */
 /* eslint-disable no-unused-expressions */
 
 function genSettings () {
@@ -26,21 +26,22 @@ describe('Browser', function () {
     await testData.prepare();
   });
 
-  let removeZombie = false;
+  let cleanupDom = false;
 
   before(async () => {
     if (typeof document !== 'undefined') return; // in browser
-    removeZombie = true;
-    const browser = new Browser();
-    browser.visit('./?pryvServiceInfoUrl=https://zou.zou/service/info');
-    global.document = browser.document;
-    global.window = browser.window;
-    global.location = browser.location;
+    cleanupDom = true;
+    const dom = new JSDOM('<!DOCTYPE html>', {
+      url: 'http://localhost/?pryvServiceInfoUrl=https://zou.zou/service/info'
+    });
+    global.document = dom.window.document;
+    global.window = dom.window;
+    global.location = dom.window.location;
     global.navigator = { userAgent: 'Safari' };
   });
 
   after(async () => {
-    if (!removeZombie) return; // in browser
+    if (!cleanupDom) return; // in browser
     delete global.document;
     delete global.window;
     delete global.location;

@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, after, expect, testData, Browser */
+/* global describe, it, before, after, expect, testData, JSDOM */
 /* eslint-disable no-unused-expressions */
 
 const utils = require('../src/utils.js');
@@ -13,20 +13,21 @@ describe('Browser.LoginButton', function () {
   this.timeout(15000);
 
   let auth;
-  let removeZombie = false;
+  let cleanupDom = false;
   before(async function () {
     if (typeof document !== 'undefined') return; // in browser
-    removeZombie = true;
-    const browser = new Browser();
-    browser.visit('./?pryvServiceInfoUrl=https://zou.zou/service/info');
-    global.document = browser.document;
-    global.window = browser.window;
-    global.location = browser.location;
+    cleanupDom = true;
+    const dom = new JSDOM('<!DOCTYPE html>', {
+      url: 'http://localhost/?pryvServiceInfoUrl=https://zou.zou/service/info'
+    });
+    global.document = dom.window.document;
+    global.window = dom.window;
+    global.location = dom.window.location;
     global.navigator = { userAgent: 'Safari' };
   });
 
   after(async function () {
-    if (!removeZombie) return; // in browser
+    if (!cleanupDom) return; // in browser
     delete global.document;
     delete global.window;
     delete global.location;

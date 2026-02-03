@@ -2,10 +2,10 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, after, expect, Browser, pryv, testData */
+/* global describe, it, before, after, expect, JSDOM, pryv, testData */
 
 describe('ServiceAssets', function () {
-  let removeZombie = false;
+  let cleanupDom = false;
 
   before(async function () {
     this.timeout(15000);
@@ -14,16 +14,15 @@ describe('ServiceAssets', function () {
 
   before(async () => {
     if (typeof document !== 'undefined') return; // in browser
-    removeZombie = true;
-    const browser = new Browser();
-    browser.visit('./');
-    global.document = browser.document;
-    global.window = browser.window;
-    global.location = browser.location;
+    cleanupDom = true;
+    const dom = new JSDOM('<!DOCTYPE html>', { url: 'http://localhost/' });
+    global.document = dom.window.document;
+    global.window = dom.window;
+    global.location = dom.window.location;
   });
 
   after(async () => {
-    if (!removeZombie) return; // in browser
+    if (!cleanupDom) return; // in browser
     delete global.document;
     delete global.window;
     delete global.location;

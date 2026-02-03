@@ -10,6 +10,6 @@ const chai = require('chai');
 chai.use(require('chai-as-promised'));
 
 global.expect = chai.expect;
-global.Browser = require('zombie');
+global.JSDOM = require('jsdom').JSDOM;
 global.pryv = require('pryv');
 global.testData = require('./test-data');

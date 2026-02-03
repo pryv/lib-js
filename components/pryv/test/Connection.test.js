@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, after, beforeEach, afterEach, expect, Browser, pryv, Blob, FormData */
+/* global describe, it, before, after, beforeEach, afterEach, expect, JSDOM, pryv, Blob, FormData */
 /* eslint-disable no-unused-expressions */
 
 // URL and URLSearchParams are native in Node.js and browsers
@@ -382,35 +382,19 @@ describe('Connection', () => {
 
     if (typeof window === 'undefined') {
       describe('Browser mock', function () {
-        const isNotAvailable = {
-          URL: global.URL == null,
-          URLSearchParams: global.URLSearchParams == null,
-          fetch: global.fetch == null
-        };
         beforeEach(function () {
-          const browser = new Browser();
-          browser.visit('./');
-          global.document = browser.document;
-          global.window = browser.window;
-          global.location = browser.location;
-          function fetch (...args) {
-            return browser.fetch(...args);
-          }
-          if (isNotAvailable.fetch) global.fetch = fetch;
-          if (isNotAvailable.URL) global.URL = URL;
-          if (isNotAvailable.URLSearchParams) global.URLSearchParams = URLSearchParams;
+          const dom = new JSDOM('<!DOCTYPE html>', { url: 'http://localhost/' });
+          global.document = dom.window.document;
+          global.window = dom.window;
+          global.location = dom.window.location;
         });
 
         afterEach(function () {
           delete global.document;
           delete global.window;
           delete global.location;
-          if (isNotAvailable.fetch) delete global.fetch;
-          if (isNotAvailable.URL) delete global.URL;
-          if (isNotAvailable.URLSearchParams) delete global.URLSearchParams;
         });
 
-        // HACK: skip until a solution is found to Zombie's `fetch()` not accepting URLs
         it(' with fetch', async () => {
           const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
           let eventsCount = 0;
