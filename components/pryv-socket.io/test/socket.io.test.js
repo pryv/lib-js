@@ -4,7 +4,7 @@
  */
 /* global describe, it, before, after, beforeEach, afterEach, expect, pryv, testData */
 
-const cuid = require('cuid');
+const { createId: cuid } = require('@paralleldrive/cuid2');
 
 require('@pryv/socket.io')(pryv);
 

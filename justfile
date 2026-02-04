@@ -63,12 +63,12 @@ test-debug component *params:
 
 # Run tests and generate coverage report
 test-cover component *params:
-    NODE_ENV=test COMPONENT={{component}} nyc --reporter=lcov --reporter=text --report-dir=./coverage \
+    NODE_ENV=test COMPONENT={{component}} c8 --reporter=lcov --reporter=text --reports-dir=./coverage \
         components-run npx mocha -- {{params}}
 
-# Run tests for ci 
+# Run tests for ci
 test-cover-ci:
-    NODE_ENV=test COMPONENT=all nyc --reporter=lcov components-run npx mocha -- --timeout 20000
+    NODE_ENV=test COMPONENT=all c8 --reporter=lcov --reports-dir=./coverage components-run npx mocha -- --timeout=20000
 
 # Run browser tests (assumes browser files are built)
 test-browser:

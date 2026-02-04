@@ -5,7 +5,7 @@
 /* global describe, it, before, after, beforeEach, afterEach, expect, JSDOM, pryv, Blob, FormData */
 
 // URL and URLSearchParams are native in Node.js and browsers
-const cuid = require('cuid');
+const { createId: cuid } = require('@paralleldrive/cuid2');
 const testData = require('../../../test/test-data');
 
 let conn = null;
