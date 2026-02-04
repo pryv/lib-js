@@ -39,7 +39,8 @@ describe('[CECX] Connection Edge Cases', function () {
     it('[CERC] constructor throws on invalid service param', function () {
       let error = null;
       try {
-        pryv.Connection(testData.apiEndpointWithToken, { notAService: true });
+        const _conn = new pryv.Connection(testData.apiEndpointWithToken, { notAService: true });
+        expect(_conn).to.not.exist; // Should not reach here
       } catch (e) {
         error = e;
       }
