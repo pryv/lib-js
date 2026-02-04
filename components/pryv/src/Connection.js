@@ -6,6 +6,7 @@ const utils = require('./utils.js');
 const jsonParser = require('./lib/json-parser');
 const libGetEventStreamed = require('./lib/getEventStreamed');
 const PryvError = require('./lib/PryvError');
+const buildSearchParams = require('./lib/buildSearchParams');
 
 /**
  * @class Connection
@@ -290,7 +291,7 @@ class Connection {
     path = path || '';
     let queryStr = '';
     if (queryParams && Object.keys(queryParams).length > 0) {
-      queryStr = '?' + new URLSearchParams(queryParams).toString();
+      queryStr = '?' + buildSearchParams(queryParams);
     }
     const response = await fetch(this.endpoint + path + queryStr, {
       headers: {

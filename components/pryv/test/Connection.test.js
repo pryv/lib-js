@@ -311,9 +311,12 @@ describe('[CONX] Connection', () => {
       expect(res.events.length).to.equal(1);
     });
 
-    it('[CGTA] /events with params', async () => {
+    it('[CGTB] /events with params', async () => {
       const res = await conn.get('events', { fromTime: 0, toTime: Date.now() / 1000, limit: 10000, types: ['note/txt'], streams: ['data', 'monitor-test'] });
-      console.log(res);
+      expect(res.events.length > 0).to.be.true;
+      for (const event of res.events) {
+        expect(event.type).to.equal('note/txt');
+      }
     });
   });
 
@@ -349,7 +352,9 @@ describe('[CONX] Connection', () => {
       it('[CSNZ] streaming with query params', async () => {
         const queryParams = { fromTime: 0, toTime: Date.now() / 1000, limit: 10000, types: ['note/txt'], streams: ['data', 'monitor-test'] };
         let eventsCount = 0;
-        function forEachEvent (event) { eventsCount++; console.log(event.type, event.streamIds); }
+        function forEachEvent (event) {
+          eventsCount++;
+        }
         const res = await conn.getEventsStreamed(queryParams, forEachEvent);
         expect(eventsCount).to.equal(res.eventsCount);
       });

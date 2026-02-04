@@ -4,6 +4,7 @@
  */
 const regexAPIandToken = /(.+):\/\/(.+)@(.+)/gm;
 const regexSchemaAndPath = /(.+):\/\/(.+)/gm;
+const buildSearchParams = require('./lib/buildSearchParams');
 
 /**
  * Utilities to access Pryv API.
@@ -21,7 +22,7 @@ const utils = module.exports = {
   async fetchGet (url, queryParams = {}, headers = {}) {
     let queryStr = '';
     if (queryParams && Object.keys(queryParams).length > 0) {
-      queryStr = '?' + new URLSearchParams(queryParams).toString();
+      queryStr = '?' + buildSearchParams(queryParams);
     }
     const myHeaders = Object.assign({ Accept: 'application/json' }, headers);
     const response = await fetch(url + queryStr, { headers: myHeaders });

@@ -4,6 +4,8 @@
  */
 /* global fetch */
 
+const buildSearchParams = require('./buildSearchParams');
+
 module.exports = getEventStreamed;
 
 async function getEventStreamed (conn, queryParam, parser) {
@@ -43,7 +45,7 @@ async function getEventStreamed (conn, queryParam, parser) {
 
   // ------------   fetch ------------------- //
   const url = new URL(conn.endpoint + 'events');
-  url.search = new URLSearchParams(queryParam).toString();
+  url.search = buildSearchParams(queryParam);
   const fetchParams = { method: 'GET', headers: { Accept: 'application/json' } };
   if (conn.token) fetchParams.headers.Authorization = conn.token;
 
