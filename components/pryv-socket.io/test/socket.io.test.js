@@ -11,7 +11,7 @@ require('@pryv/socket.io')(pryv);
 let conn = null;
 const testStreamId = 'socket-test';
 
-describe('Socket.IO', function () {
+describe('[SKIX] Socket.IO', function () {
   this.timeout(20000);
   let apiEndpoint;
   let apiEndpointBogusToken;
@@ -40,8 +40,8 @@ describe('Socket.IO', function () {
     expect(res[0].error.id).to.equal('item-already-exists');
   });
 
-  describe('init on invalid endpoint', () => {
-    it('Should throw an error "Not Found" or ENOTFOUND when user is not known', async () => {
+  describe('[SIEX] init on invalid endpoint', () => {
+    it('[SIEA] Should throw an error "Not Found" or ENOTFOUND when user is not known', async () => {
       conn = new pryv.Connection(apiEndpointBogusUsername);
       try {
         await conn.socket.open();
@@ -58,7 +58,7 @@ describe('Socket.IO', function () {
       throw new Error('Should throw an error');
     });
 
-    it('Should throw an error "Unauthorized" when token is invalid', async () => {
+    it('[SIEB] Should throw an error "Unauthorized" when token is invalid', async () => {
       conn = new pryv.Connection(apiEndpointBogusToken);
       try {
         await conn.socket.open();
@@ -69,7 +69,7 @@ describe('Socket.IO', function () {
     });
   });
 
-  describe('init on valid endpoint', () => {
+  describe('[SIVX] init on valid endpoint', () => {
     beforeEach(async () => {
       conn = new pryv.Connection(apiEndpoint);
     });
@@ -78,7 +78,7 @@ describe('Socket.IO', function () {
       conn = null;
     });
 
-    it('Should throw an error if conn.socket.api() is called before being open()', async () => {
+    it('[SIVA] Should throw an error if conn.socket.api() is called before being open()', async () => {
       try {
         await conn.socket.api([{ method: 'events.get', params: {} }]);
       } catch (e) {
@@ -87,7 +87,7 @@ describe('Socket.IO', function () {
       throw new Error('Should throw an error');
     });
 
-    it('Should throw an error if conn.socket.on() is called before being open()', async () => {
+    it('[SIVB] Should throw an error if conn.socket.on() is called before being open()', async () => {
       try {
         await conn.socket.on('eventsChanged');
       } catch (e) {
@@ -96,13 +96,13 @@ describe('Socket.IO', function () {
       throw new Error('Should throw an error');
     });
 
-    it('Correct initialization should return socket instance', async () => {
+    it('[SIVC] Correct initialization should return socket instance', async () => {
       const socket = await conn.socket.open();
       expect(socket._io).to.exist;
     });
   });
 
-  describe('socket.api', () => {
+  describe('[SAPX] socket.api', () => {
     before(async () => {
       conn = new pryv.Connection(apiEndpoint);
       await conn.socket.open();
@@ -112,7 +112,7 @@ describe('Socket.IO', function () {
       conn = null;
     });
 
-    it('Handle correctly batch calls', async () => {
+    it('[SAPA] Handle correctly batch calls', async () => {
       const res = await conn.socket.api([{ method: 'streams.get', params: {} }]);
       expect(res[0]).to.exist;
       expect(res[0].streams).to.exist;
@@ -121,7 +121,7 @@ describe('Socket.IO', function () {
     // we don't test further .api() as it relies on the implementation of pryv.Connection
   });
 
-  describe('notification', () => {
+  describe('[SNTX] notification', () => {
     before(async () => {
       conn = new pryv.Connection(apiEndpoint);
       await conn.socket.open();
@@ -131,7 +131,7 @@ describe('Socket.IO', function () {
       conn = null;
     });
 
-    it('Fails on requesting an invalid notifcation', async () => {
+    it('[SNTA] Fails on requesting an invalid notifcation', async () => {
       try {
         conn.socket.on('Bogus', () => {});
       } catch (e) {
@@ -140,7 +140,7 @@ describe('Socket.IO', function () {
       throw new Error('Should fail');
     });
 
-    it('Catches eventChanges', (done) => {
+    it('[SNTB] Catches eventChanges', (done) => {
       function onEventChanged () {
         return done();
       }
@@ -148,7 +148,7 @@ describe('Socket.IO', function () {
       conn.api([{ method: 'events.create', params: { type: 'note/txt', streamId: testStreamId, content: 'hello' } }]);
     });
 
-    it('Catches streamChanges', (done) => {
+    it('[SNTC] Catches streamChanges', (done) => {
       function onStreamChange () {
         return done();
       }
@@ -157,7 +157,7 @@ describe('Socket.IO', function () {
     });
 
     /** Keep this test the last on of this sequence */
-    it('Catches disconnect', (done) => {
+    it('[SNTD] Catches disconnect', (done) => {
       function onDisconnect (reason) {
         expect(reason).to.equal('io client disconnect');
         return done();

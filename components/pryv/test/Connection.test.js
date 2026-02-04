@@ -17,7 +17,7 @@ if (isNode) { // node
   readFileSync = require('fs').readFileSync;
 }
 
-describe('Connection', () => {
+describe('[CONX] Connection', () => {
   before(async function () {
     this.timeout(15000);
     await testData.prepare();
@@ -74,35 +74,35 @@ describe('Connection', () => {
     ]);
   });
 
-  describe('.service', function () {
-    it('return a pryv.Service object', async () => {
+  describe('[CSRV] .service', function () {
+    it('[CSRA] return a pryv.Service object', async () => {
       const service = conn.service;
       expect(service instanceof pryv.Service).to.equal(true);
     });
   });
 
-  describe('.username() ', function () {
-    it('return the username of this connection', async () => {
+  describe('[CUSR] .username() ', function () {
+    it('[CUSA] return the username of this connection', async () => {
       const username = await conn.username();
       expect(username).to.equal(testData.username);
     });
   });
 
-  describe('.apiOne()', function () {
+  describe('[CAOX] .apiOne()', function () {
     this.timeout(15000);
-    it('.apiOne("events.get")', async () => {
+    it('[CAOA] .apiOne("events.get")', async () => {
       const res = await conn.apiOne('events.get');
       expect(res.events).to.exist;
     });
-    it('.apiOne("events.get")', async () => {
+    it('[CAOB] .apiOne("events.get") with path', async () => {
       const res = await conn.apiOne('events.get', {}, 'events');
       expect(Array.isArray(res)).to.equal(true);
     });
   });
 
-  describe('.api()', function () {
+  describe('[CAPX] .api()', function () {
     this.timeout(15000);
-    it('.api() events.get', async () => {
+    it('[CAPA] .api() events.get', async () => {
       const res = await conn.api(
         [
           {
@@ -113,7 +113,7 @@ describe('Connection', () => {
       expect(res.length).to.equal(1);
     });
 
-    it('.api() events.get split in chunks', async () => {
+    it('[CAPB] .api() events.get split in chunks', async () => {
       conn.options.chunkSize = 2;
       const res = await conn.api(
         [
@@ -124,7 +124,7 @@ describe('Connection', () => {
       expect(res.length).to.equal(3);
     });
 
-    it('.api() events.get with handleResult call', async () => {
+    it('[CAPC] .api() events.get with handleResult call', async () => {
       conn.options.chunkSize = 2;
 
       let resultsReceivedCount = 0;
@@ -144,7 +144,7 @@ describe('Connection', () => {
       expect(res.length).to.equal(resultsReceivedCount);
     });
 
-    it('.api() events.get with async handleResult call', async () => {
+    it('[CAPD] .api() events.get with async handleResult call', async () => {
       conn.options.chunkSize = 2;
 
       let resultsReceivedCount = 0;
@@ -169,7 +169,7 @@ describe('Connection', () => {
       expect(res.length).to.equal(resultsReceivedCount);
     });
 
-    it('.api() events.get split in chunks and send percentages', async () => {
+    it('[CAPE] .api() events.get split in chunks and send percentages', async () => {
       conn.options.chunkSize = 2;
       const percentres = { 1: 67, 2: 100 };
       let count = 1;
@@ -185,7 +185,7 @@ describe('Connection', () => {
       expect(res.length).to.equal(3);
     });
 
-    it('.api() with callbacks', (done) => {
+    it('[CAPF] .api() with callbacks', (done) => {
       conn.api(
         [
           { method: 'events.get', params: {} }
@@ -199,8 +199,8 @@ describe('Connection', () => {
     });
   });
 
-  describe('Attachments', () => {
-    it('Node Only: Create event with attachment from file', async function () {
+  describe('[CATX] Attachments', () => {
+    it('[CATA] Node Only: Create event with attachment from file', async function () {
       if (!isNode) { this.skip(); }
       const res = await conn.createEventWithFile({
         type: 'picture/attached',
@@ -216,7 +216,7 @@ describe('Connection', () => {
       expect(res.event.attachments[0].fileName).to.equal('Y.png');
     });
 
-    it('Node Only: Create event with attachment from Buffer', async function () {
+    it('[CATB] Node Only: Create event with attachment from Buffer', async function () {
       if (!isNode) { this.skip(); }
 
       const fileData = readFileSync('./test/Y.png');
@@ -234,7 +234,7 @@ describe('Connection', () => {
       expect(res.event.attachments[0].fileName).to.equal('Y.png');
     });
 
-    it('Browser Only: Create event with attachment from Buffer', async function () {
+    it('[CATC] Browser Only: Create event with attachment from Buffer', async function () {
       if (isNode) { this.skip(); }
 
       const blob = new Blob(['Hello'], { type: 'text/txt' });
@@ -252,7 +252,7 @@ describe('Connection', () => {
       expect(res.event.attachments[0].fileName).to.equal('Hello.txt');
     });
 
-    it('Browser Only: Create event with attachment formData', async function () {
+    it('[CATD] Browser Only: Create event with attachment formData', async function () {
       if (isNode) { this.skip(); }
 
       const formData = new FormData();
@@ -274,14 +274,14 @@ describe('Connection', () => {
     });
   });
 
-  describe('HF events', async function () {
+  describe('[CHFX] HF events', async function () {
     before(async function () {
       if (!await conn.service.supportsHF()) {
         this.skip();
       }
     });
 
-    it('Add data points to HF event', async () => {
+    it('[CHFA] Add data points to HF event', async () => {
       const res = await conn.api([{
         method: 'events.create',
         params: {
@@ -305,22 +305,27 @@ describe('Connection', () => {
     });
   });
 
-  describe('.get()', () => {
-    it('/events', async () => {
+  describe('[CGTX] .get()', () => {
+    it('[CGTA] /events', async () => {
       const res = await conn.get('events', { limit: 1 });
       expect(res.events.length).to.equal(1);
     });
+
+    it('[CGTA] /events with params', async () => {
+      const res = await conn.get('events', { fromTime: 0, toTime: Date.now() / 1000, limit: 10000, types: ['note/txt'], streams: ['data', 'monitor-test'] });
+      console.log(res);
+    });
   });
 
-  describe('time', () => {
-    it('deltatime property', async () => {
+  describe('[CTMX] time', () => {
+    it('[CTMA] deltatime property', async () => {
       await conn.get('events', { limit: 1 });
       expect(conn.deltaTime).to.be.within(-2, 2);
     });
   });
 
-  describe('API', () => {
-    it('endpoint property', async () => {
+  describe('[CEPX] API', () => {
+    it('[CEPA] endpoint property', async () => {
       const [protocol, hostPath] = testData.serviceInfo.api.split('://');
       const challenge = protocol + '://' + conn.token + '@' + hostPath.replace('{username}', testData.username);
       const apiEndpoint = conn.apiEndpoint;
@@ -328,12 +333,12 @@ describe('Connection', () => {
     });
   });
 
-  describe('Streamed event get', function () {
+  describe('[CSTX] Streamed event get', function () {
     this.timeout(15000);
     const now = (new Date()).getTime() / 1000 + 1000;
 
-    describe('Node & Browser', function () {
-      it('streaming ', async () => {
+    describe('[CSNX] Node & Browser', function () {
+      it('[CSNA] streaming ', async () => {
         const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
         let eventsCount = 0;
         function forEachEvent (event) { eventsCount++; }
@@ -341,7 +346,15 @@ describe('Connection', () => {
         expect(eventsCount).to.equal(res.eventsCount);
       });
 
-      it('streaming includesDeletion', async () => {
+      it('[CSNZ] streaming with query params', async () => {
+        const queryParams = { fromTime: 0, toTime: Date.now() / 1000, limit: 10000, types: ['note/txt'], streams: ['data', 'monitor-test'] };
+        let eventsCount = 0;
+        function forEachEvent (event) { eventsCount++; console.log(event.type, event.streamIds); }
+        const res = await conn.getEventsStreamed(queryParams, forEachEvent);
+        expect(eventsCount).to.equal(res.eventsCount);
+      });
+
+      it('[CSNB] streaming includesDeletion', async () => {
         const queryParams = { fromTime: 0, toTime: now, limit: 10000, includeDeletions: true, modifiedSince: 0, state: 'all' };
         let eventsCount = 0;
         let trashedCount = 0;
@@ -363,14 +376,14 @@ describe('Connection', () => {
         expect(trashedCount).to.be.gt(0);
       });
 
-      it('no-events ', async () => {
+      it('[CSNC] no-events ', async () => {
         const queryParams = { fromTime: 0, toTime: now, types: ['type/unexistent'] };
         function forEachEvent (event) { }
         const res = await conn.getEventsStreamed(queryParams, forEachEvent);
         expect(0).to.equal(res.eventsCount);
       });
 
-      it('no-events includeDeletions', async () => {
+      it('[CSND] no-events includeDeletions', async () => {
         const queryParams = { fromTime: 0, toTime: now, types: ['type/unexistent'], includeDeletions: true, modifiedSince: 0 };
         function forEachEvent (event) { }
         const res = await conn.getEventsStreamed(queryParams, forEachEvent);
@@ -380,7 +393,7 @@ describe('Connection', () => {
     });
 
     if (typeof window === 'undefined') {
-      describe('Browser mock', function () {
+      describe('[CSBX] Browser mock', function () {
         beforeEach(function () {
           const dom = new JSDOM('<!DOCTYPE html>', { url: 'http://localhost/' });
           global.document = dom.window.document;
@@ -394,7 +407,7 @@ describe('Connection', () => {
           delete global.location;
         });
 
-        it(' with fetch', async () => {
+        it('[CSBA] with fetch', async () => {
           const queryParams = { fromTime: 0, toTime: now, limit: 10000 };
           let eventsCount = 0;
           function forEachEvent (event) { eventsCount++; }
@@ -405,7 +418,7 @@ describe('Connection', () => {
     }
   });
 
-  describe('Access Info', () => {
+  describe('[CAIX] Access Info', () => {
     let newUser;
     let accessInfoUser;
     before(async () => {
@@ -444,13 +457,13 @@ describe('Connection', () => {
       ]);
     });
 
-    it('has same username', () => {
+    it('[CAIA] has same username', () => {
       expect(accessInfoUser).to.exist;
       expect(accessInfoUser.name).to.exist;
       expect(newUser.access.name).to.equal(accessInfoUser.name);
     });
 
-    it('has same token', () => {
+    it('[CAIB] has same token', () => {
       expect(accessInfoUser.token).to.exist;
       expect(newUser.access.token).to.equal(accessInfoUser.token);
     });

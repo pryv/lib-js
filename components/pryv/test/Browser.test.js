@@ -17,7 +17,7 @@ function genSettings () {
   };
 }
 
-describe('Browser', function () {
+describe('[BRWX] Browser', function () {
   this.timeout(15000);
 
   before(async function () {
@@ -46,7 +46,7 @@ describe('Browser', function () {
     delete global.location;
   });
 
-  it('setupAuth()', async () => {
+  it('[BRWA] setupAuth()', async () => {
     const settings = genSettings();
     let AuthLoaded = false;
     settings.onStateChange = function (state) {
@@ -70,7 +70,7 @@ describe('Browser', function () {
     }
   });
 
-  it('serviceInfoFromUrl()', async () => {
+  it('[BRWB] serviceInfoFromUrl()', async () => {
     expect('https://zou.zou/service/info').to.equal(pryv.Browser.serviceInfoFromUrl());
   });
 });

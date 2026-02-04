@@ -6,7 +6,7 @@
 
 require('./load-helpers');
 
-describe('Monitor', function () {
+describe('[MONX] Monitor', function () {
   this.timeout(20000);
 
   before(async function () {
@@ -14,18 +14,18 @@ describe('Monitor', function () {
     await prepareAndCreateBaseStreams();
   });
 
-  describe('init', () => {
-    it('can be initialized with an apiEndpoint', async () => {
+  describe('[MINX] init', () => {
+    it('[MINA] can be initialized with an apiEndpoint', async () => {
       const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 });
       await monitor.start();
     });
 
-    it('can be initialized with a connection', async () => {
+    it('[MINB] can be initialized with a connection', async () => {
       const monitor = new pryv.Monitor(conn, { limit: 1 });
       await monitor.start();
     });
 
-    it('throw Error on invalid apiEndpoint', async () => {
+    it('[MINC] throw Error on invalid apiEndpoint', async () => {
       let passed = true;
       try {
         pryv.Monitor('BlipBlop', { limit: 1 });
@@ -37,7 +37,7 @@ describe('Monitor', function () {
     });
   });
 
-  describe('notifications', () => {
+  describe('[MNTX] notifications', () => {
     let monitor = null;
     beforeEach(async () => {
       monitor = new pryv.Monitor(conn, { limit: 1 });
@@ -47,7 +47,7 @@ describe('Monitor', function () {
       monitor.stop();
     });
 
-    it('Load events at start', async function () {
+    it('[MNTA] Load events at start', async function () {
       let count = 0;
       monitor.on('event', function (event) {
         count++;
@@ -67,7 +67,7 @@ describe('Monitor', function () {
       expect(count).to.be.gt(0);
     });
 
-    it('Detect new events added', async function () {
+    it('[MNTB] Detect new events added', async function () {
       let count = 0;
       await monitor.start();
 

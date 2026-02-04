@@ -4,13 +4,13 @@
  */
 /* global describe, it, before, expect, pryv, testData */
 
-describe('Service', function () {
+describe('[SERX] Service', function () {
   before(async function () {
     this.timeout(15000);
     await testData.prepare();
   });
 
-  it('info()', async () => {
+  it('[SERA] info()', async () => {
     const pryvService = new pryv.Service(testData.serviceInfoUrl);
     const res = await pryvService.info();
     expect(res).to.exist;
@@ -22,7 +22,7 @@ describe('Service', function () {
     });
   });
 
-  it('info() 2x ', async () => {
+  it('[SERB] info() 2x ', async () => {
     const pryvService = new pryv.Service(testData.serviceInfoUrl);
     const res = await pryvService.info();
     expect(res).to.exist;
@@ -32,7 +32,7 @@ describe('Service', function () {
     expect(res2.access).to.exist;
   });
 
-  it('login()', async function () {
+  it('[SERC] login()', async function () {
     this.timeout(15000);
     const pryvService = new pryv.Service(testData.serviceInfoUrl);
     const conn = await pryvService.login(testData.username, testData.password, 'jslib-test');
@@ -41,7 +41,7 @@ describe('Service', function () {
     expect(conn.endpoint).to.exist;
   });
 
-  it('assets()', async function () {
+  it('[SERD] assets()', async function () {
     const pryvService = new pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     expect(assets).to.exist;
@@ -51,13 +51,13 @@ describe('Service', function () {
     expect(assets).to.equal(assets2);
   });
 
-  describe('Errors', async function () {
-    it('Throw error with invalid content', async () => {
+  describe('[SEEX] Errors', async function () {
+    it('[SEEA] Throw error with invalid content', async () => {
       const service = new pryv.Service(null, {});
       await expect(service.info()).to.be.rejectedWith('Invalid data from service/info');
     });
 
-    it('Warn if no assets', async () => {
+    it('[SEEB] Warn if no assets', async () => {
       const serviceInfoCopy = Object.assign({}, testData.serviceInfo);
       delete serviceInfoCopy.assets;
       const pryvService = new pryv.Service(null, serviceInfoCopy);
@@ -65,13 +65,13 @@ describe('Service', function () {
       expect(assets).to.be.null;
     });
 
-    it('login() failed on wrong password', async function () {
+    it('[SEEC] login() failed on wrong password', async function () {
       this.timeout(15000);
       const pryvService = new pryv.Service(testData.serviceInfoUrl);
       await expect(pryvService.login(testData.username, 'bobby', 'jslib-test')).to.be.rejectedWith('The given username/password pair is invalid.');
     });
 
-    it('login() failed on wrong username', async function () {
+    it('[SEED] login() failed on wrong username', async function () {
       this.timeout(15000);
       const pryvService = new pryv.Service(testData.serviceInfoUrl);
       // check if username is in path or domain

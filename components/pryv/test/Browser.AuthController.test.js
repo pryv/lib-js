@@ -8,7 +8,7 @@ const utils = require('../src/utils.js');
 const Service = require('../src/Service');
 const AuthController = require('../src/Auth/AuthController.js');
 
-describe('Browser.LoginButton', function () {
+describe('[AUTX] Browser.LoginButton', function () {
   this.timeout(15000);
 
   let auth;
@@ -43,7 +43,7 @@ describe('Browser.LoginButton', function () {
     await auth.init();
   });
 
-  it('getReturnURL()', async function () {
+  it('[AUTA] getReturnURL()', async function () {
     const myUrl = 'https://mysite.com/bobby';
     let error = null;
     try {
@@ -71,12 +71,12 @@ describe('Browser.LoginButton', function () {
     expect(auth.getReturnURL('self?', myUrl, fakeNavigator)).to.equal(myUrl + '?');
   });
 
-  it('browserIsMobileOrTablet()', async function () {
+  it('[AUTB] browserIsMobileOrTablet()', async function () {
     expect(utils.browserIsMobileOrTablet({ userAgent: 'android' })).to.be.true;
     expect(utils.browserIsMobileOrTablet({ userAgent: 'Safari' })).to.be.false;
   });
 
-  it('cleanURLFromPrYvParams()', async function () {
+  it('[AUTC] cleanURLFromPrYvParams()', async function () {
     expect('https://my.Url.com/?bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/?bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
 

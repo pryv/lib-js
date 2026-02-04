@@ -6,15 +6,15 @@
 
 require('./load-helpers');
 
-describe('Monitor + EventsTimer', function () {
+describe('[TIMX] Monitor + EventsTimer', function () {
   this.timeout(20000);
 
   before(async () => {
     await prepareAndCreateBaseStreams();
   });
 
-  describe('init', () => {
-    it('throw error if timer is not inistialized with correct time', async () => {
+  describe('[TINX] init', () => {
+    it('[TINA] throw error if timer is not inistialized with correct time', async () => {
       const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 });
       try {
         /* eslint-disable-next-line no-new */
@@ -26,8 +26,8 @@ describe('Monitor + EventsTimer', function () {
     });
   });
 
-  describe('timer updates', () => {
-    it('Detect new events added', async function () {
+  describe('[TUPX] timer updates', () => {
+    it('[TUPA] Detect new events added', async function () {
       const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.EventsTimer(1));
       await monitor.start();
@@ -58,8 +58,8 @@ describe('Monitor + EventsTimer', function () {
     });
   });
 
-  describe('stop', () => {
-    it('Monitor stops when requested', async function () {
+  describe('[TSTX] stop', () => {
+    it('[TSTA] Monitor stops when requested', async function () {
       this.timeout(20000);
       const monitor = await new pryv.Monitor(apiEndpoint, { limit: 1 })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.EventsTimer(1));

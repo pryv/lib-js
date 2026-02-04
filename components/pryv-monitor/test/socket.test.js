@@ -7,16 +7,16 @@
 require('./load-helpers');
 require('@pryv/socket.io')(pryv);
 
-describe('Monitor + Socket.IO', function () {
+describe('[MSKX] Monitor + Socket.IO', function () {
   this.timeout(20000);
 
   before(async () => {
     await prepareAndCreateBaseStreams();
   });
 
-  describe('socket updates', function () {
+  describe('[MSUX] socket updates', function () {
     this.timeout(25000);
-    it('Detect new events added', async function () {
+    it('[MSUA] Detect new events added', async function () {
       const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
       await monitor.start();
@@ -47,8 +47,8 @@ describe('Monitor + Socket.IO', function () {
     });
   });
 
-  describe('stop', () => {
-    it('Monitor stops when requested', async function () {
+  describe('[MSTX] stop', () => {
+    it('[MSTA] Monitor stops when requested', async function () {
       this.timeout(20000);
       const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());

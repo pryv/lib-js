@@ -4,7 +4,7 @@
  */
 /* global describe, it, before, after, expect, JSDOM, pryv, testData */
 
-describe('ServiceAssets', function () {
+describe('[ASTX] ServiceAssets', function () {
   let cleanupDom = false;
 
   before(async function () {
@@ -28,19 +28,19 @@ describe('ServiceAssets', function () {
     delete global.location;
   });
 
-  it('relativeURL()', async () => {
+  it('[ASTA] relativeURL()', async () => {
     const pryvService = new pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     expect(assets.relativeURL('./toto')).to.eql(testData.serviceInfo.assets.definitions.replace('index.json', 'toto'));
   });
 
-  it('setAllDefaults()', async () => {
+  it('[ASTB] setAllDefaults()', async () => {
     const pryvService = new pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     await assets.setAllDefaults();
   });
 
-  it('Load all external elements', async () => {
+  it('[ASTC] Load all external elements', async () => {
     const pryvService = new pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
 
@@ -49,21 +49,21 @@ describe('ServiceAssets', function () {
     await assets.loginButtonGetMessages();
   });
 
-  it('.get() returns all assets', async () => {
+  it('[ASTD] .get() returns all assets', async () => {
     const pryvService = new pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const allAssets = await assets.get();
     expect(allAssets.favicon.default.url).to.eql('favicon.ico');
   });
 
-  it('.get(keyPath) ', async () => {
+  it('[ASTE] .get(keyPath) ', async () => {
     const pryvService = new pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const faviconUrl = await assets.get('favicon:default:url');
     expect(faviconUrl).to.eql('favicon.ico');
   });
 
-  it('.getUrl(keyPath) ', async () => {
+  it('[ASTF] .getUrl(keyPath) ', async () => {
     const pryvService = new pryv.Service(null, testData.serviceInfo);
     const assets = await pryvService.assets();
     const faviconUrl = await assets.getUrl('favicon:default:url');

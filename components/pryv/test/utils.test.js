@@ -4,13 +4,13 @@
  */
 /* global describe, it, before, expect, pryv, testData */
 
-describe('utils', function () {
+describe('[UTLX] utils', function () {
   before(async function () {
     this.timeout(15000);
     await testData.prepare();
   });
 
-  it('extractTokenAndAPIEndpoint', function (done) {
+  it('[UTLA] extractTokenAndAPIEndpoint', function (done) {
     const tokenAndAPI = pryv.utils
       .extractTokenAndAPIEndpoint(testData.apiEndpointWithToken);
     expect(testData.token).to.equal(tokenAndAPI.token);
@@ -19,7 +19,7 @@ describe('utils', function () {
     done();
   });
 
-  it('extractTokenAndAPIEndpoint should work without token', function (done) {
+  it('[UTLB] extractTokenAndAPIEndpoint should work without token', function (done) {
     const tokenAndAPI = pryv.utils
       .extractTokenAndAPIEndpoint(testData.apiEndpoint);
 
@@ -29,7 +29,7 @@ describe('utils', function () {
     done();
   });
 
-  it('extractTokenAndAPIEndpoint should fail on invalid url', function (done) {
+  it('[UTLC] extractTokenAndAPIEndpoint should fail on invalid url', function (done) {
     let error = null;
     try {
       pryv.utils.extractTokenAndAPIEndpoint('blip');
@@ -40,7 +40,7 @@ describe('utils', function () {
     expect(error).to.exist;
   });
 
-  it('buildAPIEndpoint with token', function (done) {
+  it('[UTLD] buildAPIEndpoint with token', function (done) {
     const apiEndpoint = pryv.utils
       .buildAPIEndpoint({
         token: testData.token,
@@ -50,7 +50,7 @@ describe('utils', function () {
     done();
   });
 
-  it('buildAPIEndpoint without token', function (done) {
+  it('[UTLE] buildAPIEndpoint without token', function (done) {
     const apiEndpoint = pryv.utils
       .buildAPIEndpoint({
         token: null,
