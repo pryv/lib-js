@@ -59,7 +59,7 @@ async function getEventStreamed (conn, queryParam, parser) {
   }
 
   if (errResult) {
-    throw new Error(errResult);
+    throw new Error(errResult?.message + ' ' + errResult?.rawResponse);
   }
 
   // We're done!

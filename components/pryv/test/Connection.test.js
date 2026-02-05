@@ -359,6 +359,21 @@ describe('[CONX] Connection', () => {
         expect(eventsCount).to.equal(res.eventsCount);
       });
 
+      it('[CSNY] streaming with roneous query params', async () => {
+        const queryParams = { fromTime: 0, toTime: Date.now() / 1000, limit: 10000, types: ['note/txt'], streams: ['bogus', 'bogus2'] };
+        let eventsCount = 0;
+        function forEachEvent (event) {
+          eventsCount++;
+        }
+        try {
+          const res = await conn.getEventsStreamed(queryParams, forEachEvent);
+          expect(eventsCount).to.equal(res.eventsCount);
+        } catch (e) {
+          return;
+        }
+        throw new Error('Should fail');
+      });
+
       it('[CSNB] streaming includesDeletion', async () => {
         const queryParams = { fromTime: 0, toTime: now, limit: 10000, includeDeletions: true, modifiedSince: 0, state: 'all' };
         let eventsCount = 0;
