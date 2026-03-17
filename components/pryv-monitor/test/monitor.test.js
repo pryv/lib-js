@@ -40,7 +40,7 @@ describe('[MONX] Monitor', function () {
   describe('[MNTX] notifications', () => {
     let monitor = null;
     beforeEach(async () => {
-      monitor = new pryv.Monitor(conn, { limit: 1 });
+      monitor = new pryv.Monitor(conn, { limit: 1, streams: [global.testStreamId] });
     });
 
     afterEach(async () => {
@@ -48,11 +48,7 @@ describe('[MONX] Monitor', function () {
     });
 
     it('[MNTA] Load events at start', async function () {
-      let count = 0;
-      monitor.on('event', function (event) {
-        count++;
-      });
-      await monitor.start();
+      // Create event before starting the monitor so it's picked up on initial load
       await conn.api([
         {
           method: 'events.create',
@@ -63,7 +59,12 @@ describe('[MONX] Monitor', function () {
           }
         }
       ]);
-      await new Promise(resolve => setTimeout(resolve, 8000));
+      let count = 0;
+      monitor.on('event', function (event) {
+        count++;
+      });
+      await monitor.start();
+      await new Promise(resolve => setTimeout(resolve, 2000));
       expect(count).to.be.gt(0);
     });
 

@@ -4,8 +4,9 @@
  */
 /* global expect, pryv, testData */
 
+const { createId: cuid } = require('@paralleldrive/cuid2');
 require('../src')(pryv);
-const testStreamId = global.testStreamId = 'monitor-test';
+const testStreamId = global.testStreamId = 'mon-' + cuid().slice(0, 8);
 
 global.prepareAndCreateBaseStreams = async () => {
   await testData.prepare();

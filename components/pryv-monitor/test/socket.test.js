@@ -17,7 +17,7 @@ describe('[MSKX] Monitor + Socket.IO', function () {
   describe('[MSUX] socket updates', function () {
     this.timeout(25000);
     it('[MSUA] Detect new events added', async function () {
-      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
+      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1, streams: [global.testStreamId] })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
       await monitor.start();
 
@@ -50,7 +50,7 @@ describe('[MSKX] Monitor + Socket.IO', function () {
   describe('[MSTX] stop', () => {
     it('[MSTA] Monitor stops when requested', async function () {
       this.timeout(20000);
-      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
+      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1, streams: [global.testStreamId] })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
       await monitor.start();
       let count = 0;

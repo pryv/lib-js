@@ -28,7 +28,7 @@ describe('[TIMX] Monitor + EventsTimer', function () {
 
   describe('[TUPX] timer updates', () => {
     it('[TUPA] Detect new events added', async function () {
-      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1 })
+      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1, streams: [global.testStreamId] })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.EventsTimer(1));
       await monitor.start();
       let count = 0;
@@ -61,7 +61,7 @@ describe('[TIMX] Monitor + EventsTimer', function () {
   describe('[TSTX] stop', () => {
     it('[TSTA] Monitor stops when requested', async function () {
       this.timeout(20000);
-      const monitor = await new pryv.Monitor(apiEndpoint, { limit: 1 })
+      const monitor = await new pryv.Monitor(apiEndpoint, { limit: 1, streams: [global.testStreamId] })
         .addUpdateMethod(new pryv.Monitor.UpdateMethod.EventsTimer(1));
       await monitor.start();
 
