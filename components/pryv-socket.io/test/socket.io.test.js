@@ -46,7 +46,7 @@ describe('[SKIX] Socket.IO', function () {
       try {
         await conn.socket.open();
       } catch (e) {
-        if (e.message === 'Not Found' || e.message.startsWith('getaddrinfo ENOTFOUND') || e.message === 'fetch failed') {
+        if (e.message === 'Not Found' || e.message.startsWith('getaddrinfo ENOTFOUND') || e.message === 'fetch failed' || e.message.includes('Unknown user')) {
           return;
         }
         if (typeof document !== 'undefined') { // in browser
@@ -145,7 +145,7 @@ describe('[SKIX] Socket.IO', function () {
         return done();
       }
       conn.socket.on('eventsChanged', onEventChanged);
-      conn.api([{ method: 'events.create', params: { type: 'note/txt', streamId: testStreamId, content: 'hello' } }]);
+      conn.api([{ method: 'events.create', params: { type: 'note/txt', streamIds: [testStreamId], content: 'hello' } }]);
     });
 
     it('[SNTC] Catches streamChanges', (done) => {

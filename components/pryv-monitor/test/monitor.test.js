@@ -57,7 +57,7 @@ describe('[MONX] Monitor', function () {
         {
           method: 'events.create',
           params: {
-            streamId: global.testStreamId,
+            streamIds: [global.testStreamId],
             type: 'note/txt',
             content: 'hello monitor'
           }
@@ -72,7 +72,7 @@ describe('[MONX] Monitor', function () {
       await monitor.start();
 
       const eventData = {
-        streamId: global.testStreamId,
+        streamIds: [global.testStreamId],
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };

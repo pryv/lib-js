@@ -24,7 +24,7 @@ describe('[MSKX] Monitor + Socket.IO', function () {
       let count = 0;
 
       const eventData = {
-        streamId: global.testStreamId,
+        streamIds: [global.testStreamId],
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };
@@ -58,7 +58,7 @@ describe('[MSKX] Monitor + Socket.IO', function () {
       monitor.stop();
 
       const eventData = {
-        streamId: global.testStreamId,
+        streamIds: [global.testStreamId],
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };

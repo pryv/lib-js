@@ -168,7 +168,7 @@ describe('[MEDX] Monitor Edge Cases', function () {
       const createRes = await conn.api([{
         method: 'events.create',
         params: {
-          streamId: global.testStreamId,
+          streamIds: [global.testStreamId],
           type: 'note/txt',
           content: 'to be deleted ' + Date.now()
         }

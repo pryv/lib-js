@@ -40,7 +40,7 @@ describe('[TIMX] Monitor + EventsTimer', function () {
       });
 
       const eventData = {
-        streamId: global.testStreamId,
+        streamIds: [global.testStreamId],
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };
@@ -75,7 +75,7 @@ describe('[TIMX] Monitor + EventsTimer', function () {
       });
 
       const eventData = {
-        streamId: global.testStreamId,
+        streamIds: [global.testStreamId],
         type: 'note/txt',
         content: 'hello monitor ' + new Date()
       };
