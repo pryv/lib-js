@@ -23,9 +23,9 @@ describe('[CONX] Connection', () => {
     await testData.prepare();
     conn = new pryv.Connection(testData.apiEndpointWithToken);
 
-    // create some events
-    const toBeDeletedId = cuid();
-    const toBeTrashed = cuid();
+    // create some events (prefix with 'c' for v2 event ID pattern)
+    const toBeDeletedId = 'c' + cuid();
+    const toBeTrashed = 'c' + cuid();
     await conn.api([
       {
         method: 'events.create',
@@ -375,6 +375,18 @@ describe('[CONX] Connection', () => {
       });
 
       it('[CSNB] streaming includesDeletion', async () => {
+        // Create, trash, and delete events to ensure we have all three states
+        const trashId = 'c' + cuid();
+        const deleteId = 'c' + cuid();
+        const setupRes = await conn.api([
+          { method: 'events.create', params: { id: trashId, streamIds: ['data'], type: 'note/txt', content: 'to trash' } },
+          { method: 'events.create', params: { id: deleteId, streamIds: ['data'], type: 'note/txt', content: 'to delete' } },
+          { method: 'events.delete', params: { id: trashId } },
+          { method: 'events.delete', params: { id: deleteId } },
+          { method: 'events.delete', params: { id: deleteId } }
+        ]);
+        // Verify setup succeeded
+        expect(setupRes[0].event, 'event creation failed: ' + JSON.stringify(setupRes[0].error)).to.exist;
         const queryParams = { fromTime: 0, toTime: now, limit: 10000, includeDeletions: true, modifiedSince: 0, state: 'all' };
         let eventsCount = 0;
         let trashedCount = 0;
