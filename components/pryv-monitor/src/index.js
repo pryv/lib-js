@@ -15,7 +15,7 @@ module.exports = function (pryv) {
   console.log('Pryv version', pryv.version);
   // check version here
   if (pryv.Monitor) {
-    throw new Error('Monitor already loaded');
+    return; // already loaded
   }
   // sharing cross references
   pryv.Monitor = Monitor;
