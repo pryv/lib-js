@@ -71,13 +71,13 @@ async function prepare () {
     appId: 'js-lib-test'
   }, headers);
 
-  // create data stream
-  try {
-    await fetchPost(apiEndpoint + 'streams', {
-      id: 'data',
-      name: 'Data'
-    }, { authorization: loginRes.token });
-  } catch (e) {
+  // create test streams
+  for (const stream of [{ id: 'data', name: 'Data' }, { id: 'monitor-test', name: 'Monitor Test' }]) {
+    try {
+      await fetchPost(apiEndpoint + 'streams', stream, { authorization: loginRes.token });
+    } catch (e) {
+      // stream may already exist
+    }
   }
   if (loginRes?.token == null) throw Error('Failed login process during testData prepare' + JSON.stringify(loginRes));
   testData.serviceInfo = serviceInfo;
