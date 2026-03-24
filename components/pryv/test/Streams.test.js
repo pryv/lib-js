@@ -7,8 +7,11 @@
 const { createId: cuid } = require('@paralleldrive/cuid2');
 
 let conn = null;
-const testStreamId = 'str-' + cuid().slice(0, 8);
-const childStreamId = 'str-child-' + cuid().slice(0, 8);
+const suffix = cuid().slice(0, 8);
+const testStreamId = 'str-' + suffix;
+const childStreamId = 'str-child-' + suffix;
+const testStreamName = 'Test Stream ' + suffix;
+const childStreamName = 'Child Stream ' + suffix;
 
 describe('[STRX] Streams', () => {
   before(async function () {
@@ -21,18 +24,18 @@ describe('[STRX] Streams', () => {
     it('[SCRA] create a root stream', async () => {
       const res = await conn.api([{
         method: 'streams.create',
-        params: { id: testStreamId, name: 'Test Stream' }
+        params: { id: testStreamId, name: testStreamName }
       }]);
       expect(res[0]).to.exist;
       expect(res[0].stream).to.exist;
       expect(res[0].stream.id).to.equal(testStreamId);
-      expect(res[0].stream.name).to.equal('Test Stream');
+      expect(res[0].stream.name).to.equal(testStreamName);
     });
 
     it('[SCRB] create a child stream', async () => {
       const res = await conn.api([{
         method: 'streams.create',
-        params: { id: childStreamId, name: 'Child Stream', parentId: testStreamId }
+        params: { id: childStreamId, name: childStreamName, parentId: testStreamId }
       }]);
       expect(res[0]).to.exist;
       expect(res[0].stream).to.exist;
@@ -42,7 +45,7 @@ describe('[STRX] Streams', () => {
     it('[SCRC] reject duplicate stream id', async () => {
       const res = await conn.api([{
         method: 'streams.create',
-        params: { id: testStreamId, name: 'Duplicate' }
+        params: { id: testStreamId, name: 'Duplicate ' + suffix }
       }]);
       expect(res[0]).to.exist;
       expect(res[0].error).to.exist;
@@ -80,11 +83,11 @@ describe('[STRX] Streams', () => {
     it('[SUPA] rename a stream', async () => {
       const res = await conn.api([{
         method: 'streams.update',
-        params: { id: childStreamId, update: { name: 'Renamed Child' } }
+        params: { id: childStreamId, update: { name: 'Renamed ' + suffix } }
       }]);
       expect(res[0]).to.exist;
       expect(res[0].stream).to.exist;
-      expect(res[0].stream.name).to.equal('Renamed Child');
+      expect(res[0].stream.name).to.equal('Renamed ' + suffix);
     });
   });
 

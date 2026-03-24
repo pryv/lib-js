@@ -12,7 +12,7 @@ module.exports = function (pryv) {
   console.log('"pryv" lib version', pryv.version);
   // check version here
   if (pryv.Connection.SocketIO) {
-    throw new Error('Socket.IO add-on already loaded');
+    return; // already loaded
   }
   // sharing cross references
   pryv.Connection.SocketIO = SocketIO;
