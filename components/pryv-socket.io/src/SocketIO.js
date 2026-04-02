@@ -41,7 +41,7 @@ class SocketIO extends EventEmitter {
         .then(username => {
           const socketEndpoint = this.connection.endpoint + username + '?auth=' + this.connection.token;
           // @ts-ignore - io is callable in socket.io-client
-          this._io = io(socketEndpoint, { forceNew: true });
+          this._io = io(socketEndpoint, { forceNew: true, transports: ['websocket'] });
 
           // handle failure
           for (const errcode of ['connect_error', 'connection_failed', 'error', 'connection_timeout']) {

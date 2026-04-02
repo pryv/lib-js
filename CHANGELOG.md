@@ -2,6 +2,9 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.0.2](https://github.com/pryv/lib-js/compare/3.0.0...3.0.2)
+- Socket.IO: use WebSocket transport directly instead of polling-first. Fixes connection failures against service-core v2 cluster mode (which disables HTTP long-polling).
+
 ## [3.0.0](https://github.com/pryv/lib-js/compare/2.4.5...3.0.0)
 - Removing superagent dependency (breaking change)
 - Enhancing test suite
