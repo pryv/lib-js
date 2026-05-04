@@ -40,8 +40,29 @@ class SocketIO extends EventEmitter {
       this.connection.username()
         .then(username => {
           const socketEndpoint = this.connection.endpoint + username + '?auth=' + this.connection.token;
+          // Cap reconnects so a server-side outage can't drive a runaway loop.
+          // socket.io-client default is reconnectionAttempts: Infinity, max delay 5s.
+          // With these settings, a stuck client gives up after ~10 attempts spread
+          // over ~1 minute (with randomization), then surfaces 'error' to consumers.
           // @ts-ignore - io is callable in socket.io-client
-          this._io = io(socketEndpoint, { forceNew: true, transports: ['websocket'] });
+          this._io = io(socketEndpoint, {
+            forceNew: true,
+            transports: ['websocket'],
+            reconnectionAttempts: 10,
+            reconnectionDelayMax: 60000,
+            randomizationFactor: 0.5
+          });
+
+          // Terminal failure: socket.io-client gave up reconnecting.
+          // Tear down our handle and surface 'error' so consumers (e.g. Monitor)
+          // can clean up instead of leaving a zombie socket reference.
+          this._io.on('reconnect_failed', () => {
+            const dead = this._io;
+            this._io = null;
+            this.connecting = false;
+            try { if (dead) dead.close(); } catch (ex) { }
+            this.emit('error', new Error('socket.io: reconnect_failed (gave up after configured attempts)'));
+          });
 
           // handle failure
           for (const errcode of ['connect_error', 'connection_failed', 'error', 'connection_timeout']) {
