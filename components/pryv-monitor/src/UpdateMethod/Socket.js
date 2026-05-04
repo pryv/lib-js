@@ -23,7 +23,16 @@ class Socket extends UpdateMethod {
     this.socket = await this.monitor.connection.socket.open();
     this.socket.on('eventsChanged', () => { this.monitor.updateEvents(); });
     this.socket.on('streamsChanged', () => { this.monitor.updateStreams(); });
-    this.socket.on('error', (error) => { this.monitor.emit(Changes.ERROR, error); });
+    this.socket.on('error', (error) => {
+      this.monitor.emit(Changes.ERROR, error);
+      // If the underlying socket.io-client transport has been torn down
+      // (i.e. SocketIO emitted 'error' after reconnect_failed), drop our
+      // reference so a future Changes.READY can rebuild instead of
+      // short-circuiting on the cached, dead handle.
+      if (this.socket && !this.socket._io) {
+        this.socket = null;
+      }
+    });
   }
 
   async stop () {

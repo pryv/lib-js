@@ -2,6 +2,10 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.0.3](https://github.com/pryv/lib-js/compare/3.0.2...3.0.3)
+- `@pryv/socket.io`: cap reconnection (`reconnectionAttempts: 10`, `reconnectionDelayMax: 60000`, `randomizationFactor: 0.5`) so a server-side outage no longer drives an unbounded reconnect loop. Listens for `reconnect_failed` and surfaces a terminal `error` event so consumers can clean up instead of leaving a zombie socket reference.
+- `@pryv/monitor`: when the underlying socket.io transport dies (terminal `reconnect_failed`), drop the cached socket reference so a future `Changes.READY` cycle rebuilds from scratch instead of short-circuiting on the dead handle.
+
 ## [3.0.2](https://github.com/pryv/lib-js/compare/3.0.0...3.0.2)
 - Socket.IO: use WebSocket transport directly instead of polling-first. Fixes connection failures against service-core v2 cluster mode (which disables HTTP long-polling).
 
