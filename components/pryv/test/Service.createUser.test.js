@@ -73,6 +73,20 @@ describe('[CRUX] Service.createUser', function () {
     // Server-side validation order varies; we don't pin the exact id.
     expect(caught.response).to.have.property('status');
   });
+
+  it('[CRUD] hosting: "auto" picks the first available hosting', async function () {
+    this.timeout(20000);
+    const username = 'jsliba' + cuid().slice(0, 8);
+    const result = await service.createUser({
+      username,
+      password: username + 'PASS!1',
+      email: username + '@example.com',
+      hosting: 'auto',
+      appId: 'jslib-test'
+    });
+    expect(result.username).to.equal(username);
+    expect(result.apiEndpoint).to.be.a('string');
+  });
 });
 
 function findFirstAvailableHostingKey (tree) {

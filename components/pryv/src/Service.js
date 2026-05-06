@@ -233,17 +233,72 @@ class Service {
   }
 
   /**
+   * Fetch the raw hostings tree advertised by `<register>/hostings`.
+   *
+   * Returns the nested API shape `{ regions: { <region>: { zones:
+   * { <zone>: { hostings: { <key>: { name, description, availableCore,
+   * available } } } } } } }`. For a flat list ready to render in a UI,
+   * use `flatHostings()`.
+   *
+   * @returns {Promise<Object>} the raw `/reg/hostings` body
+   * @throws {PryvError} on non-2xx
+   */
+  async availableHostings () {
+    const serviceInfo = await this.info();
+    const { response, body } = await utils.fetchGet(
+      serviceInfo.register + 'hostings'
+    );
+    if (!response.ok) throw PryvError.fromApiResponse(response, body);
+    return body;
+  }
+
+  /**
+   * Flatten `availableHostings()` into a list of `{ key, name, description,
+   * region, zone, availableCore, available }` items.
+   *
+   * @returns {Promise<Array<Object>>}
+   * @throws {PryvError} on non-2xx
+   */
+  async flatHostings () {
+    const tree = await this.availableHostings();
+    const out = [];
+    const regions = (tree && tree.regions) || {};
+    for (const [regionKey, region] of Object.entries(regions)) {
+      const zones = (region && region.zones) || {};
+      for (const [zoneKey, zone] of Object.entries(zones)) {
+        const hostings = (zone && zone.hostings) || {};
+        for (const [key, h] of Object.entries(hostings)) {
+          if (!h) continue;
+          out.push({
+            key,
+            name: h.name,
+            description: h.description,
+            region: regionKey,
+            zone: zoneKey,
+            availableCore: h.availableCore,
+            available: h.available === true
+          });
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
    * Register a new user on this service.
    *
    * Hides the v1/v2 register endpoint difference. v2 platforms (service
    * version >= 2.0 or >= 1.6) accept camelCase fields at `<register>users`;
    * older v1 service-register expects mixed-case fields at `<register>user`.
    *
+   * Pass `hosting: 'auto'` to use the first hosting flagged `available: true`
+   * in `flatHostings()` — useful for tests and single-hosting platforms.
+   *
    * @param {Object} opts
    * @param {string} opts.username
    * @param {string} opts.password
    * @param {string} opts.email
-   * @param {string} opts.hosting - Hosting key (use `service.flatHostings()` to discover)
+   * @param {string} opts.hosting - Hosting key (use `service.flatHostings()` to discover) or `'auto'`
    * @param {string} opts.appId
    * @param {string} [opts.language='en']
    * @param {string} [opts.invitationToken='enjoy']
@@ -263,6 +318,18 @@ class Service {
     const language = opts.language || 'en';
     const invitationToken = opts.invitationToken || 'enjoy';
 
+    let hosting = opts.hosting;
+    if (hosting === 'auto') {
+      const flat = await this.flatHostings();
+      const first = flat.find(h => h.available);
+      if (!first) {
+        throw new PryvError(
+          'createUser({ hosting: "auto" }): no hosting flagged available'
+        );
+      }
+      hosting = first.key;
+    }
+
     let url, payload;
     if (isModern) {
       url = serviceInfo.register + 'users';
@@ -271,7 +338,7 @@ class Service {
         username: opts.username,
         password: opts.password,
         email: opts.email,
-        hosting: opts.hosting,
+        hosting,
         language,
         invitationToken
       };
@@ -283,7 +350,7 @@ class Service {
         username: opts.username,
         password: opts.password,
         email: opts.email,
-        hosting: opts.hosting,
+        hosting,
         languageCode: language,
         invitationtoken: invitationToken
       };

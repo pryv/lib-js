@@ -231,11 +231,22 @@ declare module 'pryv' {
     username: string;
     password: string;
     email: string;
+    /** Hosting key (from `flatHostings()`) or the literal `'auto'` */
     hosting: string;
     appId: string;
     language?: string;
     invitationToken?: string;
     referer?: string;
+  };
+
+  export type HostingItem = {
+    key: string;
+    name: string;
+    description: string;
+    region: string;
+    zone: string;
+    availableCore: string;
+    available: boolean;
   };
 
   export type StreamsQuery = {
@@ -802,6 +813,8 @@ declare module 'pryv' {
 
     userExists(userId: string): Promise<boolean>;
     userIdForEmail(email: string): Promise<string | null>;
+    availableHostings(): Promise<any>;
+    flatHostings(): Promise<HostingItem[]>;
     createUser(opts: CreateUserOptions): Promise<{ username: string; apiEndpoint: string }>;
     requestPasswordReset(userId: string, appId: string): Promise<void>;
     resetPassword(userId: string, newPassword: string, resetToken: string, appId: string): Promise<void>;

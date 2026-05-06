@@ -7,7 +7,9 @@
 ### Added
 - `Service.userExists(userId)` — `true`/`false` lookup, no throw on 404.
 - `Service.userIdForEmail(email)` — returns username or `null`.
-- `Service.createUser(opts)` — register a new user; hides v1/v2 endpoint shape difference.
+- `Service.availableHostings()` — raw `<register>/hostings` tree.
+- `Service.flatHostings()` — list of `{ key, name, description, region, zone, availableCore, available }` items.
+- `Service.createUser(opts)` — register a new user; hides v1/v2 endpoint shape difference. Pass `hosting: 'auto'` to pick the first available hosting.
 - `Service.requestPasswordReset(userId, appId)` — pre-auth reset trigger.
 - `Service.resetPassword(userId, newPassword, resetToken, appId)` — pre-auth password set with token.
 - `PryvError.fromApiResponse(response, body)` static factory; `PryvError` instances now carry `id`, `status`, `response` fields when built via the factory (additive — legacy 2-arg `new PryvError(message, innerObject)` constructor unchanged).
