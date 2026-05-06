@@ -14,6 +14,8 @@
 - `Service.resetPassword(userId, newPassword, resetToken, appId)` — pre-auth password set with token.
 - `Service.mfaChallenge(userId, mfaToken)` — re-trigger an MFA SMS challenge during a pending login.
 - `Service.mfaVerify(userId, mfaToken, code)` — finish an MFA-protected login; returns a `Connection`.
+- `Service.startAccessRequest(authRequest)` — POST the platform auth endpoint, returns `{ key, authUrl, poll, pollRateMs }`. Use for non-browser auth flows; `Browser.setupAuth` already wraps this for the browser case.
+- `Service.pollAccessRequest(keyOrPollUrl)` — one-shot poll; accepts the canonical poll URL or a bare key.
 - `pryv.MfaRequiredError` — thrown by `Service.login` when the platform returns `{ mfaToken }` instead of `{ token }`. Extends `PryvError`, carries `.mfaToken`. Replaces the previous `Error('Invalid login response: …')` substring-matching path with a typed branch.
 - `PryvError.fromApiResponse(response, body)` static factory; `PryvError` instances now carry `id`, `status`, `response` fields when built via the factory (additive — legacy 2-arg `new PryvError(message, innerObject)` constructor unchanged).
 - `pryv.ERRORS` — frozen catalogue of API error ids (mirrors `open-pryv.io/components/errors/src/ErrorIds.js`). Use these constants instead of hardcoding magic strings.

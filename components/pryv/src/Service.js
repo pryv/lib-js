@@ -440,6 +440,88 @@ class Service {
   }
 
   /**
+   * Start an access-request flow. Posts to the platform's auth endpoint
+   * (`serviceInfo.access`) and returns the envelope the consumer needs to
+   * present an approve-link to the user and poll for completion.
+   *
+   * `Browser.setupAuth` already wraps this for the high-level browser flow.
+   * Use this method when you're a non-browser caller (CLI, native app, bot)
+   * or building your own UI on top.
+   *
+   * @param {Object} authRequest - The auth-request body
+   * @param {string} authRequest.requestingAppId
+   * @param {Array<{ streamId: string, level: string, defaultName: string }>} authRequest.requestedPermissions
+   * @param {string} [authRequest.languageCode='en']
+   * @param {string|boolean} [authRequest.returnUrl]
+   * @param {string} [authRequest.referer]
+   * @param {Object} [authRequest.clientData]
+   * @param {string} [authRequest.deviceName]
+   * @param {number} [authRequest.expireAfter]
+   * @returns {Promise<{ key: string, authUrl: string, poll: string, pollRateMs: number }>}
+   * @throws {PryvError} on non-2xx
+   */
+  async startAccessRequest (authRequest) {
+    if (!authRequest || !authRequest.requestingAppId) {
+      throw new PryvError(
+        'startAccessRequest requires authRequest.requestingAppId'
+      );
+    }
+    const serviceInfo = await this.info();
+    const { response, body } = await utils.fetchPost(
+      serviceInfo.access,
+      authRequest
+    );
+    if (!response.ok) throw PryvError.fromApiResponse(response, body);
+    if (!body || !body.key || !body.poll) {
+      throw new PryvError(
+        'Invalid access-request response: ' + JSON.stringify(body)
+      );
+    }
+    return {
+      key: body.key,
+      authUrl: body.authUrl || body.url,
+      poll: body.poll,
+      pollRateMs: body.poll_rate_ms != null ? body.poll_rate_ms : body.pollRateMs
+    };
+  }
+
+  /**
+   * Poll an in-progress access request once. Accepts either:
+   *   - a `key` returned by `startAccessRequest` (poll URL is built from
+   *     `serviceInfo.access + key`)
+   *   - a full poll URL (use as-is — recommended, since the server-issued
+   *     URL is canonical and may include a different subdomain).
+   *
+   * Returns the raw body. Inspect `body.status` to drive the flow:
+   *   - `'NEED_SIGNIN'` → user has not interacted yet; keep polling.
+   *   - `'ACCEPTED'`    → `body.apiEndpoint` + `body.username` + `body.token` are set.
+   *   - `'REFUSED'`     → user declined.
+   *
+   * @param {string} keyOrPollUrl
+   * @returns {Promise<Object>}
+   * @throws {PryvError} on transport errors or non-2xx-and-not-403-REFUSED
+   */
+  async pollAccessRequest (keyOrPollUrl) {
+    if (!keyOrPollUrl) {
+      throw new PryvError('pollAccessRequest requires a key or poll URL');
+    }
+    let pollUrl = keyOrPollUrl;
+    if (!/^https?:\/\//.test(keyOrPollUrl)) {
+      const serviceInfo = await this.info();
+      pollUrl = serviceInfo.access + keyOrPollUrl;
+    }
+    const { response, body } = await utils.fetchGet(pollUrl);
+    // 403 with status=REFUSED is the canonical "user declined" terminal
+    // state — treat as a successful poll, not an error (matches the
+    // behaviour of `Auth/AuthController.js`).
+    if (response.status === 403 && body && body.status === 'REFUSED') {
+      return body;
+    }
+    if (!response.ok) throw PryvError.fromApiResponse(response, body);
+    return body;
+  }
+
+  /**
    * Set a new password using a reset token (from the reset email).
    * Pre-auth — no login token required.
    *

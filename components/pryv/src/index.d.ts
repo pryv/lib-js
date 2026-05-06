@@ -833,6 +833,14 @@ declare module 'pryv' {
     mfaChallenge(userId: string, mfaToken: string): Promise<void>;
     mfaVerify(userId: string, mfaToken: string, code: string): Promise<Connection>;
 
+    startAccessRequest(authRequest: AuthSettings['authRequest']): Promise<{
+      key: string;
+      authUrl: string;
+      poll: string;
+      pollRateMs: number;
+    }>;
+    pollAccessRequest(keyOrPollUrl: string): Promise<any>;
+
     static buildAPIEndpoint(
       serviceInfo: ServiceInfo,
       username: string,
