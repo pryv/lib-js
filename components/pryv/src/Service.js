@@ -4,6 +4,7 @@
  */
 const utils = require('./utils.js');
 const PryvError = require('./lib/PryvError.js');
+const MfaRequiredError = require('./lib/MfaRequiredError.js');
 // Connection is required at the end of this file to allow circular requires.
 const Assets = require('./ServiceAssets.js');
 
@@ -183,18 +184,72 @@ class Service {
     );
 
     if (!response.ok) {
-      if (body?.error?.message) {
-        throw new Error(body.error.message);
-      }
-      throw new Error('Login failed: ' + JSON.stringify(body));
+      throw PryvError.fromApiResponse(response, body);
     }
 
-    if (!body.token) {
-      throw new Error('Invalid login response: ' + JSON.stringify(body));
+    if (body && body.mfaToken) {
+      throw new MfaRequiredError(body.mfaToken, response, body);
+    }
+
+    if (!body || !body.token) {
+      throw new PryvError(
+        'Invalid login response: ' + JSON.stringify(body)
+      );
     }
     return new Connection(
       Service.buildAPIEndpoint(await this.info(), username, body.token),
       this // Pre load Connection with service
+    );
+  }
+
+  /**
+   * Re-trigger an MFA challenge (e.g. resend SMS) during a pending login.
+   * Use after `login()` threw `MfaRequiredError` if the user needs another
+   * SMS code.
+   *
+   * @param {string} userId
+   * @param {string} mfaToken - From `MfaRequiredError.mfaToken`
+   * @returns {Promise<void>}
+   * @throws {PryvError} on 4xx/5xx (e.g. invalid/expired mfaToken)
+   */
+  async mfaChallenge (userId, mfaToken) {
+    if (!userId || !mfaToken) {
+      throw new PryvError('mfaChallenge requires userId and mfaToken');
+    }
+    const url = await this.apiEndpointFor(userId) + 'mfa/challenge';
+    const { response, body } = await utils.fetchPost(url, {}, {
+      Authorization: mfaToken
+    });
+    if (!response.ok) throw PryvError.fromApiResponse(response, body);
+  }
+
+  /**
+   * Finish an MFA-protected login by submitting the SMS code. Returns a
+   * fully-formed `Connection` (parallel to `Service.login`).
+   *
+   * @param {string} userId
+   * @param {string} mfaToken - From `MfaRequiredError.mfaToken`
+   * @param {string} code - The SMS verification code
+   * @returns {Promise<Connection>}
+   * @throws {PryvError} on bad code, expired mfaToken, etc.
+   */
+  async mfaVerify (userId, mfaToken, code) {
+    if (!userId || !mfaToken || code == null) {
+      throw new PryvError('mfaVerify requires userId, mfaToken, code');
+    }
+    const url = await this.apiEndpointFor(userId) + 'mfa/verify';
+    const { response, body } = await utils.fetchPost(url, { code }, {
+      Authorization: mfaToken
+    });
+    if (!response.ok) throw PryvError.fromApiResponse(response, body);
+    if (!body || !body.token) {
+      throw new PryvError(
+        'mfa.verify did not return a token: ' + JSON.stringify(body)
+      );
+    }
+    return new Connection(
+      Service.buildAPIEndpoint(await this.info(), userId, body.token),
+      this
     );
   }
 

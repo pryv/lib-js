@@ -182,6 +182,18 @@ declare module 'pryv' {
     static fromApiResponse(response: Response, body?: any): PryvError;
   }
 
+  /**
+   * Thrown by `Service.login` when the platform returned `{ mfaToken }`
+   * instead of `{ token }`. Carries the `mfaToken` so the consumer can
+   * call `Service.mfaVerify(userId, err.mfaToken, code)` after prompting
+   * the user for their SMS code.
+   */
+  export class MfaRequiredError extends PryvError {
+    constructor(mfaToken: string, response: Response, body?: any);
+    name: 'MfaRequiredError';
+    mfaToken: string;
+  }
+
   /** Catalogue of Pryv API error ids (mirrors open-pryv.io ErrorIds.js). */
   export const ERRORS: {
     readonly API_UNAVAILABLE: 'api-unavailable';
@@ -818,6 +830,8 @@ declare module 'pryv' {
     createUser(opts: CreateUserOptions): Promise<{ username: string; apiEndpoint: string }>;
     requestPasswordReset(userId: string, appId: string): Promise<void>;
     resetPassword(userId: string, newPassword: string, resetToken: string, appId: string): Promise<void>;
+    mfaChallenge(userId: string, mfaToken: string): Promise<void>;
+    mfaVerify(userId: string, mfaToken: string, code: string): Promise<Connection>;
 
     static buildAPIEndpoint(
       serviceInfo: ServiceInfo,
@@ -1085,6 +1099,7 @@ declare module 'pryv' {
       getQueryParamsFromURL(url: string): KeyValue;
     };
     PryvError: typeof PryvError;
+    MfaRequiredError: typeof MfaRequiredError;
     ERRORS: typeof ERRORS;
     version: version;
   };

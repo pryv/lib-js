@@ -19,6 +19,7 @@ module.exports = {
   Browser: require('./Browser'),
   utils: require('./utils'),
   PryvError: require('./lib/PryvError'),
+  MfaRequiredError: require('./lib/MfaRequiredError'),
   ERRORS: require('./lib/errorIds'),
   version: require('../package.json').version
 };

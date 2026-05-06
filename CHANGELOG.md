@@ -12,8 +12,14 @@
 - `Service.createUser(opts)` — register a new user; hides v1/v2 endpoint shape difference. Pass `hosting: 'auto'` to pick the first available hosting.
 - `Service.requestPasswordReset(userId, appId)` — pre-auth reset trigger.
 - `Service.resetPassword(userId, newPassword, resetToken, appId)` — pre-auth password set with token.
+- `Service.mfaChallenge(userId, mfaToken)` — re-trigger an MFA SMS challenge during a pending login.
+- `Service.mfaVerify(userId, mfaToken, code)` — finish an MFA-protected login; returns a `Connection`.
+- `pryv.MfaRequiredError` — thrown by `Service.login` when the platform returns `{ mfaToken }` instead of `{ token }`. Extends `PryvError`, carries `.mfaToken`. Replaces the previous `Error('Invalid login response: …')` substring-matching path with a typed branch.
 - `PryvError.fromApiResponse(response, body)` static factory; `PryvError` instances now carry `id`, `status`, `response` fields when built via the factory (additive — legacy 2-arg `new PryvError(message, innerObject)` constructor unchanged).
 - `pryv.ERRORS` — frozen catalogue of API error ids (mirrors `open-pryv.io/components/errors/src/ErrorIds.js`). Use these constants instead of hardcoding magic strings.
+
+### Changed
+- `Service.login` now throws `PryvError` (with structured `id`/`status`/`response`) on non-2xx responses instead of plain `Error`. The `error.message` still matches the API's `body.error.message` so existing substring-matching consumer code keeps working — but consumers can now branch on `err.id` / `err.status` instead.
 
 ## [3.0.3](https://github.com/pryv/lib-js/compare/3.0.2...3.0.3)
 - `@pryv/socket.io`: cap reconnection (`reconnectionAttempts: 10`, `reconnectionDelayMax: 60000`, `randomizationFactor: 0.5`) so a server-side outage no longer drives an unbounded reconnect loop. Listens for `reconnect_failed` and surfaces a terminal `error` event so consumers can clean up instead of leaving a zombie socket reference.
