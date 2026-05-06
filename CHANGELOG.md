@@ -2,6 +2,17 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [Unreleased]
+
+### Added
+- `Service.userExists(userId)` — `true`/`false` lookup, no throw on 404.
+- `Service.userIdForEmail(email)` — returns username or `null`.
+- `Service.createUser(opts)` — register a new user; hides v1/v2 endpoint shape difference.
+- `Service.requestPasswordReset(userId, appId)` — pre-auth reset trigger.
+- `Service.resetPassword(userId, newPassword, resetToken, appId)` — pre-auth password set with token.
+- `PryvError.fromApiResponse(response, body)` static factory; `PryvError` instances now carry `id`, `status`, `response` fields when built via the factory (additive — legacy 2-arg `new PryvError(message, innerObject)` constructor unchanged).
+- `pryv.ERRORS` — frozen catalogue of API error ids (mirrors `open-pryv.io/components/errors/src/ErrorIds.js`). Use these constants instead of hardcoding magic strings.
+
 ## [3.0.3](https://github.com/pryv/lib-js/compare/3.0.2...3.0.3)
 - `@pryv/socket.io`: cap reconnection (`reconnectionAttempts: 10`, `reconnectionDelayMax: 60000`, `randomizationFactor: 0.5`) so a server-side outage no longer drives an unbounded reconnect loop. Listens for `reconnect_failed` and surfaces a terminal `error` event so consumers can clean up instead of leaving a zombie socket reference.
 - `@pryv/monitor`: when the underlying socket.io transport dies (terminal `reconnect_failed`), drop the cached socket reference so a future `Changes.READY` cycle rebuilds from scratch instead of short-circuiting on the dead handle.

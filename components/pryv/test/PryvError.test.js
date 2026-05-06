@@ -37,4 +37,38 @@ describe('[PERX] PryvError', function () {
     const error = new PryvError('No inner');
     expect(error.innerObject).to.be.undefined;
   });
+
+  it('[PERF] structured fields default to undefined for legacy constructor', function () {
+    const error = new PryvError('Test');
+    expect(error.id).to.be.undefined;
+    expect(error.status).to.be.undefined;
+    expect(error.response).to.be.undefined;
+  });
+
+  it('[PERG] fromApiResponse populates id/status/response from API body', function () {
+    const fakeResponse = { status: 404 };
+    const body = { error: { id: 'unknown-user', message: 'Unknown user' } };
+    const error = PryvError.fromApiResponse(fakeResponse, body);
+    expect(error).to.be.instanceOf(PryvError);
+    expect(error.id).to.equal('unknown-user');
+    expect(error.status).to.equal(404);
+    expect(error.response).to.deep.equal({ body, status: 404 });
+    expect(error.message).to.equal('Unknown user');
+    expect(error.innerObject).to.be.undefined;
+  });
+
+  it('[PERH] fromApiResponse falls back to a generic message when body has no error', function () {
+    const fakeResponse = { status: 500 };
+    const error = PryvError.fromApiResponse(fakeResponse, { foo: 'bar' });
+    expect(error.id).to.be.undefined;
+    expect(error.status).to.equal(500);
+    expect(error.message).to.match(/HTTP 500/);
+  });
+
+  it('[PERI] fromApiResponse handles null/undefined body without throwing', function () {
+    const fakeResponse = { status: 502 };
+    const error = PryvError.fromApiResponse(fakeResponse, undefined);
+    expect(error.status).to.equal(502);
+    expect(error.response).to.deep.equal({ body: undefined, status: 502 });
+  });
 });

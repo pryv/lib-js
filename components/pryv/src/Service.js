@@ -3,6 +3,7 @@
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
 const utils = require('./utils.js');
+const PryvError = require('./lib/PryvError.js');
 // Connection is required at the end of this file to allow circular requires.
 const Assets = require('./ServiceAssets.js');
 
@@ -196,6 +197,171 @@ class Service {
       this // Pre load Connection with service
     );
   }
+
+  /**
+   * Check whether a username is registered on this service.
+   * One round-trip via `POST <register>/<userId>/server`.
+   *
+   * @param {string} userId - The username to check
+   * @returns {Promise<boolean>} `true` if registered, `false` on 404
+   * @throws {PryvError} on network errors or non-404 API errors
+   */
+  async userExists (userId) {
+    const serviceInfo = await this.info();
+    const url = serviceInfo.register + encodeURIComponent(userId) + '/server';
+    const { response, body } = await utils.fetchPost(url, {});
+    if (response.ok) return true;
+    if (response.status === 404) return false;
+    throw PryvError.fromApiResponse(response, body);
+  }
+
+  /**
+   * Resolve an email address to a username on this service.
+   * One round-trip via `GET <register>/<email>/uid`.
+   *
+   * @param {string} email - The email to look up
+   * @returns {Promise<string|null>} The username, or `null` if unknown
+   * @throws {PryvError} on network errors or non-404 API errors
+   */
+  async userIdForEmail (email) {
+    const serviceInfo = await this.info();
+    const url = serviceInfo.register + encodeURIComponent(email) + '/uid';
+    const { response, body } = await utils.fetchGet(url);
+    if (response.ok) return (body && (body.uid || body.username)) || null;
+    if (response.status === 404) return null;
+    throw PryvError.fromApiResponse(response, body);
+  }
+
+  /**
+   * Register a new user on this service.
+   *
+   * Hides the v1/v2 register endpoint difference. v2 platforms (service
+   * version >= 2.0 or >= 1.6) accept camelCase fields at `<register>users`;
+   * older v1 service-register expects mixed-case fields at `<register>user`.
+   *
+   * @param {Object} opts
+   * @param {string} opts.username
+   * @param {string} opts.password
+   * @param {string} opts.email
+   * @param {string} opts.hosting - Hosting key (use `service.flatHostings()` to discover)
+   * @param {string} opts.appId
+   * @param {string} [opts.language='en']
+   * @param {string} [opts.invitationToken='enjoy']
+   * @param {string} [opts.referer]
+   * @returns {Promise<{ username: string, apiEndpoint: string }>}
+   * @throws {PryvError} on duplicate username, weak password, etc.
+   */
+  async createUser (opts) {
+    if (!opts || !opts.username || !opts.password || !opts.email ||
+        !opts.hosting || !opts.appId) {
+      throw new PryvError(
+        'createUser requires username, password, email, hosting, appId'
+      );
+    }
+    const serviceInfo = await this.info();
+    const isModern = supportsCamelCaseRegister(serviceInfo.version);
+    const language = opts.language || 'en';
+    const invitationToken = opts.invitationToken || 'enjoy';
+
+    let url, payload;
+    if (isModern) {
+      url = serviceInfo.register + 'users';
+      payload = {
+        appId: opts.appId,
+        username: opts.username,
+        password: opts.password,
+        email: opts.email,
+        hosting: opts.hosting,
+        language,
+        invitationToken
+      };
+      if (opts.referer != null) payload.referer = opts.referer;
+    } else {
+      url = serviceInfo.register + 'user';
+      payload = {
+        appid: opts.appId,
+        username: opts.username,
+        password: opts.password,
+        email: opts.email,
+        hosting: opts.hosting,
+        languageCode: language,
+        invitationtoken: invitationToken
+      };
+      if (opts.referer != null) payload.referer = opts.referer;
+    }
+    const { response, body } = await utils.fetchPost(url, payload);
+    if (!response.ok) throw PryvError.fromApiResponse(response, body);
+    const apiEndpoint = await this.apiEndpointFor(opts.username);
+    return { username: opts.username, apiEndpoint };
+  }
+
+  /**
+   * Trigger a password-reset email for the given user.
+   * Pre-auth — no token required.
+   *
+   * @param {string} userId
+   * @param {string} appId
+   * @returns {Promise<void>}
+   * @throws {PryvError} on 4xx/5xx
+   */
+  async requestPasswordReset (userId, appId) {
+    if (!userId || !appId) {
+      throw new PryvError('requestPasswordReset requires userId and appId');
+    }
+    const url = await this.apiEndpointFor(userId) +
+      'account/request-password-reset';
+    const { response, body } = await utils.fetchPost(url, {
+      appId,
+      username: userId
+    });
+    if (!response.ok) throw PryvError.fromApiResponse(response, body);
+  }
+
+  /**
+   * Set a new password using a reset token (from the reset email).
+   * Pre-auth — no login token required.
+   *
+   * @param {string} userId
+   * @param {string} newPassword
+   * @param {string} resetToken
+   * @param {string} appId
+   * @returns {Promise<void>}
+   * @throws {PryvError} on `unknown-or-expired-reset-token`, weak password, etc.
+   */
+  async resetPassword (userId, newPassword, resetToken, appId) {
+    if (!userId || !newPassword || !resetToken || !appId) {
+      throw new PryvError(
+        'resetPassword requires userId, newPassword, resetToken, appId'
+      );
+    }
+    const url = await this.apiEndpointFor(userId) + 'account/reset-password';
+    const { response, body } = await utils.fetchPost(url, {
+      username: userId,
+      newPassword,
+      resetToken,
+      appId
+    });
+    if (!response.ok) throw PryvError.fromApiResponse(response, body);
+  }
+}
+
+/**
+ * Detect whether the platform's service-info `version` supports the modern
+ * camelCase register endpoint (`POST /users`). v2 service-register routes
+ * both, but v1 platforms only accept the mixed-case `POST /user`.
+ *
+ * @param {string|undefined} version - service-info `version` field
+ * @returns {boolean}
+ */
+function supportsCamelCaseRegister (version) {
+  if (!version || typeof version !== 'string') return true; // optimistic: assume v2+
+  const m = /^(\d+)\.(\d+)/.exec(version);
+  if (!m) return true;
+  const major = parseInt(m[1], 10);
+  const minor = parseInt(m[2], 10);
+  if (major >= 2) return true;
+  if (major === 1 && minor >= 6) return true;
+  return false;
 }
 
 module.exports = Service;

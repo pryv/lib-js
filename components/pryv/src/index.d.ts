@@ -166,13 +166,77 @@ declare module 'pryv' {
 
   /**
    * Custom error class for Pryv library errors.
-   * Includes an innerObject property for wrapping underlying errors.
+   *
+   * - `innerObject`: legacy field, set by the 2-arg constructor.
+   * - `id` / `status` / `response`: structured fields populated by
+   *   `PryvError.fromApiResponse(response, body)` for errors that came
+   *   from a Pryv API call. All three are `undefined` for legacy errors.
    */
   export class PryvError extends globalThis.Error {
     constructor(message: string, innerObject?: globalThis.Error | object);
     name: 'PryvError';
     innerObject?: globalThis.Error | object;
+    id?: string;
+    status?: number;
+    response?: { body: any; status: number };
+    static fromApiResponse(response: Response, body?: any): PryvError;
   }
+
+  /** Catalogue of Pryv API error ids (mirrors open-pryv.io ErrorIds.js). */
+  export const ERRORS: {
+    readonly API_UNAVAILABLE: 'api-unavailable';
+    readonly CORRUPTED_DATA: 'corrupted-data';
+    readonly FORBIDDEN: 'forbidden';
+    readonly INVALID_ACCESS_TOKEN: 'invalid-access-token';
+    readonly INVALID_CREDENTIALS: 'invalid-credentials';
+    readonly UNSUPPORTED_OPERATION: 'unsupported-operation';
+    readonly INVALID_EVENT_TYPE: 'invalid-event-type';
+    readonly INVALID_ITEM_ID: 'invalid-item-id';
+    readonly INVALID_METHOD: 'invalid-method';
+    readonly INVALID_OPERATION: 'invalid-operation';
+    readonly INVALID_PARAMETERS_FORMAT: 'invalid-parameters-format';
+    readonly INVALID_REQUEST_STRUCTURE: 'invalid-request-structure';
+    readonly ITEM_ALREADY_EXISTS: 'item-already-exists';
+    readonly MISSING_HEADER: 'missing-header';
+    readonly UNEXPECTED_ERROR: 'unexpected-error';
+    readonly UNKNOWN_REFERENCED_RESOURCE: 'unknown-referenced-resource';
+    readonly UNKNOWN_RESOURCE: 'unknown-resource';
+    readonly UNSUPPORTED_CONTENT_TYPE: 'unsupported-content-type';
+    readonly TOO_MANY_RESULTS: 'too-many-results';
+    readonly GONE: 'removed-method';
+    readonly UNAVAILABLE_METHOD: 'unavailable-method';
+    readonly INVALID_INVITATION_TOKEN: 'invitationToken-invalid';
+    readonly INVALID_USERNAME: 'username-invalid';
+    readonly USERNAME_REQUIRED: 'username-required';
+    readonly INVALID_EMAIL: 'email-invalid';
+    readonly INVALID_LANGUAGE: 'language-invalid';
+    readonly INVALID_APP_ID: 'appid-invalid';
+    readonly INVALID_PASSWORD: 'password-invalid';
+    readonly INVALID_REFERER: 'referer-invalid';
+    readonly EMAIL_REQUIRED: 'email-required';
+    readonly PASSWORD_REQUIRED: 'password-required';
+    readonly MISSING_REQUIRED_FIELD: 'missing-required-field';
+    readonly NEW_PASSWORD_FIELD_IS_REQUIRED: 'newPassword-required';
+    readonly DENIED_STREAM_ACCESS: 'denied-stream-access';
+    readonly TOO_HIGH_ACCESS_FOR_SYSTEM_STREAMS: 'too-high-access-for-account-stream';
+    readonly FORBIDDEN_MULTIPLE_ACCOUNT_STREAMS: 'forbidden-multiple-account-streams-events';
+    readonly FORBIDDEN_ACCOUNT_EVENT_MODIFICATION: 'forbidden-none-editable-account-streams';
+    readonly FORBIDDEN_TO_CHANGE_ACCOUNT_STREAM_ID: 'forbidden-change-account-streams-id';
+    readonly FORBIDDEN_TO_EDIT_NONEDITABLE_ACCOUNT_FIELDS: 'forbidden-to-edit-noneditable-account-fields';
+    readonly UNKNOWN_USER: 'unknown-user';
+    readonly UNKNOWN_EMAIL: 'unknown-email';
+  };
+
+  export type CreateUserOptions = {
+    username: string;
+    password: string;
+    email: string;
+    hosting: string;
+    appId: string;
+    language?: string;
+    invitationToken?: string;
+    referer?: string;
+  };
 
   export type StreamsQuery = {
     any?: Identifier[];
@@ -736,6 +800,12 @@ declare module 'pryv' {
     supportsHF(): Promise<boolean>;
     isDnsLess(): Promise<boolean>;
 
+    userExists(userId: string): Promise<boolean>;
+    userIdForEmail(email: string): Promise<string | null>;
+    createUser(opts: CreateUserOptions): Promise<{ username: string; apiEndpoint: string }>;
+    requestPasswordReset(userId: string, appId: string): Promise<void>;
+    resetPassword(userId: string, newPassword: string, resetToken: string, appId: string): Promise<void>;
+
     static buildAPIEndpoint(
       serviceInfo: ServiceInfo,
       username: string,
@@ -1002,6 +1072,7 @@ declare module 'pryv' {
       getQueryParamsFromURL(url: string): KeyValue;
     };
     PryvError: typeof PryvError;
+    ERRORS: typeof ERRORS;
     version: version;
   };
 
