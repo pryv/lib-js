@@ -499,5 +499,31 @@ describe('[CONX] Connection', () => {
       expect(accessInfoUser.token).to.exist;
       expect(newUser.access.token).to.equal(accessInfoUser.token);
     });
+
+    // Plan 66 — accessInfo caching + forceRefresh.
+
+    it('[CAIC] accessInfo() memoizes — second call returns the same object reference', async () => {
+      const regexAPIandToken = /(.+):\/\/(.+)/gm;
+      const res = regexAPIandToken.exec(testData.apiEndpoint);
+      const apiEndpointWithToken = res[1] + '://' + newUser.access.token + '@' + res[2];
+      const cachingConn = new pryv.Connection(apiEndpointWithToken);
+      const first = await cachingConn.accessInfo();
+      const second = await cachingConn.accessInfo();
+      expect(second).to.equal(first); // same reference — served from cache
+    });
+
+    it('[CAID] accessInfo(true) forces a refresh and replaces the cached object', async () => {
+      const regexAPIandToken = /(.+):\/\/(.+)/gm;
+      const res = regexAPIandToken.exec(testData.apiEndpoint);
+      const apiEndpointWithToken = res[1] + '://' + newUser.access.token + '@' + res[2];
+      const cachingConn = new pryv.Connection(apiEndpointWithToken);
+      const first = await cachingConn.accessInfo();
+      const refreshed = await cachingConn.accessInfo(true);
+      expect(refreshed).to.not.equal(first); // distinct object — re-fetched
+      expect(refreshed.token).to.equal(first.token); // same content
+      // Next non-forced call returns the refreshed copy from cache.
+      const cached = await cachingConn.accessInfo();
+      expect(cached).to.equal(refreshed);
+    });
   });
 });

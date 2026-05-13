@@ -72,11 +72,22 @@ class Connection {
 
   /**
    * Get access info for this connection.
-   * It's async as it is fetched from the API.
+   *
+   * Memoized per-Connection: the first call fetches from the server and
+   * caches the result; subsequent calls return the cached copy in O(1).
+   * Pass `forceRefresh: true` to invalidate the cache and fetch a fresh
+   * copy from the server — used internally by `connection.socket` to
+   * react to Plan 66 `accessUpdated` server-push events. A failed
+   * server fetch leaves any prior cached value intact.
+   *
+   * @param {boolean} [forceRefresh=false] - bypass + refresh the cache
    * @returns {Promise<AccessInfo>} Promise resolving to the access info
    */
-  async accessInfo () {
-    return this.get('access-info', null);
+  async accessInfo (forceRefresh = false) {
+    if (!forceRefresh && this._accessInfoCache != null) return this._accessInfoCache;
+    const fresh = await this.get('access-info', null);
+    this._accessInfoCache = fresh;
+    return fresh;
   }
 
   /**

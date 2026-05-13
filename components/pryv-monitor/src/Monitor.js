@@ -164,6 +164,30 @@ class Monitor extends EventEmitter {
   }
 
   /**
+   * Plan 66: register a handler for the server's fine-grained
+   * `accessUpdated` event. Fires whenever a Pryv.io ≥ 2.0.0-pre.X server
+   * emits the event after a successful `accesses.update` — payload is
+   * `{ type: 'access-updated', accessId: '<base>:<serial>', serial }`.
+   *
+   * Requires `Monitor.UpdateMethod.Socket` to be active (the event
+   * is server-pushed via `@pryv/socket.io`). With other update methods
+   * (e.g. `EventsTimer` polling), the handler will never fire —
+   * polling-based consumers should call `connection.accessInfo(true)`
+   * themselves when they need to refresh the cache.
+   *
+   * The underlying `connection.socket` already busts the
+   * `connection.accessInfo` cache when this event fires, so the next
+   * `connection.accessInfo()` call returns the freshly-fetched copy.
+   *
+   * @param {Function} handler - called with `(payload)` on each event
+   * @returns {Monitor} this (chainable)
+   */
+  onAccessUpdated (handler) {
+    this.on('accessUpdated', handler);
+    return this;
+  }
+
+  /**
    * @private
    * Called by UpdateMethod to share cross references
    * Set a custom update method

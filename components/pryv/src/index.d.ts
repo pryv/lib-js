@@ -723,7 +723,12 @@ declare module 'pryv' {
       fields: string[],
       points: Array<Array<number | string>>,
     ): Promise<HFSeriesAddResult>;
-    accessInfo(): Promise<AccessInfo>;
+    /** Memoized; pass `forceRefresh: true` to bypass + refresh the cache. */
+    accessInfo(forceRefresh?: boolean): Promise<AccessInfo>;
+    /** Plan 66: update an access by composite id. */
+    updateAccess(id: string, changes: object): Promise<object>;
+    /** Plan 66: fetch an access including its full version history. */
+    getAccessWithHistory(id: string): Promise<{ access: object, current?: string, history?: object[] }>;
     revoke(throwOnFail?: boolean, usingConnection?: Connection): Promise<any>;
     readonly deltaTime: number;
     readonly apiEndpoint: string;

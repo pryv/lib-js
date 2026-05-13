@@ -12,6 +12,10 @@ Plan 66 (open-pryv.io ≥ 2.0.0-pre.X): access versioning.
 - `pryv.StaleAccessIdError` — typed error (extends `PryvError`) surfaced when the server responds with `409 stale-resource` on `accesses.update` / `accesses.delete`. Carries `{ provided, currentSerial }` in `.data` so callers can refetch + retry.
 - `connection.updateAccess(id, changes)` — convenience wrapper around `accesses.update`. Automatically translates the server's 409 response into `StaleAccessIdError`.
 - `connection.getAccessWithHistory(id)` — convenience wrapper around `accesses.getOne?includeHistory=true`. Returns `{ access, current?, history?: [...] }`.
+- `connection.accessInfo(forceRefresh)` — now memoized. First call fetches from the server and caches; subsequent calls return the cached copy in O(1). Pass `forceRefresh: true` to bypass the cache and re-fetch. Cached object reference is stable across calls (safe to compare).
+- `connection.socket.open()` — when the server emits `accessUpdated` (Plan 66 fine-grained event), the SocketIO layer automatically invokes `connection.accessInfo(true)` so the cache reflects the new permissions / serial on the next read. Best-effort: a failed refresh leaves any prior cached value intact.
+- `@pryv/socket.io`: `'accessUpdated'` is now an allowed event for `socket.on(...)`. Payload: `{ type: 'access-updated', accessId: '<base>:<serial>', serial }`.
+- `@pryv/monitor`: `monitor.onAccessUpdated(handler)` — register a callback for the server-pushed `accessUpdated` event. Requires `Monitor.UpdateMethod.Socket` (the event is server-pushed via socket.io; polling-based update methods won't fire it). The handler receives the structured payload above.
 
 ### Notes
 - Wire-format compatibility: every `access.id` / `access.createdBy` / `access.modifiedBy` returned by a Plan-66-capable server is parseable with `parseAccessRef`. Older servers still return bare cuids — `parseAccessRef` returns `{ base, serial: null }` for those, so callers can use the helper unconditionally.

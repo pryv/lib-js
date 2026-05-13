@@ -97,6 +97,14 @@ declare module 'pryv' {
     stop(): Monitor;
 
     /**
+     * Plan 66: register a handler for the server's fine-grained
+     * `accessUpdated` event. Requires `Monitor.UpdateMethod.Socket`.
+     * The underlying `connection.socket` busts the
+     * `connection.accessInfo` cache before this fires.
+     */
+    onAccessUpdated(handler: (payload: { type: 'access-updated', accessId: string, serial: number }) => void): Monitor;
+
+    /**
      * True when the monitor has been started and not yet stopped.
      */
     readonly started: boolean;
