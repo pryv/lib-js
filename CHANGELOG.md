@@ -2,6 +2,20 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.1.0]
+
+Plan 66 (open-pryv.io ≥ 2.0.0-pre.X): access versioning.
+
+### Added
+- `pryv.utils.parseAccessRef(ref) → { base, serial | null }` — parses the wire-format access reference. Bare cuid → `{ base, serial: null }`, composite `<base>:<serial>` → `{ base, serial: <int> }`. Throws on malformed input.
+- `pryv.utils.serializeAccessRef({ base, serial }) → string` — inverse helper.
+- `pryv.StaleAccessIdError` — typed error (extends `PryvError`) surfaced when the server responds with `409 stale-resource` on `accesses.update` / `accesses.delete`. Carries `{ provided, currentSerial }` in `.data` so callers can refetch + retry.
+- `connection.updateAccess(id, changes)` — convenience wrapper around `accesses.update`. Automatically translates the server's 409 response into `StaleAccessIdError`.
+- `connection.getAccessWithHistory(id)` — convenience wrapper around `accesses.getOne?includeHistory=true`. Returns `{ access, current?, history?: [...] }`.
+
+### Notes
+- Wire-format compatibility: every `access.id` / `access.createdBy` / `access.modifiedBy` returned by a Plan-66-capable server is parseable with `parseAccessRef`. Older servers still return bare cuids — `parseAccessRef` returns `{ base, serial: null }` for those, so callers can use the helper unconditionally.
+
 ## [3.0.4](https://github.com/pryv/lib-js/compare/3.0.3...3.0.4)
 
 ### Added

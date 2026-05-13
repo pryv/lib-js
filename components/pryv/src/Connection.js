@@ -6,6 +6,7 @@ const utils = require('./utils.js');
 const jsonParser = require('./lib/json-parser');
 const libGetEventStreamed = require('./lib/getEventStreamed');
 const PryvError = require('./lib/PryvError');
+const StaleAccessIdError = require('./lib/StaleAccessIdError');
 const buildSearchParams = require('./lib/buildSearchParams');
 
 /**
@@ -414,6 +415,48 @@ class Connection {
    */
   get apiEndpoint () {
     return utils.buildAPIEndpoint(this);
+  }
+
+  /**
+   * Plan 66 (open-pryv.io ≥ 2.0.0-pre.X): update an access by composite id.
+   * Wraps `accesses.update` and translates the 409 `stale-resource` response
+   * into a typed `StaleAccessIdError` so callers can `instanceof`-test and
+   * refetch + retry without re-parsing the inner error.
+   *
+   * Pass `id` as the wire-format reference returned by the server — bare
+   * cuid on a never-updated access, composite `<base>:<serial>` otherwise.
+   * `changes` is the body of mutable fields (name, deviceName, permissions,
+   * expireAfter, expires:null, clientData).
+   *
+   * @param {string} id
+   * @param {Object} changes
+   * @returns {Promise<Object>} the updated access (with new composite id)
+   * @throws {StaleAccessIdError} if the server reports the id is stale
+   */
+  async updateAccess (id, changes) {
+    try {
+      return await this.apiOne('accesses.update', { id, update: changes }, 'access');
+    } catch (e) {
+      if (e && e.innerObject && e.innerObject.id === 'stale-resource') {
+        throw new StaleAccessIdError(e.message, e.innerObject.data || {});
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Plan 66: fetch an access by composite id including its full version
+   * history (oldest first). Server: `accesses.getOne ?includeHistory=true`.
+   *
+   * Useful for audit views. Pass the composite `<base>:<serial>` to
+   * inspect a specific past version (the result's `current` field then
+   * points at the live head's composite id).
+   *
+   * @param {string} id
+   * @returns {Promise<{ access: Object, current?: string, history?: Object[] }>}
+   */
+  async getAccessWithHistory (id) {
+    return await this.apiOne('accesses.getOne', { id, includeHistory: true });
   }
 
   // private method that handle meta data parsing

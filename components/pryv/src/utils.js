@@ -156,6 +156,56 @@ const utils = module.exports = {
   },
 
   /**
+   * Plan 66 (open-pryv.io ≥ 2.0.0-pre.X): parse a wire-format access
+   * reference into `{ base, serial }`. Accepts both bare cuid
+   * (`"abc123"` → `{ base: 'abc123', serial: null }`) and composite
+   * (`"abc123:3"` → `{ base: 'abc123', serial: 3 }`). Throws on
+   * malformed input. Apply this to `access.id`, `access.createdBy`,
+   * `access.modifiedBy`, and `streamIds` entries of the form
+   * `access-<base>:<serial>` from audit events.
+   * @memberof pryv.utils
+   * @param {string} ref - Access reference string
+   * @returns {{ base: string, serial: number | null }}
+   */
+  parseAccessRef: function (ref) {
+    if (typeof ref !== 'string' || ref.length === 0) {
+      throw new Error('parseAccessRef: expected a non-empty string, got ' + JSON.stringify(ref));
+    }
+    const colonIdx = ref.indexOf(':');
+    if (colonIdx === -1) return { base: ref, serial: null };
+    const base = ref.slice(0, colonIdx);
+    const tail = ref.slice(colonIdx + 1);
+    if (base.length === 0) {
+      throw new Error('parseAccessRef: empty base in ' + JSON.stringify(ref));
+    }
+    const serial = Number(tail);
+    if (!Number.isInteger(serial) || serial < 1) {
+      throw new Error('parseAccessRef: serial must be a positive integer, got ' + JSON.stringify(tail));
+    }
+    return { base, serial };
+  },
+
+  /**
+   * Plan 66: render an `{ base, serial }` pair back to the wire
+   * format. Bare cuid when serial is null/undefined; `<base>:<serial>`
+   * otherwise. Mostly used to construct the composite id when calling
+   * `connection.api()` for `accesses.update` / `accesses.delete`.
+   * @memberof pryv.utils
+   * @param {{ base: string, serial?: number | null }} ref
+   * @returns {string}
+   */
+  serializeAccessRef: function (ref) {
+    if (ref == null || typeof ref.base !== 'string' || ref.base.length === 0) {
+      throw new Error('serializeAccessRef: ref.base must be a non-empty string');
+    }
+    if (ref.serial == null) return ref.base;
+    if (!Number.isInteger(ref.serial) || ref.serial < 1) {
+      throw new Error('serializeAccessRef: serial must be a positive integer, got ' + JSON.stringify(ref.serial));
+    }
+    return ref.base + ':' + ref.serial;
+  },
+
+  /**
    * Extract query parameters from a URL
    * @memberof pryv.utils
    * @param {string} url - URL to parse
