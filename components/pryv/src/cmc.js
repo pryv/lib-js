@@ -24,11 +24,14 @@
  */
 
 // --- Constants ---
+// All :_cmc:* identifiers compose from NS. If the namespace is ever
+// rebranded (e.g. to ':_xchg:' or similar), changing NS alone updates
+// every constant + every helper that builds a stream-id.
 const NS = ':_cmc:';
-const NS_INBOX = ':_cmc:inbox';
-const NS_APPS = ':_cmc:apps';
-const NS_INTERNAL = ':_cmc:_internal';
-const NS_INTERNAL_RETRIES = ':_cmc:_internal:retries';
+const NS_INBOX = NS + 'inbox';
+const NS_APPS = NS + 'apps';
+const NS_INTERNAL = NS + '_internal';
+const NS_INTERNAL_RETRIES = NS_INTERNAL + ':retries';
 
 const ET_REQUEST = 'cmc/request-v1';
 const ET_ACCEPT = 'cmc/accept-v1';
@@ -79,7 +82,12 @@ function assertSlugPiece (label, value) {
  */
 function slugifyHost (host) {
   assertNonEmpty('host', host);
-  return host.toLowerCase().replace(/\./g, '-');
+  // Strip trailing port (`:3000`) — port doesn't affect cross-account
+  // identity. Two users on the same hostname are the same platform
+  // regardless of which port their api endpoint listens on. Mirrors
+  // the server-side helper in open-pryv.io components/cmc/src/slug.ts.
+  const hostNoPort = host.replace(/:\d+$/, '');
+  return hostNoPort.toLowerCase().replace(/\./g, '-');
 }
 
 /**
@@ -223,6 +231,81 @@ function parseCollectorStreamId (streamId) {
   };
 }
 
+// --- Actor helpers (apiEndpoint → { token, username, host }) ---
+
+/**
+ * Extract `{ token, username, host }` from a Pryv apiEndpoint, given
+ * the platform's `service.info.api` URL template.
+ *
+ * Pryv apiEndpoints follow one of two URL shapes (the difference is
+ * platform-defined, encoded in `service.info.api`):
+ *
+ *   subdomain  template `https://{username}.<domain>/`
+ *              endpoint `https://<token>@<username>.<domain>/`
+ *   path-style template `https://<host>/{username}/`
+ *              endpoint `https://<token>@<host>/<username>/`
+ *
+ * This helper inverts whichever template the platform serves, returning
+ * the **canonical host** (no `<username>.` subdomain prefix in subdomain
+ * mode) — that's the host CMC uses for cross-account identity (slugs,
+ * counterparty matching).
+ *
+ * @param {string} apiEndpoint  e.g. 'https://t0k3n@alice.pryv.me/'
+ * @param {string} serviceInfoApi  e.g. 'https://{username}.pryv.me/'
+ *                                 from /service/info → field `api`.
+ * @returns {{ token: string|null, username: string|null, host: string }}
+ *
+ * @example
+ *   const conn = new pryv.Connection(apiEndpoint);
+ *   const info = await conn.service.info();
+ *   const me = pryv.cmc.extractActor(apiEndpoint, info.api);
+ *   // → { token: 't0k3n', username: 'alice', host: 'pryv.me' }
+ */
+function extractActor (apiEndpoint, serviceInfoApi) {
+  // Avoid circular require: utils is the consumer, cmc the provider.
+  // We pull at call-time so cmc.js stays loadable without requiring
+  // utils early.
+  const utils = require('./utils');
+  const { token, endpoint } = utils.extractTokenAndAPIEndpoint(apiEndpoint);
+  // Match the api template's variable position to find the username.
+  // Both endpoint + template are guaranteed to have a trailing slash.
+  const tplIdx = serviceInfoApi.indexOf('{username}');
+  if (tplIdx < 0) {
+    // Template doesn't carry {username} — operator-defined, can't decompose.
+    let host = '';
+    try { host = new URL(endpoint).host; } catch (_e) {}
+    return { token, username: null, host };
+  }
+  const tplPrefix = serviceInfoApi.slice(0, tplIdx);
+  const tplSuffix = serviceInfoApi.slice(tplIdx + '{username}'.length);
+  if (!endpoint.startsWith(tplPrefix) || !endpoint.endsWith(tplSuffix)) {
+    let host = '';
+    try { host = new URL(endpoint).host; } catch (_e) {}
+    return { token, username: null, host };
+  }
+  const username = endpoint.slice(tplPrefix.length, endpoint.length - tplSuffix.length);
+  // For subdomain templates, host is `<username>.<domain>` — but the
+  // canonical CMC host is the bare `<domain>` (the platform identity,
+  // not per-user). For path-style, host is just the literal host.
+  // Disambiguate by where {username} sits in the template:
+  //   - subdomain  → prefix ends with `://` (username right after scheme)
+  //   - path-style → prefix has more after `://` (host already in prefix)
+  const isSubdomainTemplate = /:\/\/$/.test(tplPrefix);
+  let host;
+  if (isSubdomainTemplate) {
+    // tplSuffix starts with the domain (e.g. '.pryv.me/')
+    host = tplSuffix.replace(/^\.+/, '').replace(/\/+$/, '');
+  } else {
+    // path-style — host is in the prefix's URL
+    try {
+      host = new URL(tplPrefix).host;
+    } catch (_e) {
+      host = '';
+    }
+  }
+  return { token, username, host };
+}
+
 module.exports = {
   // namespace constants
   NS,
@@ -230,6 +313,8 @@ module.exports = {
   NS_APPS,
   NS_INTERNAL,
   NS_INTERNAL_RETRIES,
+  // actor helper
+  extractActor,
   // event types
   ET_REQUEST,
   ET_ACCEPT,

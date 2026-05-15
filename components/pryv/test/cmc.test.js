@@ -133,4 +133,40 @@ describe('[CMCX] pryv.cmc client helpers', function () {
       expect(pryv.cmc.NS).to.equal(':_cmc:');
     });
   });
+
+  describe('[CMCXA] extractActor', function () {
+    it('[CMCXAA] subdomain template — host strips the {username}. prefix', function () {
+      const r = cmc.extractActor(
+        'https://t0k3n@alice.pryv.me/',
+        'https://{username}.pryv.me/'
+      );
+      expect(r).to.deep.equal({ token: 't0k3n', username: 'alice', host: 'pryv.me' });
+    });
+
+    it('[CMCXAB] path-style template — host is the literal hostname[:port]', function () {
+      const r = cmc.extractActor(
+        'http://t0k3n@127.0.0.1:3000/alice/',
+        'http://127.0.0.1:3000/{username}/'
+      );
+      expect(r).to.deep.equal({ token: 't0k3n', username: 'alice', host: '127.0.0.1:3000' });
+    });
+
+    it('[CMCXAC] returns username:null when the endpoint doesn\'t match the template', function () {
+      const r = cmc.extractActor(
+        'https://t0k3n@somewhere.else.com/',
+        'https://{username}.pryv.me/'
+      );
+      expect(r.username).to.equal(null);
+    });
+
+    it('[CMCXAD] returns token:null when endpoint carries no token', function () {
+      const r = cmc.extractActor(
+        'https://alice.pryv.me/',
+        'https://{username}.pryv.me/'
+      );
+      expect(r.token).to.equal(null);
+      expect(r.username).to.equal('alice');
+      expect(r.host).to.equal('pryv.me');
+    });
+  });
 });
