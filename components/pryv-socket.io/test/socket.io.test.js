@@ -135,7 +135,7 @@ describe('[SKIX] Socket.IO', function () {
       try {
         conn.socket.on('Bogus', () => {});
       } catch (e) {
-        return expect(e.message).to.equal('Unkown event [Bogus]. Allowed events are: eventsChanged,streamsChanged,accessesChanged,disconnect,error');
+        return expect(e.message).to.equal('Unkown event [Bogus]. Allowed events are: eventsChanged,streamsChanged,accessesChanged,accessUpdated,disconnect,error');
       }
       throw new Error('Should fail');
     });
