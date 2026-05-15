@@ -13,6 +13,7 @@
  * @property {pryv.MfaRequiredError} MfaRequiredError - Thrown by Service.login when the platform returns an mfaToken instead of a token. Carries `.mfaToken`.
  * @property {pryv.StaleAccessIdError} StaleAccessIdError - Plan 66: thrown when a Pryv.io server rejects an `accesses.update` / `accesses.delete` with a 409 stale-resource. Refetch + retry.
  * @property {Object} ERRORS - Catalogue of Pryv API error ids (mirrors open-pryv.io/components/errors)
+ * @property {pryv.cmc} cmc - Cross-account Messaging & Consent helpers (slug + stream-id builders + parsers)
  */
 module.exports = {
   Service: require('./Service'),
@@ -24,5 +25,6 @@ module.exports = {
   MfaRequiredError: require('./lib/MfaRequiredError'),
   StaleAccessIdError: require('./lib/StaleAccessIdError'),
   ERRORS: require('./lib/errorIds'),
+  cmc: require('./cmc'),
   version: require('../package.json').version
 };

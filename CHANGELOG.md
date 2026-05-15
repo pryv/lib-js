@@ -2,6 +2,22 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.2.0-pre.1]
+
+CMC (Cross-account Messaging & Consent) client-side helpers (open-pryv.io ≥ 2.0.0-pre.X).
+
+### Added
+- `pryv.cmc` namespace exposing the slug + stream-id helpers that mirror the server-side CMC plugin so apps can construct stream-ids deterministically:
+  - **Namespace constants** — `NS` (`:_cmc:`), `NS_INBOX`, `NS_APPS`, `NS_INTERNAL`, `NS_INTERNAL_RETRIES`.
+  - **Event-type constants** — `ET_REQUEST`, `ET_ACCEPT`, `ET_REFUSE`, `ET_REVOKE`, `ET_CHAT`, `ET_SYSTEM_ALERT`, `ET_SYSTEM_ACK`, `ET_SYSTEM_SCOPE_REQUEST`, `ET_SYSTEM_SCOPE_UPDATE`. Grouped collections `EVENT_TYPES_LIFECYCLE` / `EVENT_TYPES_CHAT` / `EVENT_TYPES_SYSTEM`.
+  - **Slug helpers** — `slugifyHost(host)`, `counterpartySlug({ username, host })` → `<username>--<host-slug>`, `parseCounterpartySlug(slug)` → `{ username, hostSlug }`.
+  - **Stream-id builders** — `appScope(appCode)`, `chatsParentUnder(scope)`, `chatStreamUnder(scope, slug)`, `collectorsParentUnder(scope)`, `collectorStreamUnder(scope, slug)`.
+  - **Classification + parsing** — `isCmcStreamId(id)`, `isAppNestedPluginStream(id)`, `getAppCode(id)`, `parseChatStreamId(id)`, `parseCollectorStreamId(id)`.
+
+### Notes
+- Client + server use the same algorithms for slug + stream-id construction, so writes from this lib land on the same canonical paths the plugin auto-creates at acceptance.
+- All helpers are pure functions; no network calls. Use `pryv.Connection` for the actual `events.create` / `accesses.create` calls.
+
 ## [3.1.0]
 
 Plan 66 (open-pryv.io ≥ 2.0.0-pre.X): access versioning.
