@@ -33,15 +33,15 @@ const NS_APPS = NS + 'apps';
 const NS_INTERNAL = NS + '_internal';
 const NS_INTERNAL_RETRIES = NS_INTERNAL + ':retries';
 
-const ET_REQUEST = 'cmc/request-v1';
-const ET_ACCEPT = 'cmc/accept-v1';
-const ET_REFUSE = 'cmc/refuse-v1';
-const ET_REVOKE = 'cmc/revoke-v1';
-const ET_CHAT = 'cmc/chat-v1';
-const ET_SYSTEM_ALERT = 'cmc/system-alert-v1';
-const ET_SYSTEM_ACK = 'cmc/system-ack-v1';
-const ET_SYSTEM_SCOPE_REQUEST = 'cmc/system-scope-request-v1';
-const ET_SYSTEM_SCOPE_UPDATE = 'cmc/system-scope-update-v1';
+const ET_REQUEST = 'consent/request-cmc';
+const ET_ACCEPT = 'consent/accept-cmc';
+const ET_REFUSE = 'consent/refuse-cmc';
+const ET_REVOKE = 'consent/revoke-cmc';
+const ET_CHAT = 'message/chat-cmc';
+const ET_SYSTEM_ALERT = 'notification/alert-cmc';
+const ET_SYSTEM_ACK = 'notification/ack-cmc';
+const ET_SYSTEM_SCOPE_REQUEST = 'consent/scope-request-cmc';
+const ET_SYSTEM_SCOPE_UPDATE = 'consent/scope-update-cmc';
 
 const EVENT_TYPES_LIFECYCLE = [ET_REQUEST, ET_ACCEPT, ET_REFUSE, ET_REVOKE];
 const EVENT_TYPES_CHAT = [ET_CHAT];

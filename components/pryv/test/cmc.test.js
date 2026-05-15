@@ -14,12 +14,12 @@ describe('[CMCX] pryv.cmc client helpers', function () {
       expect(cmc.NS_APPS).to.equal(':_cmc:apps');
       expect(cmc.NS_INTERNAL).to.equal(':_cmc:_internal');
       expect(cmc.NS_INTERNAL_RETRIES).to.equal(':_cmc:_internal:retries');
-      expect(cmc.ET_REQUEST).to.equal('cmc/request-v1');
-      expect(cmc.ET_ACCEPT).to.equal('cmc/accept-v1');
-      expect(cmc.ET_CHAT).to.equal('cmc/chat-v1');
-      expect(cmc.ET_SYSTEM_ALERT).to.equal('cmc/system-alert-v1');
-      expect(cmc.EVENT_TYPES_LIFECYCLE).to.include('cmc/request-v1');
-      expect(cmc.EVENT_TYPES_SYSTEM).to.include('cmc/system-scope-update-v1');
+      expect(cmc.ET_REQUEST).to.equal('consent/request-cmc');
+      expect(cmc.ET_ACCEPT).to.equal('consent/accept-cmc');
+      expect(cmc.ET_CHAT).to.equal('message/chat-cmc');
+      expect(cmc.ET_SYSTEM_ALERT).to.equal('notification/alert-cmc');
+      expect(cmc.EVENT_TYPES_LIFECYCLE).to.include('consent/request-cmc');
+      expect(cmc.EVENT_TYPES_SYSTEM).to.include('consent/scope-update-cmc');
     });
   });
 
