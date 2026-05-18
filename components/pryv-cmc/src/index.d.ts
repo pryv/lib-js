@@ -225,6 +225,26 @@ declare module '@pryv/cmc' {
    * `:_cmc:apps:<app>[:...]` stream on the accepter's account. Do not
    * pass `:_cmc:inbox` (which routes through the peer-delivered path).
    */
+  /**
+   * Requester-side dual of `acceptInvite`'s Phase 2 wait — poll for the
+   * accepter's `consent/accept-cmc` arrival on `:_cmc:inbox`. Returns
+   * the data the requester needs to actually USE the access (the
+   * accepter's data-grant apiEndpoint, the accepter's identity, etc).
+   */
+  export function waitForAccept(conn: any, opts: {
+    fromUsername?: string;
+    fromHost?: string;
+    appCode?: string;
+    sinceTime?: number;
+    timeoutMs?: number;
+    intervalMs?: number;
+  }): Promise<{
+    acceptInboxEventId: string;
+    grantedAccessApiEndpoint: string | null;
+    counterparty: { username: string; host: string } | null;
+    features: { chat?: boolean; systemMessaging?: boolean };
+  }>;
+
   export function acceptInvite(conn: any, capabilityUrl: string, opts: {
     scopeStreamId: string;
     extra?: { chat?: boolean; systemMessaging?: boolean };

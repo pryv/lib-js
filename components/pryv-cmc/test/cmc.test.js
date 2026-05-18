@@ -414,12 +414,22 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           }
         }
       });
-      const r = await cmc.acceptInvite(conn, 'https://t@x.example.com/', { scopeStreamId: ':_cmc:apps:test', waitForCompletion: false });
-      expect(r).to.deep.equal({ acceptEventId: 'acc-1', dataGrantAccessId: null, status: 'pending' });
+      const r = await cmc.acceptInvite(conn, 'http://127.0.0.1:0/invalid/', { scopeStreamId: ':_cmc:apps:test', waitForCompletion: false });
+      expect(r.acceptEventId).to.equal('acc-1');
+      expect(r.dataGrantAccessId).to.equal(null);
+      expect(r.status).to.equal('pending');
+      expect(r.counterparty).to.deep.equal({ username: null, host: null, displayName: undefined });
+      // 1 events.create. (Offer read attempt happens but on a separate
+      // pryv.Connection over the bogus capability URL — silently fails.)
       expect(conn.calls).to.have.length(1);
     });
 
     it('[CMCL1AB] waitForCompletion polls until status=completed', async function () {
+      // acceptInvite reads the OFFER (via a new pryv.Connection on the
+      // capability URL) to derive counterparty identity. With a stub
+      // capability URL the offer read fails silently → counterparty
+      // defaults to nulls. dataGrantAccessId + features come from the
+      // trigger event.
       let pollCount = 0;
       const conn = makeStubConnection({
         handlers: {
@@ -435,7 +445,6 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
                 content: {
                   status: 'completed',
                   dataGrantAccessId: 'dg-1',
-                  acceptedBy: { username: 'alice', host: 'pryv.me' },
                   features: { chat: true }
                 }
               }
@@ -443,10 +452,10 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           }
         }
       });
-      const r = await cmc.acceptInvite(conn, 'https://t@x/', { scopeStreamId: ':_cmc:apps:test', completionPollIntervalMs: 5, completionTimeoutMs: 1000 });
+      const r = await cmc.acceptInvite(conn, 'http://127.0.0.1:0/invalid/', { scopeStreamId: ':_cmc:apps:test', completionPollIntervalMs: 5, completionTimeoutMs: 1000 });
       expect(r.acceptEventId).to.equal('acc-2');
       expect(r.dataGrantAccessId).to.equal('dg-1');
-      expect(r.counterparty).to.deep.equal({ username: 'alice', host: 'pryv.me' });
+      expect(r.counterparty).to.deep.equal({ username: null, host: null, displayName: undefined });
       expect(r.features).to.deep.equal({ chat: true });
     });
 

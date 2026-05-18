@@ -621,6 +621,22 @@ async function acceptInvite (conn, capabilityUrl, opts) {
       'trigger lands — not :_cmc:inbox, which routes through the peer-delivered path)');
   }
   const scopeStreamId = opts.scopeStreamId;
+  // Read the offer FIRST to capture counterparty identity (single-use
+  // capabilities flip to 'consumed' on the first accept, so a second
+  // read after submit would fail).
+  let counterparty = { username: null, host: null, displayName: undefined };
+  let offerFeatures = null;
+  try {
+    const offer = await readOffer(capabilityUrl, opts);
+    counterparty = {
+      username: offer.requester && offer.requester.username,
+      host: offer.requester && offer.requester.host,
+      displayName: offer.requester && offer.requester.displayName
+    };
+    offerFeatures = offer.features || null;
+  } catch (_e) {
+    // Best-effort; if offer read fails the accept can still proceed.
+  }
   const content = { capabilityUrl };
   if (opts.extra) content.extra = opts.extra;
   if (opts.accessName) content.accessName = opts.accessName;
@@ -630,12 +646,15 @@ async function acceptInvite (conn, capabilityUrl, opts) {
     content
   }, 'event');
   const waitForCompletion = opts.waitForCompletion !== false;
-  const initial = {
-    acceptEventId: event.id,
-    dataGrantAccessId: (event.content && event.content.dataGrantAccessId) || null,
-    status: (event.content && event.content.status) || 'pending'
-  };
-  if (!waitForCompletion) return initial;
+  if (!waitForCompletion) {
+    return {
+      acceptEventId: event.id,
+      dataGrantAccessId: (event.content && event.content.dataGrantAccessId) || null,
+      counterparty,
+      features: offerFeatures || {},
+      status: (event.content && event.content.status) || 'pending'
+    };
+  }
   const finalEvent = await pollTriggerCompletion(conn, event.id, {
     timeoutMs: opts.completionTimeoutMs || 10000,
     intervalMs: opts.completionPollIntervalMs || 200
@@ -648,10 +667,74 @@ async function acceptInvite (conn, capabilityUrl, opts) {
   return {
     acceptEventId: finalEvent.id,
     dataGrantAccessId: fc.dataGrantAccessId || null,
-    dataGrantApiEndpoint: fc.dataGrantApiEndpoint || (fc.grantedAccess && fc.grantedAccess.apiEndpoint) || null,
-    counterparty: fc.acceptedBy || fc.from || null,
-    features: fc.features || (fc.request && fc.request.features) || {}
+    counterparty,
+    features: offerFeatures || fc.features || (fc.request && fc.request.features) || {}
   };
+}
+
+/**
+ * Requester-side dual of `acceptInvite`'s Phase 2 wait: poll for the
+ * accepter's `consent/accept-cmc` arrival on `:_cmc:inbox`. Returns the
+ * data the requester needs to actually USE the access — the data-grant
+ * apiEndpoint on the accepter's account and the accepter's identity.
+ *
+ * The inbox arrival does NOT carry the requester's inviteEventId (the
+ * server-side `originalEventId` field is the capability-internal offer
+ * event id, not the trigger). Identification therefore relies on
+ * `from.{username,host}` + `requesterAppCode` matching. Pass either or
+ * both as options:
+ *   - { fromUsername, fromHost? }     match on incoming `from.username`
+ *                                     (and host if provided).
+ *   - { appCode }                     also match `requesterAppCode`.
+ *   - { sinceTime } (optional)        skip arrivals older than this
+ *                                     unix-seconds timestamp.
+ *
+ * If multiple arrivals match, the most-recent one wins.
+ *
+ * @param {Object} conn
+ * @param {Object} opts
+ * @param {string} [opts.fromUsername]
+ * @param {string} [opts.fromHost]
+ * @param {string} [opts.appCode]
+ * @param {number} [opts.sinceTime]
+ * @param {number} [opts.timeoutMs=15000]
+ * @param {number} [opts.intervalMs=300]
+ * @returns {Promise<{acceptInboxEventId:string, grantedAccessApiEndpoint:string|null, counterparty:{username:string,host:string}|null, features:Object}>}
+ */
+async function waitForAccept (conn, opts) {
+  opts = opts || {};
+  if (!opts.fromUsername && !opts.appCode) {
+    throw new Error('waitForAccept: provide at least one of opts.fromUsername / opts.appCode to identify the arrival');
+  }
+  const timeoutMs = opts.timeoutMs || 15000;
+  const intervalMs = opts.intervalMs || 300;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const events = await conn.apiOne('events.get', {
+      streams: [NS_INBOX],
+      types: [ET_ACCEPT],
+      limit: 100,
+      sortAscending: false
+    }, 'events');
+    for (const ev of (events || [])) {
+      const c = ev.content || {};
+      if (opts.sinceTime != null && ev.time != null && ev.time < opts.sinceTime) continue;
+      if (opts.fromUsername != null && (c.from == null || c.from.username !== opts.fromUsername)) continue;
+      if (opts.fromHost != null && (c.from == null || c.from.host !== opts.fromHost)) continue;
+      if (opts.appCode != null && c.requesterAppCode !== opts.appCode) continue;
+      return {
+        acceptInboxEventId: ev.id,
+        grantedAccessApiEndpoint: (c.grantedAccess && c.grantedAccess.apiEndpoint) || null,
+        counterparty: c.from || null,
+        features: c.features || {}
+      };
+    }
+    await sleep(intervalMs);
+  }
+  throw new CmcError(
+    'waitForAccept: no consent/accept-cmc arrival matching ' + JSON.stringify({ fromUsername: opts.fromUsername, fromHost: opts.fromHost, appCode: opts.appCode }) + ' within ' + timeoutMs + 'ms',
+    errorIds.CAPABILITY_TIMEOUT
+  );
 }
 
 async function pollTriggerCompletion (conn, eventId, opts) {
@@ -991,6 +1074,7 @@ module.exports = {
   requestScopeUpdate,
   readOffer,
   acceptInvite,
+  waitForAccept,
   refuseInvite,
   revokeAcceptance,
   listAcceptedRelationships,
