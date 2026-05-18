@@ -185,11 +185,17 @@ declare module '@pryv/cmc' {
 
   export function getInviteStatus(conn: any, inviteEventId: string): Promise<InviteRecord>;
 
-  export function revokeRelationship(conn: any, params: {
-    scopeStreamId: string;
-    accessId: string;
-    reason?: Record<string, string>;
-  }): Promise<void>;
+  /**
+   * Revoke a relationship (provider side). Two ways to identify the
+   * relationship:
+   *   1. `{ accessId, scopeStreamId, reason? }` — power-user path.
+   *   2. `{ inviteEventId, scopeStreamId?, reason? }` — convenience path;
+   *      derives `accessId` from the matching inbox accept event.
+   */
+  export function revokeRelationship(conn: any, params:
+    | { accessId: string; scopeStreamId: string; reason?: Record<string, string> }
+    | { inviteEventId: string; scopeStreamId?: string; reason?: Record<string, string> }
+  ): Promise<void>;
 
   export function invalidateCapability(conn: any, params: {
     inviteEventId: string;
@@ -214,8 +220,13 @@ declare module '@pryv/cmc' {
     features: { chat?: boolean; systemMessaging?: boolean };
   }>;
 
-  export function acceptInvite(conn: any, capabilityUrl: string, opts?: {
-    scopeStreamId?: string;
+  /**
+   * Accept an offer. `opts.scopeStreamId` is REQUIRED — must be an
+   * `:_cmc:apps:<app>[:...]` stream on the accepter's account. Do not
+   * pass `:_cmc:inbox` (which routes through the peer-delivered path).
+   */
+  export function acceptInvite(conn: any, capabilityUrl: string, opts: {
+    scopeStreamId: string;
     extra?: { chat?: boolean; systemMessaging?: boolean };
     accessName?: string;
     waitForCompletion?: boolean;
@@ -226,8 +237,12 @@ declare module '@pryv/cmc' {
     | { acceptEventId: string; dataGrantAccessId: string | null; dataGrantApiEndpoint: string | null; counterparty: any; features: any }
   >;
 
-  export function refuseInvite(conn: any, capabilityUrl: string, opts?: {
-    scopeStreamId?: string;
+  /**
+   * Refuse an offer. `opts.scopeStreamId` is REQUIRED — same constraints
+   * as `acceptInvite`.
+   */
+  export function refuseInvite(conn: any, capabilityUrl: string, opts: {
+    scopeStreamId: string;
     reason?: Record<string, string>;
   }): Promise<{ refuseEventId: string }>;
 

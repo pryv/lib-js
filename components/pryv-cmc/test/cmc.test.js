@@ -414,7 +414,7 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           }
         }
       });
-      const r = await cmc.acceptInvite(conn, 'https://t@x.example.com/', { waitForCompletion: false });
+      const r = await cmc.acceptInvite(conn, 'https://t@x.example.com/', { scopeStreamId: ':_cmc:apps:test', waitForCompletion: false });
       expect(r).to.deep.equal({ acceptEventId: 'acc-1', dataGrantAccessId: null, status: 'pending' });
       expect(conn.calls).to.have.length(1);
     });
@@ -443,7 +443,7 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           }
         }
       });
-      const r = await cmc.acceptInvite(conn, 'https://t@x/', { completionPollIntervalMs: 5, completionTimeoutMs: 1000 });
+      const r = await cmc.acceptInvite(conn, 'https://t@x/', { scopeStreamId: ':_cmc:apps:test', completionPollIntervalMs: 5, completionTimeoutMs: 1000 });
       expect(r.acceptEventId).to.equal('acc-2');
       expect(r.dataGrantAccessId).to.equal('dg-1');
       expect(r.counterparty).to.deep.equal({ username: 'alice', host: 'pryv.me' });
@@ -463,7 +463,7 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       });
       let err = null;
       try {
-        await cmc.acceptInvite(conn, 'https://t@x/', { completionPollIntervalMs: 5, completionTimeoutMs: 1000 });
+        await cmc.acceptInvite(conn, 'https://t@x/', { scopeStreamId: ':_cmc:apps:test', completionPollIntervalMs: 5, completionTimeoutMs: 1000 });
       } catch (e) { err = e; }
       expect(err).to.exist;
       expect(err).to.be.instanceOf(cmc.CmcError);
@@ -478,7 +478,7 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           }
         }
       });
-      const r = await cmc.refuseInvite(conn, 'https://t@x/', { reason: { en: 'no' } });
+      const r = await cmc.refuseInvite(conn, 'https://t@x/', { scopeStreamId: ':_cmc:apps:test', reason: { en: 'no' } });
       expect(conn.calls[0].params.type).to.equal('consent/refuse-cmc');
       expect(r.refuseEventId).to.equal('rf-1');
     });

@@ -411,19 +411,63 @@ async function getInviteStatus (conn, inviteEventId) {
  * `consent/revoke-cmc` event with `{ accessId, reason }`; plugin
  * orchestrates dual delete.
  *
+ * Two ways to identify the relationship:
+ *   1. `{ accessId, scopeStreamId, reason? }` — power-user path, pass
+ *      the back-channel access id directly.
+ *   2. `{ inviteEventId, scopeStreamId?, reason? }` — convenience path.
+ *      Reads the invite event + matching inbox accept to derive
+ *      `backChannelAccessId`. Two extra API calls. Defaults
+ *      `scopeStreamId` to the invite event's own stream.
+ *
  * @param {Object} conn
  * @param {Object} params
- * @param {string} params.scopeStreamId           - own scope to write into
- * @param {string} params.accessId                - back-channel access id (provider side)
+ * @param {string} [params.accessId]              - back-channel access id (provider side)
+ * @param {string} [params.inviteEventId]         - alternative to accessId
+ * @param {string} [params.scopeStreamId]         - own scope to write into (required with accessId; auto-derived with inviteEventId)
  * @param {Object} [params.reason]
  * @returns {Promise<void>}
  */
 async function revokeRelationship (conn, params) {
   if (params == null) throw new Error('revokeRelationship: params required');
-  const content = { accessId: params.accessId };
+  let accessId = params.accessId;
+  let scopeStreamId = params.scopeStreamId;
+  if (!accessId) {
+    if (!params.inviteEventId) {
+      throw new Error('revokeRelationship: provide accessId, or inviteEventId for lookup');
+    }
+    const inviteEvent = await conn.apiOne('events.getOne', { id: params.inviteEventId }, 'event');
+    if (!inviteEvent) {
+      throw new Error('revokeRelationship: invite event not found: ' + params.inviteEventId);
+    }
+    if (!scopeStreamId) {
+      scopeStreamId = (inviteEvent.streamIds && inviteEvent.streamIds[0]) || inviteEvent.streamId;
+    }
+    const acceptsRaw = await conn.apiOne('events.get', {
+      streams: [NS_INBOX],
+      types: [ET_ACCEPT],
+      limit: 200
+    }, 'events');
+    const match = (acceptsRaw || []).find(function (e) {
+      const c = e.content || {};
+      return c.originalEventId === params.inviteEventId ||
+             c.requestEventId === params.inviteEventId ||
+             c.inviteEventId === params.inviteEventId;
+    });
+    if (!match) {
+      throw new Error('revokeRelationship: no inbox accept found for invite ' + params.inviteEventId);
+    }
+    accessId = match.content && match.content.backChannelAccessId;
+    if (!accessId) {
+      throw new Error('revokeRelationship: inbox accept ' + match.id + ' has no backChannelAccessId');
+    }
+  }
+  if (!scopeStreamId) {
+    throw new Error('revokeRelationship: scopeStreamId is required with accessId path');
+  }
+  const content = { accessId };
   if (params.reason) content.reason = params.reason;
   await conn.apiOne('events.create', {
-    streamIds: [params.scopeStreamId],
+    streamIds: [scopeStreamId],
     type: ET_REVOKE,
     content
   }, 'event');
@@ -560,8 +604,8 @@ async function readOffer (capabilityUrl, opts) {
  *
  * @param {Object} conn                     accepter's connection
  * @param {string} capabilityUrl
- * @param {Object} [opts]
- * @param {string} [opts.scopeStreamId]     - own scope to write the accept into (default ':_cmc:apps:patient:incoming')
+ * @param {Object} opts
+ * @param {string} opts.scopeStreamId       - REQUIRED. Own :_cmc:apps:<app>[:...] stream where the accept trigger lands. Must NOT be :_cmc:inbox (which routes through the peer-delivered path).
  * @param {{chat?:boolean,systemMessaging?:boolean}} [opts.extra]
  * @param {string} [opts.accessName]
  * @param {boolean} [opts.waitForCompletion=true]
@@ -571,7 +615,12 @@ async function readOffer (capabilityUrl, opts) {
  */
 async function acceptInvite (conn, capabilityUrl, opts) {
   opts = opts || {};
-  const scopeStreamId = opts.scopeStreamId || ':_cmc:apps:patient:incoming';
+  if (!opts.scopeStreamId) {
+    throw new Error('acceptInvite: opts.scopeStreamId is required ' +
+      '(an :_cmc:apps:<app>[:...] stream on YOUR account where the accept ' +
+      'trigger lands — not :_cmc:inbox, which routes through the peer-delivered path)');
+  }
+  const scopeStreamId = opts.scopeStreamId;
   const content = { capabilityUrl };
   if (opts.extra) content.extra = opts.extra;
   if (opts.accessName) content.accessName = opts.accessName;
@@ -632,14 +681,18 @@ function sleep (ms) {
  *
  * @param {Object} conn
  * @param {string} capabilityUrl
- * @param {Object} [opts]
- * @param {string} [opts.scopeStreamId]
+ * @param {Object} opts
+ * @param {string} opts.scopeStreamId       - REQUIRED. Own :_cmc:apps:<app>[:...] stream where the refuse trigger lands.
  * @param {Object} [opts.reason]
  * @returns {Promise<{refuseEventId:string}>}
  */
 async function refuseInvite (conn, capabilityUrl, opts) {
   opts = opts || {};
-  const scopeStreamId = opts.scopeStreamId || ':_cmc:apps:patient:incoming';
+  if (!opts.scopeStreamId) {
+    throw new Error('refuseInvite: opts.scopeStreamId is required ' +
+      '(an :_cmc:apps:<app>[:...] stream on YOUR account where the refuse trigger lands)');
+  }
+  const scopeStreamId = opts.scopeStreamId;
   const content = { capabilityUrl };
   if (opts.reason) content.reason = opts.reason;
   const event = await conn.apiOne('events.create', {
@@ -677,13 +730,16 @@ async function revokeAcceptance (conn, params) {
  *
  * @param {Object} conn
  * @param {Object} [params]
- * @param {string} [params.scopeStreamId=':_cmc:apps:patient:incoming']
+ * @param {string} [params.scopeStreamId=':_cmc:apps']  - root or sub-scope to search recursively
  * @param {number} [params.limit=1000]
  * @returns {Promise<Array>}
  */
 async function listAcceptedRelationships (conn, params) {
   params = params || {};
-  const streams = [params.scopeStreamId || ':_cmc:apps:patient:incoming'];
+  // Default to the apps root (recursive) so callers get every relationship
+  // across all of their app scopes. Pass `params.scopeStreamId` for a narrower
+  // view (e.g. a single app or sub-scope).
+  const streams = [params.scopeStreamId || NS_APPS];
   const limit = params.limit || 1000;
   const events = await conn.apiOne('events.get', {
     streams,
