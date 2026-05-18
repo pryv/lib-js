@@ -57,6 +57,7 @@ Other distributions available:
 
 - Socket.IO: [NPM package](https://www.npmjs.com/package/@pryv/socket.io), [README](https://github.com/pryv/lib-js/tree/master/components/pryv-socket.io#readme)
 - Monitor: [NPM package](https://www.npmjs.com/package/@pryv/monitor), [README](https://github.com/pryv/lib-js/tree/master/components/pryv-monitor#readme)
+- CMC (Cross-account Messaging & Consent) client helpers: [NPM package](https://www.npmjs.com/package/@pryv/cmc), [README](https://github.com/pryv/lib-js/tree/master/components/pryv-cmc#readme)
 
 
 ### Quick example
@@ -677,6 +678,7 @@ The project is structured as a monorepo with components (a.k.a. workspaces in NP
 - `pryv`: the library
 - `pryv-socket.io`: Socket.IO add-on
 - `pryv-monitor`: Monitor add-on
+- `pryv-cmc`: CMC (Cross-account Messaging & Consent) client helpers
 
 
 
