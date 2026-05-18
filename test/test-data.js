@@ -42,22 +42,31 @@ async function prepare () {
   console.log('Testing on ' + serviceInfo.name + ' > register: ' + serviceInfo.register);
   await getHost(serviceInfo);
   if (!await testUserExists(serviceInfo, username)) { // create user
-    const host = await getHost(serviceInfo);
-
+    // Use Service.createUser (modern register endpoint) — properly
+    // populates the platform email→username index so subsequent
+    // `Service.userIdForEmail` lookups succeed. The legacy raw POST
+    // path used to live here but it skipped the email-index step on
+    // some platforms (notably Dokku-deployed dev backends), causing
+    // [UEMX]/[UEMA] to fail.
+    // `pryv` global is set by load-helpers.js. Avoid a static
+    // require here — mocha's ESM loader gets confused by the relative
+    // path resolution and throws ERR_MODULE_NOT_FOUND on /test/.
+    const pryv = global.pryv || require('pryv');
+    const service = new pryv.Service(serviceInfoUrl);
     try {
-      // create user
-      await fetchPost(host + 'users', {
+      await service.createUser({
         appId: 'js-lib-test',
         username,
         password: username,
         email: username + '@pryv.io',
-        invitationtoken: 'enjoy',
-        languageCode: 'en',
+        hosting: 'auto',
+        language: 'en',
+        invitationToken: 'enjoy',
         referer: 'test-suite'
       });
     } catch (e) {
       console.log('Failed creating user ', e);
-      throw new Error('Failed creating user ' + host + 'users');
+      throw new Error('Failed creating user via Service.createUser: ' + (e && (e.message || String(e))));
     }
   }
   const apiEndpoint = serviceInfo.api.replace('{username}', username);
