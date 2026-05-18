@@ -2,21 +2,63 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
-## [3.2.0-pre.1]
+## [3.3.0]
 
-CMC (Cross-account Messaging & Consent) client-side helpers (open-pryv.io ≥ 2.0.0-pre.X).
+Lockstep release of `pryv@3.3.0` + `@pryv/monitor@3.3.0` +
+`@pryv/socket.io@3.3.0`, plus the new sibling package
+`@pryv/cmc@1.0.0`.
 
-### Added
-- `pryv.cmc` namespace exposing the slug + stream-id helpers that mirror the server-side CMC plugin so apps can construct stream-ids deterministically:
-  - **Namespace constants** — `NS` (`:_cmc:`), `NS_INBOX`, `NS_APPS`, `NS_INTERNAL`, `NS_INTERNAL_RETRIES`.
-  - **Event-type constants** — `ET_REQUEST`, `ET_ACCEPT`, `ET_REFUSE`, `ET_REVOKE`, `ET_CHAT`, `ET_SYSTEM_ALERT`, `ET_SYSTEM_ACK`, `ET_SYSTEM_SCOPE_REQUEST`, `ET_SYSTEM_SCOPE_UPDATE`. Grouped collections `EVENT_TYPES_LIFECYCLE` / `EVENT_TYPES_CHAT` / `EVENT_TYPES_SYSTEM`.
-  - **Slug helpers** — `slugifyHost(host)`, `counterpartySlug({ username, host })` → `<username>--<host-slug>`, `parseCounterpartySlug(slug)` → `{ username, hostSlug }`.
-  - **Stream-id builders** — `appScope(appCode)`, `chatsParentUnder(scope)`, `chatStreamUnder(scope, slug)`, `collectorsParentUnder(scope)`, `collectorStreamUnder(scope, slug)`.
-  - **Classification + parsing** — `isCmcStreamId(id)`, `isAppNestedPluginStream(id)`, `getAppCode(id)`, `parseChatStreamId(id)`, `parseCollectorStreamId(id)`.
+### `pryv@3.3.0`
 
-### Notes
-- Client + server use the same algorithms for slug + stream-id construction, so writes from this lib land on the same canonical paths the plugin auto-creates at acceptance.
-- All helpers are pure functions; no network calls. Use `pryv.Connection` for the actual `events.create` / `accesses.create` calls.
+#### Removed
+- `pryv.cmc.*` namespace (slug helpers, stream-id builders, event-type
+  constants, classifiers, `extractActor`). Moved to the new sibling
+  package `@pryv/cmc@1.0.0`. The single consumer of `pryv.cmc.*`
+  (hds-macro) was still on `pryv@3.0.4` at the time of this release;
+  no migration shim was added. Apps using `pryv.cmc.*` from a
+  hypothetical `npm install pryv@3.2.0` should `npm install @pryv/cmc`
+  and replace `pryv.cmc.X` with `cmc.X` via
+  `const cmc = require('@pryv/cmc')`.
+
+#### Added
+- `pryv.utils.decomposeAPIEndpoint(apiEndpoint, serviceInfoApi)` —
+  decomposes a Pryv apiEndpoint into `{ token, username, host }` by
+  inverting the platform's `service.info.api` URL template (subdomain
+  vs path-style). Returns the **canonical platform host** (no
+  `<username>.` subdomain prefix) — the identity cross-account
+  features (e.g. CMC counterparty slugs) key on, regardless of which
+  user the endpoint belongs to. Previously available as
+  `pryv.cmc.extractActor` (now in `@pryv/cmc`); promoted to `utils`
+  since it's generally useful for any caller mixing subdomain and
+  path-style topologies. Return shape typed as
+  `pryv.DecomposedAPIEndpoint`.
+
+### `@pryv/cmc@1.0.0` (NEW)
+
+New sibling package — see `components/pryv-cmc/README.md` (and the
+inline JSDoc) for the full Level-0 + Level-1 surface.
+
+- **Level-0** — moved verbatim from `pryv.cmc.*`: namespace + event-type
+  constants, slug helpers (`slugifyHost` / `counterpartySlug` /
+  `parseCounterpartySlug`), stream-id builders, classifiers, parsers,
+  and the typed `errorIds` catalogue + new `CmcError` class.
+- **Level-1** — protocol functions on top of `pryv.Connection`:
+  `createInvite`, `listInvites`, `getInviteStatus`, `revokeRelationship`,
+  `invalidateCapability`, `requestScopeUpdate`, `readOffer`,
+  `acceptInvite` (default-waits for trigger `status: 'completed'`, opt
+  out with `waitForCompletion: false`), `refuseInvite`,
+  `revokeAcceptance`, `listAcceptedRelationships`, `sendChat`,
+  `sendSystemAlert`, `sendSystemAck`, `acceptScopeUpdate`,
+  `refuseScopeUpdate`.
+- **Observation scopes** — `scopes.inbox()`, `scopes.chats(...)`,
+  `scopes.collectors(...)` return `{ streams: [...] }` objects ready to
+  hand to `new pryv.Monitor(conn, scope)`.
+- Peer-depends on `pryv@^3.3.0`. Targets Node ≥ 20.
+
+### `@pryv/monitor@3.3.0`, `@pryv/socket.io@3.3.0`
+
+- No code changes. Versions bumped in lockstep with `pryv@3.3.0` so the
+  three companion packages stay aligned on a single release line.
 
 ## [3.1.0]
 

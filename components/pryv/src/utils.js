@@ -128,6 +128,76 @@ const utils = module.exports = {
   },
 
   /**
+   * Decompose a Pryv apiEndpoint into `{ token, username, host }` using
+   * the platform's `service.info.api` URL template to invert whichever
+   * username placement the platform uses (subdomain vs path-style).
+   *
+   * Pryv apiEndpoints follow one of two URL shapes (the difference is
+   * platform-defined, encoded in `service.info.api`):
+   *
+   *   subdomain  template `https://{username}.<domain>/`
+   *              endpoint `https://<token>@<username>.<domain>/`
+   *   path-style template `https://<host>/{username}/`
+   *              endpoint `https://<token>@<host>/<username>/`
+   *
+   * Returns the **canonical platform host** (no `<username>.` subdomain
+   * prefix in subdomain mode) — the identity cross-account features
+   * (e.g. CMC counterparty slugs) key on, regardless of which user the
+   * endpoint belongs to.
+   *
+   * `token` and `username` are null when the endpoint carries no token /
+   * when the endpoint shape doesn't match the template; `host` is
+   * best-effort in that case.
+   *
+   * @memberof pryv.utils
+   * @param {APIEndpoint} apiEndpoint  e.g. 'https://t0k3n@alice.pryv.me/'
+   * @param {string} serviceInfoApi    e.g. 'https://{username}.pryv.me/'
+   *                                   from /service/info → field `api`.
+   * @returns {DecomposedAPIEndpoint}
+   *
+   * @example
+   *   const conn = new pryv.Connection(apiEndpoint);
+   *   const info = await conn.service.info();
+   *   const me = pryv.utils.decomposeAPIEndpoint(apiEndpoint, info.api);
+   *   // → { token: 't0k3n', username: 'alice', host: 'pryv.me' }
+   */
+  decomposeAPIEndpoint: function (apiEndpoint, serviceInfoApi) {
+    const { token, endpoint } = utils.extractTokenAndAPIEndpoint(apiEndpoint);
+    const tplIdx = serviceInfoApi.indexOf('{username}');
+    if (tplIdx < 0) {
+      // Template doesn't carry {username} — operator-defined, can't decompose.
+      let host = '';
+      try { host = new URL(endpoint).host; } catch (_e) {}
+      return { token, username: null, host };
+    }
+    const tplPrefix = serviceInfoApi.slice(0, tplIdx);
+    const tplSuffix = serviceInfoApi.slice(tplIdx + '{username}'.length);
+    if (!endpoint.startsWith(tplPrefix) || !endpoint.endsWith(tplSuffix)) {
+      let host = '';
+      try { host = new URL(endpoint).host; } catch (_e) {}
+      return { token, username: null, host };
+    }
+    const username = endpoint.slice(tplPrefix.length, endpoint.length - tplSuffix.length);
+    // Disambiguate by where {username} sits in the template:
+    //   - subdomain  → prefix ends with `://` (username right after scheme)
+    //   - path-style → prefix has more after `://` (host already in prefix)
+    const isSubdomainTemplate = /:\/\/$/.test(tplPrefix);
+    let host;
+    if (isSubdomainTemplate) {
+      // tplSuffix starts with the domain (e.g. '.pryv.me/')
+      host = tplSuffix.replace(/^\.+/, '').replace(/\/+$/, '');
+    } else {
+      // path-style — host is in the prefix's URL
+      try {
+        host = new URL(tplPrefix).host;
+      } catch (_e) {
+        host = '';
+      }
+    }
+    return { token, username, host };
+  },
+
+  /**
    * Check if the browser is running on a mobile device or tablet
    * @memberof pryv.utils
    * @param {string|Navigator} [navigator] - Navigator object or user agent string (for testing)
@@ -249,6 +319,18 @@ utils.buildPryvApiEndpoint = utils.buildAPIEndpoint;
 /**
  * A String url of the form http(s)://{token}@{apiEndpoint}
  * @typedef {string} APIEndpoint
+ */
+
+/**
+ * Decomposed form of an APIEndpoint, returned by `decomposeAPIEndpoint`.
+ * `token` and `username` are `null` when the endpoint doesn't carry a
+ * token / doesn't match the `service.info.api` template. `host` is the
+ * canonical platform host (no `<username>.` subdomain prefix in
+ * subdomain-style deployments).
+ * @typedef {Object} DecomposedAPIEndpoint
+ * @property {string|null} token
+ * @property {string|null} username
+ * @property {string} host
  */
 
 /**

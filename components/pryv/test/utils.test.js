@@ -103,4 +103,41 @@ describe('[UTLX] utils', function () {
     expect(err.data.currentSerial).to.equal(2);
     expect(err.name).to.equal('StaleAccessIdError');
   });
+
+  describe('[UTLM] decomposeAPIEndpoint', function () {
+    it('[UTLMA] subdomain template — host strips the {username}. prefix', function () {
+      const r = pryv.utils.decomposeAPIEndpoint(
+        'https://t0k3n@alice.pryv.me/',
+        'https://{username}.pryv.me/'
+      );
+      expect(r).to.eql({ token: 't0k3n', username: 'alice', host: 'pryv.me' });
+    });
+
+    it('[UTLMB] path-style template — host is the literal hostname[:port]', function () {
+      const r = pryv.utils.decomposeAPIEndpoint(
+        'http://t0k3n@127.0.0.1:3000/alice/',
+        'http://127.0.0.1:3000/{username}/'
+      );
+      expect(r).to.eql({ token: 't0k3n', username: 'alice', host: '127.0.0.1:3000' });
+    });
+
+    it('[UTLMC] returns username:null when the endpoint doesn\'t match the template', function () {
+      const r = pryv.utils.decomposeAPIEndpoint(
+        'https://t0k3n@somewhere.else.com/',
+        'https://{username}.pryv.me/'
+      );
+      expect(r.username).to.equal(null);
+      expect(r.token).to.equal('t0k3n');
+    });
+
+    it('[UTLMD] returns token:null when endpoint carries no token', function () {
+      const r = pryv.utils.decomposeAPIEndpoint(
+        'https://alice.pryv.me/',
+        'https://{username}.pryv.me/'
+      );
+      expect(r.token).to.equal(null);
+      expect(r.username).to.equal('alice');
+      expect(r.host).to.equal('pryv.me');
+    });
+  });
 });

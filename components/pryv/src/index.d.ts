@@ -1069,10 +1069,24 @@ declare module 'pryv' {
     token: string | null;
   };
 
+  /**
+   * Decomposed form of an APIEndpoint, returned by
+   * `pryv.utils.decomposeAPIEndpoint`. `host` is the canonical platform
+   * host (no `<username>.` subdomain prefix in subdomain-style
+   * deployments) — the same identity cross-account features (CMC
+   * counterparty slugs, etc.) key on.
+   */
+  export type DecomposedAPIEndpoint = {
+    token: string | null;
+    username: string | null;
+    host: string;
+  };
+
   export const utils: {
     isBrowser(): boolean;
     extractTokenAndAPIEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
     buildAPIEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
+    decomposeAPIEndpoint(apiEndpoint: string, serviceInfoApi: string): DecomposedAPIEndpoint;
     browserIsMobileOrTablet(navigator?: string | Navigator): boolean;
     cleanURLFromPrYvParams(url: string): string;
     getQueryParamsFromURL(url: string): KeyValue;
@@ -1107,6 +1121,7 @@ declare module 'pryv' {
       isBrowser(): boolean;
       extractTokenAndAPIEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
       buildAPIEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
+      decomposeAPIEndpoint(apiEndpoint: string, serviceInfoApi: string): DecomposedAPIEndpoint;
       browserIsMobileOrTablet(navigator?: string | Navigator): boolean;
       cleanURLFromPrYvParams(url: string): string;
       getQueryParamsFromURL(url: string): KeyValue;
