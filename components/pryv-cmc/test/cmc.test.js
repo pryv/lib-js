@@ -322,7 +322,23 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       };
     }
 
-    it('[CMCL1OA] calls events.get with `streams` (not `streamIds`) — schema-rejected otherwise', async function () {
+    it('[CMCL1OA] calls events.get WITHOUT a streams filter — relies on capability-access permissions to narrow the response', async function () {
+      // Bug history (two PRs back-to-back):
+      //   1. PR #67 fixed `streamIds → streams` (api-server schema rejects
+      //      `streamIds` on events.get with OBJECT_ADDITIONAL_PROPERTIES).
+      //   2. PR #68 fixed the resulting `unknown-referenced-resource` —
+      //      the parent stream `:_cmc:_internal:offer` is NOT
+      //      auto-provisioned on every user account (only the
+      //      per-capability children `:_cmc:_internal:offer:<capId>` are,
+      //      and the accepter doesn't know <capId> from the capabilityUrl).
+      //      The capability access's permissions already narrow the
+      //      response to the one offer event this token can read; a
+      //      streams filter at the request level is wrong.
+      //
+      // Contract: events.get is called WITHOUT a `streams` field (and
+      // without the typo `streamIds`). The `types` filter is kept as
+      // defense in case the offer stream ever holds more than one event
+      // in future revisions.
       const calls = [];
       const fakePryv = fakePryvWithApiOne(async function (method, params, expectedKey) {
         calls.push({ method, params, expectedKey });
@@ -332,14 +348,12 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
         throw new Error('unexpected method: ' + method);
       });
       await cmc.readOffer('https://Tok@example.com/', { pryv: fakePryv });
-      expect(calls).to.have.length.greaterThanOrEqual(1);
       const getCall = calls.find(function (c) { return c.method === 'events.get'; });
       expect(getCall, 'expected one events.get call').to.exist;
-      // The contract: `streams` is the read filter (recursive). `streamIds`
-      // here is the api-server-rejected typo.
-      expect(getCall.params).to.have.property('streams');
-      expect(getCall.params.streams).to.deep.equal([':_cmc:_internal:offer']);
+      expect(getCall.params).to.not.have.property('streams');
       expect(getCall.params).to.not.have.property('streamIds');
+      expect(getCall.params).to.have.property('types');
+      expect(getCall.params.types).to.deep.equal(['consent/request-cmc']);
     });
   });
 
