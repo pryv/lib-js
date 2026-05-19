@@ -2,6 +2,38 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.3.2]
+
+Lockstep patch release of `pryv@3.3.2` + `@pryv/monitor@3.3.2` +
+`@pryv/socket.io@3.3.2` + `@pryv/cmc@1.0.2`.
+
+### `@pryv/cmc@1.0.2`
+
+#### Fixed
+- `readOffer(capabilityUrl)` no longer passes a `streams` filter to
+  `events.get`. Follow-up to 1.0.1: the previous fix changed
+  `streamIds` to `streams` (correct field name) but the value
+  `[':_cmc:_internal:offer']` referenced a stream that doesn't
+  exist on the user's account. Only the per-capability children
+  `:_cmc:_internal:offer:<capId>` are auto-provisioned, and the
+  accepter doesn't know `<capId>` from the `capabilityUrl` alone. The
+  api-server rejected the call with `unknown-referenced-resource`.
+  The fix mirrors the plugin's own `readOfferViaCapability`
+  (`open-pryv.io/components/cmc/src/acceptOrchestration.ts`):
+  omit the `streams` filter entirely and rely on the capability
+  access's permissions to narrow the response to the single offer
+  event the token can read. The `types: ['consent/request-cmc']`
+  filter is kept as defense in case the offer stream ever holds more
+  than one event in future revisions.
+
+#### Test
+- `[CMCL1OA]` updated to assert `events.get` is called WITHOUT a
+  `streams` field AND with a `types: ['consent/request-cmc']` filter.
+
+### `pryv@3.3.2`, `@pryv/monitor@3.3.2`, `@pryv/socket.io@3.3.2`
+
+- No code changes. Versions bumped in lockstep with `@pryv/cmc@1.0.2`.
+
 ## [3.3.1]
 
 Lockstep patch release of `pryv@3.3.1` + `@pryv/monitor@3.3.1` +
