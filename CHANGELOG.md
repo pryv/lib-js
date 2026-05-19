@@ -2,6 +2,39 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.3.1]
+
+Lockstep patch release of `pryv@3.3.1` + `@pryv/monitor@3.3.1` +
+`@pryv/socket.io@3.3.1` + `@pryv/cmc@1.0.1`.
+
+### `@pryv/cmc@1.0.1`
+
+#### Fixed
+- `readOffer(capabilityUrl)` now passes `streams` (the recursive read
+  filter) to `events.get` instead of `streamIds` (which is the
+  `events.create` write target). The api-server schema rejects
+  `streamIds` on `events.get` with `OBJECT_ADDITIONAL_PROPERTIES`, so
+  the previous code threw on every call. Affects any patient/doctor app
+  using `cmc.readOffer(url)` to preview an offer before
+  `acceptInvite` — typically apps rendering an offer-preview screen
+  with title / description / requested permissions.
+- Internal use by `cmc.acceptInvite` was unaffected (its `readOffer`
+  call is wrapped in `try/catch` that silently falls back to null
+  counterparty fields).
+
+#### Added
+- Contract test for `readOffer`'s wire-shape: stubs `pryv.Connection`
+  and asserts the inner `apiOne('events.get', …)` call uses `streams`
+  (not `streamIds`). This class of typo will now fail at unit-test
+  time instead of only against a real api-server.
+
+### `pryv@3.3.1`, `@pryv/monitor@3.3.1`, `@pryv/socket.io@3.3.1`
+
+- No code changes. Versions bumped in lockstep with `@pryv/cmc@1.0.1`
+  so the four packages stay aligned (operators upgrade by `npm install
+  pryv@3.3.1 @pryv/cmc@1.0.1`; the monitor / socket.io packages follow
+  via transitive resolution).
+
 ## [3.3.0]
 
 Lockstep release of `pryv@3.3.0` + `@pryv/monitor@3.3.0` +
