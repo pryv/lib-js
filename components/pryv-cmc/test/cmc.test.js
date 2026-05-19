@@ -293,6 +293,56 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
   });
 
+  describe('[CMCL1O] readOffer', function () {
+    /**
+     * Build a fake `pryv` module that returns a connection-like stub
+     * for `new pryv.Connection(url)`. The stub records every apiOne
+     * call so we can assert its wire-shape (Pryv's events.get takes
+     * `streams` — NOT `streamIds`, which is the write target on
+     * events.create. The api-server schema rejects the wrong field with
+     * `OBJECT_ADDITIONAL_PROPERTIES`).
+     *
+     * Bug history: readOffer used to call events.get with
+     * `streamIds: [...]`, which the api-server rejected at the schema
+     * layer — every `cmc.readOffer(url)` threw on the first await.
+     * Existing unit tests passed only because they exercised
+     * `acceptInvite` (which catches readOffer errors silently) and
+     * never asserted on the wire-shape of the inner call.
+     */
+    function fakePryvWithApiOne (apiOneFn) {
+      const stub = {
+        apiOne: apiOneFn,
+        service: { info: async () => { throw new Error('not stubbed'); } },
+        accessInfo: async () => { throw new Error('not stubbed'); }
+      };
+      return {
+        Connection: function () { return stub; },
+        utils: { decomposeAPIEndpoint: () => ({ username: null, host: '' }) },
+        _stub: stub
+      };
+    }
+
+    it('[CMCL1OA] calls events.get with `streams` (not `streamIds`) — schema-rejected otherwise', async function () {
+      const calls = [];
+      const fakePryv = fakePryvWithApiOne(async function (method, params, expectedKey) {
+        calls.push({ method, params, expectedKey });
+        if (method === 'events.get') {
+          return { events: [{ id: 'offer-1', content: { request: { permissions: [], consent: { en: 'ok' } }, requesterMeta: { displayName: 'X' } } }] }[expectedKey];
+        }
+        throw new Error('unexpected method: ' + method);
+      });
+      await cmc.readOffer('https://Tok@example.com/', { pryv: fakePryv });
+      expect(calls).to.have.length.greaterThanOrEqual(1);
+      const getCall = calls.find(function (c) { return c.method === 'events.get'; });
+      expect(getCall, 'expected one events.get call').to.exist;
+      // The contract: `streams` is the read filter (recursive). `streamIds`
+      // here is the api-server-rejected typo.
+      expect(getCall.params).to.have.property('streams');
+      expect(getCall.params.streams).to.deep.equal([':_cmc:_internal:offer']);
+      expect(getCall.params).to.not.have.property('streamIds');
+    });
+  });
+
   describe('[CMCL1G] getInviteStatus', function () {
     it('[CMCL1GA] reads events.getOne by id and returns InviteRecord', async function () {
       const conn = makeStubConnection({
