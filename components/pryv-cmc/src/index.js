@@ -550,8 +550,12 @@ async function requestScopeUpdate (conn, params) {
 async function readOffer (capabilityUrl, opts) {
   const pryv = (opts && opts.pryv) || require('pryv');
   const cap = new pryv.Connection(capabilityUrl);
+  // `events.get` takes `streams` (recursive read filter), not `streamIds`
+  // (which is the events.create write target). Mirror the field used by
+  // the other events.get callers in this file (listInvites, waitForAccept,
+  // listAcceptedRelationships).
   const events = await cap.apiOne('events.get', {
-    streamIds: [NS_INTERNAL + ':offer'],
+    streams: [NS_INTERNAL + ':offer'],
     limit: 1
   }, 'events');
   if (events.length === 0) {
