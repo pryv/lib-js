@@ -550,12 +550,20 @@ async function requestScopeUpdate (conn, params) {
 async function readOffer (capabilityUrl, opts) {
   const pryv = (opts && opts.pryv) || require('pryv');
   const cap = new pryv.Connection(capabilityUrl);
-  // `events.get` takes `streams` (recursive read filter), not `streamIds`
-  // (which is the events.create write target). Mirror the field used by
-  // the other events.get callers in this file (listInvites, waitForAccept,
-  // listAcceptedRelationships).
+  // The capability access has `read` on a single per-capability stream
+  // (`:_cmc:_internal:offer:<capId>`) but the accepter doesn't know
+  // <capId> from the capabilityUrl alone. The parent `:_cmc:_internal:offer`
+  // is NOT a reserved stream that auto-exists on every user account — only
+  // the per-capability children do — so a `streams: [':_cmc:_internal:offer']`
+  // filter resolves to `unknown-referenced-resource`.
+  //
+  // Mirror the plugin's own readOfferViaCapability (acceptOrchestration.ts):
+  // omit the streams filter entirely and rely on the cap access's
+  // permissions to narrow the response to the single offer event this
+  // token can read. The `types` filter is defensive in case the offer
+  // stream ever holds more than one event in future revisions.
   const events = await cap.apiOne('events.get', {
-    streams: [NS_INTERNAL + ':offer'],
+    types: [ET_REQUEST],
     limit: 1
   }, 'events');
   if (events.length === 0) {
