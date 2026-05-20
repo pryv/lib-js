@@ -84,11 +84,37 @@ cmc.parseCollectorStreamId(...);                          // → { ... } same sh
 
 #### Error id catalogue
 
-`cmc.errorIds` mirrors the server-side `CmcErrorIds` catalogue (24 stable kebab-case strings). Match on these constants when observing `trigger.content.failure.reason` instead of parsing English `error.message`.
+`cmc.errorIds` mirrors the server-side `CmcErrorIds` catalogue (31 stable kebab-case strings as of `@pryv/cmc@1.1.0`). Match on these constants when observing `trigger.content.failure.reason` or `error.data.id` from a failed `events.create` / `accesses.create` instead of parsing English `error.message`.
 
-Examples: `cmc.errorIds.CAPABILITY_INVALID` (`'cmc-capability-invalid'`), `cmc.errorIds.CAPABILITY_CONSUMED`, `cmc.errorIds.CAPABILITY_INVALIDATED`, `cmc.errorIds.CAPABILITY_ALREADY_ACCEPTED_BY_YOU`, `cmc.errorIds.HANDLER_DELIVERY_FAILED`, etc. — see [`src/index.d.ts`](src/index.d.ts) for the full list.
+Lifecycle / handler / chat-routing examples: `cmc.errorIds.CAPABILITY_INVALID` (`'cmc-capability-invalid'`), `cmc.errorIds.CAPABILITY_CONSUMED`, `cmc.errorIds.CAPABILITY_INVALIDATED`, `cmc.errorIds.CAPABILITY_ALREADY_ACCEPTED_BY_YOU`, `cmc.errorIds.HANDLER_DELIVERY_FAILED`, `cmc.errorIds.CHAT_NO_REMOTE_APIENDPOINT`, etc.
+
+**Added in `@pryv/cmc@1.1.0`** (server-side `open-pryv.io` ≥ 2.0.0-pre.4):
+
+| Const | String | When you'll see it |
+|---|---|---|
+| `CAPABILITY_TTL_OUT_OF_RANGE` | `'cmc-capability-ttl-out-of-range'` | `createInvite({ expiresAt })` resolves to a TTL outside `[60s, 30d]`. Omit `expiresAt` to use the 7-day default. |
+| `HANDLER_MISSING_CAPABILITY_ID` | `'cmc-handler-missing-capability-id'` | Plugin handler couldn't find `content.capabilityId` on the trigger event. |
+| `CHAT_DISABLED` | `'cmc-chat-disabled'` | `sendChat` against a relationship whose negotiated `features.chat: false`. Default-permit on omission. |
+| `SYSTEM_MESSAGING_DISABLED` | `'cmc-system-messaging-disabled'` | `sendSystemAlert` / ack against `features.systemMessaging: false`. Scope-request / scope-update remain permitted regardless. |
+| `CLIENTDATA_CMC_FORBIDDEN` | `'cmc-clientdata-cmc-forbidden'` | `accesses.create` / `accesses.update` rejected user-supplied `clientData.cmc.*` (the namespace is plugin-owned). |
+| `RESERVED_STREAM_UNDELETABLE` | `'cmc-reserved-stream-undeletable'` | `streams.delete` rejected on a plugin-managed `:_cmc:*` parent (incl. personal-token deletes). |
+| `COUNTERPARTY_IDENTITY_MISSING` | `'cmc-counterparty-identity-missing'` | Peer-side `content.from` stamping hook rejected — the counterparty access lacks `{username,host}` (ops-level, shouldn't happen under normal flow). |
+
+The full list lives in [`src/index.js`](src/index.js) (and the typed mirror in [`src/index.d.ts`](src/index.d.ts)).
 
 `cmc.CmcError` is a typed `Error` subclass carrying `.id` (one of `errorIds.*`) and `.failure` (the server's raw `failure` object). It's thrown by `acceptInvite` on `status: 'failed'`.
+
+#### Capability TTL bounds
+
+The server bounds `content.request.expiresAt` (Unix seconds) to `[60s, 30d]` from now at mint time. Pass `expiresAt` to `cmc.createInvite()` to override the default 7-day lifetime; omit it for the default. Out-of-range values reject with `cmc-capability-ttl-out-of-range` before the capability access is minted.
+
+#### Features negotiation
+
+`cmc.createInvite({ features: { chat, systemMessaging } })` opts the relationship in or out of each cross-account channel.
+
+- **Both default to `true`** when the key is omitted (matches the offer-side default).
+- Setting either to `false` is **binding on both sides at send time** — the recipient's plugin records the negotiation on the counterparty access's `clientData.cmc.features.*`, and subsequent `sendChat` / `sendSystemAlert` against the access reject with `cmc-chat-disabled` / `cmc-system-messaging-disabled` until a new invite negotiates it back on.
+- `cmc.scopes.{inbox, chats, collectors}` and `cmc.revokeRelationship` are unaffected — those are protocol surfaces, not message channels.
 
 #### `pryv.utils.decomposeAPIEndpoint`
 
