@@ -2,6 +2,88 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.4.0]
+
+Lockstep release of `pryv@3.4.0` + `@pryv/monitor@3.4.0` +
+`@pryv/socket.io@3.4.0`, plus `@pryv/cmc@1.1.0` (additive — new error
+ids on the catalogue + new wire-shape contract tests).
+
+### `@pryv/cmc@1.1.0`
+
+#### Added
+- **7 new error ids** on `cmc.errorIds`, mirroring the server-side
+  `CmcErrorIds` additions shipped in `open-pryv.io` 2.0.0-pre.4 (cmc
+  plugin commit `0306c7e`):
+  - `CAPABILITY_TTL_OUT_OF_RANGE` (`cmc-capability-ttl-out-of-range`)
+    — server now bounds `content.expiresAt` to `[60s, 30d]` at mint.
+    Omit `expiresAt` to use the 7-day default; pick a value in range
+    to override.
+  - `HANDLER_MISSING_CAPABILITY_ID` (`cmc-handler-missing-capability-id`)
+    — was on the server catalog but missing from the SDK mirror.
+  - `CHAT_DISABLED` (`cmc-chat-disabled`) — feature-gating: writes
+    rejected when the relationship's `clientData.cmc.features.chat ===
+    false`. Default-permit on omission.
+  - `SYSTEM_MESSAGING_DISABLED` (`cmc-system-messaging-disabled`) —
+    same for `features.systemMessaging`. Scope-request /
+    scope-update remain protocol-level and permitted regardless.
+  - `CLIENTDATA_CMC_FORBIDDEN` (`cmc-clientdata-cmc-forbidden`) —
+    `accesses.create` / `accesses.update` reject any user-supplied
+    `clientData.cmc.*`. Use this to catch hand-crafted forge attempts
+    surfacing as 400-not-200 from the api-server.
+  - `RESERVED_STREAM_UNDELETABLE` (`cmc-reserved-stream-undeletable`)
+    — `streams.delete` rejects the five reserved CMC parents +
+    `:_cmc:_internal:*` + plugin-managed `chats`/`collectors` segments
+    even from personal tokens. App code should not target these.
+  - `COUNTERPARTY_IDENTITY_MISSING` (`cmc-counterparty-identity-missing`)
+    — peer-side `content.from` stamping hook rejects a write when the
+    counterparty access has no stored `{username,host}` identity.
+    Surfaced for ops; app developers shouldn't see it under normal
+    flow.
+
+#### Tests
+- New `[CMCXEC]` J9 catalogue-match test pinning all 7 ids against
+  the server-side strings. Future drift between SDK + server will
+  fail at unit-test time.
+- New `[CMCL1OB]`–`[CMCL1OH]` wire-shape contract tests (J3, J4, J5,
+  J7, J8) covering `listInvites` (uses `streams` not `streamIds`),
+  `listAcceptedRelationships` counterparty-mapping precedence
+  (content.from > content.acceptedBy > null fallback), `waitForAccept`
+  `sinceTime` filter (defensive passthrough when `ev.time` missing),
+  `acceptInvite` `scopeStreamId` requirement, `acceptInvite`
+  `dataGrantAccessId` resolution post-completion.
+
+#### Compatibility
+- **No source-level breaking changes.** Existing apps using
+  `pryv@3.3.x` + `@pryv/cmc@1.0.x` continue to work; the new error ids
+  are additive. The `^3.3.0` peer-dep selector on `@pryv/cmc` resolves
+  cleanly against `pryv@3.4.0` so apps that pin only `@pryv/cmc` get
+  the new `pryv` transitively without action.
+
+### `pryv@3.4.0`, `@pryv/monitor@3.4.0`, `@pryv/socket.io@3.4.0`
+
+- No code changes. Versions bumped in lockstep with `@pryv/cmc@1.1.0`
+  so operators upgrade with `npm install pryv@3.4.0 @pryv/cmc@1.1.0`
+  and pick up the new ids + the monitor / socket.io packages follow
+  via transitive resolution.
+
+### Server-side coverage
+
+This SDK release pairs with `open-pryv.io` 2.0.0-pre.4 (cmc plugin
+commit `0306c7e`+) which ships:
+- Plugin field-stamping completion (`inviteEventId` on inbox mirrors,
+  `requestEventId` on capability accesses via post-create hook).
+- Capability TTL configurable per-invite, bounded `[60s, 30d]`.
+- Feature-gating enforced at send time on `handleChat` / `handleSystem`.
+- Forge-prevention on `accesses.create` / `accesses.update` /
+  `streams.delete` (new route-level hooks).
+- `content.from` stamping extended from `:_cmc:inbox` to per-app
+  chats/collectors writes by counterparty-marked accesses.
+- `:_cmc:_internal:*` defense-in-depth filter on `events.get` /
+  `events.getOne` / `streams.get`.
+
+See `open-pryv.io/components/cmc/CHANGELOG-v2.md` for the server-side
+detail.
+
 ## [3.3.2]
 
 Lockstep patch release of `pryv@3.3.2` + `@pryv/monitor@3.3.2` +

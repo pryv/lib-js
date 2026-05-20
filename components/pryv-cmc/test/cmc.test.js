@@ -139,6 +139,19 @@ describe('[CMCX] @pryv/cmc Level-0 helpers', function () {
     it('[CMCXEB] does not carry the dropped CHAT_RATE_LIMITED', function () {
       expect(cmc.errorIds).to.not.have.property('CHAT_RATE_LIMITED');
     });
+
+    it('[CMCXEC] J9 catalogue mirrors @pryv/cmc 1.1.0 server-side additions', function () {
+      // Server-side errorIds shipped in open-pryv.io 2.0.0-pre.4 / cmc
+      // plugin commit 0306c7e. SDK must expose the same kebab strings so
+      // apps can pattern-match without parsing message text.
+      expect(cmc.errorIds.CAPABILITY_TTL_OUT_OF_RANGE).to.equal('cmc-capability-ttl-out-of-range');
+      expect(cmc.errorIds.CHAT_DISABLED).to.equal('cmc-chat-disabled');
+      expect(cmc.errorIds.SYSTEM_MESSAGING_DISABLED).to.equal('cmc-system-messaging-disabled');
+      expect(cmc.errorIds.CLIENTDATA_CMC_FORBIDDEN).to.equal('cmc-clientdata-cmc-forbidden');
+      expect(cmc.errorIds.RESERVED_STREAM_UNDELETABLE).to.equal('cmc-reserved-stream-undeletable');
+      expect(cmc.errorIds.COUNTERPARTY_IDENTITY_MISSING).to.equal('cmc-counterparty-identity-missing');
+      expect(cmc.errorIds.HANDLER_MISSING_CAPABILITY_ID).to.equal('cmc-handler-missing-capability-id');
+    });
   });
 });
 

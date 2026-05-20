@@ -249,8 +249,13 @@ const errorIds = Object.freeze({
   CAPABILITY_TIMEOUT: 'cmc-capability-timeout',
   CAPABILITY_EMPTY: 'cmc-capability-empty',
   CAPABILITY_MULTIPLE_OFFERS: 'cmc-capability-multiple-offers',
+  // Caller's `content.expiresAt` on the trigger event resolves to a
+  // TTL outside the platform-allowed bounds [60s, 30d]. Either omit
+  // `expiresAt` to use the 7-day default or pick a bounded value.
+  CAPABILITY_TTL_OUT_OF_RANGE: 'cmc-capability-ttl-out-of-range',
   // Trigger-event content shape
   HANDLER_MISSING_CAPABILITY_URL: 'cmc-handler-missing-capability-url',
+  HANDLER_MISSING_CAPABILITY_ID: 'cmc-handler-missing-capability-id',
   HANDLER_OFFER_MISSING_CAPABILITY_ID: 'cmc-handler-offer-missing-capability-id',
   OFFER_EMPTY_PERMISSIONS: 'cmc-offer-empty-permissions',
   // Handler routing
@@ -272,7 +277,28 @@ const errorIds = Object.freeze({
   CHAT_STREAM_NOT_CHAT: 'cmc-chat-stream-not-chat',
   CHAT_COUNTERPARTY_ACCESS_NOT_FOUND: 'cmc-chat-counterparty-access-not-found',
   CHAT_NO_REMOTE_APIENDPOINT: 'cmc-chat-no-remote-apiendpoint',
-  CHAT_NO_REMOTE_CHAT_STREAM: 'cmc-chat-no-remote-chat-stream'
+  CHAT_NO_REMOTE_CHAT_STREAM: 'cmc-chat-no-remote-chat-stream',
+  // Feature-gating: a relationship with negotiated `features.chat:
+  // false` or `features.systemMessaging: false` rejects sends on the
+  // disabled channel. Default-permit on omission (matches the
+  // offer-side default).
+  CHAT_DISABLED: 'cmc-chat-disabled',
+  SYSTEM_MESSAGING_DISABLED: 'cmc-system-messaging-disabled',
+  // Route-level forge prevention: `accesses.create` / `accesses.update`
+  // reject any user-supplied `clientData.cmc.*`. That namespace is
+  // plugin-owned end-to-end (role, appCode, counterparty, capability,
+  // requestEventId, features); allowing user-set values would let an
+  // app forge a counterparty role and bypass the handshake.
+  CLIENTDATA_CMC_FORBIDDEN: 'cmc-clientdata-cmc-forbidden',
+  // streams.delete reject on the five reserved CMC parents +
+  // :_cmc:_internal:* + plugin-managed chats/collectors segments —
+  // even from a personal token. Deleting :_cmc: would silently break
+  // every active relationship on the account.
+  RESERVED_STREAM_UNDELETABLE: 'cmc-reserved-stream-undeletable',
+  // The peer-side `content.from` stamping hook rejects when the
+  // writer's counterparty access has no stored `{username,host}`
+  // identity — wiring bug at handshake time; surface for ops.
+  COUNTERPARTY_IDENTITY_MISSING: 'cmc-counterparty-identity-missing'
 });
 
 // --- Level-1 protocol functions ---
