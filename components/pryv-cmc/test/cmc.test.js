@@ -397,6 +397,77 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       expect(conn.calls[0].params.content).to.deep.equal({ accessId: 'abc123', reason: { en: 'done' } });
     });
 
+    it('[CMCL1RC] revokeRelationship({inviteEventId}) resolves backChannelAccessId via inbox lookup', async function () {
+      // Doctor-side convenience path: the SDK looks up the inbox accept
+      // event matching the original inviteEventId, reads the back-channel
+      // accessId stamped by the plugin (post-PR-72 + Phase 1.1 of Plan
+      // 68 atwork — handleIncomingAccept now stamps `inviteEventId` on
+      // the inbox-mirror from the capability access's
+      // `clientData.cmc.requestEventId`). Then issues the revoke.
+      //
+      // Contract: the lookup matches when the inbox event content carries
+      // `inviteEventId === givenInviteEventId`. The backChannelAccessId
+      // stamped by the plugin (also a PR #72 deliverable) is what
+      // becomes `content.accessId` on the revoke event.
+      const conn = makeStubConnection({
+        handlers: {
+          'events.getOne': function (params) {
+            expect(params.id).to.equal('inv-trigger-42');
+            return { event: { id: 'inv-trigger-42', streamIds: [':_cmc:apps:my-app:study-1'], content: {} } };
+          },
+          'events.get': function (params) {
+            // Lookup on :_cmc:inbox for ET_ACCEPT.
+            expect(params.streams).to.deep.equal([':_cmc:inbox']);
+            expect(params.types).to.deep.equal(['consent/accept-cmc']);
+            return {
+              events: [
+                // Decoy: an unrelated accept.
+                { id: 'inbox-other', content: { inviteEventId: 'inv-trigger-99', backChannelAccessId: 'acc-other' } },
+                // Match: the one we're after.
+                { id: 'inbox-42', content: { inviteEventId: 'inv-trigger-42', backChannelAccessId: 'acc-back-42' } }
+              ]
+            };
+          },
+          'events.create': function (params) {
+            expect(params.type).to.equal('consent/revoke-cmc');
+            return { event: { id: 'rev-3', streamIds: params.streamIds, content: params.content } };
+          }
+        }
+      });
+      await cmc.revokeRelationship(conn, { inviteEventId: 'inv-trigger-42', reason: { en: 'done' } });
+      const revokeCall = conn.calls.find(function (c) { return c.method === 'events.create'; });
+      expect(revokeCall, 'revoke events.create call must exist').to.exist;
+      expect(revokeCall.params.streamIds).to.deep.equal([':_cmc:apps:my-app:study-1']);
+      expect(revokeCall.params.content.accessId).to.equal('acc-back-42');
+      expect(revokeCall.params.content.reason).to.deep.equal({ en: 'done' });
+    });
+
+    it('[CMCL1RD] revokeRelationship({inviteEventId}) throws when inbox has no matching accept (mirror missing inviteEventId)', async function () {
+      // Defensive: the pre-Phase-1.1 plugin doesn't stamp inviteEventId
+      // on the inbox mirror. The SDK lookup falls through to `match ==
+      // null` and throws cleanly — caller can fall back to the
+      // {accessId, scopeStreamId} power-user path.
+      const conn = makeStubConnection({
+        handlers: {
+          'events.getOne': function () {
+            return { event: { id: 'inv-trigger-99', streamIds: [':_cmc:apps:my-app'], content: {} } };
+          },
+          'events.get': function () {
+            return {
+              events: [
+                // Mirror present but without inviteEventId — older plugin shape.
+                { id: 'inbox-99', content: { backChannelAccessId: 'acc-back-99' } }
+              ]
+            };
+          }
+        }
+      });
+      let err = null;
+      try { await cmc.revokeRelationship(conn, { inviteEventId: 'inv-trigger-99' }); } catch (e) { err = e; }
+      expect(err, 'expected throw').to.exist;
+      expect(err.message).to.match(/no inbox accept found/);
+    });
+
     it('[CMCL1RB] revokeAcceptance also posts consent/revoke-cmc', async function () {
       const conn = makeStubConnection({
         handlers: {
@@ -699,6 +770,182 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     it('[CMCL1ZE] chats/collectors throw without appCode or scopeStreamId', function () {
       expect(() => cmc.scopes.chats({})).to.throw();
       expect(() => cmc.scopes.collectors({})).to.throw();
+    });
+  });
+
+  // ------------------------------------------------------------
+  // Phase 5.2 (Plan 68) — J3–J10 wire-shape contract tests.
+  //
+  // J1 + J2 covered by [CMCL1OA] (readOffer) + [CMCXE] (errorIds catalogue).
+  // J3-J10 fill the remaining contract slots so a release-blocking
+  // regression in any of these wire shapes surfaces as a unit-test
+  // failure rather than a Phase-6 deploy-validation surprise.
+  // ------------------------------------------------------------
+
+  describe('[CMCL1OB] J3 listInvites wire-shape', function () {
+    it('[CMCL1OB1] calls events.get with `streams` (NOT `streamIds`)', async function () {
+      // api-server schema rejects `streamIds` on events.get with
+      // OBJECT_ADDITIONAL_PROPERTIES; a regression to streamIds breaks
+      // every listInvites caller silently against fresh deploys.
+      const conn = makeStubConnection({
+        handlers: {
+          'events.get': function () { return { events: [] }; }
+        }
+      });
+      await cmc.listInvites(conn, { scopeStreamId: ':_cmc:apps:my-app' });
+      const c = conn.calls[0];
+      expect(c.method).to.equal('events.get');
+      expect(c.params).to.have.property('streams');
+      expect(c.params).to.not.have.property('streamIds');
+      expect(c.params.streams).to.deep.equal([':_cmc:apps:my-app']);
+      expect(c.params.types).to.deep.equal(['consent/request-cmc']);
+    });
+  });
+
+  describe('[CMCL1OC] J4 listAcceptedRelationships counterparty mapping', function () {
+    it('[CMCL1OC1] maps counterparty from content.from when present', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.get': function () {
+            return {
+              events: [{
+                id: 'evt-1',
+                streamIds: [':_cmc:apps:my-app'],
+                content: {
+                  from: { username: 'alice', host: 'pryv.me' },
+                  acceptedBy: { apiEndpoint: 'https://abc@alice.pryv.me/' },
+                  dataGrantAccessId: 'dg-1'
+                }
+              }]
+            };
+          }
+        }
+      });
+      const r = await cmc.listAcceptedRelationships(conn);
+      expect(r).to.have.length(1);
+      expect(r[0].counterparty).to.deep.equal({ username: 'alice', host: 'pryv.me' });
+      expect(r[0].dataGrantAccessId).to.equal('dg-1');
+    });
+
+    it('[CMCL1OC2] falls back to content.acceptedBy when content.from absent', async function () {
+      // Pre-PR-72 / pre-Phase-1.1 events on existing deploys don't
+      // carry `from` yet. Mapper must still expose something so the
+      // SDK doesn't break for migrating users.
+      const conn = makeStubConnection({
+        handlers: {
+          'events.get': function () {
+            return {
+              events: [{
+                id: 'evt-2',
+                streamIds: [':_cmc:apps:my-app'],
+                content: { acceptedBy: { apiEndpoint: 'https://abc@alice.pryv.me/' } }
+              }]
+            };
+          }
+        }
+      });
+      const r = await cmc.listAcceptedRelationships(conn);
+      expect(r[0].counterparty).to.deep.equal({ apiEndpoint: 'https://abc@alice.pryv.me/' });
+    });
+
+    it('[CMCL1OC3] counterparty is null when both absent', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.get': function () {
+            return { events: [{ id: 'evt-3', streamIds: [':_cmc:apps:my-app'], content: {} }] };
+          }
+        }
+      });
+      const r = await cmc.listAcceptedRelationships(conn);
+      expect(r[0].counterparty).to.equal(null);
+    });
+  });
+
+  describe('[CMCL1OD] J5 waitForAccept sinceTime filter', function () {
+    it('[CMCL1OD1] skips events with ev.time < sinceTime', async function () {
+      // A late call should skip the stale arrival (time=100) and
+      // succeed on the fresh one (time=200) without timing out.
+      const events = [
+        { id: 'old', time: 100, content: { from: { username: 'alice', host: 'pryv.me' } } },
+        { id: 'new', time: 200, content: { from: { username: 'alice', host: 'pryv.me' }, grantedAccess: { apiEndpoint: 'https://t@x/' } } }
+      ];
+      const conn = makeStubConnection({
+        handlers: { 'events.get': function () { return { events }; } }
+      });
+      const r = await cmc.waitForAccept(conn, {
+        fromUsername: 'alice', sinceTime: 150, timeoutMs: 1000, intervalMs: 10
+      });
+      expect(r.acceptInboxEventId).to.equal('new');
+      expect(r.grantedAccessApiEndpoint).to.equal('https://t@x/');
+    });
+
+    it('[CMCL1OD2] sinceTime DOES NOT filter when ev.time is missing (defensive)', async function () {
+      // Pre-stamping events have no `time` — sinceTime should not
+      // accidentally drop them (caller would observe a phantom timeout).
+      const conn = makeStubConnection({
+        handlers: {
+          'events.get': function () {
+            return {
+              events: [{ id: 'no-time', content: { from: { username: 'alice', host: 'pryv.me' }, grantedAccess: { apiEndpoint: 'https://t@y/' } } }]
+            };
+          }
+        }
+      });
+      const r = await cmc.waitForAccept(conn, {
+        fromUsername: 'alice', sinceTime: 1000, timeoutMs: 1000, intervalMs: 10
+      });
+      expect(r.acceptInboxEventId).to.equal('no-time');
+    });
+  });
+
+  describe('[CMCL1OG] J7 acceptInvite rejects without scopeStreamId', function () {
+    it('[CMCL1OG1] throws when scopeStreamId is missing', async function () {
+      const conn = makeStubConnection({ handlers: {} });
+      let err = null;
+      try {
+        await cmc.acceptInvite(conn, 'https://t@x/', {});
+      } catch (e) { err = e; }
+      expect(err).to.not.equal(null);
+      expect(String(err.message)).to.match(/scopeStreamId/);
+    });
+
+    it('[CMCL1OG2] throws when opts is omitted entirely', async function () {
+      const conn = makeStubConnection({ handlers: {} });
+      let err = null;
+      try {
+        await cmc.acceptInvite(conn, 'https://t@x/');
+      } catch (e) { err = e; }
+      expect(err).to.not.equal(null);
+      expect(String(err.message)).to.match(/scopeStreamId/);
+    });
+  });
+
+  describe('[CMCL1OH] J8 acceptInvite resolves dataGrantAccessId on waitForCompletion', function () {
+    it('[CMCL1OH1] returns dataGrantAccessId from the post-completion getOne', async function () {
+      // Two-phase: events.create returns status pending; pollTriggerCompletion
+      // calls events.getOne and reads the final dataGrantAccessId.
+      const conn = makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return { event: { id: 'accept-1', streamIds: params.streamIds, content: { status: 'pending' } } };
+          },
+          'events.getOne': function () {
+            return {
+              event: {
+                id: 'accept-1',
+                content: { status: 'completed', dataGrantAccessId: 'dg-xyz' }
+              }
+            };
+          }
+        }
+      });
+      const r = await cmc.acceptInvite(conn, 'https://t@x/', {
+        scopeStreamId: ':_cmc:apps:test',
+        completionPollIntervalMs: 5,
+        completionTimeoutMs: 1000
+      });
+      expect(r.acceptEventId).to.equal('accept-1');
+      expect(r.dataGrantAccessId).to.equal('dg-xyz');
     });
   });
 });
