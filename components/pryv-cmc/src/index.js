@@ -675,7 +675,16 @@ async function acceptInvite (conn, capabilityUrl, opts) {
   } catch (_e) {
     // Best-effort; if offer read fails the accept can still proceed.
   }
-  const content = { capabilityUrl };
+  // Persist the negotiated features into the accept trigger so the
+  // plugin's handleAccept can stamp them onto the data-grant access's
+  // clientData.cmc.features. Both keys default to true when omitted on
+  // the offer side (per README "Features negotiation"); explicit false
+  // is binding both ways.
+  const resolvedFeatures = {
+    chat: offerFeatures?.chat !== false,
+    systemMessaging: offerFeatures?.systemMessaging !== false
+  };
+  const content = { capabilityUrl, features: resolvedFeatures };
   if (opts.extra) content.extra = opts.extra;
   if (opts.accessName) content.accessName = opts.accessName;
   const event = await conn.apiOne('events.create', {
@@ -877,7 +886,12 @@ async function listAcceptedRelationships (conn, params) {
       appCode: c.appCode || null,
       scopeStreamId: (event.streamIds && event.streamIds[0]) || event.streamId,
       acceptedAt: c.acceptedAt || event.time || null,
-      features: c.features || (c.extra ? { chat: !!c.extra.chat, system: !!c.extra.systemMessaging } : { chat: false, system: false })
+      // Features default to true on both keys when absent (per README
+      // "Features negotiation"). The legacy c.extra fallback predates
+      // the contract fix and is no longer reachable for events written
+      // by pryv-cmc >= 1.1.1; we leave the field-omission default at
+      // true to honour the documented contract.
+      features: c.features || { chat: true, systemMessaging: true }
     };
   });
 }

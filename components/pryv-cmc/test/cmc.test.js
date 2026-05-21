@@ -933,6 +933,138 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
   });
 
+  describe('[CMCL1OF] J6 features-negotiation contract', function () {
+    // README contract: both `chat` + `systemMessaging` default to true
+    // when omitted; explicit false on either is binding both sides.
+    //
+    // Bug history (2026-05-21, HDS implementer report on
+    // open-pryv.io@04bb2c1 + @pryv/cmc@1.1.0):
+    //   - SDK acceptInvite never wrote content.features (offerFeatures
+    //     computed at line ~674 was unused).
+    //   - Plugin handleAccept read triggerEvent.content.extra instead of
+    //     content.features (extra is the user-supplied pass-through,
+    //     reserved for HDS-specific opts).
+    //   - listAcceptedRelationships mapper defaulted to
+    //     { chat: false, system: false } (contradicts README) and used
+    //     `system` instead of `systemMessaging` (inconsistent with the
+    //     contract everywhere else).
+    // Together these defaulted the patient-side relationship to all-false
+    // even when the offer specified default-true. These contract tests
+    // pin each fix so regressions surface at unit-test time.
+
+    function fakePryvWithApiOne (apiOneFn) {
+      const stub = {
+        apiOne: apiOneFn,
+        service: { info: async () => { throw new Error('not stubbed'); } },
+        accessInfo: async () => { throw new Error('not stubbed'); }
+      };
+      return {
+        Connection: function () { return stub; },
+        utils: { decomposeAPIEndpoint: () => ({ username: null, host: '' }) }
+      };
+    }
+
+    it('[CMCL1OF1] acceptInvite defaults content.features to {chat:true, systemMessaging:true} when offer omits features', async function () {
+      const fakePryv = fakePryvWithApiOne(async function (method, _params, expectedKey) {
+        if (method === 'events.get') {
+          // Offer event with NO features field — must default to true on both.
+          return { events: [{ id: 'offer-1', content: { request: { permissions: [], consent: { en: 'ok' } } } }] }[expectedKey];
+        }
+        throw new Error('unexpected method: ' + method);
+      });
+      const conn = makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return { event: { id: 'acc-default', streamIds: params.streamIds, content: { status: 'pending' } } };
+          }
+        }
+      });
+      await cmc.acceptInvite(conn, 'https://Tok@example.com/', {
+        scopeStreamId: ':_cmc:apps:test',
+        waitForCompletion: false,
+        pryv: fakePryv
+      });
+      const createCall = conn.calls.find(c => c.method === 'events.create');
+      expect(createCall, 'expected events.create on accepter conn').to.exist;
+      expect(createCall.params.content).to.have.property('features');
+      expect(createCall.params.content.features).to.deep.equal({
+        chat: true,
+        systemMessaging: true
+      });
+    });
+
+    it('[CMCL1OF2] acceptInvite preserves explicit false on each key from offer', async function () {
+      const fakePryv = fakePryvWithApiOne(async function (method, _params, expectedKey) {
+        if (method === 'events.get') {
+          return { events: [{ id: 'offer-2', content: { request: { permissions: [], consent: { en: 'ok' }, features: { chat: false, systemMessaging: true } } } }] }[expectedKey];
+        }
+        throw new Error('unexpected method: ' + method);
+      });
+      const conn = makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return { event: { id: 'acc-explicit-false', streamIds: params.streamIds, content: { status: 'pending' } } };
+          }
+        }
+      });
+      await cmc.acceptInvite(conn, 'https://Tok@example.com/', {
+        scopeStreamId: ':_cmc:apps:test',
+        waitForCompletion: false,
+        pryv: fakePryv
+      });
+      const createCall = conn.calls.find(c => c.method === 'events.create');
+      expect(createCall.params.content.features).to.deep.equal({
+        chat: false,
+        systemMessaging: true
+      });
+    });
+
+    it('[CMCL1OF3] listAcceptedRelationships defaults features to {chat:true, systemMessaging:true} when content.features absent', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.get': function () {
+            return {
+              events: [{
+                id: 'acc-no-feat',
+                streamIds: [':_cmc:apps:test'],
+                content: {
+                  from: { username: 'alice', host: 'pryv.me' },
+                  dataGrantAccessId: 'dg-no-feat'
+                  // No `features` field — must default to true on both keys.
+                }
+              }]
+            };
+          }
+        }
+      });
+      const r = await cmc.listAcceptedRelationships(conn);
+      expect(r).to.have.length(1);
+      expect(r[0].features).to.deep.equal({ chat: true, systemMessaging: true });
+    });
+
+    it('[CMCL1OF4] listAcceptedRelationships passes through content.features verbatim — including explicit false', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.get': function () {
+            return {
+              events: [{
+                id: 'acc-explicit',
+                streamIds: [':_cmc:apps:test'],
+                content: {
+                  from: { username: 'alice', host: 'pryv.me' },
+                  dataGrantAccessId: 'dg-explicit',
+                  features: { chat: true, systemMessaging: false }
+                }
+              }]
+            };
+          }
+        }
+      });
+      const r = await cmc.listAcceptedRelationships(conn);
+      expect(r[0].features).to.deep.equal({ chat: true, systemMessaging: false });
+    });
+  });
+
   describe('[CMCL1OH] J8 acceptInvite resolves dataGrantAccessId on waitForCompletion', function () {
     it('[CMCL1OH1] returns dataGrantAccessId from the post-completion getOne', async function () {
       // Two-phase: events.create returns status pending; pollTriggerCompletion

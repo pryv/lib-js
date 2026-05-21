@@ -2,6 +2,50 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.4.1]
+
+Lockstep patch of `pryv@3.4.1` + `@pryv/monitor@3.4.1` +
+`@pryv/socket.io@3.4.1` + `@pryv/cmc@1.1.1`. Bugfix release; carries
+the SDK side of a coordinated fix with the server-side `cmc` plugin
+on `open-pryv.io` master.
+
+### `@pryv/cmc@1.1.1`
+
+#### Fixed
+- **Features-negotiation contract drift on `acceptInvite` /
+  `listAcceptedRelationships`.** Reported by a deploy-side implementer
+  against `@pryv/cmc@1.1.0` + `open-pryv.io@04bb2c1`.
+  - `acceptInvite` now persists the resolved offer features into
+    `content.features` of the `consent/accept-cmc` trigger (both keys
+    default to `true` when omitted by the offer, per the README contract;
+    explicit `false` is binding both ways). The server-side plugin
+    forwards them onto the data-grant access's `clientData.cmc.features`.
+    Previously the SDK computed `offerFeatures` but never persisted it,
+    so the data-grant access ended up with `clientData.cmc.features:
+    null` on the accepter side even when the offer specified default-true.
+  - `listAcceptedRelationships` mapper now defaults absent
+    `content.features` to `{ chat: true, systemMessaging: true }` (was
+    `{ chat: false, system: false }` — both wrong-default AND wrong-key
+    name; `systemMessaging` is the documented contract everywhere else).
+    The legacy `content.extra` fallback was removed (it was a
+    workaround for the SDK-side write bug and is unreachable for
+    events produced by `@pryv/cmc >= 1.1.1`).
+  - **4 new contract tests** under `[CMCL1OF] J6 features-negotiation`
+    pin each fix at unit-test time so a regression surfaces without
+    needing a real backend round-trip.
+
+#### Migration
+- **No SDK API changes.** Callers of `acceptInvite(conn, capabilityUrl,
+  opts)` and `listAcceptedRelationships(conn)` see the same return
+  shapes; the fix is in what gets persisted server-side + what the
+  mapper exposes when `content.features` is absent.
+- **Server compatibility:** the fix is coordinated with the server-side
+  `cmc` plugin shipped in `open-pryv.io` master (Plan 68 4th reopen,
+  2026-05-21). Older `@pryv/cmc` clients writing to a fixed server will
+  still produce `clientData.cmc.features: null` because the SDK isn't
+  writing `content.features` — bump to `@pryv/cmc@1.1.1` to get the
+  full negotiation persisted.
+
 ## [3.4.0]
 
 Lockstep release of `pryv@3.4.0` + `@pryv/monitor@3.4.0` +
