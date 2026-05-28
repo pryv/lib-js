@@ -11,7 +11,7 @@
  * @property {pryv.utils} utils - Exposes some utils for HTTP calls and tools to manipulate Pryv's API endpoints
  * @property {pryv.PryvError} PryvError - Custom error class with innerObject + structured API-error fields
  * @property {pryv.MfaRequiredError} MfaRequiredError - Thrown by Service.login when the platform returns an mfaToken instead of a token. Carries `.mfaToken`.
- * @property {pryv.StaleAccessIdError} StaleAccessIdError - Plan 66: thrown when a Pryv.io server rejects an `accesses.update` / `accesses.delete` with a 409 stale-resource. Refetch + retry.
+ * @property {pryv.StaleAccessIdError} StaleAccessIdError - Thrown when a Pryv.io server rejects an `accesses.update` / `accesses.delete` with a 409 stale-resource. Refetch + retry.
  * @property {Object} ERRORS - Catalogue of Pryv API error ids (mirrors open-pryv.io/components/errors)
  */
 module.exports = {

@@ -500,7 +500,7 @@ describe('[CONX] Connection', () => {
       expect(newUser.access.token).to.equal(accessInfoUser.token);
     });
 
-    // Plan 66 — accessInfo caching + forceRefresh.
+    // accessInfo caching + forceRefresh.
 
     it('[CAIC] accessInfo() memoizes — second call returns the same object reference', async () => {
       const regexAPIandToken = /(.+):\/\/(.+)/gm;

@@ -60,7 +60,7 @@ describe('[UTLX] utils', function () {
     done();
   });
 
-  // Plan 66 — composite access references.
+  // Composite access references.
 
   it('[UTLF] parseAccessRef on a bare cuid returns { base, serial: null }', function () {
     const ref = pryv.utils.parseAccessRef('abc123def456');

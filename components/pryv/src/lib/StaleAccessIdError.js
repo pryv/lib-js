@@ -6,9 +6,9 @@
 const PryvError = require('./PryvError');
 
 /**
- * Plan 66: typed error surfaced when a Pryv.io server (≥ 2.0.0-pre.X)
- * rejects an `accesses.update` or `accesses.delete` call with a
- * 409 `stale-resource` response.
+ * Typed error surfaced when a Pryv.io server (≥ 2.0.0-pre.X) rejects
+ * an `accesses.update` or `accesses.delete` call with a 409
+ * `stale-resource` response.
  *
  * The composite access id `<base>:<serial>` carries the version the
  * caller last observed. If the access has since been updated, the
