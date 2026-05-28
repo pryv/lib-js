@@ -23,8 +23,8 @@ class Socket extends UpdateMethod {
     this.socket = await this.monitor.connection.socket.open();
     this.socket.on('eventsChanged', () => { this.monitor.updateEvents(); });
     this.socket.on('streamsChanged', () => { this.monitor.updateStreams(); });
-    // Plan 66: re-emit the server's fine-grained `accessUpdated` event
-    // on the Monitor itself so consumers can subscribe via
+    // Re-emit the server's fine-grained `accessUpdated` event on the
+    // Monitor itself so consumers can subscribe via
     // `monitor.onAccessUpdated(handler)`. The underlying SocketIO has
     // already busted the connection's accessInfo cache; the payload
     // carries the new composite accessId + serial for fine-grained

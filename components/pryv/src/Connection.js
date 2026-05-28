@@ -77,8 +77,8 @@ class Connection {
    * caches the result; subsequent calls return the cached copy in O(1).
    * Pass `forceRefresh: true` to invalidate the cache and fetch a fresh
    * copy from the server — used internally by `connection.socket` to
-   * react to Plan 66 `accessUpdated` server-push events. A failed
-   * server fetch leaves any prior cached value intact.
+   * react to `accessUpdated` server-push events. A failed server
+   * fetch leaves any prior cached value intact.
    *
    * @param {boolean} [forceRefresh=false] - bypass + refresh the cache
    * @returns {Promise<AccessInfo>} Promise resolving to the access info
@@ -429,10 +429,10 @@ class Connection {
   }
 
   /**
-   * Plan 66 (open-pryv.io ≥ 2.0.0-pre.X): update an access by composite id.
-   * Wraps `accesses.update` and translates the 409 `stale-resource` response
-   * into a typed `StaleAccessIdError` so callers can `instanceof`-test and
-   * refetch + retry without re-parsing the inner error.
+   * Update an access by composite id (Pryv.io ≥ 2.0.0-pre.X). Wraps
+   * `accesses.update` and translates the 409 `stale-resource` response
+   * into a typed `StaleAccessIdError` so callers can `instanceof`-test
+   * and refetch + retry without re-parsing the inner error.
    *
    * Pass `id` as the wire-format reference returned by the server — bare
    * cuid on a never-updated access, composite `<base>:<serial>` otherwise.
@@ -456,8 +456,8 @@ class Connection {
   }
 
   /**
-   * Plan 66: fetch an access by composite id including its full version
-   * history (oldest first). Server: `accesses.getOne ?includeHistory=true`.
+   * Fetch an access by composite id including its full version history
+   * (oldest first). Server: `accesses.getOne ?includeHistory=true`.
    *
    * Useful for audit views. Pass the composite `<base>:<serial>` to
    * inspect a specific past version (the result's `current` field then

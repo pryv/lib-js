@@ -787,12 +787,12 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
   });
 
   // ------------------------------------------------------------
-  // Phase 5.2 (Plan 68) — J3–J10 wire-shape contract tests.
+  // J3–J10 wire-shape contract tests.
   //
   // J1 + J2 covered by [CMCL1OA] (readOffer) + [CMCXE] (errorIds catalogue).
   // J3-J10 fill the remaining contract slots so a release-blocking
   // regression in any of these wire shapes surfaces as a unit-test
-  // failure rather than a Phase-6 deploy-validation surprise.
+  // failure rather than a deploy-validation surprise.
   // ------------------------------------------------------------
 
   describe('[CMCL1OB] J3 listInvites wire-shape', function () {

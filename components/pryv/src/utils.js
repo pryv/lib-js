@@ -226,11 +226,11 @@ const utils = module.exports = {
   },
 
   /**
-   * Plan 66 (open-pryv.io ≥ 2.0.0-pre.X): parse a wire-format access
-   * reference into `{ base, serial }`. Accepts both bare cuid
-   * (`"abc123"` → `{ base: 'abc123', serial: null }`) and composite
-   * (`"abc123:3"` → `{ base: 'abc123', serial: 3 }`). Throws on
-   * malformed input. Apply this to `access.id`, `access.createdBy`,
+   * Parse a wire-format access reference into `{ base, serial }`
+   * (Pryv.io ≥ 2.0.0-pre.X). Accepts both bare cuid (`"abc123"` →
+   * `{ base: 'abc123', serial: null }`) and composite (`"abc123:3"` →
+   * `{ base: 'abc123', serial: 3 }`). Throws on malformed input.
+   * Apply this to `access.id`, `access.createdBy`,
    * `access.modifiedBy`, and `streamIds` entries of the form
    * `access-<base>:<serial>` from audit events.
    * @memberof pryv.utils
@@ -256,9 +256,9 @@ const utils = module.exports = {
   },
 
   /**
-   * Plan 66: render an `{ base, serial }` pair back to the wire
-   * format. Bare cuid when serial is null/undefined; `<base>:<serial>`
-   * otherwise. Mostly used to construct the composite id when calling
+   * Render an `{ base, serial }` pair back to the wire format. Bare
+   * cuid when serial is null/undefined; `<base>:<serial>` otherwise.
+   * Mostly used to construct the composite id when calling
    * `connection.api()` for `accesses.update` / `accesses.delete`.
    * @memberof pryv.utils
    * @param {{ base: string, serial?: number | null }} ref

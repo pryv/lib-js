@@ -164,9 +164,9 @@ class Monitor extends EventEmitter {
   }
 
   /**
-   * Plan 66: register a handler for the server's fine-grained
-   * `accessUpdated` event. Fires whenever a Pryv.io ≥ 2.0.0-pre.X server
-   * emits the event after a successful `accesses.update` — payload is
+   * Register a handler for the server's fine-grained `accessUpdated`
+   * event. Fires whenever a Pryv.io ≥ 2.0.0-pre.X server emits the
+   * event after a successful `accesses.update` — payload is
    * `{ type: 'access-updated', accessId: '<base>:<serial>', serial }`.
    *
    * Requires `Monitor.UpdateMethod.Socket` to be active (the event

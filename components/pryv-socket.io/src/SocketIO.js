@@ -84,10 +84,10 @@ class SocketIO extends EventEmitter {
           this._io.on('connect', () => {
             this.connecting = false;
             registerListeners(this);
-            // Plan 66: when the server emits `accessUpdated` (fine-grained
-            // event fired after every successful `accesses.update`), bust
-            // the connection's `accessInfo` cache so the next read picks
-            // up the new permissions / serial. Best-effort: a failed
+            // When the server emits `accessUpdated` (fine-grained event
+            // fired after every successful `accesses.update`), bust the
+            // connection's `accessInfo` cache so the next read picks up
+            // the new permissions / serial. Best-effort: a failed
             // refresh leaves the previous cached value intact.
             this._io.on('accessUpdated', () => {
               this.connection.accessInfo(true).catch(() => { /* swallow */ });
