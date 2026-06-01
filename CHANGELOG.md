@@ -2,6 +2,96 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.5.0]
+
+Narrows the auth-flow result surface and introduces a new
+`pryv.connectFromKey(key, serviceInfoUrl)` helper. Calling apps that
+read `state.apiEndpoint` from the `onStateChange` callback on a fresh
+auth-flow result must migrate to the new helper; cookie-autologin
+keeps working as before.
+
+### Changed
+- `onStateChange(state)` on `state.status === AUTHORIZED` reached
+  through a **fresh** auth-flow poll (poll → ACCEPTED) now receives
+  only `{ status, id, key, serviceInfo? }`. Credentials (`username`,
+  `token`, `apiEndpoint`) stay inside the lib.
+- Cookie-autologin AUTHORIZED states (page reload after a prior sign-in)
+  still carry `apiEndpoint`/`username` so existing pages that build a
+  Connection on autologin keep working — autologin happens before any
+  fresh `key` exists.
+
+### Added
+- `pryv.connectFromKey(key, serviceInfoUrl, serviceCustomizations?)` —
+  module-level helper that builds a `Service`, fetches its info, and
+  resolves a completed-auth `key` into a `Connection`.
+- `Service#connectFromKey(key)` — instance variant for callers that
+  already hold a `Service`.
+- `examples/cli-login.js` — headless polling pattern reference (Node).
+  Pairs with the auth UI's new `?cli=1` query flag, which renders a
+  terminal "you can close this window" screen instead of trying to
+  close a popup or redirect.
+
+### Migration
+
+For consumers that today do `new pryv.Connection(state.apiEndpoint)` on
+the fresh auth-flow path:
+
+Before:
+```js
+onStateChange: (state) => {
+  if (state.id === pryv.Auth.AuthStates.AUTHORIZED) {
+    const connection = new pryv.Connection(state.apiEndpoint);
+  }
+}
+```
+
+After:
+```js
+onStateChange: async (state) => {
+  if (state.id === pryv.Auth.AuthStates.AUTHORIZED) {
+    const connection = state.key
+      ? await pryv.connectFromKey(state.key, serviceInfoUrl)
+      : new pryv.Connection(state.apiEndpoint); // cookie-autologin path
+  }
+}
+```
+
+### Added
+- `pryv.connectFromKey(key, serviceInfoUrl, serviceCustomizations?)` —
+  module-level convenience that builds a `Service`, fetches its info,
+  and resolves a completed-auth `key` into a `Connection`.
+- `Service#connectFromKey(key)` — instance variant for callers that
+  already hold a `Service`.
+- `examples/cli-login.js` — headless polling pattern reference (Node).
+  Pairs with the auth UI's new `?cli=1` query flag, which renders a
+  terminal "you can close this window" screen instead of trying to
+  close a popup or redirect.
+
+### Migration
+Before (`3.x`):
+```js
+const authSettings = {
+  onStateChange: (state) => {
+    if (state.id === pryv.Auth.AuthStates.AUTHORIZED) {
+      const connection = new pryv.Connection(state.apiEndpoint);
+    }
+  },
+  ...
+};
+```
+
+After (`4.0`):
+```js
+const authSettings = {
+  onStateChange: async (state) => {
+    if (state.id === pryv.Auth.AuthStates.AUTHORIZED) {
+      const connection = await pryv.connectFromKey(state.key, serviceInfoUrl);
+    }
+  },
+  ...
+};
+```
+
 ## [3.4.1]
 
 Lockstep patch of `pryv@3.4.1` + `@pryv/monitor@3.4.1` +

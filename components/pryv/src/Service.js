@@ -522,6 +522,40 @@ class Service {
   }
 
   /**
+   * Resolve a completed auth-flow polling key into a `Connection`.
+   *
+   * Pairs with `Service.startAccessRequest` / `Service.pollAccessRequest`
+   * and the headless polling pattern: the calling app holds only the
+   * `key` returned by the auth-flow (not the underlying token /
+   * apiEndpoint), and uses this method to build a working `Connection`.
+   *
+   * The implementation polls `<access>/<key>` once; the call MUST be
+   * made while the access is still in the ACCEPTED state (which
+   * persists until expiry — see `expireAfter` on the access request).
+   *
+   * @param {string} key - polling key from `startAccessRequest`
+   * @returns {Promise<Connection>}
+   * @throws {PryvError} if the key is not ACCEPTED (NEED_SIGNIN, REFUSED, ERROR)
+   */
+  async connectFromKey (key) {
+    if (!key) {
+      throw new PryvError('connectFromKey requires a key');
+    }
+    const body = await this.pollAccessRequest(key);
+    if (body.status !== 'ACCEPTED') {
+      throw new PryvError(
+        'connectFromKey: access is not ACCEPTED (status=' + body.status + ')'
+      );
+    }
+    if (!body.apiEndpoint) {
+      throw new PryvError(
+        'connectFromKey: ACCEPTED response missing apiEndpoint'
+      );
+    }
+    return new Connection(body.apiEndpoint, this);
+  }
+
+  /**
    * Set a new password using a reset token (from the reset email).
    * Pre-auth — no login token required.
    *

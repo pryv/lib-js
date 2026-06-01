@@ -190,4 +190,78 @@ describe('[ACNX] AuthController', function () {
       expect(auth.state.id).to.equal(AuthStates.LOADING); // retro-compatibility
     });
   });
+
+  describe('[AFLT] External listener filtering', function () {
+    it('[AFLA] AUTHORIZED state passes only { status, id, key, serviceInfo } to onStateChange', function () {
+      const seen = [];
+      const auth = new AuthController({
+        authRequest: {
+          requestingAppId: 'test-app',
+          requestedPermissions: []
+        },
+        onStateChange: (state) => seen.push(state)
+      }, service);
+
+      auth.state = {
+        status: AuthStates.AUTHORIZED,
+        key: 'abc123',
+        serviceInfo: { name: 'Test' },
+        apiEndpoint: 'https://token@example.com/',
+        username: 'alice',
+        token: 'secret-token'
+      };
+
+      const last = seen[seen.length - 1];
+      expect(last.status).to.equal(AuthStates.AUTHORIZED);
+      expect(last.id).to.equal(AuthStates.AUTHORIZED);
+      expect(last.key).to.equal('abc123');
+      expect(last.serviceInfo).to.deep.equal({ name: 'Test' });
+      // Credentials must not leak to the calling app.
+      expect(last.apiEndpoint).to.equal(undefined);
+      expect(last.username).to.equal(undefined);
+      expect(last.token).to.equal(undefined);
+    });
+
+    it('[AFLC] AUTHORIZED state from cookie-autologin (no key) passes through unchanged', function () {
+      // Mirrors `checkAutoLogin()`'s state shape: it spreads stored
+      // credentials into the AUTHORIZED state without a key, since the
+      // key is not persisted.
+      const seen = [];
+      const auth = new AuthController({
+        authRequest: {
+          requestingAppId: 'test-app',
+          requestedPermissions: []
+        },
+        onStateChange: (state) => seen.push(state)
+      }, service);
+
+      auth.state = {
+        status: AuthStates.AUTHORIZED,
+        apiEndpoint: 'https://token@example.com/',
+        username: 'alice'
+      };
+
+      const last = seen[seen.length - 1];
+      // Backwards-compat: existing pages building Connection directly
+      // from `state.apiEndpoint` on page reload keep working.
+      expect(last.apiEndpoint).to.equal('https://token@example.com/');
+      expect(last.username).to.equal('alice');
+    });
+
+    it('[AFLB] non-AUTHORIZED states pass through unchanged', function () {
+      const seen = [];
+      const auth = new AuthController({
+        authRequest: {
+          requestingAppId: 'test-app',
+          requestedPermissions: []
+        },
+        onStateChange: (state) => seen.push(state)
+      }, service);
+
+      auth.state = { status: AuthStates.ERROR, message: 'boom', error: new Error('e') };
+      const last = seen[seen.length - 1];
+      expect(last.status).to.equal(AuthStates.ERROR);
+      expect(last.message).to.equal('boom');
+    });
+  });
 });
