@@ -52,35 +52,38 @@ async function main () {
   console.log();
   console.log(`Polling key ${key} every ${pollRateMs}ms ...`);
 
-  const result = await pollUntilDone(service, key, pollRateMs);
+  const terminalStatus = await waitForTerminalStatus(service, key, pollRateMs);
 
-  if (result.status === 'ACCEPTED') {
-    const connection = new pryv.Connection(result.apiEndpoint);
+  if (terminalStatus === 'ACCEPTED') {
+    // Strict surface: the caller resolves the key to a Connection via
+    // `service.connectFromKey(key)`. The `apiEndpoint` / `token` stay
+    // inside the lib.
+    const connection = await service.connectFromKey(key);
     const [eventsRes] = await connection.api([
       { method: 'events.get', params: { limit: 1 } }
     ]);
     const count = (eventsRes && eventsRes.events) ? eventsRes.events.length : 0;
-    console.log(`Logged in (${connection.apiEndpoint}). Sample events.get returned ${count} event(s).`);
+    console.log(`Logged in. Sample events.get returned ${count} event(s).`);
     process.exit(0);
   }
 
-  if (result.status === 'REFUSED') {
+  if (terminalStatus === 'REFUSED') {
     console.error('Access refused by the user.');
     process.exit(2);
   }
 
-  console.error('Unexpected terminal state: ' + JSON.stringify(result));
+  console.error('Unexpected terminal state: ' + terminalStatus);
   process.exit(3);
 }
 
-async function pollUntilDone (service, key, pollRateMs) {
+async function waitForTerminalStatus (service, key, pollRateMs) {
   for (;;) {
     const body = await service.pollAccessRequest(key);
     if (body.status === 'NEED_SIGNIN') {
       await sleep(pollRateMs);
       continue;
     }
-    return body;
+    return body.status;
   }
 }
 

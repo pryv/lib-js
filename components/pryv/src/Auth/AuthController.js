@@ -22,8 +22,15 @@ class AuthController {
     validateSettings.call(this, settings);
 
     this.stateChangeListeners = [];
+    // External `onStateChange` callers only see `{ status, id, key, serviceInfo? }`
+    // on AUTHORIZED — credentials (`username`, `token`, `apiEndpoint`) stay
+    // inside the lib. Internal listeners (e.g. LoginButton, for cookie
+    // autologin) get the full unfiltered state.
     if (this.settings.onStateChange) {
-      this.stateChangeListeners.push(this.settings.onStateChange);
+      const externalListener = this.settings.onStateChange;
+      this.stateChangeListeners.push(function (state) {
+        externalListener(filterForExternalListener(state));
+      });
     }
     this.service = service;
 
@@ -166,6 +173,10 @@ class AuthController {
   async startAuthRequest () {
     // @ts-ignore - postAccess uses .call(this) for context
     this.state = await postAccess.call(this);
+    // Remember the polling key so listeners on the terminal AUTHORIZED
+    // state can be handed `{ key, serviceInfo? }` (the polling response
+    // itself doesn't echo `key` back).
+    this._authFlowKey = this.state?.key;
 
     await doPolling.call(this);
 
@@ -205,6 +216,11 @@ class AuthController {
         // @ts-ignore - this is bound via .call()
         setTimeout(await doPolling.bind(this), this.state?.poll_rate_ms);
       } else {
+        // Carry the key forward — listeners on the narrow public surface
+        // need it, and the server doesn't echo it back on ACCEPTED.
+        if (this._authFlowKey != null && pollResponse.key == null) {
+          pollResponse.key = this._authFlowKey;
+        }
         this.state = pollResponse;
       }
 
@@ -244,6 +260,38 @@ class AuthController {
 }
 
 // ----------- private methods -------------
+
+/**
+ * Narrow the state passed to *external* `onStateChange` callers so the
+ * calling app sees only `{ status, id, key, serviceInfo? }` on the
+ * terminal AUTHORIZED state reached through the auth-flow polling path.
+ * `username` / `token` / `apiEndpoint` are kept inside the lib; the
+ * calling app uses `pryv.connectFromKey(key, serviceInfoUrl)` to obtain
+ * a `Connection`.
+ *
+ * The cookie-autologin path (no fresh `key` available, restored from
+ * `LoginButton.getAuthorizationData()`) passes through unchanged so
+ * existing pages that build a `Connection` directly from the restored
+ * state on page load keep working.
+ *
+ * Non-AUTHORIZED states pass through unchanged so error messages /
+ * loading flags / etc. still reach the listener.
+ *
+ * @param {Object} state - full internal state
+ * @returns {Object} narrowed state
+ */
+function filterForExternalListener (state) {
+  if (state == null || state.status !== AuthStates.AUTHORIZED) {
+    return state;
+  }
+  // No key → cookie-autologin path; preserve existing shape.
+  if (state.key == null) {
+    return state;
+  }
+  const out = { status: state.status, id: state.id, key: state.key };
+  if (state.serviceInfo != null) out.serviceInfo = state.serviceInfo;
+  return out;
+}
 
 async function checkAutoLogin (authController) {
   const loginButton = authController.loginButton;

@@ -38,6 +38,30 @@ describe('[ARQX] Service access-request init', function () {
     });
   });
 
+  describe('[CFKX] Service.connectFromKey', function () {
+    it('[CFKA] rejects when key is missing', async function () {
+      let caught;
+      try { await service.connectFromKey(); } catch (e) { caught = e; }
+      expect(caught).to.be.instanceOf(pryv.PryvError);
+    });
+
+    it('[CFKB] throws when the access is still NEED_SIGNIN', async function () {
+      this.timeout(15000);
+      const env = await service.startAccessRequest({
+        requestingAppId: 'jslib-test',
+        requestedPermissions: [{
+          streamId: 'data',
+          level: 'read',
+          defaultName: 'Test'
+        }]
+      });
+      let caught;
+      try { await service.connectFromKey(env.key); } catch (e) { caught = e; }
+      expect(caught).to.be.instanceOf(pryv.PryvError);
+      expect(caught.message).to.include('NEED_SIGNIN');
+    });
+  });
+
   describe('[APRX] Service.pollAccessRequest', function () {
     it('[APRA] rejects when key is missing', async function () {
       let caught;
