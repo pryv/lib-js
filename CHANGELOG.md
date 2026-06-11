@@ -2,6 +2,39 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.6.0]
+
+Adds support for the platform's content queries: `events.get` can now
+filter on the JSON content of events. Purely additive — no breaking
+changes. Platform support is required for the new query parameters
+(advertised by `features.contentQueries` in service info); against
+older platforms the parameters are rejected with a `400` and
+`Service#supportsContentQueries()` returns `false`.
+
+### Added
+- `events.get` accepts `content` and `clientData` parameters — arrays
+  of conditions (`{ path, eq|neq|in|exists|gt|gte|lt|lte|prefix }`) on
+  dot-paths into the corresponding event field (or `$` for the root
+  value of scalar content). Works in batch calls and
+  `Connection#getEventsStreamed()`.
+- `Connection#getLatestByContent(path, values, baseQuery?)` — returns a
+  `Map` of value → latest matching event (one entry per value found).
+  Typical form-prefill lookup ("latest assertion per code"); pages
+  through results internally so it is correct regardless of the
+  server's default page size. `baseQuery` (e.g. `streams`, `types`)
+  passes through.
+- `Service#supportsContentQueries()` — reads `features.contentQueries`
+  from service info, so apps can pick a fallback path on platforms
+  without content queries.
+- TypeScript: `ContentQueryCondition` type; `content` / `clientData` on
+  `EventQueryParams`; declarations for both new methods.
+
+### Fixed
+- URL encoding of structured query parameters in GET requests
+  (`Connection#getEventsStreamed()`): object values and arrays
+  containing objects (e.g. rich `streams` queries) are now sent as one
+  JSON-encoded parameter instead of `[object Object]`.
+
 ## [3.5.0]
 
 Narrows the auth-flow result surface and introduces a new
