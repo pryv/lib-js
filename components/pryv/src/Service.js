@@ -81,6 +81,17 @@ class Service {
   }
 
   /**
+   * Whether the platform supports `events.get` content/clientData query
+   * conditions (`features.contentQueries` in service info). Older platforms
+   * reject the parameters with a 400 — use this to pick a fallback path.
+   * @returns {Promise<boolean>}
+   */
+  async supportsContentQueries () {
+    const infos = await this.info();
+    return infos.features != null && infos.features.contentQueries === true;
+  }
+
+  /**
    * Check if a service has username in the hostname or in the path of the API.
    * @returns {Promise<boolean>} Promise resolving to true if the service does not rely on DNS to find a host related to a username
    */
@@ -622,4 +633,5 @@ const Connection = require('./Connection');
  * @property {string} [assets.definitions] URL to json object with assets definitions
  * @property {Object} [features] Platform feature flags
  * @property {boolean} [features.noHF] True if HF data is not supported
+ * @property {boolean} [features.contentQueries] True if events.get content/clientData query conditions are supported
  */
