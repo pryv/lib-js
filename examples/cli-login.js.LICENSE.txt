@@ -1,0 +1,20 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ *
+ * Headless (CLI) login pattern — pattern reference.
+ *
+ * Run with: `node examples/cli-login.js [serviceInfoUrl]`
+ *
+ * This script demonstrates how a non-browser caller (CLI, daemon, bot) can
+ * drive the Pryv access-request flow without a popup or iframe. The user
+ * still authorises in a browser tab they open themselves; this process
+ * polls until the request is accepted or refused.
+ *
+ * The script uses only public `Service` methods:
+ *   - `service.startAccessRequest(authRequest)` to issue the request
+ *   - `service.pollAccessRequest(key)` to poll until completion
+ *
+ * It is intentionally dependency-free (no `open` package, no extra prompts).
+ * Adapters that want a richer UX layer their own niceties on top.
+ */

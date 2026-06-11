@@ -102,10 +102,14 @@
     }
   };
 
-  function authStateChanged(state) { // called each time the authentication state changed
+  async function authStateChanged(state) { // called each time the authentication state changed
     logToConsole('# Auth state changed: ' + state.id);
     if (state.id === pryv.Browser.AuthStates.AUTHORIZED) {
-      connection = new pryv.Connection(state.apiEndpoint);
+      // Fresh auth-flow result carries `state.key`; cookie-autologin
+      // still carries `state.apiEndpoint`. Support both paths.
+      connection = state.key
+        ? await pryv.connectFromKey(state.key, serviceInfoUrl)
+        : new pryv.Connection(state.apiEndpoint);
       logToConsole('# Auth succeeded for user ' + connection.apiEndpoint);
       initializeMonitor();
     }

@@ -87,10 +87,16 @@
       (await service.assets()).setAllDefaults();
     })();
 
-    function authStateChanged(state) {
+    async function authStateChanged(state) {
       console.log('# Auth state changed:', state);
       if (state.id === pryv.Auth.AuthStates.AUTHORIZED) {
-        connection = new pryv.Connection(state.apiEndpoint);
+        // Fresh auth-flow result carries only `state.key` — resolve it
+        // to a working Connection. Cookie-autologin still hands the
+        // listener `state.apiEndpoint` (no key available at restore
+        // time), so support both paths.
+        connection = state.key
+          ? await pryv.connectFromKey(state.key, serviceInfoUrl)
+          : new pryv.Connection(state.apiEndpoint);
         logToConsole('# Browser succeeded for user ' + connection.apiEndpoint);
       }
       if (state.id === pryv.Auth.AuthStates.SIGNOUT) {
