@@ -56,8 +56,8 @@ describe('[CQLJ] Content queries', () => {
       // two assertions per drug — older taken:false, newer taken:true — to verify "latest"
       let time = 1700000000;
       for (const code of [codes.progesterone, codes.aspirin]) {
-        calls.push({ method: 'events.create', params: { streamIds: [streamId], type: 'activity/plain', time: time++, content: { drug: { codes: { atc: code } }, taken: false } } });
-        calls.push({ method: 'events.create', params: { streamIds: [streamId], type: 'activity/plain', time: time++, content: { drug: { codes: { atc: code } }, taken: true } } });
+        calls.push({ method: 'events.create', params: { streamIds: [streamId], type: 'medication/exposure-assertion-v1', time: time++, content: { drug: { codes: { atc: code } }, taken: false } } });
+        calls.push({ method: 'events.create', params: { streamIds: [streamId], type: 'medication/exposure-assertion-v1', time: time++, content: { drug: { codes: { atc: code } }, taken: true } } });
       }
       const res = await conn.api(calls);
       for (const r of res) expect(r.error).to.be.undefined;
