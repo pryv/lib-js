@@ -126,6 +126,11 @@ class LoginButton {
           error: e
         };
       }
+      // The prYv* params are one-shot; leaving them in the visible URL
+      // puts stale auth state into bookmarks / copied links.
+      if (window.history && typeof window.history.replaceState === 'function') {
+        window.history.replaceState(null, '', utils.cleanURLFromPrYvParams(url));
+      }
     }
 
     function retrievePollUrl (url) {
