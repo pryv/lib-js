@@ -267,6 +267,22 @@ declare module 'pryv' {
     not?: Identifier[];
   };
 
+  /**
+   * Condition on a JSON path of events' `content` or `clientData`.
+   * `path` is a dot-path (segments: [a-zA-Z0-9_:-]) or `$` for the root
+   * value; exactly one operator per condition. Conditions AND together.
+   * Server support is advertised by `features.contentQueries` (see
+   * `Service.supportsContentQueries()`).
+   */
+  export type ContentQueryCondition = { path: string } & (
+    | { eq: string | number | boolean }
+    | { neq: string | number | boolean }
+    | { in: Array<string | number | boolean> }
+    | { exists: boolean }
+    | { gt: number } | { gte: number } | { lt: number } | { lte: number }
+    | { prefix: string }
+  );
+
   export type EventQueryParams = {
     fromTime: Timestamp;
     toTime: Timestamp;
@@ -280,6 +296,8 @@ declare module 'pryv' {
     state: 'default' | 'trashed' | 'all';
     modifiedSince: Timestamp;
     includeDeletion: boolean;
+    content: ContentQueryCondition[];
+    clientData: ContentQueryCondition[];
   };
 
   export type EventQueryParamsStreamQuery = Omit<EventQueryParams, 'streams'> & {
@@ -705,6 +723,15 @@ declare module 'pryv' {
       queryParams: Partial<EventQueryParamsStreamQuery>,
       forEachEvent: StreamedEventsHandler,
     ): Promise<StreamedEventsResult>;
+    /**
+     * Latest event per value for a content path (form-prefill lookup).
+     * Pages internally; requires server content-query support.
+     */
+    getLatestByContent(
+      path: string,
+      values: Array<string | number | boolean>,
+      baseQuery?: Partial<EventQueryParamsStreamQuery>,
+    ): Promise<Map<string | number | boolean, Event>>;
     createEventWithFile(
       params: EventFileCreationParams,
       filePath: string | Buffer | Blob,
@@ -826,6 +853,8 @@ declare module 'pryv' {
     ): Promise<Connection>;
 
     supportsHF(): Promise<boolean>;
+    /** Whether the platform supports events.get content/clientData query conditions. */
+    supportsContentQueries(): Promise<boolean>;
     isDnsLess(): Promise<boolean>;
 
     userExists(userId: string): Promise<boolean>;

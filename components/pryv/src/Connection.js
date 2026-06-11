@@ -8,6 +8,7 @@ const libGetEventStreamed = require('./lib/getEventStreamed');
 const PryvError = require('./lib/PryvError');
 const StaleAccessIdError = require('./lib/StaleAccessIdError');
 const buildSearchParams = require('./lib/buildSearchParams');
+const resolveDotPath = require('./lib/resolveDotPath');
 
 /**
  * @class Connection
@@ -348,6 +349,44 @@ class Connection {
     const now = getTimestamp();
     this._handleMeta(res.body, now);
     return res.body;
+  }
+
+  /**
+   * Get the latest event per value for a content path — typical form-prefill
+   * lookup ("latest assertion per code"). Queries `events.get` with a
+   * `content` condition `{ path, in: values }` (server must support content
+   * queries — see `Service.supportsContentQueries()`), pages through the
+   * time-descending result and keeps the first (= latest) event per value.
+   * Handles paging internally, so the result is correct regardless of the
+   * default `events.get` page size.
+   * @param {string} path - dot-path into `content` (or `$` for the root value)
+   * @param {Array<string|number|boolean>} values - values to look up (one Map entry max per value)
+   * @param {Object} [baseQuery] - additional `events.get` params (e.g. `streams`, `types`, `fromTime`); passed through
+   * @returns {Promise<Map<string|number|boolean, Object>>} value → latest matching event; values with no match are absent
+   */
+  async getLatestByContent (path, values, baseQuery = {}) {
+    const PAGE_LIMIT = 1000;
+    const lookup = new Set(values);
+    const found = new Map();
+    const condition = { path, in: [...lookup] };
+    const content = (baseQuery.content || []).concat([condition]);
+    let skip = 0;
+    while (found.size < lookup.size) {
+      const params = Object.assign({}, baseQuery, {
+        content,
+        sortAscending: false,
+        skip,
+        limit: PAGE_LIMIT
+      });
+      const events = await this.apiOne('events.get', params, 'events');
+      for (const event of events) {
+        const value = resolveDotPath(event.content, path);
+        if (lookup.has(value) && !found.has(value)) found.set(value, event);
+      }
+      if (events.length < PAGE_LIMIT) break;
+      skip += events.length;
+    }
+    return found;
   }
 
   /**
