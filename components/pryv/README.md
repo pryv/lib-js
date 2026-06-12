@@ -733,7 +733,15 @@ Assuming browser files are built and everything is up-to-date, including the REA
 ```
 just version <version>
 ```
-to update the version number of the lib and add-ons in lockstep, git commit and tag included
+to update the version number of the lib and add-ons in lockstep. This only edits the `package.json` files — **commit and tag manually**:
+
+```
+git commit -am "<version>"
+git tag -a <version> -m "<version>"
+git push && git push --tags
+```
+
+Tags are bare version numbers (e.g. `3.6.0`, no `v` prefix); every npm publish must have a matching pushed tag so npm, `package.json` and GitHub stay cross-checkable.
 
 ```
 just publish-npm
