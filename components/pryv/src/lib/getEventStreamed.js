@@ -33,6 +33,7 @@ async function getEventStreamed (conn, queryParam, parser) {
   /**
    * Holds results from the parser
    */
+  /** @type {(Error & { rawResponse?: string }) | undefined} */
   let errResult;
   let bodyObjectResult;
   /**

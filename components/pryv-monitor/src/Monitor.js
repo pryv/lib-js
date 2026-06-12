@@ -179,7 +179,7 @@ class Monitor extends EventEmitter {
    * `connection.accessInfo` cache when this event fires, so the next
    * `connection.accessInfo()` call returns the freshly-fetched copy.
    *
-   * @param {Function} handler - called with `(payload)` on each event
+   * @param {(payload: any) => void} handler - called with `(payload)` on each event
    * @returns {Monitor} this (chainable)
    */
   onAccessUpdated (handler) {

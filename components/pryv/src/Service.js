@@ -406,9 +406,9 @@ class Service {
         email: opts.email,
         hosting,
         language,
-        invitationToken
+        invitationToken,
+        ...(opts.referer != null && { referer: opts.referer })
       };
-      if (opts.referer != null) payload.referer = opts.referer;
     } else {
       url = serviceInfo.register + 'user';
       payload = {
@@ -418,9 +418,9 @@ class Service {
         email: opts.email,
         hosting,
         languageCode: language,
-        invitationtoken: invitationToken
+        invitationtoken: invitationToken,
+        ...(opts.referer != null && { referer: opts.referer })
       };
-      if (opts.referer != null) payload.referer = opts.referer;
     }
     const { response, body } = await utils.fetchPost(url, payload);
     if (!response.ok) throw PryvError.fromApiResponse(response, body);
@@ -629,6 +629,7 @@ const Connection = require('./Connection');
  * @property {string} support The email or URL of the support page.
  * @property {string} terms The terms and conditions, in plain text or the URL displaying them.
  * @property {string} eventTypes The URL of the list of validated event types.
+ * @property {string} [version] The platform version.
  * @property {Object} [assets] Holder for service specific Assets (icons, css, ...)
  * @property {string} [assets.definitions] URL to json object with assets definitions
  * @property {Object} [features] Platform feature flags
