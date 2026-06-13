@@ -2,6 +2,25 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.6.1]
+
+Patch release — browser auth-flow cleanup and dependency hygiene. No API
+changes.
+
+### Fixed
+- Browser: the `#?prYv…` redirect parameters (`prYvkey`, `prYvstatus`,
+  `prYvpoll`, …) are now removed from the visible page URL once consumed
+  after the auth redirect (`history.replaceState`, guarded for
+  non-browser environments and a missing History API). They previously
+  stayed in the address bar, leaked into bookmarks and copied links, and
+  made downstream URL-handling bugs harder to diagnose.
+
+### Maintenance
+- Dev-dependency audit brought to zero vulnerabilities (overrides for
+  transitive `diff` / `serialize-javascript`); type-check fixes.
+- AGENTS.md added; publishing doc corrected (`just version` does not
+  commit or tag).
+
 ## [3.6.0]
 
 Adds support for the platform's content queries: `events.get` can now
