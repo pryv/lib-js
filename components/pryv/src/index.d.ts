@@ -100,20 +100,6 @@ declare module 'pryv' {
     };
   };
 
-  // HTTP only
-  type AuditLog = {
-    id: Identifier;
-    type: string;
-    time: Timestamp;
-    forwardedFor: string;
-    action: string;
-    query: string;
-    accessId: string;
-    status: number;
-    errorMessage?: string;
-    errorId?: string;
-  };
-
   export type HFSeries = {
     format: 'flatJSON';
     fields: string[];

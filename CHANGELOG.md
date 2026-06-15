@@ -18,6 +18,11 @@ changes.
 ### Maintenance
 - Dev-dependency audit brought to zero vulnerabilities (overrides for
   transitive `diff` / `serialize-javascript`); type-check fixes.
+- Removed the dead, non-exported `AuditLog` TypeScript type from
+  `index.d.ts`. It described the response shape of the long-deprecated
+  `GET /audit/logs` route (removed server-side); audit logs are read as
+  regular events through `connection.get('events', …)` over `:_audit:`
+  streams. No public API surface changes (the type was never exported).
 - AGENTS.md added; publishing doc corrected (`just version` does not
   commit or tag).
 
