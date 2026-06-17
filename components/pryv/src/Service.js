@@ -285,6 +285,12 @@ class Service {
    * Resolve an email address to a username on this service.
    * One round-trip via `GET <register>/<email>/uid`.
    *
+   * On multi-core services where the platform stores identifiers hashed,
+   * the queried node may not host the user and answers `307` with the
+   * home node's URL in `{ server }`. `fetch` follows the redirect
+   * transparently; for HTTP clients that do not auto-follow, this method
+   * also follows the `{ server }` hint once explicitly.
+   *
    * @param {string} email - The email to look up
    * @returns {Promise<string|null>} The username, or `null` if unknown
    * @throws {PryvError} on network errors or non-404 API errors
@@ -292,7 +298,12 @@ class Service {
   async userIdForEmail (email) {
     const serviceInfo = await this.info();
     const url = serviceInfo.register + encodeURIComponent(email) + '/uid';
-    const { response, body } = await utils.fetchGet(url);
+    let { response, body } = await utils.fetchGet(url);
+    if (response.status === 307 && body && body.server) {
+      const home = body.server.endsWith('/') ? body.server : body.server + '/';
+      const homeUrl = home + 'reg/' + encodeURIComponent(email) + '/uid';
+      ({ response, body } = await utils.fetchGet(homeUrl));
+    }
     if (response.ok) return (body && (body.uid || body.username)) || null;
     if (response.status === 404) return null;
     throw PryvError.fromApiResponse(response, body);
