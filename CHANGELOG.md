@@ -2,6 +2,19 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.7.1]
+
+Patch release — email→username recovery on multi-node platforms.
+
+### Fixed
+
+- `Service.userIdForEmail`: follow the home-node redirect when the queried
+  node does not host the account. On platforms that store identifiers
+  pseudonymised, that node answers `307` with the home-node URL in a
+  `{ server }` body; `userIdForEmail` now follows it so the cleartext username
+  is returned transparently. `fetch` already follows redirects automatically;
+  this also handles HTTP clients that do not.
+
 ## [3.7.0]
 
 Scoped real-time notifications.
