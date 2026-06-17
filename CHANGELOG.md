@@ -2,6 +2,26 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.7.0]
+
+Scoped real-time notifications.
+
+### Added
+
+- `@pryv/socket.io`: `notificationsChanged` event + `subscribe()` /
+  `unsubscribe()` / `getSubscriptions()` methods to register scoped
+  notification subscriptions on a connection (each an `events.get`-shaped query
+  of one resource kind: `events` / `streams` / `accesses`). Matched changes are
+  delivered as a single `notificationsChanged({ keys })`.
+- `@pryv/monitor`: the Socket update method now registers the monitor's scope
+  with the server and refetches only on a matching notification. Falls back to
+  the coarse `eventsChanged` / `streamsChanged` signals on servers without
+  scoped-notification support, so existing behaviour is unchanged against older
+  platforms.
+
+Requires an open-pryv.io platform with scoped-notification support; against
+older platforms the monitor transparently uses the coarse signals.
+
 ## [3.6.1]
 
 Patch release — browser auth-flow cleanup and dependency hygiene. No API
