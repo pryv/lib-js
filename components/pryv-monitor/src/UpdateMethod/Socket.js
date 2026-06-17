@@ -21,8 +21,38 @@ class Socket extends UpdateMethod {
     }
     // @ts-ignore - socket is added by @pryv/socket.io extension
     this.socket = await this.monitor.connection.socket.open();
-    this.socket.on('eventsChanged', () => { this.monitor.updateEvents(); });
-    this.socket.on('streamsChanged', () => { this.monitor.updateStreams(); });
+
+    // Scoped notifications (opt-in): register this monitor's scope so the server
+    // wakes us only when a matching change occurs, delivered as a single
+    // `notificationsChanged({ keys })`. Because a scoped connection opts out of
+    // the coarse broadcasts server-side, we register BOTH an events scope (so
+    // `updateEvents` fires) and a streams scope (so `updateStreams` fires).
+    // Older servers reject `subscribe` (the wildcard treats it as an unknown
+    // method); we then fall back to the legacy coarse signals.
+    const onEvents = () => { this.monitor.updateEvents(); };
+    const onStreams = () => { this.monitor.updateStreams(); };
+    this.socket.on('notificationsChanged', (payload) => {
+      const keys = (payload && payload.keys) || [];
+      if (keys.includes('monEvents')) onEvents();
+      if (keys.includes('monStreams')) onStreams();
+    });
+    const scope = this.monitor.eventsGetScope || {};
+    const eventsQuery = {};
+    for (const f of ['streams', 'types', 'content', 'clientData']) {
+      if (scope[f] != null) eventsQuery[f] = scope[f];
+    }
+    const streamsQuery = scope.streams != null ? { streams: scope.streams } : {};
+    const ack = await this.socket.subscribe({
+      scopes: {
+        monEvents: { kind: 'events', query: eventsQuery },
+        monStreams: { kind: 'streams', query: streamsQuery }
+      }
+    });
+    if (!ack || ack.ok !== true) {
+      // Server does not support scoped subscriptions — use coarse signals.
+      this.socket.on('eventsChanged', onEvents);
+      this.socket.on('streamsChanged', onStreams);
+    }
     // Re-emit the server's fine-grained `accessUpdated` event on the
     // Monitor itself so consumers can subscribe via
     // `monitor.onAccessUpdated(handler)`. The underlying SocketIO has

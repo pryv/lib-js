@@ -5,7 +5,7 @@
 const io = require('socket.io-client');
 const { EventEmitter } = require('events');
 
-const EVENTS = ['eventsChanged', 'streamsChanged', 'accessesChanged', 'accessUpdated', 'disconnect', 'error'];
+const EVENTS = ['eventsChanged', 'streamsChanged', 'accessesChanged', 'accessUpdated', 'notificationsChanged', 'disconnect', 'error'];
 
 /**
  * Socket.IO transport for a Connection.
@@ -144,6 +144,44 @@ class SocketIO extends EventEmitter {
       });
     }
     return await this.connection._chunkedBatchCall(arrayOfAPICalls, progress, httpHandler.bind(this));
+  }
+
+  /**
+   * Register scoped notification subscriptions on this connection. Matched
+   * changes are delivered as `notificationsChanged({ keys })`. Resolves the
+   * server ack `{ ok, keys }`, or `{ ok: false }` when the server does not
+   * support scoped notifications (so callers can fall back to coarse events).
+   * @param {object} payload - `{ key, kind, query }` or `{ scopes: { key: { kind, query } } }`
+   * @returns {Promise<object>}
+   */
+  subscribe (payload) {
+    checkOpen(this);
+    return new Promise((resolve) => {
+      this._io.emit('subscribe', payload, (err, res) => resolve(err != null ? { ok: false, error: err } : (res || { ok: false })));
+    });
+  }
+
+  /**
+   * Remove scoped subscriptions: `{ key }`, `{ keys: [...] }`, or `{ all: true }`.
+   * @param {object} payload
+   * @returns {Promise<object>}
+   */
+  unsubscribe (payload) {
+    checkOpen(this);
+    return new Promise((resolve) => {
+      this._io.emit('unsubscribe', payload, (err, res) => resolve(err != null ? { ok: false, error: err } : res));
+    });
+  }
+
+  /**
+   * List the scopes currently registered on this connection.
+   * @returns {Promise<object>} `{ scopes: { key: { kind, query } } }`
+   */
+  getSubscriptions () {
+    checkOpen(this);
+    return new Promise((resolve) => {
+      this._io.emit('getSubscriptions', null, (err, res) => resolve(err != null ? { scopes: {} } : res));
+    });
   }
 }
 
