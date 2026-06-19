@@ -70,7 +70,7 @@ substitutions:
   YEARS:
     start: 2020
     end: CURRENT_YEAR
-  AUTHOR_NAME: "Pryv S.A."
+  AUTHOR_NAME: "Pryv"
   AUTHOR_EMAIL: info@pryv.com
   AUTHOR_WEB: https://pryv.com
   LICENSE_URL: https://github.com/pryv/lib-js/blob/master/LICENSE
