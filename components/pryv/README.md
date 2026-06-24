@@ -651,7 +651,7 @@ There is a possibility that you would like to register the user in another page.
 
 You can find HTML examples in the [`./examples`](https://github.com/pryv/lib-js/blob/master/examples) directory. You can run them in two ways:
 
-1. With [backloop.dev](https://github.com/pryv/backloop.dev), which allows to run local code with a valid SSL certificate (you must have run `just build` beforehand):
+1. With [backloop.dev](https://backloop.dev), which allows to run local code with a valid SSL certificate (you must have run `just build` beforehand):
    ```
    just serve
    ```
@@ -702,7 +702,7 @@ just test <component> [...params]
 - Extra parameters at the end are passed on to [Mocha](https://mochajs.org/) (default settings are defined in `.mocharc.js` files)
 - Replace `test` with `test-debug`, `test-cover` for common presets
 
-By default, tests are run against [Pryv Lab](https://www.pryv.com/pryvlab/) with service information URL `https://reg.pryv.me/service/info`.
+By default, tests are run against Pryv Lab with service information URL `https://reg.pryv.me/service/info`.
 
 To run the tests against another Pryv.io platform, set the `TEST_PRYVLIB_SERVICEINFO_URL` environment variable; for example:
 
