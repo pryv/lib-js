@@ -534,7 +534,7 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
   });
 
-  describe('[CMCL1S] requestScopeUpdate', function () {
+  describe('[CMCL1S] proposeScopeUpdate', function () {
     it('[CMCL1SA] posts consent/scope-request-cmc with newPermissions', async function () {
       const conn = makeStubConnection({
         handlers: {
@@ -543,7 +543,7 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           }
         }
       });
-      const r = await cmc.requestScopeUpdate(conn, {
+      const r = await cmc.proposeScopeUpdate(conn, {
         collectorStreamId: ':_cmc:apps:my-app:study-A:collectors:alice--pryv-me',
         newPermissions: [{ streamId: 'sleep', level: 'read' }],
         message: { en: 'plus sleep please' }
@@ -1235,6 +1235,132 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
         expect(assigned).to.have.length(1);
         expect(assigned[0]).to.include('mode=redirect');
         expect(assigned[0]).to.include('returnUrl=' + encodeURIComponent('https://app.example.com/callback'));
+        expect(result.ok).to.equal(true);
+        expect(result.redirected).to.equal(true);
+      } finally {
+        global.window = prevWindow;
+      }
+    });
+  });
+
+  describe('[CMCSUH] scope-update hand-off helpers (requestScopeUpdateUrl + requestScopeUpdate)', function () {
+    const BASE = 'https://access.pryv.me/access/v3/cmc-scope-update';
+    const PRYV_API = 'https://reg.pryv.me/';
+    const SCOPE_REQ = 'evt-scope-req-abc123';
+
+    it('[CMCSUH1] requestScopeUpdateUrl builds popup-mode URL', function () {
+      const url = cmc.requestScopeUpdateUrl({
+        authUrl: BASE,
+        pryvApi: PRYV_API,
+        scopeRequestEventId: SCOPE_REQ,
+        scopeStreamId: ':_cmc:apps:my-app:collectors:bob--pryv-me',
+      });
+      const u = new URL(url);
+      expect(u.searchParams.get('scopeRequestEventId')).to.equal(SCOPE_REQ);
+      expect(u.searchParams.get('scopeStreamId')).to.equal(':_cmc:apps:my-app:collectors:bob--pryv-me');
+      expect(u.searchParams.get('pryvApi')).to.equal(PRYV_API);
+      expect(u.searchParams.get('mode')).to.equal('popup');
+      expect(u.searchParams.get('returnUrl')).to.equal(null);
+    });
+
+    it('[CMCSUH2] requestScopeUpdateUrl switches to redirect when returnUrl is given', function () {
+      const url = cmc.requestScopeUpdateUrl({
+        authUrl: BASE,
+        pryvApi: PRYV_API,
+        scopeRequestEventId: SCOPE_REQ,
+        returnUrl: 'https://app.example.com/done',
+      });
+      const u = new URL(url);
+      expect(u.searchParams.get('mode')).to.equal('redirect');
+      expect(u.searchParams.get('returnUrl')).to.equal('https://app.example.com/done');
+    });
+
+    it('[CMCSUH3] requestScopeUpdateUrl throws when required options are missing', function () {
+      expect(() => cmc.requestScopeUpdateUrl({ pryvApi: PRYV_API, scopeRequestEventId: SCOPE_REQ })).to.throw(/authUrl/);
+      expect(() => cmc.requestScopeUpdateUrl({ authUrl: BASE, pryvApi: PRYV_API })).to.throw(/scopeRequestEventId/);
+      expect(() => cmc.requestScopeUpdateUrl({ authUrl: BASE, scopeRequestEventId: SCOPE_REQ })).to.throw(/pryvApi/);
+    });
+
+    it('[CMCSUH4] requestScopeUpdate resolves with the postMessage payload', async function () {
+      const listeners = [];
+      const fakePopup = { closed: false, close: function () { this.closed = true; } };
+      const fakeWindow = {
+        open: function () { return fakePopup; },
+        addEventListener: function (type, handler) { if (type === 'message') listeners.push(handler); },
+        removeEventListener: function (type, handler) {
+          if (type !== 'message') return;
+          const i = listeners.indexOf(handler);
+          if (i >= 0) listeners.splice(i, 1);
+        },
+        location: { assign: function () { throw new Error('redirect path not expected in this test'); } },
+      };
+      const prevWindow = global.window;
+      global.window = fakeWindow;
+      try {
+        const p = cmc.requestScopeUpdate({
+          authUrl: BASE,
+          pryvApi: PRYV_API,
+          scopeRequestEventId: SCOPE_REQ,
+          timeoutMs: 1000,
+        });
+        setTimeout(function () {
+          for (const h of listeners.slice()) {
+            h({ data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'su-ev-1', action: 'accept' } });
+          }
+        }, 5);
+        const result = await p;
+        expect(result.ok).to.equal(true);
+        expect(result.updateEventId).to.equal('su-ev-1');
+        expect(result.action).to.equal('accept');
+      } finally {
+        global.window = prevWindow;
+      }
+    });
+
+    it('[CMCSUH5] requestScopeUpdate rejects on popup-blocked', async function () {
+      const fakeWindow = {
+        open: function () { return null; },
+        addEventListener: function () {},
+        removeEventListener: function () {},
+        location: { assign: function () {} },
+      };
+      const prevWindow = global.window;
+      global.window = fakeWindow;
+      try {
+        let caught;
+        try {
+          await cmc.requestScopeUpdate({
+            authUrl: BASE,
+            pryvApi: PRYV_API,
+            scopeRequestEventId: SCOPE_REQ,
+          });
+        } catch (e) { caught = e; }
+        expect(caught).to.be.an('error');
+        expect(caught.id).to.equal('cmc-scope-update-popup-blocked');
+      } finally {
+        global.window = prevWindow;
+      }
+    });
+
+    it('[CMCSUH6] requestScopeUpdate redirect mode calls location.assign', async function () {
+      const assigned = [];
+      const fakeWindow = {
+        open: function () { return { closed: false, close: function () {} }; },
+        addEventListener: function () {},
+        removeEventListener: function () {},
+        location: { assign: function (url) { assigned.push(url); } },
+      };
+      const prevWindow = global.window;
+      global.window = fakeWindow;
+      try {
+        const result = await cmc.requestScopeUpdate({
+          authUrl: BASE,
+          pryvApi: PRYV_API,
+          scopeRequestEventId: SCOPE_REQ,
+          returnUrl: 'https://app.example.com/done',
+        });
+        expect(assigned).to.have.length(1);
+        expect(assigned[0]).to.include('mode=redirect');
         expect(result.ok).to.equal(true);
         expect(result.redirected).to.equal(true);
       } finally {

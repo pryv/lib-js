@@ -537,6 +537,11 @@ async function invalidateCapability (conn, params) {
  * Provider proposes a scope change to a user (collector side). Posts a
  * `consent/scope-request-cmc` on the collector stream.
  *
+ * Renamed from `requestScopeUpdate` in 3.9.0 to free that name for the
+ * user-side accept hand-off helper. The old name is kept as a
+ * deprecated alias (see module.exports below); remove after one
+ * release cycle.
+ *
  * @param {Object} conn
  * @param {Object} params
  * @param {string} params.collectorStreamId       - the provider's own collector stream
@@ -545,8 +550,8 @@ async function invalidateCapability (conn, params) {
  * @param {number} [params.expires]
  * @returns {Promise<{scopeRequestEventId:string}>}
  */
-async function requestScopeUpdate (conn, params) {
-  if (params == null) throw new Error('requestScopeUpdate: params required');
+async function proposeScopeUpdate (conn, params) {
+  if (params == null) throw new Error('proposeScopeUpdate: params required');
   const content = { newPermissions: params.newPermissions };
   if (params.message) content.message = params.message;
   if (params.expires) content.expires = params.expires;
@@ -1183,6 +1188,135 @@ function requestAccept (opts) {
   });
 }
 
+// --- Scope-update accept hand-off (app-web-auth3) ---
+//
+// `acceptScopeUpdate` posts the trigger directly on a `pryv.Connection`.
+// Since the server gates `consent/scope-update-cmc` to personal tokens
+// only (mirrors the accept gate), apps holding app/shared tokens hand
+// off to `app-web-auth3`'s `/cmc-scope-update` page. Two helpers:
+// `requestScopeUpdateUrl` (URL only) and `requestScopeUpdate` (full
+// popup-or-redirect + result promise). Symmetric to requestAccept /
+// requestAcceptUrl above.
+
+const REQUEST_SCOPE_UPDATE_POSTMSG_TYPE = 'cmc-scope-update-result';
+
+/**
+ * Build the `/cmc-scope-update` URL with query parameters for the
+ * app-web-auth3 hand-off.
+ *
+ * @param {Object} opts
+ * @param {string} opts.authUrl              - app-web-auth3 base + `/cmc-scope-update`.
+ * @param {string} opts.pryvApi              - user's Pryv API base.
+ * @param {string} opts.scopeRequestEventId  - the collector-side scope-request event id.
+ * @param {string} [opts.scopeStreamId]      - own collector stream (defaults to the request's home stream when omitted).
+ * @param {string} [opts.returnUrl]          - switches to redirect mode.
+ * @returns {string}
+ */
+function requestScopeUpdateUrl (opts) {
+  if (opts == null) throw new Error('requestScopeUpdateUrl: opts required');
+  if (typeof opts.authUrl !== 'string' || opts.authUrl.length === 0) {
+    throw new Error('requestScopeUpdateUrl: opts.authUrl required');
+  }
+  if (typeof opts.scopeRequestEventId !== 'string' || opts.scopeRequestEventId.length === 0) {
+    throw new Error('requestScopeUpdateUrl: opts.scopeRequestEventId required');
+  }
+  if (typeof opts.pryvApi !== 'string' || opts.pryvApi.length === 0) {
+    throw new Error('requestScopeUpdateUrl: opts.pryvApi required');
+  }
+  const q = [
+    'scopeRequestEventId=' + encodeURIComponent(opts.scopeRequestEventId),
+    'pryvApi=' + encodeURIComponent(opts.pryvApi)
+  ];
+  if (typeof opts.scopeStreamId === 'string' && opts.scopeStreamId.length > 0) {
+    q.push('scopeStreamId=' + encodeURIComponent(opts.scopeStreamId));
+  }
+  if (typeof opts.returnUrl === 'string' && opts.returnUrl.length > 0) {
+    q.push('returnUrl=' + encodeURIComponent(opts.returnUrl));
+    q.push('mode=redirect');
+  } else {
+    q.push('mode=popup');
+  }
+  const sep = opts.authUrl.includes('?') ? '&' : '?';
+  return opts.authUrl + sep + q.join('&');
+}
+
+/**
+ * Open the `/cmc-scope-update` hand-off and return a Promise resolving
+ * to the result. Browser-only.
+ *
+ * Popup mode (default):
+ *   Opens a child window; listens for a `cmc-scope-update-result`
+ *   postMessage from it. Resolves with `{ ok: true, updateEventId,
+ *   action: 'accept'|'refuse' }` on success; rejects with CmcError on
+ *   ok: false / user-cancel / popup-blocked / timeout.
+ *
+ * Redirect mode:
+ *   Navigates the current window to the page; the page returns by
+ *   re-navigating to `returnUrl?cmcScopeUpdateResult=<json>`. Returns
+ *   `{ ok: true, redirected: true }` immediately (the navigation
+ *   completes asynchronously).
+ *
+ * @param {Object} opts                 same shape as requestScopeUpdateUrl, plus:
+ * @param {'popup'|'redirect'} [opts.mode='popup']
+ * @param {string} [opts.popupFeatures]
+ * @param {number} [opts.timeoutMs=600000]
+ * @returns {Promise<{ok:boolean, updateEventId?:string, action?:'accept'|'refuse', reason?:string, redirected?:boolean}>}
+ */
+function requestScopeUpdate (opts) {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('requestScopeUpdate: window required (browser-only). Use requestScopeUpdateUrl for non-browser flows.'));
+  }
+  const mode = (opts && opts.mode) || (opts && opts.returnUrl ? 'redirect' : 'popup');
+  const url = requestScopeUpdateUrl(Object.assign({}, opts, { returnUrl: mode === 'redirect' ? opts.returnUrl : undefined }));
+  if (mode === 'redirect') {
+    window.location.assign(url);
+    return Promise.resolve({ ok: true, redirected: true });
+  }
+  const features = (opts && opts.popupFeatures) || 'width=480,height=720,resizable=yes,scrollbars=yes';
+  const popup = window.open(url, 'cmcScopeUpdate', features);
+  if (popup == null) {
+    return Promise.reject(new CmcError('requestScopeUpdate: popup blocked. Pass opts.returnUrl + mode=\'redirect\' as a fallback.', 'cmc-scope-update-popup-blocked'));
+  }
+  const timeoutMs = (opts && opts.timeoutMs) || 600000;
+  return new Promise(function (resolve, reject) {
+    let settled = false;
+    function onMessage (ev) {
+      const data = ev && ev.data;
+      if (data == null || data.type !== REQUEST_SCOPE_UPDATE_POSTMSG_TYPE) return;
+      settle();
+      if (data.ok) {
+        resolve({
+          ok: true,
+          updateEventId: data.updateEventId,
+          action: data.action,
+        });
+      } else {
+        reject(new CmcError('CMC scope-update hand-off returned ok=false: ' + (data.reason || 'unknown'),
+          data.reason || 'cmc-scope-update-failed'));
+      }
+    }
+    function settle () {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', onMessage);
+      clearInterval(closedPoll);
+      clearTimeout(timer);
+    }
+    const closedPoll = setInterval(function () {
+      if (popup.closed) {
+        settle();
+        reject(new CmcError('CMC scope-update hand-off: popup closed before result', 'cmc-scope-update-popup-closed'));
+      }
+    }, 500);
+    const timer = setTimeout(function () {
+      settle();
+      try { popup.close(); } catch (_e) { /* cross-origin */ }
+      reject(new CmcError('CMC scope-update hand-off timed out after ' + timeoutMs + 'ms', 'cmc-scope-update-timeout'));
+    }, timeoutMs);
+    window.addEventListener('message', onMessage);
+  });
+}
+
 // --- Observation scopes (for use with `new pryv.Monitor(conn, scope)`) ---
 
 const scopes = {
@@ -1273,7 +1407,7 @@ module.exports = {
   getInviteStatus,
   revokeRelationship,
   invalidateCapability,
-  requestScopeUpdate,
+  proposeScopeUpdate,
   readOffer,
   acceptInvite,
   waitForAccept,
@@ -1288,6 +1422,9 @@ module.exports = {
   // accept hand-off (apps without a personal token)
   requestAccept,
   requestAcceptUrl,
+  // scope-update accept hand-off (mirrors requestAccept)
+  requestScopeUpdate,
+  requestScopeUpdateUrl,
   // observation scopes
   scopes
 };

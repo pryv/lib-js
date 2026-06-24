@@ -203,7 +203,7 @@ declare module '@pryv/cmc' {
     reason?: Record<string, string>;
   }): Promise<void>;
 
-  export function requestScopeUpdate(conn: any, params: {
+  export function proposeScopeUpdate(conn: any, params: {
     collectorStreamId: string;
     newPermissions: Permission[];
     message?: Record<string, string>;
@@ -343,6 +343,34 @@ declare module '@pryv/cmc' {
       timeoutMs?: number;
     }
   ): Promise<CmcRequestAcceptResult>;
+
+  // --- Scope-update accept hand-off ---
+
+  export type CmcRequestScopeUpdateOptions = {
+    authUrl: string;
+    pryvApi: string;
+    scopeRequestEventId: string;
+    scopeStreamId?: string;
+    returnUrl?: string;
+  };
+
+  export type CmcRequestScopeUpdateResult = {
+    ok: boolean;
+    updateEventId?: string;
+    action?: 'accept' | 'refuse';
+    reason?: string;
+    redirected?: boolean;
+  };
+
+  export function requestScopeUpdateUrl(opts: CmcRequestScopeUpdateOptions): string;
+
+  export function requestScopeUpdate(
+    opts: CmcRequestScopeUpdateOptions & {
+      mode?: 'popup' | 'redirect';
+      popupFeatures?: string;
+      timeoutMs?: number;
+    }
+  ): Promise<CmcRequestScopeUpdateResult>;
 
   // --- Observation scopes (for use with `new pryv.Monitor(conn, scope)`) ---
 

@@ -164,17 +164,22 @@ const list = await cmc.listInvites(conn, { appCode: 'my-app', limit: 1000 });
 
 const one = await cmc.getInviteStatus(conn, invite.inviteEventId);
 
-const update = await cmc.requestScopeUpdate(conn, {
+const update = await cmc.proposeScopeUpdate(conn, {
   collectorStreamId: ':_cmc:apps:my-app:collectors:bob--pryv-me',
   newPermissions: [{ streamId: 'fertility', level: 'read' }, { streamId: 'cycle', level: 'read' }],
   message: { en: 'Adding cycle stream for sub-study.' }
 });
 // update = { scopeRequestEventId }
+// (renamed in 3.9.0 from `requestScopeUpdate` — that name now refers to
+//  the user-side accept hand-off helper. Old name removed; importers
+//  must use `proposeScopeUpdate`.)
 ```
 
 #### Consumer side (the accepter)
 
-> **Token class.** `consent/accept-cmc`, `consent/scope-update-cmc`, and `consent/revoke-cmc` writes require a **personal** access token server-side (Pryv.io rejects app/shared tokens with `400 invalid-operation` + `error.data.id === 'cmc-accept-requires-personal-token'`). If your app holds only an app/shared token, use the [accept hand-off helpers](#accept-hand-off-app-without-a-personal-token) instead of calling `acceptInvite` directly.
+> **Token class.** `consent/accept-cmc` and `consent/scope-update-cmc` writes require a **personal** access token server-side (Pryv.io rejects app/shared tokens with `400 invalid-operation` + `error.data.id === 'cmc-accept-requires-personal-token'`). If your app holds only an app/shared token, use the [accept hand-off helpers](#accept-hand-off-app-without-a-personal-token) instead of calling `acceptInvite` / `acceptScopeUpdate` directly.
+>
+> **Revoke uses the standard access-permission gate, not the personal-token gate.** `consent/revoke-cmc` is checked against `AccessLogic.canDeleteAccess` (which honours the `selfRevoke` feature permission on the target access). Apps holding a relationship's data-grant access can self-revoke directly via `cmc.revokeAcceptance(...)` / `cmc.revokeRelationship(...)` — no hand-off needed. The server rejects unauthorised revokes with `error.data.id === 'cmc-revoke-forbidden'`.
 
 ```js
 const offer = await cmc.readOffer(capabilityUrl);
@@ -211,9 +216,11 @@ await cmc.refuseScopeUpdate(conn, scopeRequestEventId, { reason: { en: 'no thank
 
 #### Accept hand-off (app without a personal token)
 
-`acceptInvite`, `acceptScopeUpdate`, and `revokeAcceptance` (and the provider-side `revokeRelationship`) all post a trigger that the server gates to **personal tokens only**. If your app holds only an app/shared access, hand the user off to app-web-auth3's `/cmc-accept` page: the user authenticates with their own credentials, the page writes the trigger with the fresh personal token, and the data-grant apiEndpoint is returned to your app.
+`acceptInvite` and `acceptScopeUpdate` post triggers that the server gates to **personal tokens only**. If your app holds only an app/shared access, hand the user off to app-web-auth3's `/cmc-accept` or `/cmc-scope-update` page: the user authenticates with their own credentials, the page writes the trigger with the fresh personal token, and the result is returned to your app via popup `postMessage` or `returnUrl` redirect.
 
-Two helpers, both ship in `@pryv/cmc@3.8`:
+Revoke does NOT need a hand-off — `cmc.revokeAcceptance` / `cmc.revokeRelationship` go through the standard `AccessLogic.canDeleteAccess` rule (which honours the `selfRevoke` feature permission on the target). Apps holding the relationship's data-grant access can self-revoke from any token class.
+
+Two helper pairs, both ship in `@pryv/cmc@3.9`:
 
 ```js
 // 1. URL only (caller drives navigation — custom popup, mobile deep-link, …).
@@ -242,6 +249,26 @@ const result = await cmc.requestAccept({
 await cmc.requestAccept({
   authUrl, pryvApi, capabilityUrl, scopeStreamId: ':_cmc:apps:my-app',
   returnUrl: 'https://app.example.com/accepted'   // → location.assign(returnUrl?cmcAcceptResult=<json>)
+});
+```
+
+Scope-update hand-off (same shape, different page):
+
+```js
+// Browser flow — open the auth page and wait for the user to accept / refuse.
+const result = await cmc.requestScopeUpdate({
+  authUrl: 'https://access.pryv.me/access/v3/cmc-scope-update', // /cmc-scope-update route
+  pryvApi: 'https://reg.pryv.me/',
+  scopeRequestEventId: 'evt-scope-req-abc123',                  // from the collector's proposal
+  // scopeStreamId is optional — defaults to the scope-request event's home stream
+});
+// result = { ok: true, updateEventId, action: 'accept' | 'refuse' }
+// Rejects with CmcError (id: 'cmc-scope-update-popup-closed' | 'cmc-scope-update-popup-blocked'
+// | 'cmc-scope-update-timeout' | the server's `failure.reason` on ok:false).
+
+// URL-only (caller drives navigation):
+const url = cmc.requestScopeUpdateUrl({
+  authUrl, pryvApi, scopeRequestEventId, returnUrl: 'https://app.example.com/done'
 });
 ```
 
