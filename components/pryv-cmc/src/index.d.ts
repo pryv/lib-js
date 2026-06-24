@@ -311,6 +311,39 @@ declare module '@pryv/cmc' {
     reason?: Record<string, string>;
   }): Promise<{ updateRefuseEventId: string }>;
 
+  // --- Accept hand-off (app-web-auth3) ---
+
+  /**
+   * Common shape for both requestAcceptUrl + requestAccept. authUrl is
+   * the full `/cmc-accept` URL on the deployed app-web-auth3.
+   */
+  export type CmcRequestAcceptOptions = {
+    authUrl: string;
+    pryvApi: string;
+    capabilityUrl: string;
+    scopeStreamId: string;
+    accessName?: string;
+    returnUrl?: string;
+  };
+
+  export type CmcRequestAcceptResult = {
+    ok: boolean;
+    dataGrantApiEndpoint?: string;
+    acceptEventId?: string;
+    reason?: string;
+    redirected?: boolean;
+  };
+
+  export function requestAcceptUrl(opts: CmcRequestAcceptOptions): string;
+
+  export function requestAccept(
+    opts: CmcRequestAcceptOptions & {
+      mode?: 'popup' | 'redirect';
+      popupFeatures?: string;
+      timeoutMs?: number;
+    }
+  ): Promise<CmcRequestAcceptResult>;
+
   // --- Observation scopes (for use with `new pryv.Monitor(conn, scope)`) ---
 
   export const scopes: {

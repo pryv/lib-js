@@ -632,6 +632,15 @@ async function readOffer (capabilityUrl, opts) {
  * (~50-200ms async; trigger event status goes 'pending' → 'completed'
  * once back-channel populates counterparty.apiEndpoint).
  *
+ * **Requires a PERSONAL access token on `conn`.** Server-side
+ * `consent/accept-cmc` writes from app- or shared-access tokens are
+ * rejected `400 invalid-operation` (`error.data.id ===
+ * 'cmc-accept-requires-personal-token'`). Apps that hold only an
+ * app/shared token should call `requestAccept` instead — it hands off
+ * to app-web-auth3's `/cmc-accept` page where the user signs in, the
+ * trigger is written with the fresh personal token, and the data-grant
+ * apiEndpoint is returned to the caller.
+ *
  * By default resolves only after Phase 2 (trigger status='completed').
  * Throws CmcError carrying tagged failure.reason as error.id on 'failed'.
  *
@@ -640,7 +649,7 @@ async function readOffer (capabilityUrl, opts) {
  * dataGrantAccessId, status: 'pending' } and observes completion
  * themselves.
  *
- * @param {Object} conn                     accepter's connection
+ * @param {Object} conn                     accepter's connection (personal access token).
  * @param {string} capabilityUrl
  * @param {Object} opts
  * @param {string} opts.scopeStreamId       - REQUIRED. Own :_cmc:apps:<app>[:...] stream where the accept trigger lands. Must NOT be :_cmc:inbox (which routes through the peer-delivered path).
@@ -1033,6 +1042,147 @@ async function resolveScopeRequestStream (conn, scopeRequestEventId) {
   return (ev.streamIds && ev.streamIds[0]) || ev.streamId;
 }
 
+// --- Accept hand-off (app-web-auth3) ---
+//
+// `acceptInvite` posts the trigger directly on a `pryv.Connection`.
+// Since CMC's accept/scope-update/revoke triggers now require a
+// PERSONAL access token server-side, apps that hold only an app- or
+// shared-access token cannot accept directly: they delegate the
+// authentication to app-web-auth3's `/cmc-accept` page, which prompts
+// the user to sign in, writes the trigger with the fresh personal
+// token, and returns the resulting data-grant apiEndpoint to the
+// caller. Two helpers: `requestAcceptUrl` (URL only, for caller-driven
+// flows) and `requestAccept` (full popup-or-redirect + result promise).
+
+const REQUEST_ACCEPT_POSTMSG_TYPE = 'cmc-accept-result';
+
+/**
+ * Build the `/cmc-accept` URL with query parameters for the
+ * app-web-auth3 hand-off. Use this if you want to drive the navigation
+ * yourself (e.g., custom popup options, deep-link on mobile).
+ *
+ * @param {Object} opts
+ * @param {string} opts.authUrl         - app-web-auth3 base + `/cmc-accept` path (e.g. `https://access.pryv.me/access/v3/cmc-accept`).
+ * @param {string} opts.pryvApi         - recipient's Pryv API base (e.g. `https://reg.pryv.me/`).
+ * @param {string} opts.capabilityUrl   - capability URL from the requester's invite.
+ * @param {string} opts.scopeStreamId   - recipient's `:_cmc:apps:<app>[:...]` stream.
+ * @param {string} [opts.accessName]    - optional override for the data-grant access name.
+ * @param {string} [opts.returnUrl]     - for redirect-mode flows; the page navigates here with `?cmcAcceptResult=<json>`.
+ * @returns {string}
+ */
+function requestAcceptUrl (opts) {
+  if (opts == null) throw new Error('requestAcceptUrl: opts required');
+  if (typeof opts.authUrl !== 'string' || opts.authUrl.length === 0) {
+    throw new Error('requestAcceptUrl: opts.authUrl required');
+  }
+  if (typeof opts.capabilityUrl !== 'string' || opts.capabilityUrl.length === 0) {
+    throw new Error('requestAcceptUrl: opts.capabilityUrl required');
+  }
+  if (typeof opts.scopeStreamId !== 'string' || opts.scopeStreamId.length === 0) {
+    throw new Error('requestAcceptUrl: opts.scopeStreamId required');
+  }
+  if (typeof opts.pryvApi !== 'string' || opts.pryvApi.length === 0) {
+    throw new Error('requestAcceptUrl: opts.pryvApi required');
+  }
+  const q = [
+    'capabilityUrl=' + encodeURIComponent(opts.capabilityUrl),
+    'scopeStreamId=' + encodeURIComponent(opts.scopeStreamId),
+    'pryvApi=' + encodeURIComponent(opts.pryvApi)
+  ];
+  if (typeof opts.accessName === 'string' && opts.accessName.length > 0) {
+    q.push('accessName=' + encodeURIComponent(opts.accessName));
+  }
+  if (typeof opts.returnUrl === 'string' && opts.returnUrl.length > 0) {
+    q.push('returnUrl=' + encodeURIComponent(opts.returnUrl));
+    q.push('mode=redirect');
+  } else {
+    q.push('mode=popup');
+  }
+  const sep = opts.authUrl.includes('?') ? '&' : '?';
+  return opts.authUrl + sep + q.join('&');
+}
+
+/**
+ * Open the `/cmc-accept` hand-off and return a Promise resolving to
+ * the result. Browser-only — relies on `window.open` + `postMessage`
+ * (popup mode) or `window.location.assign` (redirect mode). For
+ * non-browser contexts, use `requestAcceptUrl` and drive navigation
+ * yourself.
+ *
+ * Popup mode (default):
+ *   Opens a child window, listens for a `cmc-accept-result`
+ *   postMessage from it, returns `{ ok, dataGrantApiEndpoint,
+ *   acceptEventId }`. Rejects with CmcError on `ok: false`, on user
+ *   closing the popup without acting, or on timeout.
+ *
+ * Redirect mode:
+ *   Navigates the current window to `/cmc-accept` with a `returnUrl`
+ *   query so the page returns by re-navigating. Returns nothing (the
+ *   navigation happens synchronously). The receiving page is
+ *   responsible for parsing `?cmcAcceptResult=<json>` on `returnUrl`.
+ *
+ * @param {Object} opts                  same shape as requestAcceptUrl, plus:
+ * @param {'popup'|'redirect'} [opts.mode='popup']
+ * @param {string} [opts.popupFeatures]  `window.open` features string (popup mode).
+ * @param {number} [opts.timeoutMs=600000]  popup-mode max wait (default 10 min).
+ * @returns {Promise<{ok:boolean, dataGrantApiEndpoint?:string, acceptEventId?:string, reason?:string}>}
+ */
+function requestAccept (opts) {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('requestAccept: window required (browser-only). Use requestAcceptUrl for non-browser flows.'));
+  }
+  const mode = (opts && opts.mode) || (opts && opts.returnUrl ? 'redirect' : 'popup');
+  const url = requestAcceptUrl(Object.assign({}, opts, { returnUrl: mode === 'redirect' ? opts.returnUrl : undefined }));
+  if (mode === 'redirect') {
+    window.location.assign(url);
+    return Promise.resolve({ ok: true, redirected: true });
+  }
+  // popup mode
+  const features = (opts && opts.popupFeatures) || 'width=480,height=720,resizable=yes,scrollbars=yes';
+  const popup = window.open(url, 'cmcAccept', features);
+  if (popup == null) {
+    return Promise.reject(new CmcError('requestAccept: popup blocked. Pass opts.returnUrl + mode=\'redirect\' as a fallback.', 'cmc-accept-popup-blocked'));
+  }
+  const timeoutMs = (opts && opts.timeoutMs) || 600000;
+  return new Promise(function (resolve, reject) {
+    let settled = false;
+    function onMessage (ev) {
+      const data = ev && ev.data;
+      if (data == null || data.type !== REQUEST_ACCEPT_POSTMSG_TYPE) return;
+      settle();
+      if (data.ok) {
+        resolve({
+          ok: true,
+          dataGrantApiEndpoint: data.dataGrantApiEndpoint,
+          acceptEventId: data.acceptEventId
+        });
+      } else {
+        reject(new CmcError('CMC accept hand-off returned ok=false: ' + (data.reason || 'unknown'),
+          data.reason || 'cmc-accept-failed'));
+      }
+    }
+    function settle () {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', onMessage);
+      clearInterval(closedPoll);
+      clearTimeout(timer);
+    }
+    const closedPoll = setInterval(function () {
+      if (popup.closed) {
+        settle();
+        reject(new CmcError('CMC accept hand-off: popup closed before result', 'cmc-accept-popup-closed'));
+      }
+    }, 500);
+    const timer = setTimeout(function () {
+      settle();
+      try { popup.close(); } catch (_e) { /* cross-origin */ }
+      reject(new CmcError('CMC accept hand-off timed out after ' + timeoutMs + 'ms', 'cmc-accept-timeout'));
+    }, timeoutMs);
+    window.addEventListener('message', onMessage);
+  });
+}
+
 // --- Observation scopes (for use with `new pryv.Monitor(conn, scope)`) ---
 
 const scopes = {
@@ -1135,6 +1285,9 @@ module.exports = {
   sendSystemAck,
   acceptScopeUpdate,
   refuseScopeUpdate,
+  // accept hand-off (apps without a personal token)
+  requestAccept,
+  requestAcceptUrl,
   // observation scopes
   scopes
 };

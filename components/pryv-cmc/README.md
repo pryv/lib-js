@@ -174,6 +174,8 @@ const update = await cmc.requestScopeUpdate(conn, {
 
 #### Consumer side (the accepter)
 
+> **Token class.** `consent/accept-cmc`, `consent/scope-update-cmc`, and `consent/revoke-cmc` writes require a **personal** access token server-side (Pryv.io rejects app/shared tokens with `400 invalid-operation` + `error.data.id === 'cmc-accept-requires-personal-token'`). If your app holds only an app/shared token, use the [accept hand-off helpers](#accept-hand-off-app-without-a-personal-token) instead of calling `acceptInvite` directly.
+
 ```js
 const offer = await cmc.readOffer(capabilityUrl);
 // offer = { requester: { username, host, displayName }, consent, requestedPermissions, mode, features }
@@ -186,6 +188,7 @@ const accepted = await cmc.acceptInvite(conn, capabilityUrl, {
 // accepted = { acceptEventId, dataGrantAccessId, counterparty, features }
 // Waits for Phase-2 completion by default (~50-200ms).
 // Pass `waitForCompletion: false` to return immediately as { ..., status: 'pending' }.
+// Requires `conn` to be authenticated with a personal token (see hand-off helpers below).
 
 await cmc.refuseInvite(conn, capabilityUrl, {
   scopeStreamId: ':_cmc:apps:my-app',
@@ -205,6 +208,44 @@ const relationships = await cmc.listAcceptedRelationships(conn, { appCode: 'my-a
 await cmc.acceptScopeUpdate(conn, scopeRequestEventId);
 await cmc.refuseScopeUpdate(conn, scopeRequestEventId, { reason: { en: 'no thanks' } });
 ```
+
+#### Accept hand-off (app without a personal token)
+
+`acceptInvite`, `acceptScopeUpdate`, and `revokeAcceptance` (and the provider-side `revokeRelationship`) all post a trigger that the server gates to **personal tokens only**. If your app holds only an app/shared access, hand the user off to app-web-auth3's `/cmc-accept` page: the user authenticates with their own credentials, the page writes the trigger with the fresh personal token, and the data-grant apiEndpoint is returned to your app.
+
+Two helpers, both ship in `@pryv/cmc@3.8`:
+
+```js
+// 1. URL only (caller drives navigation — custom popup, mobile deep-link, …).
+const url = cmc.requestAcceptUrl({
+  authUrl: 'https://access.pryv.me/access/v3/cmc-accept', // /cmc-accept route on the deployed app-web-auth3
+  pryvApi: 'https://reg.pryv.me/',                        // recipient's Pryv API base
+  capabilityUrl,                                           // from the requester's invite (out-of-band)
+  scopeStreamId: ':_cmc:apps:my-app',                     // recipient's own :_cmc:apps:* stream
+  accessName: 'my-app-grant'                              // optional
+  // returnUrl: 'https://app.example.com/accepted'         // switches to redirect mode
+});
+
+// 2. Popup + postMessage (browser-only).
+const result = await cmc.requestAccept({
+  authUrl,
+  pryvApi,
+  capabilityUrl,
+  scopeStreamId: ':_cmc:apps:my-app',
+  // mode: 'popup' is the default. timeoutMs default: 10 min.
+});
+// result = { ok: true, dataGrantApiEndpoint, acceptEventId }
+// Rejects with CmcError (id: 'cmc-accept-popup-closed' | 'cmc-accept-popup-blocked'
+// | 'cmc-accept-timeout' | the server's `failure.reason` on ok:false).
+
+// Or redirect mode (full-page navigation; the page returns by re-navigating to returnUrl):
+await cmc.requestAccept({
+  authUrl, pryvApi, capabilityUrl, scopeStreamId: ':_cmc:apps:my-app',
+  returnUrl: 'https://app.example.com/accepted'   // → location.assign(returnUrl?cmcAcceptResult=<json>)
+});
+```
+
+The `/cmc-accept` page is part of [app-web-auth3](https://github.com/pryv/app-web-auth3); operators serving Pryv.io's auth pages get it automatically. The result payload (popup or redirect) carries `{ type: 'cmc-accept-result', ok, dataGrantApiEndpoint, acceptEventId }`.
 
 #### Cross-direction (chat, system messages)
 

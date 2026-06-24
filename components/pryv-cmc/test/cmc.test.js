@@ -1065,6 +1065,184 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
   });
 
+  describe('[CMCAH] accept hand-off helpers (requestAcceptUrl + requestAccept)', function () {
+    const BASE = 'https://access.pryv.me/access/v3/cmc-accept';
+    const PRYV_API = 'https://reg.pryv.me/';
+    const CAP_URL = 'https://AbCdEf@example.com/';
+    const SCOPE = ':_cmc:apps:my-app';
+
+    it('[CMCAH1] requestAcceptUrl builds popup-mode URL with required + optional params', function () {
+      const url = cmc.requestAcceptUrl({
+        authUrl: BASE,
+        pryvApi: PRYV_API,
+        capabilityUrl: CAP_URL,
+        scopeStreamId: SCOPE,
+        accessName: 'my-grant'
+      });
+      const u = new URL(url);
+      expect(u.searchParams.get('capabilityUrl')).to.equal(CAP_URL);
+      expect(u.searchParams.get('scopeStreamId')).to.equal(SCOPE);
+      expect(u.searchParams.get('pryvApi')).to.equal(PRYV_API);
+      expect(u.searchParams.get('accessName')).to.equal('my-grant');
+      expect(u.searchParams.get('mode')).to.equal('popup');
+      expect(u.searchParams.get('returnUrl')).to.equal(null);
+    });
+
+    it('[CMCAH2] requestAcceptUrl switches to redirect mode when returnUrl is provided', function () {
+      const url = cmc.requestAcceptUrl({
+        authUrl: BASE,
+        pryvApi: PRYV_API,
+        capabilityUrl: CAP_URL,
+        scopeStreamId: SCOPE,
+        returnUrl: 'https://app.example.com/accepted'
+      });
+      const u = new URL(url);
+      expect(u.searchParams.get('mode')).to.equal('redirect');
+      expect(u.searchParams.get('returnUrl')).to.equal('https://app.example.com/accepted');
+    });
+
+    it('[CMCAH3] requestAcceptUrl preserves a pre-existing query string on authUrl', function () {
+      const url = cmc.requestAcceptUrl({
+        authUrl: BASE + '?lang=en',
+        pryvApi: PRYV_API,
+        capabilityUrl: CAP_URL,
+        scopeStreamId: SCOPE
+      });
+      expect(url.startsWith(BASE + '?lang=en&')).to.equal(true);
+      const u = new URL(url);
+      expect(u.searchParams.get('lang')).to.equal('en');
+      expect(u.searchParams.get('capabilityUrl')).to.equal(CAP_URL);
+    });
+
+    it('[CMCAH4] requestAcceptUrl throws when required options are missing', function () {
+      expect(() => cmc.requestAcceptUrl({ pryvApi: PRYV_API, capabilityUrl: CAP_URL, scopeStreamId: SCOPE })).to.throw(/authUrl/);
+      expect(() => cmc.requestAcceptUrl({ authUrl: BASE, pryvApi: PRYV_API, scopeStreamId: SCOPE })).to.throw(/capabilityUrl/);
+      expect(() => cmc.requestAcceptUrl({ authUrl: BASE, pryvApi: PRYV_API, capabilityUrl: CAP_URL })).to.throw(/scopeStreamId/);
+      expect(() => cmc.requestAcceptUrl({ authUrl: BASE, capabilityUrl: CAP_URL, scopeStreamId: SCOPE })).to.throw(/pryvApi/);
+    });
+
+    it('[CMCAH5] requestAccept resolves with the postMessage payload', async function () {
+      // Stub a minimal browser environment.
+      const listeners = [];
+      const fakePopup = { closed: false, close: function () { this.closed = true; } };
+      const fakeWindow = {
+        open: function () { return fakePopup; },
+        addEventListener: function (type, handler) { if (type === 'message') listeners.push(handler); },
+        removeEventListener: function (type, handler) {
+          if (type !== 'message') return;
+          const i = listeners.indexOf(handler);
+          if (i >= 0) listeners.splice(i, 1);
+        },
+        location: { assign: function () { throw new Error('redirect path not expected in this test'); } }
+      };
+      const prevWindow = global.window;
+      global.window = fakeWindow;
+      try {
+        const p = cmc.requestAccept({
+          authUrl: BASE,
+          pryvApi: PRYV_API,
+          capabilityUrl: CAP_URL,
+          scopeStreamId: SCOPE,
+          timeoutMs: 1000
+        });
+        // Simulate the page posting the result.
+        setTimeout(function () {
+          for (const h of listeners.slice()) {
+            h({ data: { type: 'cmc-accept-result', ok: true, dataGrantApiEndpoint: 'https://t@x/', acceptEventId: 'ev-1' } });
+          }
+        }, 5);
+        const result = await p;
+        expect(result.ok).to.equal(true);
+        expect(result.dataGrantApiEndpoint).to.equal('https://t@x/');
+        expect(result.acceptEventId).to.equal('ev-1');
+      } finally {
+        global.window = prevWindow;
+      }
+    });
+
+    it('[CMCAH6] requestAccept rejects with CmcError on popup-closed', async function () {
+      const fakePopup = { closed: false, close: function () { this.closed = true; } };
+      const fakeWindow = {
+        open: function () { return fakePopup; },
+        addEventListener: function () {},
+        removeEventListener: function () {},
+        location: { assign: function () {} }
+      };
+      const prevWindow = global.window;
+      global.window = fakeWindow;
+      try {
+        const p = cmc.requestAccept({
+          authUrl: BASE,
+          pryvApi: PRYV_API,
+          capabilityUrl: CAP_URL,
+          scopeStreamId: SCOPE,
+          timeoutMs: 2000
+        });
+        setTimeout(function () { fakePopup.closed = true; }, 50);
+        let caught;
+        try { await p; } catch (e) { caught = e; }
+        expect(caught).to.be.an('error');
+        expect(caught.id).to.equal('cmc-accept-popup-closed');
+      } finally {
+        global.window = prevWindow;
+      }
+    });
+
+    it('[CMCAH7] requestAccept rejects with cmc-accept-popup-blocked when window.open returns null', async function () {
+      const fakeWindow = {
+        open: function () { return null; },
+        addEventListener: function () {},
+        removeEventListener: function () {},
+        location: { assign: function () {} }
+      };
+      const prevWindow = global.window;
+      global.window = fakeWindow;
+      try {
+        let caught;
+        try {
+          await cmc.requestAccept({
+            authUrl: BASE,
+            pryvApi: PRYV_API,
+            capabilityUrl: CAP_URL,
+            scopeStreamId: SCOPE
+          });
+        } catch (e) { caught = e; }
+        expect(caught).to.be.an('error');
+        expect(caught.id).to.equal('cmc-accept-popup-blocked');
+      } finally {
+        global.window = prevWindow;
+      }
+    });
+
+    it('[CMCAH8] requestAccept in redirect mode calls window.location.assign and resolves immediately', async function () {
+      const assigned = [];
+      const fakeWindow = {
+        open: function () { return { closed: false, close: function () {} }; },
+        addEventListener: function () {},
+        removeEventListener: function () {},
+        location: { assign: function (url) { assigned.push(url); } }
+      };
+      const prevWindow = global.window;
+      global.window = fakeWindow;
+      try {
+        const result = await cmc.requestAccept({
+          authUrl: BASE,
+          pryvApi: PRYV_API,
+          capabilityUrl: CAP_URL,
+          scopeStreamId: SCOPE,
+          returnUrl: 'https://app.example.com/callback'
+        });
+        expect(assigned).to.have.length(1);
+        expect(assigned[0]).to.include('mode=redirect');
+        expect(assigned[0]).to.include('returnUrl=' + encodeURIComponent('https://app.example.com/callback'));
+        expect(result.ok).to.equal(true);
+        expect(result.redirected).to.equal(true);
+      } finally {
+        global.window = prevWindow;
+      }
+    });
+  });
+
   describe('[CMCL1OH] J8 acceptInvite resolves dataGrantAccessId on waitForCompletion', function () {
     it('[CMCL1OH1] returns dataGrantAccessId from the post-completion getOne', async function () {
       // Two-phase: events.create returns status pending; pollTriggerCompletion
