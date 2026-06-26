@@ -104,6 +104,36 @@ describe('[UTLX] utils', function () {
     expect(err.name).to.equal('StaleAccessIdError');
   });
 
+  describe('[UTLN] cleanURLFromPrYvParams', function () {
+    it('[UTLNA] strips legacy capital-Y prYv* params', function () {
+      const out = pryv.utils.cleanURLFromPrYvParams(
+        'http://example.com/page?keep=1&prYvkey=abc&prYvpoll=http%3A%2F%2Fpoll&prYvstatus=ACCEPTED'
+      );
+      expect(out).to.equal('http://example.com/page?keep=1');
+    });
+    it('[UTLNB] strips modern lowercase one-shot params (pryvKey, pryvPoll)', function () {
+      const out = pryv.utils.cleanURLFromPrYvParams(
+        'http://example.com/page?keep=1&pryvKey=abc&pryvPoll=http%3A%2F%2Fpoll'
+      );
+      expect(out).to.equal('http://example.com/page?keep=1');
+    });
+    it('[UTLNC] PRESERVES long-lived modern params (pryvServiceInfoUrl, pryvApiEndpoint)', function () {
+      const out = pryv.utils.cleanURLFromPrYvParams(
+        'http://example.com/page?pryvServiceInfoUrl=https%3A%2F%2Freg.pryv.me%2Fservice%2Finfo&pryvApiEndpoint=https%3A%2F%2Fuser.pryv.me%2F&pryvKey=abc'
+      );
+      // pryvKey is stripped (one-shot), the other two stay (long-lived).
+      expect(out).to.contain('pryvServiceInfoUrl=');
+      expect(out).to.contain('pryvApiEndpoint=');
+      expect(out).not.to.contain('pryvKey=');
+    });
+    it('[UTLND] strips both forms in a single URL', function () {
+      const out = pryv.utils.cleanURLFromPrYvParams(
+        'http://example.com/page?keep=1&prYvkey=legacy&pryvKey=modern&prYvpoll=oldpoll&pryvPoll=newpoll'
+      );
+      expect(out).to.equal('http://example.com/page?keep=1');
+    });
+  });
+
   describe('[UTLM] decomposeAPIEndpoint', function () {
     it('[UTLMA] subdomain template — host strips the {username}. prefix', function () {
       const r = pryv.utils.decomposeAPIEndpoint(

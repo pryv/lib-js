@@ -215,14 +215,29 @@ const utils = module.exports = {
   },
 
   /**
-   * Remove Pryv-specific query parameters from URL
+   * Remove the one-shot Pryv auth-completion query parameters from a URL,
+   * keeping any long-lived `pryv*` params intact.
+   *
+   * Both casings are stripped:
+   *   - Modern lowercase: `pryvKey`, `pryvPoll`
+   *   - Legacy capital-Y: `prYv<anything>` (anything starting with `prYv`)
+   *
+   * `pryv*` params that are NOT in the modern allowlist (e.g.
+   * `pryvServiceInfoUrl`, `pryvApiEndpoint`) are intentionally preserved —
+   * they are not one-shot.
+   *
    * @memberof pryv.utils
    * @param {string} url - URL to clean
-   * @returns {string} URL without prYv* parameters
+   * @returns {string} URL without the one-shot auth-completion params
    */
   cleanURLFromPrYvParams: function (url) {
-    const PRYV_REGEXP = /[?#&]+prYv([^=&]+)=([^&]*)/g;
-    return url.replace(PRYV_REGEXP, '');
+    // Legacy form: kept for back-compat with apps still emitting
+    // `prYv<anything>=...` (notably app-web-auth3's close_or_redirect).
+    const LEGACY = /[?#&]+prYv([^=&]+)=([^&]*)/g;
+    // Modern form: an explicit allowlist of one-shot params so we never
+    // wipe long-lived camelCase `pryv*` params by accident.
+    const MODERN = /[?#&]+(pryvKey|pryvPoll)=([^&]*)/g;
+    return url.replace(LEGACY, '').replace(MODERN, '');
   },
 
   /**

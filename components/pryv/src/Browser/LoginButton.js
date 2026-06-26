@@ -112,7 +112,8 @@ class LoginButton {
     // this step should be applied only for the browser
     if (!utils.isBrowser()) return;
 
-    // 3. Check if there is a prYvkey as result of "out of page login"
+    // 3. Check if there is a pryvKey / pryvPoll (or legacy prYvkey /
+    //    prYvpoll) as result of "out of page login"
     const url = window.location.href;
     const pollUrl = retrievePollUrl(url);
     if (pollUrl !== null) {
@@ -126,21 +127,27 @@ class LoginButton {
           error: e
         };
       }
-      // The prYv* params are one-shot; leaving them in the visible URL
-      // puts stale auth state into bookmarks / copied links.
+      // These params are one-shot; leaving them in the visible URL puts
+      // stale auth state into bookmarks / copied links.
       if (window.history && typeof window.history.replaceState === 'function') {
         window.history.replaceState(null, '', utils.cleanURLFromPrYvParams(url));
       }
     }
 
     function retrievePollUrl (url) {
+      // Modern lowercase form (pryvKey / pryvPoll) is preferred; the
+      // capital-Y form (prYvkey / prYvpoll) is accepted for back-compat
+      // with apps emitting the legacy URL contract — see
+      // [DEPRECATED] notes on cleanURLFromPrYvParams.
       const params = utils.getQueryParamsFromURL(url);
       let pollUrl = null;
-      if (params.prYvkey) { // deprecated method - To be removed
-        pollUrl = authController.serviceInfo.access + params.prYvkey;
+      const key = params.pryvKey || params.prYvkey;
+      if (key) {
+        pollUrl = authController.serviceInfo.access + key;
       }
-      if (params.prYvpoll) {
-        pollUrl = params.prYvpoll;
+      const poll = params.pryvPoll || params.prYvpoll;
+      if (poll) {
+        pollUrl = poll;
       }
       return pollUrl;
     }
