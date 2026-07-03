@@ -37,6 +37,8 @@ declare module 'pryv' {
     | 'eventsChanged'
     | 'streamsChanged'
     | 'accessesChanged'
+    | 'accessUpdated'
+    | 'notificationsChanged'
     | 'disconnect'
     | 'error';
 
@@ -81,16 +83,46 @@ declare module 'pryv' {
      * Supported events:
      * - `eventsChanged` - Events have been modified
      * - `streamsChanged` - Streams have been modified
-     * - `accessesChanged` - Accesses have been modified
+     * - `accessesChanged` - Accesses have been created, modified or deleted
+     * - `accessUpdated` - The connection's own access was updated
+     * - `notificationsChanged` - Scoped subscription matched (see `subscribe()`)
      * - `disconnect` - Socket disconnected
      * - `error` - An error occurred
      */
     on(event: 'eventsChanged', listener: () => void): this;
     on(event: 'streamsChanged', listener: () => void): this;
     on(event: 'accessesChanged', listener: () => void): this;
+    on(event: 'accessUpdated', listener: () => void): this;
+    on(event: 'notificationsChanged', listener: (payload: { keys: string[] }) => void): this;
     on(event: 'disconnect', listener: (reason: string) => void): this;
     on(event: 'error', listener: (error: Error | unknown) => void): this;
     on(event: SocketIOEventName, listener: (...args: unknown[]) => void): this;
+
+    /**
+     * Register scoped notification subscriptions on this connection. Matched
+     * changes are delivered as `notificationsChanged({ keys })`. Resolves the
+     * server ack `{ ok, keys }`, or `{ ok: false }` when the server does not
+     * support scoped notifications (so callers can fall back to coarse events).
+     */
+    subscribe(
+      payload:
+        | { key: string; kind: string; query?: Record<string, unknown> }
+        | { scopes: Record<string, { kind: string; query?: Record<string, unknown> }> }
+    ): Promise<{ ok: boolean; keys?: string[]; error?: unknown }>;
+
+    /**
+     * Remove scoped subscriptions: `{ key }`, `{ keys: [...] }`, or `{ all: true }`.
+     */
+    unsubscribe(
+      payload: { key: string } | { keys: string[] } | { all: true }
+    ): Promise<{ ok: boolean; error?: unknown }>;
+
+    /**
+     * List the scopes currently registered on this connection.
+     */
+    getSubscriptions(): Promise<{
+      scopes: Record<string, { kind: string; query?: Record<string, unknown> }>;
+    }>;
   }
 
   export class Connection {

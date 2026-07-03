@@ -43,7 +43,10 @@ Once the add-on is loaded, `pryv.Connection` instances expose the `socket` prope
 - `connection.socket.on({event-name}, callback)` registers an event listener. Possible event names are:
   - `eventsChanged`: when one or multiples events are deleted, changed or added.
   - `streamsChanged`: when one or multiples streams are deleted, changed or added.
-  - `accessChanged`: when an access is deleted or added.
+  - `accessesChanged`: when one or multiple accesses are created, changed or deleted.
+  - `accessUpdated`: when the connection's own access is updated (the add-on also refreshes the cached `accessInfo` automatically).
+  - `notificationsChanged`: when a scoped subscription registered via `connection.socket.subscribe(...)` matches (payload: `{ keys }`).
+  - `disconnect`: when the socket disconnects.
   - `error`: on error. The callback will receive the error as first argument.
 
 

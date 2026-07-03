@@ -1132,15 +1132,11 @@ declare module 'pryv' {
       setupAuth: SetupAuth;
       serviceInfoFromUrl: getServiceInfoFromURL;
     };
-    utils: {
-      isBrowser(): boolean;
-      extractTokenAndAPIEndpoint(apiEndpoint: string): TokenAndAPIEndpoint;
-      buildAPIEndpoint(tokenAndAPI: TokenAndAPIEndpoint): string;
-      decomposeAPIEndpoint(apiEndpoint: string, serviceInfoApi: string): DecomposedAPIEndpoint;
-      browserIsMobileOrTablet(navigator?: string | Navigator): boolean;
-      cleanURLFromPrYvParams(url: string): string;
-      getQueryParamsFromURL(url: string): KeyValue;
-    };
+    // Reference the named export's type — a duplicated inline shape here
+    // drifted from it once already (the deprecated aliases were missing),
+    // which broke structural typing for add-ons taking the default export
+    // (e.g. @pryv/socket.io's PryvLibrary).
+    utils: typeof utils;
     PryvError: typeof PryvError;
     MfaRequiredError: typeof MfaRequiredError;
     ERRORS: typeof ERRORS;

@@ -2,6 +2,39 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [3.8.0]
+
+`pryv` + `@pryv/socket.io` + `@pryv/monitor` 3.8.0; ships alongside
+`@pryv/cmc` 3.8.0/3.9.0 (versioned separately).
+
+### Added
+
+- Auth-completion URL params accept the modern lowercase form (`pryvKey` /
+  `pryvPoll`) in addition to the legacy capital-Y form (`prYvkey` /
+  `prYvpoll`, now documented as deprecated).
+  `utils.cleanURLFromPrYvParams` strips both forms while preserving
+  long-lived `pryv*` params (`pryvServiceInfoUrl`, `pryvApiEndpoint`).
+- `@pryv/cmc` 3.8.0/3.9.0: `requestAccept` / `requestAcceptUrl` and
+  `proposeScopeUpdate` → `requestScopeUpdate` / `requestScopeUpdateUrl`
+  hand-offs for apps without a personal token (the server now gates
+  `consent/accept-cmc` and `consent/scope-update-cmc` to personal tokens).
+
+### Fixed
+
+- Type declarations: the default export's `utils` type had drifted from the
+  named `utils` export (the deprecated `extractTokenAndApiEndpoint` /
+  `buildPryvApiEndpoint` aliases were missing), which made TypeScript reject
+  `pryv` as an argument to add-on initializers such as
+  `@pryv/socket.io`'s `extendPryvSocketIO(pryv)`. The default export now
+  references the named export's type directly.
+- `@pryv/socket.io` type declarations: added the missing `accessUpdated` and
+  `notificationsChanged` event names and the `subscribe()` / `unsubscribe()` /
+  `getSubscriptions()` method declarations (all present at runtime since
+  3.7.0).
+- `@pryv/socket.io` README: the accesses notification event is
+  `accessesChanged` (the documented `accessChanged` never fired); documented
+  the full event list.
+
 ## [3.7.1]
 
 Patch release — email→username recovery on multi-node platforms.
