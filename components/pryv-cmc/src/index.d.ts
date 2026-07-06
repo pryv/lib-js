@@ -311,11 +311,11 @@ declare module '@pryv/cmc' {
     reason?: Record<string, string>;
   }): Promise<{ updateRefuseEventId: string }>;
 
-  // --- Accept hand-off (app-web-auth3) ---
+  // --- Accept hand-off (app-web-user-account) ---
 
   /**
    * Common shape for both requestAcceptUrl + requestAccept. authUrl is
-   * the full `/cmc-accept` URL on the deployed app-web-auth3.
+   * the full `/cmc-accept` URL on the deployed app-web-user-account.
    */
   export type CmcRequestAcceptOptions = {
     authUrl: string;

@@ -216,7 +216,7 @@ await cmc.refuseScopeUpdate(conn, scopeRequestEventId, { reason: { en: 'no thank
 
 #### Accept hand-off (app without a personal token)
 
-`acceptInvite` and `acceptScopeUpdate` post triggers that the server gates to **personal tokens only**. If your app holds only an app/shared access, hand the user off to app-web-auth3's `/cmc-accept` or `/cmc-scope-update` page: the user authenticates with their own credentials, the page writes the trigger with the fresh personal token, and the result is returned to your app via popup `postMessage` or `returnUrl` redirect.
+`acceptInvite` and `acceptScopeUpdate` post triggers that the server gates to **personal tokens only**. If your app holds only an app/shared access, hand the user off to app-web-user-account's `/cmc-accept` or `/cmc-scope-update` page: the user authenticates with their own credentials, the page writes the trigger with the fresh personal token, and the result is returned to your app via popup `postMessage` or `returnUrl` redirect.
 
 Revoke does NOT need a hand-off — `cmc.revokeAcceptance` / `cmc.revokeRelationship` go through the standard `AccessLogic.canDeleteAccess` rule (which honours the `selfRevoke` feature permission on the target). Apps holding the relationship's data-grant access can self-revoke from any token class.
 
@@ -225,7 +225,7 @@ Two helper pairs, both ship in `@pryv/cmc@3.9`:
 ```js
 // 1. URL only (caller drives navigation — custom popup, mobile deep-link, …).
 const url = cmc.requestAcceptUrl({
-  authUrl: 'https://access.pryv.me/access/v3/cmc-accept', // /cmc-accept route on the deployed app-web-auth3
+  authUrl: 'https://pryv.github.io/app-web-user-account/cmc-accept', // /cmc-accept route on the deployed app-web-user-account
   pryvApi: 'https://reg.pryv.me/',                        // recipient's Pryv API base
   capabilityUrl,                                           // from the requester's invite (out-of-band)
   scopeStreamId: ':_cmc:apps:my-app',                     // recipient's own :_cmc:apps:* stream
@@ -257,7 +257,7 @@ Scope-update hand-off (same shape, different page):
 ```js
 // Browser flow — open the auth page and wait for the user to accept / refuse.
 const result = await cmc.requestScopeUpdate({
-  authUrl: 'https://access.pryv.me/access/v3/cmc-scope-update', // /cmc-scope-update route
+  authUrl: 'https://pryv.github.io/app-web-user-account/cmc-scope-update', // /cmc-scope-update route
   pryvApi: 'https://reg.pryv.me/',
   scopeRequestEventId: 'evt-scope-req-abc123',                  // from the collector's proposal
   // scopeStreamId is optional — defaults to the scope-request event's home stream
@@ -272,7 +272,7 @@ const url = cmc.requestScopeUpdateUrl({
 });
 ```
 
-The `/cmc-accept` page is part of [app-web-auth3](https://github.com/pryv/app-web-auth3); operators serving Pryv.io's auth pages get it automatically. The result payload (popup or redirect) carries `{ type: 'cmc-accept-result', ok, dataGrantApiEndpoint, acceptEventId }`.
+The `/cmc-accept` page is part of [app-web-user-account](https://github.com/pryv/app-web-user-account); operators serving Pryv.io's auth pages get it automatically. The result payload (popup or redirect) carries `{ type: 'cmc-accept-result', ok, dataGrantApiEndpoint, acceptEventId }`.
 
 #### Cross-direction (chat, system messages)
 

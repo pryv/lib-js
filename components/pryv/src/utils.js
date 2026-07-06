@@ -232,7 +232,7 @@ const utils = module.exports = {
    */
   cleanURLFromPrYvParams: function (url) {
     // Legacy form: kept for back-compat with apps still emitting
-    // `prYv<anything>=...` (notably app-web-auth3's close_or_redirect).
+    // `prYv<anything>=...` (notably app-web-user-account's close_or_redirect).
     const LEGACY = /[?#&]+prYv([^=&]+)=([^&]*)/g;
     // Modern form: an explicit allowlist of one-shot params so we never
     // wipe long-lived camelCase `pryv*` params by accident.

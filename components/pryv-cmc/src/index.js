@@ -642,7 +642,7 @@ async function readOffer (capabilityUrl, opts) {
  * rejected `400 invalid-operation` (`error.data.id ===
  * 'cmc-accept-requires-personal-token'`). Apps that hold only an
  * app/shared token should call `requestAccept` instead — it hands off
- * to app-web-auth3's `/cmc-accept` page where the user signs in, the
+ * to app-web-user-account's `/cmc-accept` page where the user signs in, the
  * trigger is written with the fresh personal token, and the data-grant
  * apiEndpoint is returned to the caller.
  *
@@ -1047,13 +1047,13 @@ async function resolveScopeRequestStream (conn, scopeRequestEventId) {
   return (ev.streamIds && ev.streamIds[0]) || ev.streamId;
 }
 
-// --- Accept hand-off (app-web-auth3) ---
+// --- Accept hand-off (app-web-user-account) ---
 //
 // `acceptInvite` posts the trigger directly on a `pryv.Connection`.
 // Since CMC's accept/scope-update/revoke triggers now require a
 // PERSONAL access token server-side, apps that hold only an app- or
 // shared-access token cannot accept directly: they delegate the
-// authentication to app-web-auth3's `/cmc-accept` page, which prompts
+// authentication to app-web-user-account's `/cmc-accept` page, which prompts
 // the user to sign in, writes the trigger with the fresh personal
 // token, and returns the resulting data-grant apiEndpoint to the
 // caller. Two helpers: `requestAcceptUrl` (URL only, for caller-driven
@@ -1063,11 +1063,11 @@ const REQUEST_ACCEPT_POSTMSG_TYPE = 'cmc-accept-result';
 
 /**
  * Build the `/cmc-accept` URL with query parameters for the
- * app-web-auth3 hand-off. Use this if you want to drive the navigation
+ * app-web-user-account hand-off. Use this if you want to drive the navigation
  * yourself (e.g., custom popup options, deep-link on mobile).
  *
  * @param {Object} opts
- * @param {string} opts.authUrl         - app-web-auth3 base + `/cmc-accept` path (e.g. `https://access.pryv.me/access/v3/cmc-accept`).
+ * @param {string} opts.authUrl         - app-web-user-account base + `/cmc-accept` path (e.g. `https://pryv.github.io/app-web-user-account/cmc-accept`).
  * @param {string} opts.pryvApi         - recipient's Pryv API base (e.g. `https://reg.pryv.me/`).
  * @param {string} opts.capabilityUrl   - capability URL from the requester's invite.
  * @param {string} opts.scopeStreamId   - recipient's `:_cmc:apps:<app>[:...]` stream.
@@ -1188,12 +1188,12 @@ function requestAccept (opts) {
   });
 }
 
-// --- Scope-update accept hand-off (app-web-auth3) ---
+// --- Scope-update accept hand-off (app-web-user-account) ---
 //
 // `acceptScopeUpdate` posts the trigger directly on a `pryv.Connection`.
 // Since the server gates `consent/scope-update-cmc` to personal tokens
 // only (mirrors the accept gate), apps holding app/shared tokens hand
-// off to `app-web-auth3`'s `/cmc-scope-update` page. Two helpers:
+// off to `app-web-user-account`'s `/cmc-scope-update` page. Two helpers:
 // `requestScopeUpdateUrl` (URL only) and `requestScopeUpdate` (full
 // popup-or-redirect + result promise). Symmetric to requestAccept /
 // requestAcceptUrl above.
@@ -1202,10 +1202,10 @@ const REQUEST_SCOPE_UPDATE_POSTMSG_TYPE = 'cmc-scope-update-result';
 
 /**
  * Build the `/cmc-scope-update` URL with query parameters for the
- * app-web-auth3 hand-off.
+ * app-web-user-account hand-off.
  *
  * @param {Object} opts
- * @param {string} opts.authUrl              - app-web-auth3 base + `/cmc-scope-update`.
+ * @param {string} opts.authUrl              - app-web-user-account base + `/cmc-scope-update`.
  * @param {string} opts.pryvApi              - user's Pryv API base.
  * @param {string} opts.scopeRequestEventId  - the collector-side scope-request event id.
  * @param {string} [opts.scopeStreamId]      - own collector stream (defaults to the request's home stream when omitted).

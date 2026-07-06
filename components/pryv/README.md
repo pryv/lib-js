@@ -501,7 +501,7 @@ To customize visual assets, please refer to the [pryv.me assets repository](http
 You can customize the authentication process ([API reference](https://api.pryv.com/reference/#authenticate-your-app)) at different levels:
 
 - Using a custom login button
-- Using a custom UI, including the flow of [app-web-auth3](https://github.com/pryv/app-web-auth3)
+- Using a custom UI, including the flow of [app-web-user-account](https://github.com/pryv/app-web-user-account)
 
 #### Using a custom login button
 
