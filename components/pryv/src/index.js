@@ -8,6 +8,7 @@
  * @property {pryv.Service} Service - To interact with Pryv.io at a "Platform level"
  * @property {pryv.Connection} Connection - To interact with an individual's (user) data set
  * @property {pryv.Browser} Browser - Browser Tools - Access request helpers and visuals (button)
+ * @property {pryv.OAuth2Client} OAuth2Client - Browser-side OAuth2 authorization-code (PKCE) flow consumer
  * @property {pryv.utils} utils - Exposes some utils for HTTP calls and tools to manipulate Pryv's API endpoints
  * @property {pryv.PryvError} PryvError - Custom error class with innerObject + structured API-error fields
  * @property {pryv.MfaRequiredError} MfaRequiredError - Thrown by Service.login when the platform returns an mfaToken instead of a token. Carries `.mfaToken`.
@@ -21,6 +22,7 @@ module.exports = {
   Connection: require('./Connection'),
   Auth: require('./Auth'),
   Browser: require('./Browser'),
+  OAuth2Client: require('./OAuth2Client'),
   utils: require('./utils'),
   PryvError: require('./lib/PryvError'),
   MfaRequiredError: require('./lib/MfaRequiredError'),

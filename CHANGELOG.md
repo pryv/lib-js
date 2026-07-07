@@ -2,6 +2,35 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [Unreleased]
+
+### Added
+
+- `pryv.OAuth2Client` — browser-side consumer of the OAuth2 authorization-code
+  flow with PKCE. `redirectToAuthorize()` → (browser bounces through
+  `/oauth2/authorize` and back to the redirect URI) → `handleCallback()`, which
+  returns a ready `pryv.Connection`; `refresh()` swaps the refresh token for a
+  fresh connection. The authorization-server endpoints are discovered via
+  RFC 8414 (`<issuer>/.well-known/oauth-authorization-server`).
+
+### Changed
+
+- `pryv.Connection` now sends `Authorization: Bearer <token>` (RFC 6750) instead
+  of the bare token. Server-back-compatible — Pryv.io accepts both forms — and it
+  lets vanilla OAuth client libraries consume Pryv tokens directly. The polling
+  (`pryv.Browser`) flow and the `@pryv/monitor` / `@pryv/socket.io` `?auth=`
+  token format are unchanged.
+- **Node floor raised to `>= 20.19` (or `>= 22.12`).** `pryv` now depends on the
+  ESM-only `oauth4webapi` package and loads it via `require(esm)`, which is
+  unflagged only on those Node releases.
+
+### Notes
+
+- Bundlers: `oauth4webapi` is ESM and ships an `exports` field. Consumers who
+  bundle `pryv` themselves need an `exports`-field-aware bundler
+  (webpack 5 / vite / rollup / esbuild — all fine). webpack-4 / browserify users
+  should consume the prebuilt `dist/` bundle instead.
+
 ## [3.8.0]
 
 `pryv` + `@pryv/socket.io` + `@pryv/monitor` 3.8.0; ships alongside

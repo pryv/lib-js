@@ -1,0 +1,227 @@
+/**
+ * @license
+ * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
+ */
+const oauth = require('oauth4webapi');
+const Connection = require('./Connection');
+
+// sessionStorage key prefix for the per-flow PKCE verifier, keyed by `state`.
+const VERIFIER_KEY_PREFIX = 'pryv-oauth2-verifier:';
+
+/**
+ * Minimal Web-Storage-like contract used to persist the per-flow PKCE verifier.
+ * A browser `sessionStorage` satisfies it structurally.
+ * @typedef {Object} OAuth2Storage
+ * @property {(key: string) => (string | null)} getItem
+ * @property {(key: string, value: string) => void} setItem
+ * @property {(key: string) => void} removeItem
+ */
+
+/**
+ * @class OAuth2Client
+ * Browser-side consumer of the Pryv OAuth2 authorization-code flow (PKCE).
+ *
+ * Sibling to {@link Browser}: an OAuth-aware app runs
+ * `redirectToAuthorize()` → (the browser bounces through `/oauth2/authorize`
+ * and back to `redirectUri`) → `handleCallback()`, which returns a ready
+ * {@link Connection}. `refresh()` swaps the refresh token for a fresh one.
+ *
+ * PKCE is handled internally: a random `code_verifier` is generated per flow,
+ * stored in `sessionStorage` keyed by `state`, and consumed on callback.
+ *
+ * The authorization-server endpoints are discovered from the issuer via
+ * RFC 8414 (`GET <issuer>/.well-known/oauth-authorization-server`).
+ *
+ * @example
+ * const client = new pryv.OAuth2Client({
+ *   authorizationServer: 'https://host', // Pryv API base (issuer)
+ *   clientId: 'my-app',
+ *   redirectUri: 'https://my-app.example/callback',
+ *   scope: 'pryv:read pryv:write'
+ * });
+ * // on "Login with Pryv":
+ * await client.redirectToAuthorize();
+ * // on the redirect_uri page:
+ * const connection = await client.handleCallback(window.location.search);
+ *
+ * @memberof pryv
+ */
+class OAuth2Client {
+  /**
+   * @param {Object} [options]
+   * @param {string} [options.authorizationServer] - Issuer / Pryv API base URL. The
+   *   discovery document is fetched from `<authorizationServer>/.well-known/oauth-authorization-server`.
+   *   (This is the concrete issuer URL, not the `/service/info` URL — client-side
+   *   derivation from the per-user `service:api` template is unreliable for multi-core.)
+   *   Required at runtime.
+   * @param {string} [options.clientId] - App-account client id. Required at runtime.
+   * @param {string} [options.redirectUri] - Registered redirect URI. Required at runtime.
+   * @param {string} [options.scope] - Space-separated scopes, e.g. `'pryv:read pryv:write'`.
+   * @param {OAuth2Storage} [options.storage] - Web-Storage-like `{ getItem, setItem, removeItem }`.
+   *   Defaults to `globalThis.sessionStorage` in a browser, else an in-memory store.
+   */
+  constructor (options = {}) {
+    const { authorizationServer, clientId, redirectUri, scope, storage } = options;
+    if (!authorizationServer) throw new Error('OAuth2Client: "authorizationServer" is required');
+    if (!clientId) throw new Error('OAuth2Client: "clientId" is required');
+    if (!redirectUri) throw new Error('OAuth2Client: "redirectUri" is required');
+
+    this.issuer = new URL(authorizationServer);
+    this.clientId = clientId;
+    this.redirectUri = redirectUri;
+    this.scope = scope;
+    this.storage = storage || defaultStorage();
+
+    // Public client (PKCE, no secret) — token_endpoint auth method "none".
+    this._client = { client_id: clientId };
+    this._clientAuth = oauth.None();
+    this._as = null;
+    this._refreshToken = null;
+    /** Last raw token-endpoint response (access_token, scope, apiEndpoint, …). */
+    this.lastTokenResponse = null;
+  }
+
+  /**
+   * @private
+   * Lazily discover + cache the authorization-server metadata (RFC 8414).
+   * @returns {Promise<Object>} the `AuthorizationServer` metadata
+   */
+  async _discover () {
+    if (this._as) return this._as;
+    const response = await oauth.discoveryRequest(this.issuer, { algorithm: 'oauth2' });
+    this._as = await oauth.processDiscoveryResponse(this.issuer, response);
+    return this._as;
+  }
+
+  /**
+   * Build the `/oauth2/authorize` URL (generating + storing the PKCE verifier)
+   * and navigate to it. Returns the URL so non-browser callers can drive the
+   * redirect themselves.
+   *
+   * @param {Object} [options]
+   * @param {string} [options.state] - CSRF/correlation value; a random one is generated when omitted.
+   * @param {(url: string) => void} [options.redirect] - Navigation function; defaults to
+   *   `globalThis.location.assign` when available, else a no-op (URL still returned).
+   * @returns {Promise<string>} the authorization URL
+   */
+  async redirectToAuthorize (options = {}) {
+    const as = await this._discover();
+    const state = options.state || oauth.generateRandomState();
+    const codeVerifier = oauth.generateRandomCodeVerifier();
+    const codeChallenge = await oauth.calculatePKCECodeChallenge(codeVerifier);
+    this.storage.setItem(VERIFIER_KEY_PREFIX + state, codeVerifier);
+
+    const url = new URL(as.authorization_endpoint);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('client_id', this.clientId);
+    url.searchParams.set('redirect_uri', this.redirectUri);
+    if (this.scope) url.searchParams.set('scope', this.scope);
+    url.searchParams.set('code_challenge', codeChallenge);
+    url.searchParams.set('code_challenge_method', 'S256');
+    url.searchParams.set('state', state);
+
+    const authorizationUrl = url.href;
+    const redirect = options.redirect || defaultRedirect;
+    redirect(authorizationUrl);
+    return authorizationUrl;
+  }
+
+  /**
+   * Validate the redirect_uri callback, exchange the code for tokens (PKCE),
+   * and build a {@link Connection} from the Pryv `apiEndpoint` extension.
+   *
+   * @param {string} queryString - `window.location.search` (with or without leading `?`).
+   * @returns {Promise<Connection>} an authenticated Pryv connection
+   */
+  async handleCallback (queryString) {
+    const as = await this._discover();
+    const params = new URLSearchParams(stripLeadingQuestionMark(queryString));
+
+    const state = params.get('state');
+    if (!state) throw new Error('OAuth2Client: callback is missing "state"');
+    const storageKey = VERIFIER_KEY_PREFIX + state;
+    const codeVerifier = this.storage.getItem(storageKey);
+    if (!codeVerifier) {
+      throw new Error('OAuth2Client: no stored PKCE verifier for this state (expired session or forged callback)');
+    }
+
+    // Throws on authorization errors (e.g. access_denied) or a state mismatch.
+    const callbackParams = oauth.validateAuthResponse(as, this._client, params, state);
+    const response = await oauth.authorizationCodeGrantRequest(
+      as, this._client, this._clientAuth, callbackParams, this.redirectUri, codeVerifier
+    );
+    const result = await oauth.processAuthorizationCodeResponse(as, this._client, response);
+    this.storage.removeItem(storageKey);
+    return this._connectionFromTokenResponse(result);
+  }
+
+  /**
+   * Exchange the stored refresh token for a fresh access token and return a
+   * new {@link Connection}. Requires a prior successful `handleCallback()`.
+   *
+   * @returns {Promise<Connection>}
+   */
+  async refresh () {
+    if (!this._refreshToken) {
+      throw new Error('OAuth2Client: no refresh token available; call handleCallback() first');
+    }
+    const as = await this._discover();
+    const response = await oauth.refreshTokenGrantRequest(as, this._client, this._clientAuth, this._refreshToken);
+    const result = await oauth.processRefreshTokenResponse(as, this._client, response);
+    return this._connectionFromTokenResponse(result);
+  }
+
+  /**
+   * @private
+   * @param {Object} tokenResponse - a processed token-endpoint response
+   * @returns {Connection}
+   */
+  _connectionFromTokenResponse (tokenResponse) {
+    const apiEndpoint = tokenResponse.apiEndpoint;
+    if (!apiEndpoint) {
+      throw new Error('OAuth2Client: token response is missing the Pryv "apiEndpoint" extension');
+    }
+    if (tokenResponse.refresh_token) this._refreshToken = tokenResponse.refresh_token;
+    this.lastTokenResponse = tokenResponse;
+    return new Connection(String(apiEndpoint));
+  }
+}
+
+/**
+ * @private
+ * Default navigation: use the browser's `location.assign` when present,
+ * otherwise a no-op (the caller gets the URL back from `redirectToAuthorize`).
+ * @param {string} url
+ */
+function defaultRedirect (url) {
+  const loc = (typeof globalThis !== 'undefined') ? globalThis.location : undefined;
+  if (loc && typeof loc.assign === 'function') loc.assign(url);
+}
+
+/**
+ * @private
+ * `globalThis.sessionStorage` in a browser, else a process-local in-memory store
+ * (sufficient for tests and non-browser callers that inject nothing).
+ * @returns {OAuth2Storage}
+ */
+function defaultStorage () {
+  if (typeof globalThis !== 'undefined' && globalThis.sessionStorage) return globalThis.sessionStorage;
+  const map = new Map();
+  return {
+    getItem: (k) => (map.has(k) ? map.get(k) : null),
+    setItem: (k, v) => { map.set(k, String(v)); },
+    removeItem: (k) => { map.delete(k); }
+  };
+}
+
+/**
+ * @private
+ * @param {string} queryString
+ * @returns {string}
+ */
+function stripLeadingQuestionMark (queryString) {
+  const s = queryString || '';
+  return s.charAt(0) === '?' ? s.slice(1) : s;
+}
+
+module.exports = OAuth2Client;
