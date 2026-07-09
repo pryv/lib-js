@@ -148,14 +148,17 @@ Here is an implementation of the [Pryv.io authentication process](https://api.pr
 
 For apps registered as OAuth2 clients on a Pryv.io deployment, `pryv.OAuth2Client`
 drives the authorization-code flow (PKCE). The authorization-server endpoints are
-discovered from the issuer via RFC 8414.
+discovered from the issuer via RFC 8414. The `scope` value is a consent-offer
+reference (`cmc:<offer-name>`) registered on your OAuth client — the user grants
+a granular permission set resolved from that offer, and may untick individual
+permissions on the consent screen.
 
 ```js
 const client = new pryv.OAuth2Client({
   authorizationServer: 'https://host', // Pryv API base URL (issuer)
   clientId: 'my-app',                  // from the app-account registration
   redirectUri: 'https://my-app.example/callback',
-  scope: 'pryv:read pryv:write'
+  scope: 'cmc:study-A'                 // your registered consent-offer reference
 });
 
 // On "Login with Pryv":

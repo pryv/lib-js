@@ -11,7 +11,10 @@
   `/oauth2/authorize` and back to the redirect URI) → `handleCallback()`, which
   returns a ready `pryv.Connection`; `refresh()` swaps the refresh token for a
   fresh connection. The authorization-server endpoints are discovered via
-  RFC 8414 (`<issuer>/.well-known/oauth-authorization-server`).
+  RFC 8414 (`<issuer>/.well-known/oauth-authorization-server`). The `scope`
+  option carries a consent-offer reference (`cmc:<offer-name>`) registered on
+  the OAuth client; the granted permission set is granular and the user may
+  untick individual permissions on the consent screen.
 
 ### Changed
 

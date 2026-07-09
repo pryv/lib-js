@@ -25,7 +25,7 @@ function tokenBody (overrides = {}) {
     token_type: 'Bearer',
     expires_in: 3600,
     refresh_token: 'REFRESH456',
-    scope: 'pryv:read pryv:write',
+    scope: 'cmc:study-A',
     apiEndpoint: 'https://TOKEN123@host/path/'
   }, overrides);
 }
@@ -73,7 +73,7 @@ function newClient (storage, overrides = {}) {
     authorizationServer: ISSUER,
     clientId: 'app1',
     redirectUri: 'https://app.example/cb',
-    scope: 'pryv:read pryv:write',
+    scope: 'cmc:study-A',
     storage
   }, overrides));
 }
@@ -108,7 +108,7 @@ describe('[OAUTH-LIB] OAuth2Client', function () {
       expect(u.searchParams.get('response_type')).to.equal('code');
       expect(u.searchParams.get('client_id')).to.equal('app1');
       expect(u.searchParams.get('redirect_uri')).to.equal('https://app.example/cb');
-      expect(u.searchParams.get('scope')).to.equal('pryv:read pryv:write');
+      expect(u.searchParams.get('scope')).to.equal('cmc:study-A');
       expect(u.searchParams.get('state')).to.equal('STATE123');
       expect(u.searchParams.get('code_challenge_method')).to.equal('S256');
     });

@@ -1075,7 +1075,7 @@ declare module 'pryv' {
     clientId: string;
     /** Registered redirect URI. */
     redirectUri: string;
-    /** Space-separated scopes, e.g. `'pryv:read pryv:write'`. */
+    /** Consent-offer reference registered on the client, e.g. `'cmc:study-A'`. */
     scope?: string;
     /** Defaults to `globalThis.sessionStorage` (browser) or an in-memory store. */
     storage?: OAuth2ClientStorage;

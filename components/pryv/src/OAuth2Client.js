@@ -38,7 +38,7 @@ const VERIFIER_KEY_PREFIX = 'pryv-oauth2-verifier:';
  *   authorizationServer: 'https://host', // Pryv API base (issuer)
  *   clientId: 'my-app',
  *   redirectUri: 'https://my-app.example/callback',
- *   scope: 'pryv:read pryv:write'
+ *   scope: 'cmc:study-A'
  * });
  * // on "Login with Pryv":
  * await client.redirectToAuthorize();
@@ -57,7 +57,7 @@ class OAuth2Client {
    *   Required at runtime.
    * @param {string} [options.clientId] - App-account client id. Required at runtime.
    * @param {string} [options.redirectUri] - Registered redirect URI. Required at runtime.
-   * @param {string} [options.scope] - Space-separated scopes, e.g. `'pryv:read pryv:write'`.
+   * @param {string} [options.scope] - Consent-offer reference registered on the client, e.g. `'cmc:study-A'`.
    * @param {OAuth2Storage} [options.storage] - Web-Storage-like `{ getItem, setItem, removeItem }`.
    *   Defaults to `globalThis.sessionStorage` in a browser, else an in-memory store.
    */
