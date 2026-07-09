@@ -263,7 +263,7 @@ class Connection {
    */
   async _postFetchRaw (path, data, contentType) {
     const headers = {
-      Authorization: 'Bearer ' + this.token,
+      Authorization: this.token,
       Accept: 'application/json'
     };
     // optional for form-data llowing fetch to
@@ -308,7 +308,7 @@ class Connection {
     }
     const response = await fetch(this.endpoint + path + queryStr, {
       headers: {
-        Authorization: 'Bearer ' + this.token,
+        Authorization: this.token,
         Accept: 'application/json'
       }
     });

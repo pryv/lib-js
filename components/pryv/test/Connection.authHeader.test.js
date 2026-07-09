@@ -4,9 +4,12 @@
  */
 /* global describe, it, beforeEach, afterEach, expect, pryv */
 
-// Pure unit check of the RFC 6750 Authorization header shape. The wire change
-// (bare token -> `Bearer <token>`) is server-back-compatible; this asserts the
-// prefix is present on both the GET and POST request paths.
+// Pure unit check of the Authorization header shape. The API expects the bare
+// access token (optionally suffixed with a caller id) in the Authorization
+// header — NOT an RFC 6750 `Bearer <token>` scheme. Older/released cores parse
+// the header by splitting on the first space, so a `Bearer ` prefix would be
+// taken as the token and break auth; the bare token is what every core version
+// accepts. This asserts no scheme prefix is added on the GET or POST path.
 describe('[CAUTH] Connection Authorization header', function () {
   let originalFetch;
   let captured;
@@ -24,17 +27,17 @@ describe('[CAUTH] Connection Authorization header', function () {
   });
   afterEach(function () { globalThis.fetch = originalFetch; });
 
-  it('[CAU1] GET requests send `Authorization: Bearer <token>`', async function () {
+  it('[CAU1] GET requests send the bare token (no scheme prefix)', async function () {
     const conn = new pryv.Connection('https://TESTTOKEN@user.example.com/');
     await conn.get('events');
     expect(captured).to.have.length(1);
-    expect(captured[0].headers.Authorization).to.equal('Bearer TESTTOKEN');
+    expect(captured[0].headers.Authorization).to.equal('TESTTOKEN');
   });
 
-  it('[CAU2] POST requests send `Authorization: Bearer <token>`', async function () {
+  it('[CAU2] POST requests send the bare token (no scheme prefix)', async function () {
     const conn = new pryv.Connection('https://TESTTOKEN@user.example.com/');
     await conn.post('events', { streamIds: ['x'], type: 'note/txt', content: 'hi' });
     expect(captured).to.have.length(1);
-    expect(captured[0].headers.Authorization).to.equal('Bearer TESTTOKEN');
+    expect(captured[0].headers.Authorization).to.equal('TESTTOKEN');
   });
 });

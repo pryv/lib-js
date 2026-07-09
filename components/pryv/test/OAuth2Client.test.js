@@ -212,6 +212,42 @@ describe('[OAUTH-LIB] OAuth2Client', function () {
       fetchMock.tokenResponse = jsonResponse(body);
       await expect(client.handleCallback('?code=CODE&state=S')).to.be.rejectedWith(/apiEndpoint/);
     });
+
+    it('[OAL-B8] removes the stored verifier even when the exchange fails', async function () {
+      const storage = memoryStorage();
+      const client = await primedClient(storage);
+      const body = tokenBody();
+      delete body.apiEndpoint; // force _connectionFromTokenResponse to throw
+      fetchMock.tokenResponse = jsonResponse(body);
+      await expect(client.handleCallback('?code=CODE&state=S')).to.be.rejected;
+      expect(storage.getItem('pryv-oauth2-verifier:S')).to.equal(null);
+    });
+
+    it('[OAL-B9] refuses an insecure (non-https, non-loopback) apiEndpoint', async function () {
+      const storage = memoryStorage();
+      const client = await primedClient(storage);
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ apiEndpoint: 'http://TOKEN123@evil.example/path/' }));
+      await expect(client.handleCallback('?code=CODE&state=S')).to.be.rejectedWith(/insecure|https/);
+    });
+
+    it('[OAL-B10] allows an http apiEndpoint on a loopback host (local dev)', async function () {
+      const storage = memoryStorage();
+      const client = await primedClient(storage);
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ apiEndpoint: 'http://TOKEN123@127.0.0.1:3000/path/' }));
+      const connection = await client.handleCallback('?code=CODE&state=S');
+      expect(connection.token).to.equal('TOKEN123');
+    });
+
+    it('[OAL-B11] refuses a loopback-spoofing apiEndpoint whose real endpoint is a remote http host', async function () {
+      // Connection splits token/endpoint on the LAST `@`, so this parses as
+      // token `tok@127.0.0.1/x`, endpoint `http://evil.example/` — the token
+      // would go to evil.example in cleartext. The guard must validate the
+      // extracted endpoint, not the loopback-looking raw string.
+      const storage = memoryStorage();
+      const client = await primedClient(storage);
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ apiEndpoint: 'http://tok@127.0.0.1/x@evil.example/' }));
+      await expect(client.handleCallback('?code=CODE&state=S')).to.be.rejectedWith(/insecure|https/);
+    });
   });
 
   describe('[OAL-RF] refresh', function () {

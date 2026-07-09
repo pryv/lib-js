@@ -4,6 +4,7 @@
  */
 const oauth = require('oauth4webapi');
 const Connection = require('./Connection');
+const utils = require('./utils');
 
 // sessionStorage key prefix for the per-flow PKCE verifier, keyed by `state`.
 const VERIFIER_KEY_PREFIX = 'pryv-oauth2-verifier:';
@@ -145,14 +146,20 @@ class OAuth2Client {
       throw new Error('OAuth2Client: no stored PKCE verifier for this state (expired session or forged callback)');
     }
 
-    // Throws on authorization errors (e.g. access_denied) or a state mismatch.
-    const callbackParams = oauth.validateAuthResponse(as, this._client, params, state);
-    const response = await oauth.authorizationCodeGrantRequest(
-      as, this._client, this._clientAuth, callbackParams, this.redirectUri, codeVerifier
-    );
-    const result = await oauth.processAuthorizationCodeResponse(as, this._client, response);
-    this.storage.removeItem(storageKey);
-    return this._connectionFromTokenResponse(result);
+    // The verifier is single-use and bound to this state; drop it on every
+    // exit path (success OR error) so a failed/denied callback never leaves it
+    // behind in sessionStorage.
+    try {
+      // Throws on authorization errors (e.g. access_denied) or a state mismatch.
+      const callbackParams = oauth.validateAuthResponse(as, this._client, params, state);
+      const response = await oauth.authorizationCodeGrantRequest(
+        as, this._client, this._clientAuth, callbackParams, this.redirectUri, codeVerifier
+      );
+      const result = await oauth.processAuthorizationCodeResponse(as, this._client, response);
+      return this._connectionFromTokenResponse(result);
+    } finally {
+      this.storage.removeItem(storageKey);
+    }
   }
 
   /**
@@ -181,10 +188,40 @@ class OAuth2Client {
     if (!apiEndpoint) {
       throw new Error('OAuth2Client: token response is missing the Pryv "apiEndpoint" extension');
     }
+    // Validate the endpoint the Connection will actually send the token to, not
+    // the raw apiEndpoint string: Connection splits token/endpoint on the LAST
+    // `@` (utils regex), so a crafted `http://tok@127.0.0.1/x@evil/` parses as
+    // loopback here but posts the token to `evil` there. Assert on the extracted
+    // endpoint to close that parser-divergence gap.
+    const { endpoint } = utils.extractTokenAndAPIEndpoint(String(apiEndpoint));
+    assertSecureApiEndpoint(endpoint);
     if (tokenResponse.refresh_token) this._refreshToken = tokenResponse.refresh_token;
     this.lastTokenResponse = tokenResponse;
     return new Connection(String(apiEndpoint));
   }
+}
+
+/**
+ * @private
+ * Refuse an `apiEndpoint` that would send the bearer token in cleartext. The
+ * token is embedded in the endpoint (`https://<token>@host/`) and then sent on
+ * every request, so a non-https endpoint leaks it on the wire. Defense-in-depth
+ * against a compromised/misconfigured authorization server: allow `https:`
+ * everywhere, and `http:` only for loopback hosts (local development).
+ * @param {string} apiEndpoint
+ */
+function assertSecureApiEndpoint (apiEndpoint) {
+  let url;
+  try {
+    url = new URL(apiEndpoint);
+  } catch {
+    throw new Error('OAuth2Client: token response "apiEndpoint" is not a valid URL');
+  }
+  const host = url.hostname;
+  const isLoopback = host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1';
+  if (url.protocol === 'https:') return;
+  if (url.protocol === 'http:' && isLoopback) return;
+  throw new Error('OAuth2Client: refusing insecure apiEndpoint (' + url.protocol + '//' + host + '); https is required');
 }
 
 /**

@@ -15,11 +15,6 @@
 
 ### Changed
 
-- `pryv.Connection` now sends `Authorization: Bearer <token>` (RFC 6750) instead
-  of the bare token. Server-back-compatible — Pryv.io accepts both forms — and it
-  lets vanilla OAuth client libraries consume Pryv tokens directly. The polling
-  (`pryv.Browser`) flow and the `@pryv/monitor` / `@pryv/socket.io` `?auth=`
-  token format are unchanged.
 - **Node floor raised to `>= 20.19` (or `>= 22.12`).** `pryv` now depends on the
   ESM-only `oauth4webapi` package and loads it via `require(esm)`, which is
   unflagged only on those Node releases.
