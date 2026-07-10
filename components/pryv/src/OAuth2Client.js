@@ -113,6 +113,12 @@ class OAuth2Client {
     this.storage.setItem(VERIFIER_KEY_PREFIX + state, codeVerifier);
 
     const url = new URL(as.authorization_endpoint);
+    // The browser is about to be navigated to this URL. `oauth4webapi` only
+    // enforces https on endpoints it fetches itself, not on this navigation
+    // target — a tampered/MITM discovery document could return an http:/other
+    // `authorization_endpoint` and send the user somewhere hostile. Assert the
+    // scheme with the same https-or-loopback rule used for the apiEndpoint.
+    assertHttpsOrLoopback(url, 'authorization_endpoint');
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('client_id', this.clientId);
     url.searchParams.set('redirect_uri', this.redirectUri);
@@ -206,22 +212,34 @@ class OAuth2Client {
  * Refuse an `apiEndpoint` that would send the bearer token in cleartext. The
  * token is embedded in the endpoint (`https://<token>@host/`) and then sent on
  * every request, so a non-https endpoint leaks it on the wire. Defense-in-depth
- * against a compromised/misconfigured authorization server: allow `https:`
- * everywhere, and `http:` only for loopback hosts (local development).
+ * against a compromised/misconfigured authorization server.
  * @param {string} apiEndpoint
  */
 function assertSecureApiEndpoint (apiEndpoint) {
+  assertHttpsOrLoopback(apiEndpoint, 'apiEndpoint');
+}
+
+/**
+ * @private
+ * Enforce a "must be transport-secure" rule on a URL that is either navigated
+ * to (the authorize redirect) or used to send the bearer token (the
+ * apiEndpoint): allow `https:` everywhere, and `http:` only for loopback hosts
+ * (local development). Single source of truth so both call sites stay in sync.
+ * @param {string | URL} rawUrl - the URL to check (string or a parsed `URL`)
+ * @param {string} label - human-readable name of the value, used in errors
+ */
+function assertHttpsOrLoopback (rawUrl, label) {
   let url;
   try {
-    url = new URL(apiEndpoint);
+    url = (rawUrl instanceof URL) ? rawUrl : new URL(rawUrl);
   } catch {
-    throw new Error('OAuth2Client: token response "apiEndpoint" is not a valid URL');
+    throw new Error('OAuth2Client: ' + label + ' is not a valid URL');
   }
   const host = url.hostname;
   const isLoopback = host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1';
   if (url.protocol === 'https:') return;
   if (url.protocol === 'http:' && isLoopback) return;
-  throw new Error('OAuth2Client: refusing insecure apiEndpoint (' + url.protocol + '//' + host + '); https is required');
+  throw new Error('OAuth2Client: refusing insecure ' + label + ' (' + url.protocol + '//' + host + '); https is required');
 }
 
 /**

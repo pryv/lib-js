@@ -51,12 +51,12 @@ function memoryStorage () {
 // Returns a handle exposing the captured token request and lets tests override
 // the token response.
 function installFetchMock () {
-  const state = { tokenResponse: jsonResponse(tokenBody()), lastTokenRequest: null };
+  const state = { tokenResponse: jsonResponse(tokenBody()), lastTokenRequest: null, discovery: null };
   const original = globalThis.fetch;
   globalThis.fetch = async (input, init) => {
     const url = String(input && input.url ? input.url : input);
     if (url.includes('.well-known/oauth-authorization-server')) {
-      return jsonResponse(DISCOVERY);
+      return jsonResponse(state.discovery || DISCOVERY);
     }
     if (url === DISCOVERY.token_endpoint) {
       state.lastTokenRequest = { url, init, body: init && init.body ? init.body.toString() : '' };
@@ -147,6 +147,39 @@ describe('[OAUTH-LIB] OAuth2Client', function () {
       const client = newClient(storage, { scope: undefined });
       const url = await client.redirectToAuthorize({ state: 'S' });
       expect(new URL(url).searchParams.has('scope')).to.equal(false);
+    });
+
+    it('[OAL-A6] allows an http authorization_endpoint on a loopback host (local dev)', async function () {
+      const storage = memoryStorage();
+      fetchMock.discovery = Object.assign({}, DISCOVERY, {
+        authorization_endpoint: 'http://127.0.0.1:3000/oauth2/authorize'
+      });
+      const client = newClient(storage);
+      const url = await client.redirectToAuthorize({ state: 'S', redirect: () => {} });
+      expect(new URL(url).protocol).to.equal('http:');
+      expect(new URL(url).hostname).to.equal('127.0.0.1');
+    });
+
+    it('[OAL-A7] refuses a non-loopback http authorization_endpoint (MITM discovery)', async function () {
+      const storage = memoryStorage();
+      fetchMock.discovery = Object.assign({}, DISCOVERY, {
+        authorization_endpoint: 'http://evil.example/oauth2/authorize'
+      });
+      const client = newClient(storage);
+      let navigated = null;
+      await expect(client.redirectToAuthorize({ state: 'S', redirect: (u) => { navigated = u; } }))
+        .to.be.rejectedWith(/insecure|https/);
+      expect(navigated).to.equal(null); // never navigated the browser
+    });
+
+    it('[OAL-A8] refuses a javascript: authorization_endpoint', async function () {
+      const storage = memoryStorage();
+      fetchMock.discovery = Object.assign({}, DISCOVERY, {
+        authorization_endpoint: 'javascript:alert(document.cookie)'
+      });
+      const client = newClient(storage);
+      await expect(client.redirectToAuthorize({ state: 'S', redirect: () => {} }))
+        .to.be.rejectedWith(/insecure|https/);
     });
   });
 
