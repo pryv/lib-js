@@ -51,7 +51,7 @@ function memoryStorage () {
 // Returns a handle exposing the captured token request and lets tests override
 // the token response.
 function installFetchMock () {
-  const state = { tokenResponse: jsonResponse(tokenBody()), lastTokenRequest: null, discovery: null };
+  const state = { tokenResponse: jsonResponse(tokenBody()), lastTokenRequest: null, discovery: null, tokenRequestCount: 0 };
   const original = globalThis.fetch;
   globalThis.fetch = async (input, init) => {
     const url = String(input && input.url ? input.url : input);
@@ -59,8 +59,11 @@ function installFetchMock () {
       return jsonResponse(state.discovery || DISCOVERY);
     }
     if (url === DISCOVERY.token_endpoint) {
+      state.tokenRequestCount++;
       state.lastTokenRequest = { url, init, body: init && init.body ? init.body.toString() : '' };
-      return state.tokenResponse;
+      // A Response body is single-use; clone so a test can reuse one response
+      // object across sequential requests without an "already read" error.
+      return (state.tokenResponse instanceof Response) ? state.tokenResponse.clone() : state.tokenResponse;
     }
     throw new Error('unexpected fetch: ' + url);
   };
@@ -304,6 +307,88 @@ describe('[OAUTH-LIB] OAuth2Client', function () {
       const body = new URLSearchParams(fetchMock.lastTokenRequest.body);
       expect(body.get('grant_type')).to.equal('refresh_token');
       expect(body.get('refresh_token')).to.equal('REFRESH456');
+    });
+
+    async function primed (storage, overrides = {}) {
+      const client = newClient(storage, overrides);
+      await client.redirectToAuthorize({ state: 'S', redirect: () => {} });
+      await client.handleCallback('?code=CODE&state=S');
+      return client;
+    }
+
+    it('[OAL-R3-F1] serializes concurrent refresh() onto ONE token request', async function () {
+      const client = await primed(memoryStorage());
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ access_token: 'T2', refresh_token: 'R2', apiEndpoint: 'https://T2@host/p/' }));
+      fetchMock.tokenRequestCount = 0;
+      const [c1, c2] = await Promise.all([client.refresh(), client.refresh()]);
+      expect(fetchMock.tokenRequestCount).to.equal(1); // deduped, no reuse loser
+      expect(c1.token).to.equal('T2');
+      expect(c2.token).to.equal('T2');
+    });
+
+    it('[OAL-R4-F1] a new refresh() after the in-flight one settles issues a fresh request', async function () {
+      const client = await primed(memoryStorage());
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ refresh_token: 'R2', apiEndpoint: 'https://T2@host/p/' }));
+      await client.refresh();
+      fetchMock.tokenRequestCount = 0;
+      await client.refresh();
+      expect(fetchMock.tokenRequestCount).to.equal(1); // slot cleared, not stuck
+    });
+
+    it('[OAL-R5-F2] persists the rotated refresh token even when apiEndpoint validation throws', async function () {
+      const client = await primed(memoryStorage());
+      // Server rotates (REFRESH456 -> ROTATED1) but the response has no apiEndpoint
+      // => _connectionFromTokenResponse throws AFTER the token was ingested.
+      const bad = tokenBody({ refresh_token: 'ROTATED1' });
+      delete bad.apiEndpoint;
+      fetchMock.tokenResponse = jsonResponse(bad);
+      await expect(client.refresh()).to.be.rejectedWith(/apiEndpoint/);
+      // The old token is dead server-side; the client must now hold ROTATED1,
+      // and a subsequent refresh() must present it (not the stale REFRESH456).
+      expect(client.refreshToken).to.equal('ROTATED1');
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ access_token: 'T3', refresh_token: 'R3', apiEndpoint: 'https://T3@host/p/' }));
+      const conn = await client.refresh();
+      expect(conn.token).to.equal('T3');
+      expect(new URLSearchParams(fetchMock.lastTokenRequest.body).get('refresh_token')).to.equal('ROTATED1');
+    });
+  });
+
+  describe('[OAL-SEAM] refresh-token persistence seam (F3)', function () {
+    it('[OAL-S1] refresh() works from a constructor-seeded refresh token (no handleCallback)', async function () {
+      const client = newClient(memoryStorage(), { refreshToken: 'SEEDED' });
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ access_token: 'T2', apiEndpoint: 'https://T2@host/p/' }));
+      const conn = await client.refresh();
+      expect(conn.token).to.equal('T2');
+      expect(new URLSearchParams(fetchMock.lastTokenRequest.body).get('refresh_token')).to.equal('SEEDED');
+    });
+
+    it('[OAL-S2] the refreshToken getter reflects the rotated value', async function () {
+      const client = newClient(memoryStorage(), { refreshToken: 'SEEDED' });
+      expect(client.refreshToken).to.equal('SEEDED');
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ refresh_token: 'ROTATED', apiEndpoint: 'https://T2@host/p/' }));
+      await client.refresh();
+      expect(client.refreshToken).to.equal('ROTATED');
+    });
+
+    it('[OAL-S3] onTokenRotated fires with the new token on callback and each refresh', async function () {
+      const storage = memoryStorage();
+      const rotations = [];
+      const client = newClient(storage, { onTokenRotated: (t) => rotations.push(t) });
+      await client.redirectToAuthorize({ state: 'S', redirect: () => {} });
+      await client.handleCallback('?code=CODE&state=S'); // REFRESH456
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ refresh_token: 'ROTATED', apiEndpoint: 'https://T2@host/p/' }));
+      await client.refresh();
+      expect(rotations).to.deep.equal(['REFRESH456', 'ROTATED']);
+    });
+
+    it('[OAL-S4] a throwing onTokenRotated never breaks the exchange', async function () {
+      const client = newClient(memoryStorage(), {
+        refreshToken: 'SEEDED',
+        onTokenRotated: () => { throw new Error('persist boom'); }
+      });
+      fetchMock.tokenResponse = jsonResponse(tokenBody({ access_token: 'T2', apiEndpoint: 'https://T2@host/p/' }));
+      const conn = await client.refresh();
+      expect(conn.token).to.equal('T2');
     });
   });
 });

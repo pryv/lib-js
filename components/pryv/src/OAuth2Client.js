@@ -60,9 +60,18 @@ class OAuth2Client {
    * @param {string} [options.scope] - Consent-offer reference registered on the client, e.g. `'cmc:study-A'`.
    * @param {OAuth2Storage} [options.storage] - Web-Storage-like `{ getItem, setItem, removeItem }`.
    *   Defaults to `globalThis.sessionStorage` in a browser, else an in-memory store.
+   * @param {string} [options.refreshToken] - Seed the client with a previously-persisted
+   *   refresh token so `refresh()` works after a page reload WITHOUT re-running the
+   *   authorization flow. Persist ONLY this value (read it from `client.refreshToken`
+   *   or the `onTokenRotated` callback) — never the whole `lastTokenResponse`, which
+   *   also carries the access token and so is a larger XSS surface.
+   * @param {(refreshToken: string) => void} [options.onTokenRotated] - Called with the
+   *   NEW refresh token every time it rotates (after `handleCallback()` and each
+   *   `refresh()`), so the app can persist the minimal secret. Exceptions it throws
+   *   are swallowed (persistence must not break the token exchange).
    */
   constructor (options = {}) {
-    const { authorizationServer, clientId, redirectUri, scope, storage } = options;
+    const { authorizationServer, clientId, redirectUri, scope, storage, refreshToken, onTokenRotated } = options;
     if (!authorizationServer) throw new Error('OAuth2Client: "authorizationServer" is required');
     if (!clientId) throw new Error('OAuth2Client: "clientId" is required');
     if (!redirectUri) throw new Error('OAuth2Client: "redirectUri" is required');
@@ -77,9 +86,24 @@ class OAuth2Client {
     this._client = { client_id: clientId };
     this._clientAuth = oauth.None();
     this._as = null;
-    this._refreshToken = null;
+    this._refreshToken = refreshToken || null;
+    this._onTokenRotated = (typeof onTokenRotated === 'function') ? onTokenRotated : null;
+    // In-flight refresh() promise — dedups concurrent callers onto one token
+    // request so they can't each present the same refresh token and have the
+    // loser rejected as reuse (invalid_grant) by an always-rotating server.
+    this._refreshInFlight = null;
     /** Last raw token-endpoint response (access_token, scope, apiEndpoint, …). */
     this.lastTokenResponse = null;
+  }
+
+  /**
+   * The current refresh token (rotates on every `handleCallback()` / `refresh()`).
+   * Read it to persist the minimal secret across reloads; re-seed via the
+   * `refreshToken` constructor option. `null` before the first exchange.
+   * @returns {string | null}
+   */
+  get refreshToken () {
+    return this._refreshToken;
   }
 
   /**
@@ -175,6 +199,24 @@ class OAuth2Client {
    * @returns {Promise<Connection>}
    */
   async refresh () {
+    // Serialize concurrent callers onto a single in-flight exchange (F1). An
+    // always-rotating server consumes the refresh token on first use, so two
+    // parallel refresh() calls presenting the same token would rotate once and
+    // have the loser rejected as reuse. Dedup to one request; both callers get
+    // the same fresh Connection.
+    if (this._refreshInFlight) return this._refreshInFlight;
+    this._refreshInFlight = this._doRefresh();
+    // Clear the slot once settled (success OR failure) so the next call retries.
+    this._refreshInFlight.catch(() => {}).finally(() => { this._refreshInFlight = null; });
+    return this._refreshInFlight;
+  }
+
+  /**
+   * @private
+   * The actual refresh exchange, wrapped by `refresh()`'s in-flight dedup.
+   * @returns {Promise<Connection>}
+   */
+  async _doRefresh () {
     if (!this._refreshToken) {
       throw new Error('OAuth2Client: no refresh token available; call handleCallback() first');
     }
@@ -190,6 +232,15 @@ class OAuth2Client {
    * @returns {Connection}
    */
   _connectionFromTokenResponse (tokenResponse) {
+    // Persist the rotated refresh token FIRST — before any validation that can
+    // throw (F2). The server has already committed the rotation (old token
+    // consumed, new one issued in this response). If we validated first and it
+    // threw (e.g. a momentarily-missing or http: apiEndpoint), we would strand
+    // the client on the now-dead old token AND lose the new one — permanently
+    // bricking the session. Storing first lets a later refresh() retry with the
+    // current token.
+    this._ingestTokens(tokenResponse);
+
     const apiEndpoint = tokenResponse.apiEndpoint;
     if (!apiEndpoint) {
       throw new Error('OAuth2Client: token response is missing the Pryv "apiEndpoint" extension');
@@ -201,9 +252,24 @@ class OAuth2Client {
     // endpoint to close that parser-divergence gap.
     const { endpoint } = utils.extractTokenAndAPIEndpoint(String(apiEndpoint));
     assertSecureApiEndpoint(endpoint);
-    if (tokenResponse.refresh_token) this._refreshToken = tokenResponse.refresh_token;
-    this.lastTokenResponse = tokenResponse;
     return new Connection(String(apiEndpoint));
+  }
+
+  /**
+   * @private
+   * Non-throwing: record the rotated refresh token + raw response and notify the
+   * app so it can persist the minimal secret. Runs before validation so a
+   * validation failure never loses the rotation (see `_connectionFromTokenResponse`).
+   * @param {Object} tokenResponse - a processed token-endpoint response
+   */
+  _ingestTokens (tokenResponse) {
+    this.lastTokenResponse = tokenResponse;
+    if (!tokenResponse.refresh_token) return;
+    this._refreshToken = tokenResponse.refresh_token;
+    if (this._onTokenRotated) {
+      // Persistence must never break the exchange — swallow app callback errors.
+      try { this._onTokenRotated(this._refreshToken); } catch (_) { /* ignore */ }
+    }
   }
 }
 
