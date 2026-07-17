@@ -4,7 +4,22 @@
 
 ## [Unreleased]
 
-## [3.8.0] - 2026-07-17
+## [3.8.1] - 2026-07-17
+
+### Fixed
+
+- `pryv.OAuth2Client.refresh()` is now production-safe against an always-rotating
+  authorization server. Concurrent `refresh()` calls are serialized onto a single
+  in-flight exchange, so a parallel caller is never rejected as token-reuse
+  (`invalid_grant`). The rotated refresh token is now persisted BEFORE the
+  `apiEndpoint` validation that can throw, so a validation failure (missing /
+  momentarily `http:` endpoint) no longer strands the client on a dead token and
+  permanently brick the session. Added a refresh-token persistence seam — a
+  `refreshToken` constructor option, a `refreshToken` getter, and an
+  `onTokenRotated` callback — so apps persist only the minimal secret across
+  reloads instead of the whole `lastTokenResponse` blob.
+
+## [3.8.0]
 
 ### Added
 
