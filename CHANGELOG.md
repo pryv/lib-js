@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-07-17
+
 ### Added
 
 - `pryv.OAuth2Client` — browser-side consumer of the OAuth2 authorization-code
