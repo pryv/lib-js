@@ -1059,6 +1059,47 @@ declare module 'pryv' {
     get state(): AuthStatePayload;
   }
 
+  /**
+   * Web-Storage-like store used by OAuth2Client to hold the per-flow PKCE verifier.
+   */
+  export type OAuth2ClientStorage = {
+    getItem(key: string): string | null;
+    setItem(key: string, value: string): void;
+    removeItem(key: string): void;
+  };
+
+  export type OAuth2ClientOptions = {
+    /** Issuer / Pryv API base URL; discovery doc read from `<url>/.well-known/oauth-authorization-server`. */
+    authorizationServer: string;
+    /** App-account client id. */
+    clientId: string;
+    /** Registered redirect URI. */
+    redirectUri: string;
+    /** Consent-offer reference registered on the client, e.g. `'cmc:study-A'`. */
+    scope?: string;
+    /** Defaults to `globalThis.sessionStorage` (browser) or an in-memory store. */
+    storage?: OAuth2ClientStorage;
+  };
+
+  /**
+   * Browser-side consumer of the Pryv OAuth2 authorization-code (PKCE) flow.
+   */
+  export class OAuth2Client {
+    constructor(options: OAuth2ClientOptions);
+    issuer: URL;
+    clientId: string;
+    redirectUri: string;
+    scope?: string;
+    /** Last raw token-endpoint response (access_token, scope, apiEndpoint, …). */
+    lastTokenResponse: { [key: string]: unknown } | null;
+    /** Build + navigate to the `/oauth2/authorize` URL; returns the URL. */
+    redirectToAuthorize(options?: { state?: string; redirect?: (url: string) => void }): Promise<string>;
+    /** Validate the callback, exchange the code (PKCE), return a Connection. */
+    handleCallback(queryString: string): Promise<Connection>;
+    /** Exchange the stored refresh token for a fresh Connection. */
+    refresh(): Promise<Connection>;
+  }
+
   export const Auth: {
     setupAuth: SetupAuth;
     AuthStates: AuthStates;
@@ -1116,6 +1157,7 @@ declare module 'pryv' {
   let pryv: {
     Service: typeof Service;
     Connection: typeof Connection;
+    OAuth2Client: typeof OAuth2Client;
     Auth: {
       setupAuth: SetupAuth;
       AuthStates: AuthStates;

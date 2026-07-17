@@ -144,6 +144,44 @@ Here is an implementation of the [Pryv.io authentication process](https://api.pr
 </html>
 ```
 
+#### With OAuth2 (`pryv.OAuth2Client`)
+
+For apps registered as OAuth2 clients on a Pryv.io deployment, `pryv.OAuth2Client`
+drives the authorization-code flow (PKCE). The authorization-server endpoints are
+discovered from the issuer via RFC 8414. The `scope` value is a consent-offer
+reference (`cmc:<offer-name>`) registered on your OAuth client — the user grants
+a granular permission set resolved from that offer, and may untick individual
+permissions on the consent screen.
+
+```js
+const client = new pryv.OAuth2Client({
+  authorizationServer: 'https://host', // Pryv API base URL (issuer)
+  clientId: 'my-app',                  // from the app-account registration
+  redirectUri: 'https://my-app.example/callback',
+  scope: 'cmc:study-A'                 // your registered consent-offer reference
+});
+
+// On "Login with Pryv":
+await client.redirectToAuthorize();
+
+// On the redirect_uri page:
+const connection = await client.handleCallback(window.location.search);
+// `connection` is a regular pryv.Connection
+
+// Later, to renew the access token:
+const renewed = await client.refresh();
+```
+
+The PKCE verifier is generated per flow and stored in `sessionStorage` (pass
+`storage` to override). This flow is browser-oriented; the polling flow below
+stays fully supported.
+
+> **Requirements.** `pryv.OAuth2Client` uses the ESM-only `oauth4webapi`
+> dependency, so `pryv` now requires **Node >= 20.19 (or >= 22.12)**. Consumers
+> who bundle `pryv` themselves need an `exports`-field-aware bundler
+> (webpack 5 / vite / rollup / esbuild); webpack-4 / browserify users should use
+> the prebuilt `dist/` bundle.
+
 #### Fetching access info
 
 [API reference](https://api.pryv.com/reference/#access-info).
