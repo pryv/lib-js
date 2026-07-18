@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- `@pryv/cmc` **3.9.1** — `createInvite(conn, { …, accessType })` now accepts an
+  optional `accessType: 'shared' | 'app'` (default `shared`), passed through to
+  the offer's `request.accessType`. `'app'` requests a delegable data-grant so
+  the approved requester can `accesses.create` scoped sub-accesses (needs
+  open-pryv.io ≥ 2.0.0-rc.9).
+
 ## [3.8.1] - 2026-07-17
 
 ### Fixed

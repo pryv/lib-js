@@ -342,6 +342,11 @@ class CmcError extends Error {
  * @param {{en?:string}|Object} [params.consent]
  * @param {{chat?:boolean, systemMessaging?:boolean}} [params.features]
  * @param {number} [params.expiresAt]
+ * @param {'shared'|'app'} [params.accessType='shared'] - Pryv access type the
+ *   accepted data-grant is minted as. Default `shared` (non-delegable). Set
+ *   `app` to make the grant delegable — the approved requester can then
+ *   `accesses.create` scoped, individually-named sub-accesses (permissions ⊆
+ *   the grant) for least-privilege re-delegation with per-actor audit.
  * @param {string|null} [params.to=null]
  * @param {Object} [params.requesterMeta]
  * @returns {Promise<{inviteEventId:string, capabilityUrl:string, mode:string, expiresAt:number}>}
@@ -360,6 +365,7 @@ async function createInvite (conn, params) {
   };
   if (params.features) request.features = params.features;
   if (params.expiresAt) request.expiresAt = params.expiresAt;
+  if (params.accessType) request.accessType = params.accessType;
   const content = {
     to: params.to === undefined ? null : params.to,
     capabilityRequested: true,

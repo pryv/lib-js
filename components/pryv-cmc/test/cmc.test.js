@@ -236,6 +236,37 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       expect(res.expiresAt).to.equal(1735776000);
     });
 
+    it('[CMCL1IAT] passes accessType through to request.accessType (delegable app grant)', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return { event: { id: 'evt-at', streamIds: params.streamIds, content: Object.assign({}, params.content, { capabilityUrl: 'https://t@x/' }) } };
+          }
+        }
+      });
+      await cmc.createInvite(conn, {
+        appCode: 'my-app', scopeStreamId: ':_cmc:apps:my-app', displayName: 'P',
+        requestedPermissions: [{ streamId: 'body', level: 'manage' }],
+        accessType: 'app'
+      });
+      expect(conn.calls[0].params.content.request.accessType).to.equal('app');
+    });
+
+    it('[CMCL1IATD] omits accessType when not provided (server defaults to shared)', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return { event: { id: 'evt-atd', streamIds: params.streamIds, content: Object.assign({}, params.content, { capabilityUrl: 'https://t@x/' }) } };
+          }
+        }
+      });
+      await cmc.createInvite(conn, {
+        appCode: 'my-app', scopeStreamId: ':_cmc:apps:my-app', displayName: 'P',
+        requestedPermissions: [{ streamId: 'body', level: 'read' }]
+      });
+      expect(conn.calls[0].params.content.request).to.not.have.property('accessType');
+    });
+
     it('[CMCL1IB] open-link mode propagates capability.mode', async function () {
       const conn = makeStubConnection({
         handlers: {
