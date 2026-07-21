@@ -23,6 +23,7 @@ module.exports = {
   Auth: require('./Auth'),
   Browser: require('./Browser'),
   OAuth2Client: require('./OAuth2Client'),
+  SharedSecrets: require('./SharedSecrets'),
   utils: require('./utils'),
   PryvError: require('./lib/PryvError'),
   MfaRequiredError: require('./lib/MfaRequiredError'),

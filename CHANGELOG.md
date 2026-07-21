@@ -6,6 +6,16 @@
 
 ### Added
 
+- `pryv.SharedSecrets` — hand a secret to a third party by one-time key instead
+  of putting it in a URL. `create(connection, {ttl, title, onConsumed, secret,
+  signature?})` returns the key once; `retrieve(apiEndpoint, key, {passphrase |
+  verifierSecret})` redeems it without any token, since the redeemer has no
+  credentials yet; `status(connection, key)` inspects without consuming. For an
+  `hmac-sha256` signature the key material is generated client-side so the proof
+  can be bound before the secret exists — the verifier secret never leaves the
+  caller. Crypto goes through the Web Crypto API, so the same code runs in Node
+  and in the browser bundle. Needs open-pryv.io with the shared-secrets endpoints.
+
 - `@pryv/cmc` **3.9.1** — `createInvite(conn, { …, accessType })` now accepts an
   optional `accessType: 'shared' | 'app'` (default `shared`), passed through to
   the offer's `request.accessType`. `'app'` requests a delegable data-grant so
