@@ -7,6 +7,7 @@
  * @exports pryv
  * @property {pryv.Service} Service - To interact with Pryv.io at a "Platform level"
  * @property {pryv.Connection} Connection - To interact with an individual's (user) data set
+ * @property {pryv.SignedConnection} SignedConnection - A Connection whose token is DPoP-sender-constrained (RFC 9449)
  * @property {pryv.Browser} Browser - Browser Tools - Access request helpers and visuals (button)
  * @property {pryv.OAuth2Client} OAuth2Client - Browser-side OAuth2 authorization-code (PKCE) flow consumer
  * @property {pryv.utils} utils - Exposes some utils for HTTP calls and tools to manipulate Pryv's API endpoints
@@ -20,6 +21,7 @@ const Service = require('./Service');
 module.exports = {
   Service,
   Connection: require('./Connection'),
+  SignedConnection: require('./SignedConnection'),
   Auth: require('./Auth'),
   Browser: require('./Browser'),
   OAuth2Client: require('./OAuth2Client'),
