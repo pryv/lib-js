@@ -4,6 +4,7 @@
  */
 const oauth = require('oauth4webapi');
 const Connection = require('./Connection');
+const SignedConnection = require('./SignedConnection');
 const utils = require('./utils');
 
 // sessionStorage key prefix for the per-flow PKCE verifier, keyed by `state`.
@@ -69,9 +70,16 @@ class OAuth2Client {
    *   NEW refresh token every time it rotates (after `handleCallback()` and each
    *   `refresh()`), so the app can persist the minimal secret. Exceptions it throws
    *   are swallowed (persistence must not break the token exchange).
+   * @param {boolean} [options.dpop=false] - Opt into RFC 9449 DPoP: an ES256 key
+   *   pair is generated per client, the token is bound to it at issuance, and
+   *   `handleCallback()` / `refresh()` return a {@link SignedConnection} that
+   *   proves possession of the key on every request. A token stolen from the
+   *   resulting connection is useless without the private key. The key is
+   *   session-scoped (not persisted) — re-seeding a `refreshToken` after reload
+   *   mints a fresh binding for the new key.
    */
   constructor (options = {}) {
-    const { authorizationServer, clientId, redirectUri, scope, storage, refreshToken, onTokenRotated } = options;
+    const { authorizationServer, clientId, redirectUri, scope, storage, refreshToken, onTokenRotated, dpop } = options;
     if (!authorizationServer) throw new Error('OAuth2Client: "authorizationServer" is required');
     if (!clientId) throw new Error('OAuth2Client: "clientId" is required');
     if (!redirectUri) throw new Error('OAuth2Client: "redirectUri" is required');
@@ -88,6 +96,12 @@ class OAuth2Client {
     this._as = null;
     this._refreshToken = refreshToken || null;
     this._onTokenRotated = (typeof onTokenRotated === 'function') ? onTokenRotated : null;
+    // DPoP (RFC 9449): lazily generated ES256 key pair + oauth4webapi handle,
+    // shared between the token-endpoint proofs (handle) and the resulting
+    // SignedConnection's per-request proofs (same key → same bound thumbprint).
+    this._dpop = dpop === true;
+    this._dpopKeyPair = null;
+    this._dpopHandle = null;
     // In-flight refresh() promise — dedups concurrent callers onto one token
     // request so they can't each present the same refresh token and have the
     // loser rejected as reuse (invalid_grant) by an always-rotating server.
@@ -104,6 +118,26 @@ class OAuth2Client {
    */
   get refreshToken () {
     return this._refreshToken;
+  }
+
+  /**
+   * @private
+   * Lazily generate the DPoP ES256 key pair + oauth4webapi handle (once).
+   * Returns `undefined` when DPoP is off, so call sites can spread it as an
+   * absent option. The key is `extractable` so the resulting
+   * {@link SignedConnection} can export the public JWK into each proof.
+   * @returns {Promise<Object|undefined>} the DPoP handle, or undefined
+   */
+  async _ensureDPoP () {
+    if (!this._dpop) return undefined;
+    if (this._dpopHandle == null) {
+      this._dpopKeyPair = await oauth.generateKeyPair('ES256', { extractable: true });
+      // DPoP() only reads the optional `clockSkew` symbol off the client; our
+      // public-client literal carries none, which trips oauth4webapi's
+      // weak-type guard on the branded param. Cast — the value is correct.
+      this._dpopHandle = oauth.DPoP(/** @type {any} */ (this._client), this._dpopKeyPair);
+    }
+    return this._dpopHandle;
   }
 
   /**
@@ -182,8 +216,10 @@ class OAuth2Client {
     try {
       // Throws on authorization errors (e.g. access_denied) or a state mismatch.
       const callbackParams = oauth.validateAuthResponse(as, this._client, params, state);
+      const dpopHandle = await this._ensureDPoP();
       const response = await oauth.authorizationCodeGrantRequest(
-        as, this._client, this._clientAuth, callbackParams, this.redirectUri, codeVerifier
+        as, this._client, this._clientAuth, callbackParams, this.redirectUri, codeVerifier,
+        dpopHandle ? { DPoP: dpopHandle } : undefined
       );
       const result = await oauth.processAuthorizationCodeResponse(as, this._client, response);
       return this._connectionFromTokenResponse(result);
@@ -221,7 +257,11 @@ class OAuth2Client {
       throw new Error('OAuth2Client: no refresh token available; call handleCallback() first');
     }
     const as = await this._discover();
-    const response = await oauth.refreshTokenGrantRequest(as, this._client, this._clientAuth, this._refreshToken);
+    const dpopHandle = await this._ensureDPoP();
+    const response = await oauth.refreshTokenGrantRequest(
+      as, this._client, this._clientAuth, this._refreshToken,
+      dpopHandle ? { DPoP: dpopHandle } : undefined
+    );
     const result = await oauth.processRefreshTokenResponse(as, this._client, response);
     return this._connectionFromTokenResponse(result);
   }
@@ -252,6 +292,9 @@ class OAuth2Client {
     // endpoint to close that parser-divergence gap.
     const { endpoint } = utils.extractTokenAndAPIEndpoint(String(apiEndpoint));
     assertSecureApiEndpoint(endpoint);
+    // DPoP flow → a SignedConnection bound to the same key the token was
+    // issued against; every request then carries a proof of possession.
+    if (this._dpop) return new SignedConnection(String(apiEndpoint), this._dpopKeyPair);
     return new Connection(String(apiEndpoint));
   }
 

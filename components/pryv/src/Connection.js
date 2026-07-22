@@ -263,7 +263,7 @@ class Connection {
    */
   async _postFetchRaw (path, data, contentType) {
     const headers = {
-      Authorization: this.token,
+      ...(await this._authHeaders('POST', this.endpoint + path)),
       Accept: 'application/json'
     };
     // optional for form-data llowing fetch to
@@ -278,6 +278,19 @@ class Connection {
     });
     const body = await response.json();
     return { response, body };
+  }
+
+  /**
+   * @protected
+   * Authentication headers for a request. The base Connection sends the
+   * bearer token as-is; {@link SignedConnection} overrides this to attach a
+   * per-request DPoP (RFC 9449) proof. Async because a proof requires signing.
+   * @param {string} method - HTTP method (informs the proof's `htm`)
+   * @param {string} url - full request URL WITHOUT query (informs `htu`)
+   * @returns {Promise<Object>} header map to merge into the request
+   */
+  async _authHeaders (method, url) {
+    return { Authorization: this.token };
   }
 
   /**
@@ -308,7 +321,7 @@ class Connection {
     }
     const response = await fetch(this.endpoint + path + queryStr, {
       headers: {
-        Authorization: this.token,
+        ...(await this._authHeaders('GET', this.endpoint + path)),
         Accept: 'application/json'
       }
     });

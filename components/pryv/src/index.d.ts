@@ -763,6 +763,17 @@ declare module 'pryv' {
     ): Promise<any[]>;
   }
 
+  /**
+   * A {@link Connection} whose access token is DPoP-sender-constrained
+   * (RFC 9449): every request carries a fresh proof signed with `keyPair`
+   * and presents the token under the `DPoP` scheme. Built by
+   * {@link OAuth2Client} with `dpop: true`, or directly from an apiEndpoint
+   * whose token was bound to `keyPair`.
+   */
+  export class SignedConnection extends Connection {
+    constructor (apiEndpoint: string, keyPair: CryptoKeyPair, service?: Service);
+  }
+
   export type serviceCustomizations = {
     name?: string;
     assets?: {
@@ -1079,6 +1090,12 @@ declare module 'pryv' {
     scope?: string;
     /** Defaults to `globalThis.sessionStorage` (browser) or an in-memory store. */
     storage?: OAuth2ClientStorage;
+    /** Seed a previously-persisted refresh token so `refresh()` works after a reload. */
+    refreshToken?: string;
+    /** Called with the NEW refresh token every time it rotates, to persist the minimal secret. */
+    onTokenRotated?: (refreshToken: string) => void;
+    /** Opt into RFC 9449 DPoP: token bound to a per-client ES256 key; `handleCallback()` / `refresh()` return a {@link SignedConnection}. */
+    dpop?: boolean;
   };
 
   /**

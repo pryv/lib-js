@@ -391,4 +391,49 @@ describe('[OAUTH-LIB] OAuth2Client', function () {
       expect(conn.token).to.equal('T2');
     });
   });
+
+  describe('[OAL-DPOP] DPoP option (RFC 9449)', function () {
+    function headerValue (init, name) {
+      const h = init && init.headers;
+      if (h == null) return null;
+      if (typeof h.get === 'function') return h.get(name);
+      const key = Object.keys(h).find((k) => k.toLowerCase() === name.toLowerCase());
+      return key ? h[key] : null;
+    }
+    const dpopTokenBody = (o = {}) => tokenBody(Object.assign({ token_type: 'DPoP' }, o));
+
+    it('[OAL-DP1] handleCallback with dpop:true returns a SignedConnection and sends a DPoP proof on the token request', async function () {
+      fetchMock.tokenResponse = jsonResponse(dpopTokenBody());
+      const client = newClient(memoryStorage(), { dpop: true });
+      await client.redirectToAuthorize({ state: 'S', redirect: () => {} });
+      const connection = await client.handleCallback('?code=CODE&state=S');
+      expect(connection.constructor.name).to.equal('SignedConnection');
+      expect(connection.token).to.equal('TOKEN123');
+      const proof = headerValue(fetchMock.lastTokenRequest.init, 'DPoP');
+      expect(proof, 'token request carries a DPoP header').to.be.a('string');
+      expect(proof.split('.')).to.have.length(3); // compact JWS
+    });
+
+    it('[OAL-DP2] default (no dpop) sends NO DPoP header and returns a plain Connection', async function () {
+      const client = newClient(memoryStorage());
+      await client.redirectToAuthorize({ state: 'S', redirect: () => {} });
+      const connection = await client.handleCallback('?code=CODE&state=S');
+      expect(connection.constructor.name).to.equal('Connection');
+      expect(headerValue(fetchMock.lastTokenRequest.init, 'DPoP')).to.equal(null);
+    });
+
+    it('[OAL-DP3] refresh() keeps the DPoP binding — SignedConnection with the same key, proof on the request', async function () {
+      fetchMock.tokenResponse = jsonResponse(dpopTokenBody());
+      const client = newClient(memoryStorage(), { dpop: true });
+      await client.redirectToAuthorize({ state: 'S', redirect: () => {} });
+      const first = await client.handleCallback('?code=CODE&state=S');
+      fetchMock.tokenResponse = jsonResponse(dpopTokenBody({ access_token: 'TOKEN789', apiEndpoint: 'https://TOKEN789@host/path/' }));
+      const refreshed = await client.refresh();
+      expect(refreshed.constructor.name).to.equal('SignedConnection');
+      expect(refreshed.token).to.equal('TOKEN789');
+      // Same key pair reused across the flow (binding is stable).
+      expect(refreshed._dpopKeyPair).to.equal(first._dpopKeyPair);
+      expect(headerValue(fetchMock.lastTokenRequest.init, 'DPoP')).to.be.a('string');
+    });
+  });
 });
