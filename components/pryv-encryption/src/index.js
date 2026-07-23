@@ -7,7 +7,8 @@
  *
  * - `Keyring`: a key store with a pluggable chain of async key resolvers.
  * - `EventsCipher`: encrypts / decrypts events using registered methods.
- * - `methods`: the built-in encryption methods (currently `aes-256-gcm`).
+ * - `methods`: the built-in encryption methods (`aes-256-gcm`,
+ *   `aes-text-base64`, `ecies-aes-256-gcm`).
  */
 const EventsCipher = require('./EventsCipher');
 const Keyring = require('./Keyring');
