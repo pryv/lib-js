@@ -53,15 +53,18 @@ class EventsCipher {
   }
 
   /**
-   * Encrypt a plain event. Throws on unknown method or missing key.
-   * @param {Object} plainEvent
+   * Encrypt event material into the `{ type, content }` an implementer passes to
+   * an `events.create` / `events.update` call. Only the material's `type` and
+   * `content` are encrypted; any other fields are ignored. Throws on unknown or
+   * decrypt-only method, or on a missing key. The input is not mutated.
+   * @param {Object} material - `{ type, content, ... }` (same shape decryptEvent restores).
    * @param {Object} params
    * @param {string} params.method
    * @param {string} [params.keyRef]
    * @param {*} [params.hint]
-   * @returns {Promise<Object>} a new encrypted event (input is not mutated).
+   * @returns {Promise<{ type: string, content: { payload: string, keyRef?: string, hint?: * } }>}
    */
-  async encryptEvent (plainEvent, params = {}) {
+  async encryptEventContent (material, params = {}) {
     const { method: methodName, keyRef, hint } = params;
     const method = this._methods[methodName];
     if (!method) {
@@ -75,13 +78,27 @@ class EventsCipher {
       throw new Error(`No key available for method "${methodName}"${keyRef != null ? ` (keyRef "${keyRef}")` : ''}`);
     }
 
-    const material = { type: plainEvent.type, content: plainEvent.content };
-    const content = await method.encrypt(material, key);
+    const source = { type: material.type, content: material.content };
+    const content = await method.encrypt(source, key);
     if (keyRef != null) content.keyRef = keyRef;
     if (hint != null) content.hint = hint;
 
+    return { type: ENCRYPTED_TYPE_PREFIX + methodName, content };
+  }
+
+  /**
+   * Encrypt a plain event. Throws on unknown method or missing key.
+   * @param {Object} plainEvent
+   * @param {Object} params
+   * @param {string} params.method
+   * @param {string} [params.keyRef]
+   * @param {*} [params.hint]
+   * @returns {Promise<Object>} a new encrypted event (input is not mutated).
+   */
+  async encryptEvent (plainEvent, params = {}) {
+    const { type, content } = await this.encryptEventContent(plainEvent, params);
     const encrypted = Object.assign({}, plainEvent);
-    encrypted.type = ENCRYPTED_TYPE_PREFIX + methodName;
+    encrypted.type = type;
     encrypted.content = content;
     return encrypted;
   }

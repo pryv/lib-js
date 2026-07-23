@@ -80,6 +80,87 @@ describe('[ENCC] EventsCipher', function () {
     });
   });
 
+  describe('[ENCCU] encryptEventContent', function () {
+    it('[ENCCUA] returns exactly { type: encrypted/<method>, content: { payload } }', async function () {
+      const cipher = newCipher();
+      const res = await cipher.encryptEventContent(plainEvent(), { method: 'aes-256-gcm', keyRef: KEY_REF });
+      expect(res).to.have.all.keys(['type', 'content']);
+      expect(res.type).to.equal('encrypted/aes-256-gcm');
+      expect(res.content).to.have.property('payload').that.is.a('string');
+    });
+
+    it('[ENCCUB] includes keyRef in content when provided', async function () {
+      const cipher = newCipher();
+      const res = await cipher.encryptEventContent(plainEvent(), { method: 'aes-256-gcm', keyRef: KEY_REF });
+      expect(res.content).to.have.property('keyRef', KEY_REF);
+    });
+
+    it('[ENCCUC] includes hint when provided; omits keyRef/hint when resolvable without refs', async function () {
+      const cipher = newCipher();
+      const withHint = await cipher.encryptEventContent(plainEvent(), { method: 'aes-256-gcm', keyRef: KEY_REF, hint: { kid: 1 } });
+      expect(withHint.content.hint).to.deep.equal({ kid: 1 });
+
+      const keyring = new Keyring();
+      keyring.use(async () => vector.keyBase64);
+      const cipher2 = new EventsCipher(keyring);
+      const noRefs = await cipher2.encryptEventContent(plainEvent(), { method: 'aes-256-gcm' });
+      expect(noRefs.content).to.not.have.property('keyRef');
+      expect(noRefs.content).to.not.have.property('hint');
+    });
+
+    it('[ENCCUD] does not mutate the input material', async function () {
+      const cipher = newCipher();
+      const input = plainEvent();
+      const snapshot = JSON.parse(JSON.stringify(input));
+      await cipher.encryptEventContent(input, { method: 'aes-256-gcm', keyRef: KEY_REF });
+      expect(input).to.deep.equal(snapshot);
+    });
+
+    it('[ENCCUE] only carries type + content of the material into the ciphertext (envelope fields excluded)', async function () {
+      const cipher = newCipher();
+      const res = await cipher.encryptEventContent(plainEvent(), { method: 'aes-256-gcm', keyRef: KEY_REF });
+      // assemble a synthetic event and decrypt: restored material must be just type/content
+      const synthetic = { id: 'x', streamIds: ['s'], type: res.type, content: res.content };
+      const dec = await cipher.decryptEvent(synthetic);
+      expect(dec.type).to.equal('note/txt');
+      expect(dec.content).to.equal('a plaintext note');
+      // envelope-only fields of the ORIGINAL material must not have leaked into the payload
+      expect(dec).to.not.have.property('createdBy', 'test-should-not-be-in-payload');
+    });
+
+    it('[ENCCUF] round-trips: a synthetic event assembled from the result decrypts back', async function () {
+      const cipher = newCipher();
+      const material = { type: 'note/txt', content: 'updated body' };
+      const res = await cipher.encryptEventContent(material, { method: 'aes-256-gcm', keyRef: KEY_REF });
+      const synthetic = { id: 'evt-9', streamIds: ['journal'], type: res.type, content: res.content };
+      const dec = await cipher.decryptEvent(synthetic);
+      expect(dec.type).to.equal('note/txt');
+      expect(dec.content).to.equal('updated body');
+      expect(dec.decryptedFrom).to.equal(synthetic);
+    });
+
+    it('[ENCCUG] throws on unknown method', async function () {
+      const cipher = newCipher();
+      await expect(cipher.encryptEventContent(plainEvent(), { method: 'no-such', keyRef: KEY_REF }))
+        .to.be.rejected;
+    });
+
+    it('[ENCCUH] throws when the method is decrypt-only', async function () {
+      const cipher = newCipher();
+      cipher.registerMethod('read-only', {
+        decrypt: async (content, key) => JSON.parse(content.payload)
+      });
+      await expect(cipher.encryptEventContent(plainEvent(), { method: 'read-only', keyRef: KEY_REF }))
+        .to.be.rejected;
+    });
+
+    it('[ENCCUI] throws when no key can be resolved', async function () {
+      const cipher = newCipher();
+      await expect(cipher.encryptEventContent(plainEvent(), { method: 'aes-256-gcm', keyRef: 'unknown-ref' }))
+        .to.be.rejected;
+    });
+  });
+
   describe('[ENCCD] decryptEvent', function () {
     let cipher;
     let encrypted;
