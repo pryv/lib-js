@@ -1,0 +1,11 @@
+{
+  "description": "Deterministic AES-256-GCM test vector. payload = base64(iv || ciphertext || gcmTag). Generated once with a fixed 32-byte key (bytes 0..31) and a fixed 12-byte IV (bytes 0..11).",
+  "keyBase64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+  "ivBase64": "AAECAwQFBgcICQoL",
+  "plaintextObject": {
+    "type": "note/txt",
+    "content": "secret message"
+  },
+  "plaintextJson": "{\"type\":\"note/txt\",\"content\":\"secret message\"}",
+  "payload": "AAECAwQFBgcICQoLPCCiYrWA4CGvL/j/1MYMFff0qxaTFDEIXQmRpydLc9diYsuIj6x36wfFGIiq+v9cBfRF8sIXTsUY8kkKszA="
+}
