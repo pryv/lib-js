@@ -6,6 +6,25 @@
 
 ### Added
 
+- `@pryv/encryption` — new opt-in companion component for client-side
+  encryption/decryption of events; the server only ever sees ciphertext.
+  `Keyring` holds key material as a key/value store plus a pluggable chain of
+  `async (method, keyRef, hint)` resolvers. `EventsCipher` encrypts
+  (`encryptEvent`, `encryptEventContent` for update flows,
+  `encryptAttachmentData`) and decrypts (`decryptEvent`, `decryptEvents`,
+  `wrapForEachEvent` for `getEventsStreamed`, `decryptAttachmentData`).
+  Passive event decryption never throws: on any failure the event is returned
+  as-is; on success a new object carries the restored `type`/`content` plus a
+  `decryptedFrom` back-reference (`stripDecrypted()` recovers the encrypted
+  original before re-sending). Built-in methods: `aes-256-gcm` (symmetric,
+  Web Crypto), `ecies-aes-256-gcm` (asymmetric, P-256 + HKDF + AES-GCM, with
+  `generateKeyPair()`), and a decrypt-only reader for the legacy
+  `aes-text-base64` format. Custom methods (including decrypt-only ones) plug
+  in via `registerMethod()`. Attachments are encrypted with the same method
+  and key as their event, stored as the method's raw payload byte layout.
+  Isomorphic (Node ≥ 20 and browser); the corresponding `encrypted/*` event
+  types are specified in the public event-types registry.
+
 - `pryv.SharedSecrets` — hand a secret to a third party by one-time key instead
   of putting it in a URL. `create(connection, {ttl, title, onConsumed, secret,
   signature?})` returns the key once; `retrieve(apiEndpoint, key, {passphrase |

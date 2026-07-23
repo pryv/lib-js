@@ -1,0 +1,26 @@
+{
+  "name": "@pryv/encryption",
+  "version": "3.8.0",
+  "description": "Client-side encryption and decryption of Pryv.io events",
+  "keywords": [
+    "Pryv",
+    "Pryv.io",
+    "Encryption",
+    "Decryption",
+    "Privacy"
+  ],
+  "homepage": "https://github.com/pryv/lib-js/tree/master/components/pryv-encryption#readme",
+  "bugs": {
+    "url": "https://github.com/pryv/lib-js/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pryv/lib-js.git"
+  },
+  "license": "BSD-3-Clause",
+  "author": "Pryv <info@pryv.com> (https://pryv.com)",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
