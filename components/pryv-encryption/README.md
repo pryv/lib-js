@@ -62,6 +62,14 @@ const onEvent = cipher.wrapForEachEvent((event) => { /* receives decrypted event
 
 // Recover the stored (encrypted) form of a decrypted event, e.g. before an update:
 const stored = cipher.stripDecrypted(decrypted); // === encrypted
+
+// Update an encrypted event: re-encrypt the new material, send it as the update
+// (updates are always full re-encryptions — see Limitations):
+const update = await cipher.encryptEventContent(
+  { type: 'note/txt', content: 'the edited note' },
+  { method: 'aes-256-gcm', keyRef: 'journal-2026' }
+);
+await conn.api([{ method: 'events.update', params: { id: stored.id, update } }]);
 ```
 
 ### Keyring
