@@ -1,6 +1,6 @@
 {
   "name": "@pryv/encryption",
-  "version": "3.8.0",
+  "version": "3.10.0",
   "description": "Client-side encryption and decryption of Pryv.io events",
   "keywords": [
     "Pryv",
@@ -20,6 +20,9 @@
   "license": "BSD-3-Clause",
   "author": "Pryv <info@pryv.com> (https://pryv.com)",
   "main": "src/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20.0.0"
   }
