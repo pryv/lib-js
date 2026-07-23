@@ -41,6 +41,17 @@
   the approved requester can `accesses.create` scoped sub-accesses (needs
   open-pryv.io ≥ 2.0.0-rc.9).
 
+- DPoP (RFC 9449) client support *(shipped in 3.10.0; entry added
+  retroactively)*. `new OAuth2Client({ ..., dpop: true })` generates a
+  per-session ES256 key pair and binds the whole token chain to it: the code
+  exchange and every refresh carry a DPoP proof, and the resulting
+  `pryv.SignedConnection` (a `Connection` subclass, returned transparently by
+  `handleCallback()`/`refresh()`) signs **every API call** with a fresh proof
+  over the request method and URI. A server that ignores DPoP keeps working —
+  the binding only takes effect when the token endpoint honours it. Isomorphic
+  (Node ≥ 20 and browser, Web Crypto). Requires open-pryv.io with DPoP support
+  on the server side.
+
 ## [3.8.1] - 2026-07-17
 
 ### Fixed
