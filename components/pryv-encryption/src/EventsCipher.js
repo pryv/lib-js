@@ -13,6 +13,12 @@
  * same reference is returned) and, when configured, is reported through
  * `onDecryptError` — a failed decryption never throws and never drops an event.
  * Encryption, by contrast, throws on error.
+ *
+ * Attachments are handled by the byte helpers `encryptAttachmentData` /
+ * `decryptAttachmentData`. An attachment is encrypted with the SAME method and
+ * key as its event's content, stored as the method's raw payload byte layout
+ * (WITHOUT Base64). Unlike passive event decryption, attachment decryption is an
+ * explicit request and THROWS on failure.
  */
 const Keyring = require('./Keyring');
 const builtinMethods = require('./methods');
@@ -45,8 +51,10 @@ class EventsCipher {
    */
   registerMethod (name, method) {
     if (!method || typeof method.decrypt !== 'function' ||
-        (method.encrypt != null && typeof method.encrypt !== 'function')) {
-      throw new Error('registerMethod expects a { decrypt } function and an optional { encrypt } function');
+        (method.encrypt != null && typeof method.encrypt !== 'function') ||
+        (method.encryptBytes != null && typeof method.encryptBytes !== 'function') ||
+        (method.decryptBytes != null && typeof method.decryptBytes !== 'function')) {
+      throw new Error('registerMethod expects a { decrypt } function and optional { encrypt, encryptBytes, decryptBytes } functions');
     }
     this._methods[name] = method;
     return this;
@@ -156,6 +164,73 @@ class EventsCipher {
       const decrypted = await this.decryptEvent(event);
       return callback(decrypted);
     };
+  }
+
+  /**
+   * Encrypt raw attachment bytes with the SAME method and key an event's
+   * `content` uses. The result is the method's raw payload byte layout (exactly
+   * the bytes Base64-decoding a `content.payload` would yield, WITHOUT Base64) —
+   * upload it verbatim as the file's binary body. Like `encryptEventContent`,
+   * this THROWS on an unknown method, a method without byte support, or a missing
+   * key. The input bytes are not mutated.
+   * @param {Uint8Array} bytes - raw attachment bytes to encrypt.
+   * @param {Object} params
+   * @param {string} params.method
+   * @param {string} [params.keyRef]
+   * @param {*} [params.hint]
+   * @returns {Promise<Uint8Array>} raw payload-layout bytes.
+   */
+  async encryptAttachmentData (bytes, params = {}) {
+    const { method: methodName, keyRef, hint } = params;
+    const method = this._methods[methodName];
+    if (!method) {
+      throw new Error(`Unknown encryption method: ${methodName}`);
+    }
+    if (typeof method.encryptBytes !== 'function') {
+      throw new Error(`Method "${methodName}" does not support attachment (byte) encryption`);
+    }
+    const key = await this.keyring.getKeyFor(methodName, keyRef, hint);
+    if (key == null) {
+      throw new Error(`No key available for method "${methodName}"${keyRef != null ? ` (keyRef "${keyRef}")` : ''}`);
+    }
+    return method.encryptBytes(bytes, key);
+  }
+
+  /**
+   * Decrypt raw attachment bytes that belong to `event`. The method is derived
+   * from the event's `encrypted/<method>` type and the key from its
+   * `content.keyRef` / `content.hint` — the SAME material used for its content.
+   *
+   * `event` may be the encrypted event OR an already-decrypted one (carrying a
+   * `decryptedFrom` back-reference); the encrypted form is used either way.
+   *
+   * Unlike the passive, never-throw event decryption (`decryptEvent`),
+   * attachment decryption is an EXPLICIT request and THROWS on failure (event
+   * not encrypted, unknown method, no byte support, missing key, bad key /
+   * tampered / truncated bytes).
+   * @param {Object} event - the (encrypted or decrypted) event the attachment belongs to.
+   * @param {Uint8Array} bytes - raw payload-layout bytes downloaded from the core.
+   * @returns {Promise<Uint8Array>} raw plaintext bytes.
+   */
+  async decryptAttachmentData (event, bytes) {
+    const source = this.stripDecrypted(event);
+    const methodName = methodNameFromType(source && source.type);
+    if (methodName == null) {
+      throw new Error('Event is not encrypted (type is not "encrypted/<method>")');
+    }
+    const method = this._methods[methodName];
+    if (!method) {
+      throw new Error(`Unknown encryption method: ${methodName}`);
+    }
+    if (typeof method.decryptBytes !== 'function') {
+      throw new Error(`Method "${methodName}" does not support attachment (byte) decryption`);
+    }
+    const content = (source && source.content) || {};
+    const key = await this.keyring.getKeyFor(methodName, content.keyRef, content.hint);
+    if (key == null) {
+      throw new Error(`No key available for method "${methodName}"${content.keyRef != null ? ` (keyRef "${content.keyRef}")` : ''}`);
+    }
+    return method.decryptBytes(bytes, key);
   }
 
   /**

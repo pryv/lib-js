@@ -132,12 +132,16 @@ async function deriveAesKey (secret, usages) {
 }
 
 /**
- * Encrypt a material object to the recipient's public key.
- * @param {Object} material - the object to serialise + encrypt.
+ * Encrypt raw bytes to the recipient's public key, producing the method's
+ * payload byte layout:
+ *   ephemeralPublicKey[65] || iv[12] || ciphertext || gcm-tag[16]
+ * These are exactly the bytes that Base64-decoding a `content.payload` yields.
+ * The input is not mutated.
+ * @param {Uint8Array} bytes - plaintext bytes to encrypt.
  * @param {*} key - recipient public key in any accepted shape (or a pair object).
- * @returns {Promise<{ payload: string }>}
+ * @returns {Promise<Uint8Array>}
  */
-async function encrypt (material, key) {
+async function encryptBytes (bytes, key) {
   const subtle = globalThis.crypto.subtle;
   const recipientPublic = await normalizeKey(key, 'encrypt');
 
@@ -146,8 +150,7 @@ async function encrypt (material, key) {
   const aesKey = await deriveAesKey(new Uint8Array(secretBits), ['encrypt']);
 
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-  const plaintext = new TextEncoder().encode(JSON.stringify(material));
-  const cipherBuffer = await subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, plaintext);
+  const cipherBuffer = await subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, bytes);
   const cipherBytes = new Uint8Array(cipherBuffer);
 
   const ephRaw = new Uint8Array(await subtle.exportKey('raw', ephemeral.publicKey));
@@ -156,12 +159,53 @@ async function encrypt (material, key) {
   out.set(ephRaw, 0);
   out.set(iv, ephRaw.length);
   out.set(cipherBytes, ephRaw.length + iv.length);
+  return out;
+}
+
+/**
+ * Decrypt the method's payload byte layout back into raw plaintext bytes with
+ * the recipient's private key. Throws on any failure (short input, bad key,
+ * tampered tag).
+ * @param {Uint8Array} bytes - `ephemeralPublicKey[65] || iv[12] || ciphertext || gcm-tag[16]`.
+ * @param {*} key - recipient private key in any accepted shape (or a pair object).
+ * @returns {Promise<Uint8Array>}
+ */
+async function decryptBytes (bytes, key) {
+  const subtle = globalThis.crypto.subtle;
+  if (bytes.length < EPH_PUB_LENGTH + IV_LENGTH + GCM_TAG_LENGTH) {
+    throw new Error('ecies-aes-256-gcm: payload too short');
+  }
+
+  const ephRaw = bytes.slice(0, EPH_PUB_LENGTH);
+  const iv = bytes.slice(EPH_PUB_LENGTH, EPH_PUB_LENGTH + IV_LENGTH);
+  const cipherBytes = bytes.slice(EPH_PUB_LENGTH + IV_LENGTH);
+
+  const recipientPrivate = await normalizeKey(key, 'decrypt');
+  const ephemeralPublic = await subtle.importKey('raw', ephRaw, ALGORITHM, false, []);
+  const secretBits = await subtle.deriveBits({ name: 'ECDH', public: ephemeralPublic }, recipientPrivate, 256);
+  const aesKey = await deriveAesKey(new Uint8Array(secretBits), ['decrypt']);
+
+  const plainBuffer = await subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, cipherBytes);
+  return new Uint8Array(plainBuffer);
+}
+
+/**
+ * Encrypt a material object to the recipient's public key. Thin wrapper over
+ * {@link encryptBytes}: `payload = base64(encryptBytes(utf8(JSON.stringify(material))))`.
+ * @param {Object} material - the object to serialise + encrypt.
+ * @param {*} key - recipient public key in any accepted shape (or a pair object).
+ * @returns {Promise<{ payload: string }>}
+ */
+async function encrypt (material, key) {
+  const plaintext = new TextEncoder().encode(JSON.stringify(material));
+  const out = await encryptBytes(plaintext, key);
   return { payload: bytesToBase64(out) };
 }
 
 /**
- * Decrypt an event `content` with the recipient's private key.
- * Throws on any failure (missing/short payload, bad key, tampered tag, non-JSON).
+ * Decrypt an event `content` with the recipient's private key. Thin wrapper over
+ * {@link decryptBytes}. Throws on any failure (missing/short payload, bad key,
+ * tampered tag, non-JSON).
  * @param {{ payload: string }} content
  * @param {*} key - recipient private key in any accepted shape (or a pair object).
  * @returns {Promise<Object>}
@@ -170,23 +214,8 @@ async function decrypt (content, key) {
   if (content == null || typeof content.payload !== 'string') {
     throw new Error('ecies-aes-256-gcm: content.payload must be a base64 string');
   }
-  const subtle = globalThis.crypto.subtle;
-  const all = base64ToBytes(content.payload);
-  if (all.length < EPH_PUB_LENGTH + IV_LENGTH + GCM_TAG_LENGTH) {
-    throw new Error('ecies-aes-256-gcm: payload too short');
-  }
-
-  const ephRaw = all.slice(0, EPH_PUB_LENGTH);
-  const iv = all.slice(EPH_PUB_LENGTH, EPH_PUB_LENGTH + IV_LENGTH);
-  const cipherBytes = all.slice(EPH_PUB_LENGTH + IV_LENGTH);
-
-  const recipientPrivate = await normalizeKey(key, 'decrypt');
-  const ephemeralPublic = await subtle.importKey('raw', ephRaw, ALGORITHM, false, []);
-  const secretBits = await subtle.deriveBits({ name: 'ECDH', public: ephemeralPublic }, recipientPrivate, 256);
-  const aesKey = await deriveAesKey(new Uint8Array(secretBits), ['decrypt']);
-
-  const plainBuffer = await subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, cipherBytes);
-  return JSON.parse(new TextDecoder().decode(plainBuffer));
+  const plainBytes = await decryptBytes(base64ToBytes(content.payload), key);
+  return JSON.parse(new TextDecoder().decode(plainBytes));
 }
 
 /**
@@ -200,4 +229,4 @@ function isPair (m) {
     (m.publicKey != null || m.privateKey != null);
 }
 
-module.exports = { encrypt, decrypt, generateKeyPair, normalizeKey };
+module.exports = { encrypt, decrypt, encryptBytes, decryptBytes, generateKeyPair, normalizeKey };

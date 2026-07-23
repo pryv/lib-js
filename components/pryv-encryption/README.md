@@ -161,6 +161,56 @@ const aliceRing = new Keyring({ 'alice': privateKey });
 const dec = await aliceCipher.decryptEvent(enc);
 ```
 
+### Encrypted attachments
+
+An event's attached files are encrypted with the **same method and key as the
+event's `content`**, and stored as **raw binary in the method's payload byte
+layout** — i.e. exactly the bytes that Base64-decoding a `content.payload` would
+yield, but **without** the Base64 wrapping:
+
+- `aes-256-gcm` — `iv[12] ‖ ciphertext ‖ gcm-tag[16]`
+- `ecies-aes-256-gcm` — `ephemeralPublicKey[65] ‖ iv[12] ‖ ciphertext ‖ gcm-tag[16]`
+
+Two `EventsCipher` helpers move raw bytes:
+
+```js
+// Encrypt the file bytes with the SAME method/key as the event content:
+const cipherBytes = await cipher.encryptAttachmentData(fileBytes, {
+  method: 'aes-256-gcm', keyRef: 'journal-2026'
+});
+
+// Upload cipherBytes as the file body (isomorphic — a Blob works in Node >= 20
+// and the browser):
+const blob = new Blob([cipherBytes], { type: 'application/octet-stream' });
+const created = (await conn.createEventWithFileFromBuffer(encryptedEvent, blob, 'secret.bin')).event;
+
+// Download the raw bytes and decrypt them against the event they belong to:
+const att = created.attachments[0];
+const url = conn.endpoint + 'events/' + created.id + '/' + att.id + '?readToken=' + att.readToken;
+const downloaded = new Uint8Array(await (await fetch(url)).arrayBuffer());
+const fileBytesBack = await cipher.decryptAttachmentData(created, downloaded);
+```
+
+- `encryptAttachmentData(bytes, { method, keyRef, hint })` → `Uint8Array` —
+  resolves the key exactly like `encryptEventContent`. The input is not mutated.
+- `decryptAttachmentData(event, bytes)` → `Uint8Array` — derives the method from
+  the event's `encrypted/<method>` type and the key from its `content.keyRef` /
+  `content.hint`. `event` may be the encrypted event **or** an already-decrypted
+  one (carrying `decryptedFrom`); the encrypted form is used either way.
+
+**Throw asymmetry.** Unlike the passive, never-throw event decryption
+(`decryptEvent`), attachment decryption is an **explicit request** and
+**throws** on any failure (event not encrypted, unknown method, a method with no
+byte support, a missing key, or bad / tampered / truncated bytes). Both helpers
+throw on error, matching `encryptEvent`.
+
+**The legacy `aes-text-base64` method has no byte support** — there are no known
+legacy encrypted attachments, so it exposes neither `encryptBytes` nor
+`decryptBytes`, and both attachment helpers throw for it.
+
+The core stores the (already-encrypted) file verbatim and reports its **encrypted**
+size on `attachments[0].size` — it never sees the key or the plaintext.
+
 ### Custom methods
 
 Register or override a method with:
@@ -168,9 +218,17 @@ Register or override a method with:
 ```js
 cipher.registerMethod('my-method', {
   encrypt: async (material, key) => ({ payload: /* … */ }),
-  decrypt: async (content, key) => material
+  decrypt: async (content, key) => material,
+  // optional — enable encrypted attachments for this method; each returns the
+  // raw payload-layout / plaintext bytes as a Uint8Array:
+  encryptBytes: async (bytes, key) => /* Uint8Array */,
+  decryptBytes: async (bytes, key) => /* Uint8Array */
 });
 ```
+
+`encryptBytes` / `decryptBytes` are optional; when present they must be
+functions (validated on registration). A method without them cannot encrypt or
+decrypt attachments.
 
 ## Limitations
 

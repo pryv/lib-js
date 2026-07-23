@@ -47,28 +47,61 @@ async function importKey (key) {
 }
 
 /**
- * Encrypt a material object into an event `content`.
- * @param {Object} material - the object to serialise + encrypt.
+ * Encrypt raw bytes into the method's payload byte layout:
+ *   iv (12 bytes) || ciphertext || gcm-auth-tag (16 bytes)
+ * These are exactly the bytes that Base64-decoding a `content.payload` yields.
+ * The input is not mutated.
+ * @param {Uint8Array} bytes - plaintext bytes to encrypt.
  * @param {Uint8Array|string|CryptoKey} key
- * @returns {Promise<{ payload: string }>}
+ * @returns {Promise<Uint8Array>}
  */
-async function encrypt (material, key) {
+async function encryptBytes (bytes, key) {
   const cryptoKey = await importKey(key);
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-  const plaintext = new TextEncoder().encode(JSON.stringify(material));
-  const cipherBuffer = await globalThis.crypto.subtle.encrypt({ name: ALGORITHM, iv }, cryptoKey, plaintext);
+  const cipherBuffer = await globalThis.crypto.subtle.encrypt({ name: ALGORITHM, iv }, cryptoKey, bytes);
   const cipherBytes = new Uint8Array(cipherBuffer);
 
   const out = new Uint8Array(iv.length + cipherBytes.length);
   out.set(iv, 0);
   out.set(cipherBytes, iv.length);
+  return out;
+}
+
+/**
+ * Decrypt the method's payload byte layout back into raw plaintext bytes.
+ * Throws on any failure (bad key, tampered tag, truncated input).
+ * @param {Uint8Array} bytes - `iv || ciphertext || gcm-tag`.
+ * @param {Uint8Array|string|CryptoKey} key
+ * @returns {Promise<Uint8Array>}
+ */
+async function decryptBytes (bytes, key) {
+  if (bytes.length <= IV_LENGTH) {
+    throw new Error('aes-256-gcm: payload too short');
+  }
+  const cryptoKey = await importKey(key);
+  const iv = bytes.slice(0, IV_LENGTH);
+  const cipherBytes = bytes.slice(IV_LENGTH);
+  const plainBuffer = await globalThis.crypto.subtle.decrypt({ name: ALGORITHM, iv }, cryptoKey, cipherBytes);
+  return new Uint8Array(plainBuffer);
+}
+
+/**
+ * Encrypt a material object into an event `content`. Thin wrapper over
+ * {@link encryptBytes}: `payload = base64(encryptBytes(utf8(JSON.stringify(material))))`.
+ * @param {Object} material - the object to serialise + encrypt.
+ * @param {Uint8Array|string|CryptoKey} key
+ * @returns {Promise<{ payload: string }>}
+ */
+async function encrypt (material, key) {
+  const plaintext = new TextEncoder().encode(JSON.stringify(material));
+  const out = await encryptBytes(plaintext, key);
   return { payload: bytesToBase64(out) };
 }
 
 /**
- * Decrypt an event `content` back into its material object.
- * Throws on any failure (bad key, tampered tag, malformed / truncated payload,
- * or non-JSON plaintext).
+ * Decrypt an event `content` back into its material object. Thin wrapper over
+ * {@link decryptBytes}. Throws on any failure (bad key, tampered tag, malformed /
+ * truncated payload, or non-JSON plaintext).
  * @param {{ payload: string }} content
  * @param {Uint8Array|string|CryptoKey} key
  * @returns {Promise<Object>}
@@ -77,15 +110,8 @@ async function decrypt (content, key) {
   if (content == null || typeof content.payload !== 'string') {
     throw new Error('aes-256-gcm: content.payload must be a base64 string');
   }
-  const cryptoKey = await importKey(key);
-  const all = base64ToBytes(content.payload);
-  if (all.length <= IV_LENGTH) {
-    throw new Error('aes-256-gcm: payload too short');
-  }
-  const iv = all.slice(0, IV_LENGTH);
-  const cipherBytes = all.slice(IV_LENGTH);
-  const plainBuffer = await globalThis.crypto.subtle.decrypt({ name: ALGORITHM, iv }, cryptoKey, cipherBytes);
-  return JSON.parse(new TextDecoder().decode(plainBuffer));
+  const plainBytes = await decryptBytes(base64ToBytes(content.payload), key);
+  return JSON.parse(new TextDecoder().decode(plainBytes));
 }
 
-module.exports = { encrypt, decrypt };
+module.exports = { encrypt, decrypt, encryptBytes, decryptBytes };

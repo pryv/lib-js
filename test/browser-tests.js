@@ -40,5 +40,6 @@ describe('@pryv/encryption', function () {
   require('../components/pryv-encryption/test/ecies-aes-256-gcm.test.js');
   require('../components/pryv-encryption/test/keyring.test.js');
   require('../components/pryv-encryption/test/events-cipher.test.js');
+  require('../components/pryv-encryption/test/attachments.test.js');
   require('../components/pryv-encryption/test/integration.test.js');
 });

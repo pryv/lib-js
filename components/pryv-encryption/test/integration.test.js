@@ -116,4 +116,51 @@ describe('[ENCI] EventsCipher integration (live service)', function () {
     expect(reDecrypted.type).to.equal('note/txt');
     expect(reDecrypted.content).to.equal(updatedContent);
   });
+
+  it('[ENCIB] round-trips an ENCRYPTED attachment through the live service', async function () {
+    const marker = cuid();
+
+    // Random binary payload — encrypted client-side into the method's raw byte
+    // layout (no Base64), then uploaded as the file body.
+    const original = new Uint8Array(3000);
+    for (let i = 0; i < original.length; i += 65536) {
+      globalThis.crypto.getRandomValues(original.subarray(i, Math.min(i + 65536, original.length)));
+    }
+    const encryptedBytes = await cipher.encryptAttachmentData(original, { method: METHOD, keyRef: KEY_REF });
+
+    // The event itself is encrypted with the same method/key.
+    const plain = { streamIds: [STREAM_ID], type: 'note/txt', content: 'attach ' + marker };
+    const encrypted = await cipher.encryptEvent(plain, { method: METHOD, keyRef: KEY_REF });
+
+    // Isomorphic upload: a Blob of the encrypted bytes via createEventWithFileFromBuffer
+    // (accepts a Blob in both Node >= 20 and the browser).
+    const blob = new Blob([encryptedBytes], { type: 'application/octet-stream' });
+    const createBody = await conn.createEventWithFileFromBuffer(encrypted, blob, marker + '.bin');
+    expect(createBody.event, 'create-with-file failed: ' + JSON.stringify(createBody.error)).to.exist;
+    const created = createBody.event;
+    createdIds.push(created.id);
+
+    // The server stores the encrypted envelope + the (already-encrypted) file verbatim.
+    expect(created.type).to.equal('encrypted/' + METHOD);
+    expect(created.attachments, 'no attachments on created event').to.be.an('array').with.length(1);
+    const att = created.attachments[0];
+    expect(att.id).to.be.a('string');
+    expect(att.readToken).to.be.a('string');
+    // The core sees only ciphertext, so the stored size is the encrypted length
+    // (aes-256-gcm: iv[12] + plaintext + tag[16]).
+    expect(att.size).to.equal(original.length + 12 + 16);
+
+    // Download the raw bytes: GET {endpoint}events/{eventId}/{fileId}?readToken=...
+    const url = conn.endpoint + 'events/' + created.id + '/' + att.id + '?readToken=' + att.readToken;
+    const dlRes = await fetch(url);
+    expect(dlRes.status, 'attachment download HTTP status').to.equal(200);
+    const downloaded = new Uint8Array(await dlRes.arrayBuffer());
+
+    // Bytes served back must equal the ciphertext we uploaded...
+    expect(Array.from(downloaded)).to.deep.equal(Array.from(encryptedBytes));
+
+    // ...and decrypting them (via the created event) yields the original bytes exactly.
+    const decrypted = await cipher.decryptAttachmentData(created, downloaded);
+    expect(Array.from(decrypted)).to.deep.equal(Array.from(original));
+  });
 });
