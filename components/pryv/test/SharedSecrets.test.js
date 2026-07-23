@@ -89,7 +89,10 @@ describe('[SSEC] shared-secrets helper', function () {
     const seen = new Set();
     for (let i = 0; i < 50; i++) {
       const out = await SharedSecrets.create(conn, {
-        ttl: 60, title: 't', onConsumed: { message: 'm' }, secret: 1,
+        ttl: 60,
+        title: 't',
+        onConsumed: { message: 'm' },
+        secret: 1,
         signature: { type: 'hmac-sha256', verifierSecret: 'V' }
       });
       const { randomPart } = SharedSecrets.parseKey(out.key);

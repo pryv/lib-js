@@ -82,8 +82,8 @@ describe('[SERX] Service', function () {
         if (isDnsLess) {
           expect(error.message).to.include('Unknown user');
         } else {
-          // fetch throws 'fetch failed'
-          expect(error.message).to.match(/Load failed|fetch failed|getaddrinfo ENOTFOUND|Request has been terminated/);
+          // fetch error message differs per environment (Chrome says 'Failed to fetch')
+          expect(error.message).to.match(/Load failed|fetch failed|Failed to fetch|getaddrinfo ENOTFOUND|Request has been terminated/);
         }
         return;
       }

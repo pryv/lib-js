@@ -245,7 +245,9 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
         }
       });
       await cmc.createInvite(conn, {
-        appCode: 'my-app', scopeStreamId: ':_cmc:apps:my-app', displayName: 'P',
+        appCode: 'my-app',
+        scopeStreamId: ':_cmc:apps:my-app',
+        displayName: 'P',
         requestedPermissions: [{ streamId: 'body', level: 'manage' }],
         accessType: 'app'
       });
@@ -261,7 +263,9 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
         }
       });
       await cmc.createInvite(conn, {
-        appCode: 'my-app', scopeStreamId: ':_cmc:apps:my-app', displayName: 'P',
+        appCode: 'my-app',
+        scopeStreamId: ':_cmc:apps:my-app',
+        displayName: 'P',
         requestedPermissions: [{ streamId: 'body', level: 'read' }]
       });
       expect(conn.calls[0].params.content.request).to.not.have.property('accessType');
