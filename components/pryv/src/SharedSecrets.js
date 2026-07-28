@@ -86,11 +86,12 @@ async function hmacSha256Hex (verifierSecret, message) {
  * @param {number} params.ttl seconds the secret stays redeemable (required)
  * @param {string} params.title shown to the account owner (required)
  * @param {Object} params.onConsumed `{ message, returnUrl? }` shown once spent
- * @param {*} params.secret the payload — any JSON value
+ * @param {*} params.secret the payload: any non-null JSON value (the server
+ *   refuses `null` and `undefined` with `shared-secret-missing-secret`)
  * @param {Object} [params.signature] `{ type: 'secret', value }` or
  *   `{ type: 'hmac-sha256', verifierSecret }`. For the HMAC form the key
  *   material is generated here so the proof can be bound before creation.
- * @returns {Promise<Object>} `{ id, key, expires, ... }` — `key` is returned
+ * @returns {Promise<Object>} `{ id, key, expires, ... }`; `key` is returned
  *   only here and cannot be recovered later.
  */
 async function create (connection, params) {
