@@ -8,7 +8,10 @@ const PryvError = require('./PryvError');
 /**
  * Thrown by `Service.login` when the platform replied with `{ mfaToken }`
  * instead of `{ token }`. Consumers catch this, prompt the user for the
- * SMS code, then call `Service.mfaVerify(userId, err.mfaToken, code)`.
+ * code, then call `Service.mfaVerify(userId, err.mfaToken, code)`.
+ *
+ * `err.method` (when present) tells the app which factor to prompt for:
+ * `'totp'` (an authenticator-app code) or `'sms'` (a code sent by SMS).
  *
  *   try { conn = await service.login(u, p, app) }
  *   catch (err) {
@@ -33,6 +36,8 @@ class MfaRequiredError extends PryvError {
     this.name = 'MfaRequiredError';
     /** @type {string} */
     this.mfaToken = mfaToken;
+    /** @type {string|undefined} The MFA method to prompt for: 'totp' | 'sms'. */
+    this.method = body && body.mfaMethod;
     this.id = (apiErr && apiErr.id) || 'mfa-required';
     this.status = response && response.status;
     this.response = { body, status: response && response.status };

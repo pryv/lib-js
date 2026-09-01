@@ -172,12 +172,14 @@ declare module 'pryv' {
    * Thrown by `Service.login` when the platform returned `{ mfaToken }`
    * instead of `{ token }`. Carries the `mfaToken` so the consumer can
    * call `Service.mfaVerify(userId, err.mfaToken, code)` after prompting
-   * the user for their SMS code.
+   * the user for their code. `method` (when present) says which factor to
+   * prompt for: `'totp'` (authenticator app) or `'sms'`.
    */
   export class MfaRequiredError extends PryvError {
     constructor(mfaToken: string, response: Response, body?: any);
     name: 'MfaRequiredError';
     mfaToken: string;
+    method?: 'totp' | 'sms' | string;
   }
 
   /** Catalogue of Pryv API error ids (mirrors open-pryv.io ErrorIds.js). */

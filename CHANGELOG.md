@@ -2,6 +2,16 @@
 
 <!-- Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) -->
 
+## [Unreleased]
+
+### Added
+
+- `MfaRequiredError.method` — when the platform signals MFA at login it now
+  also reports which factor to prompt for: `'totp'` (an authenticator-app
+  code) or `'sms'`. Apps can branch on `err.method` to render the right prompt
+  (authenticator code vs SMS code); the field is `undefined` against older
+  servers that do not send it, so existing handling is unaffected.
+
 ## [3.10.0] - 2026-07-23
 
 ### Added
