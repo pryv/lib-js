@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-09-02
+
 ### Added
 
 - `MfaRequiredError.method` — when the platform signals MFA at login it now

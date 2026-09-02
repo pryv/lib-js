@@ -90,5 +90,30 @@ describe('[MFLX] Service MFA', function () {
       expect(err.id).to.equal('custom-id');
       expect(err.message).to.equal('custom msg');
     });
+
+    it('[MERC] surfaces the MFA method from the API body when present', function () {
+      const totp = new pryv.MfaRequiredError(
+        'tok-1',
+        { status: 200 },
+        { mfaToken: 'tok-1', mfaMethod: 'totp' }
+      );
+      expect(totp.method).to.equal('totp');
+
+      const sms = new pryv.MfaRequiredError(
+        'tok-2',
+        { status: 200 },
+        { mfaToken: 'tok-2', mfaMethod: 'sms' }
+      );
+      expect(sms.method).to.equal('sms');
+    });
+
+    it('[MERD] leaves method undefined when the body omits it (older servers)', function () {
+      const err = new pryv.MfaRequiredError(
+        'tok-3',
+        { status: 200 },
+        { mfaToken: 'tok-3' }
+      );
+      expect(err.method).to.equal(undefined);
+    });
   });
 });
