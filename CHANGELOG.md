@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- TypeScript: `connectFromKey` is now declared in `src/index.d.ts`. The
+  module-level helper (`pryv.connectFromKey(key, serviceInfoUrl)` and the named
+  `connectFromKey` export) plus `Service#connectFromKey(key)` shipped at runtime
+  in 3.5.0 but were missing from the type declarations, so TypeScript consumers
+  hit `TS2339` / `TS2614`. Declarations only; no runtime change (#70).
+
 ## [3.11.0] - 2026-09-02
 
 ### Added

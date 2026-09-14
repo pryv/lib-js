@@ -873,6 +873,12 @@ declare module 'pryv' {
       pollRateMs: number;
     }>;
     pollAccessRequest(keyOrPollUrl: string): Promise<any>;
+    /**
+     * Resolve an auth-flow polling `key` (from {@link Service.startAccessRequest})
+     * into a working {@link Connection}. Polls the access request once; throws a
+     * {@link PryvError} unless the access is `ACCEPTED`.
+     */
+    connectFromKey(key: string): Promise<Connection>;
 
     static buildAPIEndpoint(
       serviceInfo: ServiceInfo,
@@ -880,6 +886,19 @@ declare module 'pryv' {
       token?: string,
     ): string;
   }
+
+  /**
+   * Module-level convenience over {@link Service#connectFromKey}: builds a
+   * transient {@link Service} for `serviceInfoUrl`, fetches its info, and
+   * resolves the auth-flow polling `key` into a working {@link Connection}.
+   * Mirrors the `pryv.connectFromKey(key, serviceInfoUrl)` shape the headless
+   * polling pattern documents.
+   */
+  export function connectFromKey(
+    key: string,
+    serviceInfoUrl: string,
+    serviceCustomizations?: serviceCustomizations,
+  ): Promise<Connection>;
 
   export type AuthRequestedPermission = {
     streamId: Identifier;
@@ -1202,6 +1221,7 @@ declare module 'pryv' {
     MfaRequiredError: typeof MfaRequiredError;
     ERRORS: typeof ERRORS;
     version: version;
+    connectFromKey: typeof connectFromKey;
   };
 
   export default pryv;
