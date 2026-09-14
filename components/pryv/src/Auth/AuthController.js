@@ -70,7 +70,14 @@ class AuthController {
     const loginButton = this.loginButton;
     // initialize human interaction interface
     if (loginButton != null) {
-      this.stateChangeListeners.push(loginButton.onStateChange.bind(loginButton));
+      // Register the button's state listener at most once: init() can run again
+      // on the same controller (the LoginButton re-inits after a confirmed
+      // logout), and a duplicate listener would fire the logout confirm twice
+      // and compound the listener list on every re-login.
+      if (!this._loginButtonListenerRegistered) {
+        this.stateChangeListeners.push(loginButton.onStateChange.bind(loginButton));
+        this._loginButtonListenerRegistered = true;
+      }
       // autologin needs cookies/storage implemented in human interaction interface
       await checkAutoLogin(this);
     }
@@ -245,9 +252,15 @@ class AuthController {
 
     this._state = newState;
 
+    // Dispatch the state that was just set (`newState`), NOT the live `this.state`
+    // getter: a listener that synchronously changes the state mid-dispatch (e.g.
+    // the LoginButton's logout confirm re-initializing to INITIALIZED) would
+    // otherwise overwrite `this._state`, so later listeners in this loop would
+    // receive the wrong state (a logout would deliver INITIALIZED instead of
+    // SIGNOUT to the app's onStateChange).
     this.stateChangeListeners.forEach((listener) => {
       try {
-        listener(this.state);
+        listener(newState);
       } catch (e) {
         console.log('Error during set state ()', e);
       }

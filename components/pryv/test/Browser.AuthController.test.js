@@ -7,11 +7,13 @@
 const utils = require('../src/utils.js');
 const Service = require('../src/Service');
 const AuthController = require('../src/Auth/AuthController.js');
+const AuthStates = require('../src/Auth/AuthStates');
 
 describe('[AUTX] Browser.LoginButton', function () {
   this.timeout(15000);
 
   let auth;
+  let service;
   let cleanupDom = false;
   before(async function () {
     if (typeof document !== 'undefined') return; // in browser
@@ -32,7 +34,7 @@ describe('[AUTX] Browser.LoginButton', function () {
     delete global.location;
   });
   before(async function () {
-    const service = new Service(testData.serviceInfoUrl);
+    service = new Service(testData.serviceInfoUrl);
     await service.info();
     auth = new AuthController({
       authRequest: {
@@ -91,5 +93,76 @@ describe('[AUTX] Browser.LoginButton', function () {
 
     expect('https://my.Url.com/#bobby=2').to.equal(utils.cleanURLFromPrYvParams(
       'https://my.Url.com/#bobby=2&prYvZoutOu=1&prYvstatus=2jsadh'));
+  });
+
+  // Logout state dispatch (https://github.com/pryv/lib-js/issues/13): a listener
+  // that synchronously re-enters the setter (the LoginButton's logout confirm
+  // re-initializing to INITIALIZED) must not corrupt the state delivered to the
+  // other listeners in the same dispatch, and init() must not register the button
+  // listener twice (which would fire the logout confirm dialog more than once).
+  describe('[ACLO] logout state dispatch (re-entrancy)', function () {
+    function makeAuth (onStateChange) {
+      return new AuthController({
+        authRequest: { requestingAppId: 'test-app', requestedPermissions: [] },
+        onStateChange
+      }, service);
+    }
+
+    it('[ACLO1] the app onStateChange receives SIGNOUT on logout, then INITIALIZED', async function () {
+      const seen = [];
+      const a = makeAuth((s) => seen.push(s.status));
+      await a.init();
+      // Mimic LoginButton (registered after the external app listener): on
+      // SIGNOUT it confirms + re-initializes, synchronously driving the state
+      // to INITIALIZED during the same dispatch.
+      a.stateChangeListeners.push((s) => {
+        if (s.status === AuthStates.SIGNOUT) a.state = { status: AuthStates.INITIALIZED, serviceInfo: {} };
+      });
+      a._state = { status: AuthStates.AUTHORIZED };
+      seen.length = 0;
+      await a.handleClick(); // AUTHORIZED -> SIGNOUT
+      expect(seen).to.include(AuthStates.SIGNOUT);
+      expect(seen[seen.length - 1]).to.equal(AuthStates.INITIALIZED);
+    });
+
+    it('[ACLO2] a listener re-entering the setter must not corrupt the state delivered to later listeners', function () {
+      // The setter must hand each listener the state dispatched to IT, not a value
+      // an earlier listener mutated mid-dispatch. Worst case: a re-entrant listener
+      // registered BEFORE the recorder.
+      const a = makeAuth(() => {});
+      const seen = [];
+      let reentered = false;
+      a.stateChangeListeners.push((s) => {
+        if (s.status === AuthStates.SIGNOUT && !reentered) {
+          reentered = true;
+          a.state = { status: AuthStates.INITIALIZED, serviceInfo: {} };
+        }
+      });
+      a.stateChangeListeners.push((s) => seen.push(s.status));
+      seen.length = 0;
+      a.state = { status: AuthStates.SIGNOUT };
+      // The re-entrant INITIALIZED dispatch completes first (inner), then the outer
+      // SIGNOUT dispatch resumes to the recorder; the recorder MUST see SIGNOUT.
+      expect(seen).to.deep.equal([AuthStates.INITIALIZED, AuthStates.SIGNOUT]);
+    });
+
+    it('[ACLO3] init() registers the LoginButton listener only once, so logout confirms exactly once', async function () {
+      let confirms = 0;
+      const fakeButton = {
+        onStateChange: (s) => { if (s.status === AuthStates.SIGNOUT) confirms++; },
+        getAuthorizationData: () => null
+      };
+      const a = new AuthController({
+        authRequest: { requestingAppId: 'test-app', requestedPermissions: [] }
+      }, service, fakeButton);
+      await a.init();
+      const nAfterFirst = a.stateChangeListeners.length;
+      await a.init(); // the confirmed-logout path re-inits the same controller
+      await a.init();
+      expect(a.stateChangeListeners.length).to.equal(nAfterFirst); // no compounding
+      confirms = 0;
+      a.state = { status: AuthStates.SIGNOUT }; // one dispatch -> one confirm
+      expect(confirms).to.equal(1);
+    });
   });
 });

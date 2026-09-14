@@ -6,6 +6,12 @@
 
 ### Fixed
 
+- Browser auth: the state dispatched by `AuthController` is now the state being
+  set, so a listener that synchronously changes the state mid-dispatch (the
+  LoginButton's logout confirm re-initializing to INITIALIZED) can no longer make
+  another listener receive the wrong state. Also register the LoginButton's state
+  listener at most once per controller, so a re-login after logout no longer shows
+  the confirm dialog multiple times. Fixes the logout signalling reported in #13.
 - TypeScript: `connectFromKey` is now declared in `src/index.d.ts`. The
   module-level helper (`pryv.connectFromKey(key, serviceInfoUrl)` and the named
   `connectFromKey` export) plus `Service#connectFromKey(key)` shipped at runtime
