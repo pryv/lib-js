@@ -33,6 +33,14 @@
   in 3.5.0 but were missing from the type declarations, so TypeScript consumers
   hit `TS2339` / `TS2614`. Declarations only; no runtime change (#70).
 
+### Security
+
+- Bumped the transitive `socket.io-parser` to 4.2.7, clearing a high-severity
+  advisory (zero-attachment memory exhaustion, GHSA-2m8v-j782-fhvr) reached
+  through `socket.io-client`. Lockfile only; no declared dependency range
+  changed and there is no API change. It was the only advisory affecting the
+  runtime dependency tree.
+
 ## [3.11.0] - 2026-09-02
 
 ### Added
