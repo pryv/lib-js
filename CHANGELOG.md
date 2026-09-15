@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Security
+
+- Bumped the transitive `socket.io-parser` to 4.2.7, clearing a high-severity
+  advisory (zero-attachment memory exhaustion, GHSA-2m8v-j782-fhvr) reached
+  through `socket.io-client`. Lockfile only; no declared dependency range
+  changed and there is no API change. It was the only advisory affecting the
+  runtime dependency tree.
+
 ### Fixed
 
 - Browser auth: the state dispatched by `AuthController` is now the state being
