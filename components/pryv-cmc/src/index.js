@@ -412,6 +412,130 @@ async function listInvites (conn, params) {
   return { items, truncated: items.length >= limit };
 }
 
+/**
+ * Normalize an arriving `consent/revoke-cmc` event into a record keyed on
+ * identifiers THIS account holds.
+ *
+ * The event's `content.accessId` is the withdrawing side's access id on their
+ * own account, so it matches nothing locally; it is surfaced here as
+ * `peerAccessId` rather than `accessId`, to stop it being mistaken for
+ * something to look up. The server adds the local handles, and which ones
+ * depends on the side:
+ *
+ *   - requester (we published the invite): `backChannelAccessId` + `inviteEventId`,
+ *     the same pair the accept arrival carried;
+ *   - accepter (we accepted an invite): `dataGrantAccessId` + `offerEventId` +
+ *     `acceptEventId`, the ids our own accept trigger was stamped with.
+ *
+ * `side` is `null` against a server that predates the enrichment, or for a
+ * relationship too old to carry either stamp; `localAccessId` is then null too
+ * and `scopeStreamId` is the identifier to match on. Nothing here throws on a
+ * sparse arrival: an older peer sends only `accessId` and maybe `offerEventId`.
+ *
+ * The accesses named by `revokedAccessIds` are already deleted by the time this
+ * event is readable. Tokens held for them are dead: drop cached endpoints
+ * rather than calling `accesses.delete` yourself.
+ *
+ * @param {Object} event - the `consent/revoke-cmc` event as received
+ * @returns {{
+ *   eventId: ?string, from: ?Object, reason: ?Object, side: ?string,
+ *   localAccessId: ?string, revokedAccessIds: string[], scopeStreamId: ?string,
+ *   inviteEventId: ?string, offerEventId: ?string, acceptEventId: ?string,
+ *   peerAccessId: ?string, time: ?number
+ * }}
+ */
+function revocationFromEvent (event) {
+  const c = (event && event.content) || {};
+  // Same test for the label and for the id below, so a falsy-but-present value
+  // cannot produce a side with no access id to go with it.
+  const backChannelAccessId = c.backChannelAccessId || null;
+  const dataGrantAccessId = c.dataGrantAccessId || null;
+  const side = backChannelAccessId != null
+    ? 'requester'
+    : (dataGrantAccessId != null ? 'accepter' : null);
+  return {
+    eventId: (event && event.id) || null,
+    // Objects or null, never a stray scalar: the declared types say object, and
+    // `from` is compared field-by-field by `revocationMatches`.
+    from: (c.from != null && typeof c.from === 'object') ? c.from : null,
+    reason: (c.reason != null && typeof c.reason === 'object') ? c.reason : null,
+    side,
+    localAccessId: backChannelAccessId || dataGrantAccessId || null,
+    revokedAccessIds: Array.isArray(c.revokedAccessIds) ? c.revokedAccessIds : [],
+    scopeStreamId: c.scopeStreamId || null,
+    inviteEventId: c.inviteEventId || null,
+    offerEventId: c.offerEventId || null,
+    acceptEventId: c.acceptEventId || null,
+    peerAccessId: c.accessId || null,
+    time: (event && event.time) || null
+  };
+}
+
+/**
+ * Does a revocation record refer to the relationship the caller is holding?
+ *
+ * **The most specific identifier the two sides share decides, and nothing
+ * falls through past it.** The tiers, narrowest first:
+ *
+ *   1. `accessId` — compared against `localAccessId` and `revokedAccessIds`;
+ *   2. `acceptEventId`; 3. `offerEventId`; 4. `inviteEventId`;
+ *   5. `scopeStreamId`.
+ *
+ * Falling through used to be the bug: on an **open (multi-use) invite link**
+ * every accepter's relationship carries the SAME `inviteEventId` and the SAME
+ * `scopeStreamId`, because those name the link rather than the subject. So a
+ * revocation by one subject matched every other subject of the same study, and
+ * a caller acting on the match tore down the wrong relationship. A narrower
+ * identifier that disagrees now returns false instead of letting a broader one
+ * rescue the match. The cost is that an `accessId` the caller no longer holds
+ * (the server already deleted it and did not list it) answers false rather than
+ * matching on scope; pass the ids you hold, not the ids you held.
+ *
+ * `relationship.from` (`{username, host}`) acts as a FILTER, not a match: a
+ * mismatch returns false before any tier is considered, and agreement alone
+ * never proves a match. It is the discriminator to add on an open link, and it
+ * is safe to trust because the server stamps `from` on every inbox arrival.
+ *
+ * A `relationship` sharing no identifier with the record returns false.
+ *
+ * @param {Object} record - from `revocationFromEvent`
+ * @param {Object} relationship - any subset of `{accessId, acceptEventId,
+ *   offerEventId, inviteEventId, scopeStreamId}`, plus an optional
+ *   `from: {username, host}` filter
+ * @returns {boolean}
+ */
+function revocationMatches (record, relationship) {
+  if (record == null || relationship == null) return false;
+  const r = relationship;
+
+  // Filter first: a different peer is never this relationship, whatever ids
+  // the two happen to share through a shared link.
+  if (r.from != null) {
+    const f = record.from;
+    if (f == null || typeof f !== 'object') return false;
+    if (f.username !== r.from.username || f.host !== r.from.host) return false;
+  }
+
+  // Tolerate a hand-built record, or a raw event passed in by mistake.
+  const revoked = Array.isArray(record.revokedAccessIds) ? record.revokedAccessIds : [];
+  if (r.accessId != null && (record.localAccessId != null || revoked.length > 0)) {
+    return record.localAccessId === r.accessId || revoked.indexOf(r.accessId) !== -1;
+  }
+  if (r.acceptEventId != null && record.acceptEventId != null) {
+    return record.acceptEventId === r.acceptEventId;
+  }
+  if (r.offerEventId != null && record.offerEventId != null) {
+    return record.offerEventId === r.offerEventId;
+  }
+  if (r.inviteEventId != null && record.inviteEventId != null) {
+    return record.inviteEventId === r.inviteEventId;
+  }
+  if (r.scopeStreamId != null && record.scopeStreamId != null) {
+    return record.scopeStreamId === r.scopeStreamId;
+  }
+  return false;
+}
+
 function inviteRecordFromEvent (event) {
   const c = (event && event.content) || {};
   return {
@@ -1425,6 +1549,9 @@ module.exports = {
   sendSystemAck,
   acceptScopeUpdate,
   refuseScopeUpdate,
+  // revocation arrivals (inbox)
+  revocationFromEvent,
+  revocationMatches,
   // accept hand-off (apps without a personal token)
   requestAccept,
   requestAcceptUrl,

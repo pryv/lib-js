@@ -1433,4 +1433,194 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       expect(r.dataGrantAccessId).to.equal('dg-xyz');
     });
   });
+
+  describe('[CMCXR] revocation arrivals', function () {
+    // The arrival names the withdrawing side's own access id, which matches
+    // nothing here. These helpers key on what this account actually holds.
+    const REQUESTER_ARRIVAL = {
+      id: 'evt-rev-1',
+      type: 'consent/revoke-cmc',
+      time: 1789000000,
+      content: {
+        from: { username: 'bob', host: 'pryv.me' },
+        reason: { en: 'no longer needed' },
+        accessId: 'their-side-id',
+        backChannelAccessId: 'bc-local',
+        inviteEventId: 'invite-1',
+        scopeStreamId: ':_cmc:apps:my-app:study-a',
+        revokedAccessIds: ['bc-local'],
+        status: 'delivered'
+      }
+    };
+    const ACCEPTER_ARRIVAL = {
+      id: 'evt-rev-2',
+      type: 'consent/revoke-cmc',
+      content: {
+        from: { username: 'alice', host: 'pryv.me' },
+        accessId: 'their-side-id',
+        dataGrantAccessId: 'dg-local',
+        offerEventId: 'offer-1',
+        acceptEventId: 'accept-1',
+        scopeStreamId: ':_cmc:apps:my-app:study-a',
+        revokedAccessIds: ['dg-local']
+      }
+    };
+    // What an older server sends: no receiver-side enrichment at all.
+    const LEGACY_ARRIVAL = {
+      id: 'evt-rev-3',
+      type: 'consent/revoke-cmc',
+      content: { from: { username: 'bob', host: 'pryv.me' }, accessId: 'their-side-id', appCode: 'my-app' }
+    };
+
+    it('[CMCXRA] maps a requester-side arrival to local handles', function () {
+      const r = cmc.revocationFromEvent(REQUESTER_ARRIVAL);
+      expect(r.side).to.equal('requester');
+      expect(r.localAccessId).to.equal('bc-local');
+      expect(r.inviteEventId).to.equal('invite-1');
+      expect(r.scopeStreamId).to.equal(':_cmc:apps:my-app:study-a');
+      expect(r.revokedAccessIds).to.eql(['bc-local']);
+      // The sender's id is surfaced, but never as something to look up here.
+      expect(r.peerAccessId).to.equal('their-side-id');
+      expect(r.eventId).to.equal('evt-rev-1');
+      expect(r.time).to.equal(1789000000);
+    });
+
+    it('[CMCXRB] maps an accepter-side arrival to its own grant + trigger ids', function () {
+      const r = cmc.revocationFromEvent(ACCEPTER_ARRIVAL);
+      expect(r.side).to.equal('accepter');
+      expect(r.localAccessId).to.equal('dg-local');
+      expect(r.offerEventId).to.equal('offer-1');
+      expect(r.acceptEventId).to.equal('accept-1');
+      expect(r.inviteEventId).to.equal(null);
+    });
+
+    it('[CMCXRC] degrades on an arrival from a server without the enrichment', function () {
+      const r = cmc.revocationFromEvent(LEGACY_ARRIVAL);
+      expect(r.side).to.equal(null);
+      expect(r.localAccessId).to.equal(null);
+      expect(r.revokedAccessIds).to.eql([]);
+      expect(r.scopeStreamId).to.equal(null);
+      expect(r.peerAccessId).to.equal('their-side-id');
+    });
+
+    it('[CMCXRD] survives an empty or contentless event without throwing', function () {
+      const r = cmc.revocationFromEvent({});
+      expect(r.side).to.equal(null);
+      expect(r.revokedAccessIds).to.eql([]);
+      expect(cmc.revocationFromEvent(null).eventId).to.equal(null);
+    });
+
+    it('[CMCXRE] matches a relationship on any shared identifier', function () {
+      const r = cmc.revocationFromEvent(REQUESTER_ARRIVAL);
+      expect(cmc.revocationMatches(r, { accessId: 'bc-local' })).to.equal(true);
+      expect(cmc.revocationMatches(r, { inviteEventId: 'invite-1' })).to.equal(true);
+      expect(cmc.revocationMatches(r, { scopeStreamId: ':_cmc:apps:my-app:study-a' })).to.equal(true);
+      // An access that was swept alongside the addressed one still matches.
+      const swept = cmc.revocationFromEvent({
+        content: { ...REQUESTER_ARRIVAL.content, revokedAccessIds: ['bc-local', 'bc-older'] }
+      });
+      expect(cmc.revocationMatches(swept, { accessId: 'bc-older' })).to.equal(true);
+    });
+
+    it('[CMCXRF] refuses a relationship with nothing in common', function () {
+      // The case that matters: two relationships with one peer. A loose match
+      // would have an app tear down the wrong one.
+      const r = cmc.revocationFromEvent(REQUESTER_ARRIVAL);
+      expect(cmc.revocationMatches(r, { scopeStreamId: ':_cmc:apps:my-app:study-b' })).to.equal(false);
+      expect(cmc.revocationMatches(r, { accessId: 'some-other-access' })).to.equal(false);
+      expect(cmc.revocationMatches(r, {})).to.equal(false);
+      expect(cmc.revocationMatches(r, null)).to.equal(false);
+      expect(cmc.revocationMatches(null, { accessId: 'bc-local' })).to.equal(false);
+    });
+
+    it('[CMCXRG] a legacy arrival still matches on the ids it does carry', function () {
+      const r = cmc.revocationFromEvent({ content: { accessId: 'x', offerEventId: 'offer-9' } });
+      expect(cmc.revocationMatches(r, { offerEventId: 'offer-9' })).to.equal(true);
+      expect(cmc.revocationMatches(r, { scopeStreamId: ':_cmc:apps:a:b' })).to.equal(false);
+    });
+
+    it('[CMCXRH] one open link, several subjects: a revocation matches only its own', function () {
+      // The case that makes a loose match dangerous. Every accepter of one
+      // open (multi-use) invite gets a relationship carrying the SAME
+      // inviteEventId and the SAME scopeStreamId, because those name the LINK,
+      // not the subject. Falling through to them matched every other subject
+      // of the same study, and a caller acting on that tore down the wrong
+      // relationship.
+      const SCOPE = ':_cmc:apps:study-app:study-a';
+      const bobRevoked = cmc.revocationFromEvent({
+        id: 'evt-rev-bob',
+        content: {
+          from: { username: 'bob', host: 'pryv.me' },
+          accessId: 'bob-side-id',
+          backChannelAccessId: 'bc-bob',
+          inviteEventId: 'invite-1',
+          scopeStreamId: SCOPE,
+          revokedAccessIds: ['bc-bob']
+        }
+      });
+      const aliceRelationship = {
+        accessId: 'bc-alice',
+        inviteEventId: 'invite-1',
+        scopeStreamId: SCOPE,
+        from: { username: 'alice', host: 'pryv.me' }
+      };
+
+      expect(cmc.revocationMatches(bobRevoked, aliceRelationship)).to.equal(false);
+      // Same, with NO peer filter: the access id alone must settle it, or the
+      // shared inviteEventId/scopeStreamId would rescue the match. This is the
+      // assertion that fails if the tiers ever fall through again.
+      expect(cmc.revocationMatches(bobRevoked, {
+        accessId: 'bc-alice', inviteEventId: 'invite-1', scopeStreamId: SCOPE
+      })).to.equal(false);
+      // Even without the access id, the peer filter settles it.
+      expect(cmc.revocationMatches(bobRevoked, {
+        inviteEventId: 'invite-1', from: { username: 'alice', host: 'pryv.me' }
+      })).to.equal(false);
+      // Bob's own relationship still matches, by either route.
+      expect(cmc.revocationMatches(bobRevoked, { accessId: 'bc-bob' })).to.equal(true);
+      expect(cmc.revocationMatches(bobRevoked, {
+        inviteEventId: 'invite-1', from: { username: 'bob', host: 'pryv.me' }
+      })).to.equal(true);
+    });
+
+    it('[CMCXRI] a narrower identifier that disagrees is decisive', function () {
+      // No fall-through: a matching scope must not rescue a mismatched access.
+      const r = cmc.revocationFromEvent({
+        content: {
+          accessId: 'their-id',
+          backChannelAccessId: 'bc-local',
+          scopeStreamId: ':_cmc:apps:a:b',
+          revokedAccessIds: ['bc-local']
+        }
+      });
+      expect(cmc.revocationMatches(r, {
+        accessId: 'bc-other', scopeStreamId: ':_cmc:apps:a:b'
+      })).to.equal(false);
+      expect(cmc.revocationMatches(r, {
+        accessId: 'bc-local', scopeStreamId: ':_cmc:apps:zzz'
+      })).to.equal(true);
+      // An id the record cannot speak to is not decisive: it falls to the next
+      // tier rather than answering false.
+      const legacy = cmc.revocationFromEvent({ content: { accessId: 'their-id', offerEventId: 'offer-9' } });
+      expect(cmc.revocationMatches(legacy, {
+        accessId: 'whatever-we-hold', offerEventId: 'offer-9'
+      })).to.equal(true);
+    });
+
+    it('[CMCXRJ] a record without revokedAccessIds does not throw', function () {
+      // A hand-built record, or a raw event passed by mistake, must not take
+      // down a Monitor callback.
+      expect(cmc.revocationMatches({ localAccessId: 'a' }, { accessId: 'a' })).to.equal(true);
+      expect(cmc.revocationMatches({ localAccessId: 'a' }, { accessId: 'b' })).to.equal(false);
+      expect(cmc.revocationMatches({}, { accessId: 'a' })).to.equal(false);
+    });
+
+    it('[CMCXRK] a non-object from or reason is dropped, not passed through', function () {
+      const r = cmc.revocationFromEvent({ content: { from: 'bob', reason: 'because' } });
+      expect(r.from).to.equal(null);
+      expect(r.reason).to.equal(null);
+      // And the filter refuses rather than throwing on it.
+      expect(cmc.revocationMatches(r, { from: { username: 'bob', host: 'pryv.me' } })).to.equal(false);
+    });
+  });
 });

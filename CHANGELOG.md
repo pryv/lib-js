@@ -18,6 +18,25 @@
   `errorIds` catalogue) — in particular `detachDelegate` distinctly reports
   `delegation-genuine-login-required` so a UI can prompt the account owner to
   log in directly.
+- `@pryv/cmc`: `cmc.revocationFromEvent(event)` and
+  `cmc.revocationMatches(record, relationship)` for handling a
+  `consent/revoke-cmc` arrival. The event's `content.accessId` is the
+  withdrawing side's access id on their own account and matches nothing
+  locally; `revocationFromEvent` normalizes the arrival onto the handles the
+  receiving account holds (`localAccessId`, `inviteEventId` /
+  `offerEventId` / `acceptEventId`, `scopeStreamId`, and `revokedAccessIds`,
+  the local accesses the server already deleted), surfacing the peer's id as
+  `peerAccessId` so it is not mistaken for something to look up.
+  `revocationMatches` lets the most specific identifier the two sides share
+  decide (`accessId` → `acceptEventId` → `offerEventId` → `inviteEventId` →
+  `scopeStreamId`) and does not fall through past it, with an optional
+  `from: {username, host}` filter. That matters on an open (multi-use) invite
+  link, where `inviteEventId` and `scopeStreamId` name the LINK rather than the
+  subject and are therefore shared by every accepter: match on the
+  per-relationship `accessId`, or add the `from` filter. Both helpers degrade
+  rather than throw against a server that predates the receiver-side
+  enrichment; `side` and `localAccessId` are then `null`, and an arrival from
+  such a server may carry no identifier the caller shares at all.
 
 ### Fixed
 

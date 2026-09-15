@@ -327,6 +327,56 @@ const monitor = new pryv.Monitor(conn, cmc.scopes.inbox())
 await monitor.start();
 ```
 
+#### Handling a revocation arrival
+
+A revoke event's `content.accessId` is the **withdrawing side's** access id on
+their own account, so it matches nothing locally. `cmc.revocationFromEvent`
+normalizes the arrival onto the handles this account holds, and
+`cmc.revocationMatches` tells you whether it concerns a relationship you are
+tracking:
+
+```js
+const rev = cmc.revocationFromEvent(event);
+// rev.side          'requester' | 'accepter' | null (older server)
+// rev.localAccessId the access on THIS account that served the relationship
+// rev.inviteEventId / offerEventId / acceptEventId / scopeStreamId
+// rev.revokedAccessIds  local accesses the server already deleted
+// rev.peerAccessId  their id, surfaced but not a local handle
+
+// Match on the PER-RELATIONSHIP handle you stored when the accept arrived:
+if (cmc.revocationMatches(rev, { accessId: relationship.backChannelAccessId })) {
+  dropCachedEndpointsFor(relationship);   // those tokens are already dead
+}
+```
+
+The accesses in `revokedAccessIds` are deleted by the server before the event is
+readable, so there is nothing to `accesses.delete` yourself: drop the cached
+endpoints instead.
+
+**Match on the narrowest handle you have.** `revocationMatches` lets the most
+specific identifier the two sides share decide, and does not fall through past
+it: `accessId` → `acceptEventId` → `offerEventId` → `inviteEventId` →
+`scopeStreamId`. This matters on an **open (multi-use) invite link**, where
+every accepter's relationship carries the same `inviteEventId` and the same
+`scopeStreamId` — those name the *link*, not the subject. Matching a revocation
+on `inviteEventId` alone would therefore hit every other subject of the same
+study. Either pass the `accessId` you stored per relationship, or add the peer
+as a filter:
+
+```js
+cmc.revocationMatches(rev, { inviteEventId, from: rev.from && relationship.peer });
+```
+
+`from` is a filter rather than a match: a different peer returns false before
+anything else is considered, and agreeing alone never proves a match. It is safe
+to trust because the server stamps `from` on every inbox arrival.
+
+Against a server that predates the receiver-side enrichment, `side` and
+`localAccessId` are `null`, and the record carries only what that older server
+sent — often just the peer's own `accessId` and `appCode`. There may then be no
+shared identifier at all and `revocationMatches` returns false for everything;
+fall back to `rev.from` plus your own bookkeeping.
+
 
 ### Examples
 
