@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## 3.13.0 — 2026-09-15
+
+`@pryv/cmc@3.12.0` was published from a tree that did not yet carry the code the
+bump was for: its tarball has none of the API below. It cannot be republished, so
+this is the first version that actually ships it. 3.12.0 is deprecated on npm.
+
 ### Added
 
 - `@pryv/delegation` — new opt-in companion component with account-delegation
