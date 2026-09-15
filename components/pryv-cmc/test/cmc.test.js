@@ -80,7 +80,8 @@ describe('[CMCX] @pryv/cmc Level-0 helpers', function () {
       expect(cmc.isCmcStreamId(':_cmc:apps:foo')).to.equal(true);
       expect(cmc.isCmcStreamId(':_cmc:inbox')).to.equal(true);
       expect(cmc.isCmcStreamId('fertility')).to.equal(false);
-      expect(cmc.isCmcStreamId(':_system:account:email')).to.equal(false);
+      expect(cmc.isCmcStreamId(':_system:language')).to.equal(false);
+      expect(cmc.isCmcStreamId(':system:email')).to.equal(false);
     });
 
     it('[CMCXPB] isAppNestedPluginStream true for chats/collectors leaves', function () {
