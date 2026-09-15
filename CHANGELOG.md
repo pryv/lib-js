@@ -4,6 +4,23 @@
 
 ## [Unreleased]
 
+### Added
+
+- `@pryv/cmc`: `cmc.revocationFromEvent(event)` and
+  `cmc.revocationMatches(record, relationship)` for handling a
+  `consent/revoke-cmc` arrival. The event's `content.accessId` is the
+  withdrawing side's access id on their own account and matches nothing
+  locally; `revocationFromEvent` normalizes the arrival onto the handles the
+  receiving account holds (`localAccessId`, `inviteEventId` /
+  `offerEventId` / `acceptEventId`, `scopeStreamId`, and `revokedAccessIds`,
+  the local accesses the server already deleted), surfacing the peer's id as
+  `peerAccessId` so it is not mistaken for something to look up.
+  `revocationMatches` requires an identifier in common rather than matching
+  loosely, so an app holding several relationships with one peer cannot tear
+  down the wrong one. Both degrade cleanly against a server that predates the
+  receiver-side enrichment: `side` and `localAccessId` are then `null` and
+  `scopeStreamId` or `offerEventId` is what to match on.
+
 ### Fixed
 
 - Browser auth: the state dispatched by `AuthController` is now the state being

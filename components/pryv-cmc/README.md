@@ -327,6 +327,35 @@ const monitor = new pryv.Monitor(conn, cmc.scopes.inbox())
 await monitor.start();
 ```
 
+#### Handling a revocation arrival
+
+A revoke event's `content.accessId` is the **withdrawing side's** access id on
+their own account, so it matches nothing locally. `cmc.revocationFromEvent`
+normalizes the arrival onto the handles this account holds, and
+`cmc.revocationMatches` tells you whether it concerns a relationship you are
+tracking:
+
+```js
+const rev = cmc.revocationFromEvent(event);
+// rev.side          'requester' | 'accepter' | null (older server)
+// rev.localAccessId the access on THIS account that served the relationship
+// rev.inviteEventId / offerEventId / acceptEventId / scopeStreamId
+// rev.revokedAccessIds  local accesses the server already deleted
+// rev.peerAccessId  their id, surfaced but not a local handle
+
+if (cmc.revocationMatches(rev, { inviteEventId: myInvite.inviteEventId })) {
+  dropCachedEndpointsFor(myInvite);   // those tokens are already dead
+}
+```
+
+The accesses in `revokedAccessIds` are deleted by the server before the event is
+readable, so there is nothing to `accesses.delete` yourself: drop the cached
+endpoints instead. `revocationMatches` requires an identifier in common rather
+than matching loosely, so holding several relationships with one peer cannot
+make you tear down the wrong one. Against a server that predates the
+receiver-side enrichment, `side` and `localAccessId` are `null` and
+`scopeStreamId` (or `offerEventId`) is what to match on.
+
 
 ### Examples
 

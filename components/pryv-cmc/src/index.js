@@ -412,6 +412,88 @@ async function listInvites (conn, params) {
   return { items, truncated: items.length >= limit };
 }
 
+/**
+ * Normalize an arriving `consent/revoke-cmc` event into a record keyed on
+ * identifiers THIS account holds.
+ *
+ * The event's `content.accessId` is the withdrawing side's access id on their
+ * own account, so it matches nothing locally; it is surfaced here as
+ * `peerAccessId` rather than `accessId`, to stop it being mistaken for
+ * something to look up. The server adds the local handles, and which ones
+ * depends on the side:
+ *
+ *   - requester (we published the invite): `backChannelAccessId` + `inviteEventId`,
+ *     the same pair the accept arrival carried;
+ *   - accepter (we accepted an invite): `dataGrantAccessId` + `offerEventId` +
+ *     `acceptEventId`, the ids our own accept trigger was stamped with.
+ *
+ * `side` is `null` against a server that predates the enrichment, or for a
+ * relationship too old to carry either stamp; `localAccessId` is then null too
+ * and `scopeStreamId` is the identifier to match on. Nothing here throws on a
+ * sparse arrival: an older peer sends only `accessId` and maybe `offerEventId`.
+ *
+ * The accesses named by `revokedAccessIds` are already deleted by the time this
+ * event is readable. Tokens held for them are dead: drop cached endpoints
+ * rather than calling `accesses.delete` yourself.
+ *
+ * @param {Object} event - the `consent/revoke-cmc` event as received
+ * @returns {{
+ *   eventId: ?string, from: ?Object, reason: ?Object, side: ?string,
+ *   localAccessId: ?string, revokedAccessIds: string[], scopeStreamId: ?string,
+ *   inviteEventId: ?string, offerEventId: ?string, acceptEventId: ?string,
+ *   peerAccessId: ?string, time: ?number
+ * }}
+ */
+function revocationFromEvent (event) {
+  const c = (event && event.content) || {};
+  const side = c.backChannelAccessId != null
+    ? 'requester'
+    : (c.dataGrantAccessId != null ? 'accepter' : null);
+  return {
+    eventId: (event && event.id) || null,
+    from: c.from || null,
+    reason: c.reason || null,
+    side,
+    localAccessId: c.backChannelAccessId || c.dataGrantAccessId || null,
+    revokedAccessIds: Array.isArray(c.revokedAccessIds) ? c.revokedAccessIds : [],
+    scopeStreamId: c.scopeStreamId || null,
+    inviteEventId: c.inviteEventId || null,
+    offerEventId: c.offerEventId || null,
+    acceptEventId: c.acceptEventId || null,
+    peerAccessId: c.accessId || null,
+    time: (event && event.time) || null
+  };
+}
+
+/**
+ * Does a revocation record refer to the relationship the caller is holding?
+ *
+ * Matches on whichever identifiers BOTH sides have: the local access id, the
+ * invite / offer / accept event ids, then the scope stream. A `relationship`
+ * with no identifier in common returns false rather than a loose match, so a
+ * caller holding several relationships with one peer cannot tear down the
+ * wrong one. Scope alone is enough, and is the fallback when talking to a
+ * server that predates the enrichment.
+ *
+ * @param {Object} record - from `revocationFromEvent`
+ * @param {Object} relationship - any subset of
+ *   `{accessId, inviteEventId, offerEventId, acceptEventId, scopeStreamId}`
+ * @returns {boolean}
+ */
+function revocationMatches (record, relationship) {
+  if (record == null || relationship == null) return false;
+  const r = relationship;
+  if (r.accessId != null) {
+    if (record.localAccessId === r.accessId) return true;
+    if (record.revokedAccessIds.indexOf(r.accessId) !== -1) return true;
+  }
+  if (r.inviteEventId != null && record.inviteEventId === r.inviteEventId) return true;
+  if (r.offerEventId != null && record.offerEventId === r.offerEventId) return true;
+  if (r.acceptEventId != null && record.acceptEventId === r.acceptEventId) return true;
+  if (r.scopeStreamId != null && record.scopeStreamId === r.scopeStreamId) return true;
+  return false;
+}
+
 function inviteRecordFromEvent (event) {
   const c = (event && event.content) || {};
   return {
@@ -1425,6 +1507,9 @@ module.exports = {
   sendSystemAck,
   acceptScopeUpdate,
   refuseScopeUpdate,
+  // revocation arrivals (inbox)
+  revocationFromEvent,
+  revocationMatches,
   // accept hand-off (apps without a personal token)
   requestAccept,
   requestAcceptUrl,

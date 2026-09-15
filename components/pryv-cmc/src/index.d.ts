@@ -372,6 +372,46 @@ declare module '@pryv/cmc' {
     }
   ): Promise<CmcRequestScopeUpdateResult>;
 
+  // --- Revocation arrivals ---
+
+  /**
+   * A `consent/revoke-cmc` arrival, keyed on identifiers the RECEIVING account
+   * holds. `peerAccessId` is the withdrawing side's own access id and matches
+   * nothing locally. `side` and `localAccessId` are null against a server that
+   * predates the receiver-side enrichment, or for a relationship too old to
+   * carry either stamp; `scopeStreamId` is then what to match on.
+   */
+  export type CmcRevocationRecord = {
+    eventId: string | null;
+    from: { username?: string; host?: string } | null;
+    reason: Record<string, string> | null;
+    side: 'requester' | 'accepter' | null;
+    /** The access on THIS account that served the relationship. */
+    localAccessId: string | null;
+    /** Local accesses the teardown already deleted; their tokens are dead. */
+    revokedAccessIds: string[];
+    scopeStreamId: string | null;
+    inviteEventId: string | null;
+    offerEventId: string | null;
+    acceptEventId: string | null;
+    /** The withdrawing side's access id on THEIR account. Not a local handle. */
+    peerAccessId: string | null;
+    time: number | null;
+  };
+
+  export function revocationFromEvent(event: any): CmcRevocationRecord;
+
+  export function revocationMatches(
+    record: CmcRevocationRecord,
+    relationship: {
+      accessId?: string;
+      inviteEventId?: string;
+      offerEventId?: string;
+      acceptEventId?: string;
+      scopeStreamId?: string;
+    }
+  ): boolean;
+
   // --- Observation scopes (for use with `new pryv.Monitor(conn, scope)`) ---
 
   export const scopes: {
