@@ -401,6 +401,20 @@ declare module '@pryv/cmc' {
 
   export function revocationFromEvent(event: any): CmcRevocationRecord;
 
+  /**
+   * True when `relationship` is the one the revocation refers to.
+   *
+   * The most specific identifier the two sides share decides, and nothing falls
+   * through past it: `accessId` (vs `localAccessId` or a member of
+   * `revokedAccessIds`), then `acceptEventId`, `offerEventId`, `inviteEventId`,
+   * `scopeStreamId`. On an OPEN (multi-use) invite link, `inviteEventId` and
+   * `scopeStreamId` name the link rather than the subject, so every accepter's
+   * relationship shares them: pass the per-relationship `accessId`, or add the
+   * `from` filter, when one link serves several subjects.
+   *
+   * `from` is a filter, not a match: a mismatch returns false before any tier,
+   * and agreement alone never proves a match.
+   */
   export function revocationMatches(
     record: CmcRevocationRecord,
     relationship: {
@@ -409,6 +423,7 @@ declare module '@pryv/cmc' {
       offerEventId?: string;
       acceptEventId?: string;
       scopeStreamId?: string;
+      from?: { username?: string; host?: string };
     }
   ): boolean;
 

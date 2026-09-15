@@ -15,11 +15,16 @@
   `offerEventId` / `acceptEventId`, `scopeStreamId`, and `revokedAccessIds`,
   the local accesses the server already deleted), surfacing the peer's id as
   `peerAccessId` so it is not mistaken for something to look up.
-  `revocationMatches` requires an identifier in common rather than matching
-  loosely, so an app holding several relationships with one peer cannot tear
-  down the wrong one. Both degrade cleanly against a server that predates the
-  receiver-side enrichment: `side` and `localAccessId` are then `null` and
-  `scopeStreamId` or `offerEventId` is what to match on.
+  `revocationMatches` lets the most specific identifier the two sides share
+  decide (`accessId` → `acceptEventId` → `offerEventId` → `inviteEventId` →
+  `scopeStreamId`) and does not fall through past it, with an optional
+  `from: {username, host}` filter. That matters on an open (multi-use) invite
+  link, where `inviteEventId` and `scopeStreamId` name the LINK rather than the
+  subject and are therefore shared by every accepter: match on the
+  per-relationship `accessId`, or add the `from` filter. Both helpers degrade
+  rather than throw against a server that predates the receiver-side
+  enrichment; `side` and `localAccessId` are then `null`, and an arrival from
+  such a server may carry no identifier the caller shares at all.
 
 ### Fixed
 

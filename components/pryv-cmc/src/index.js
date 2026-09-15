@@ -446,15 +446,21 @@ async function listInvites (conn, params) {
  */
 function revocationFromEvent (event) {
   const c = (event && event.content) || {};
-  const side = c.backChannelAccessId != null
+  // Same test for the label and for the id below, so a falsy-but-present value
+  // cannot produce a side with no access id to go with it.
+  const backChannelAccessId = c.backChannelAccessId || null;
+  const dataGrantAccessId = c.dataGrantAccessId || null;
+  const side = backChannelAccessId != null
     ? 'requester'
-    : (c.dataGrantAccessId != null ? 'accepter' : null);
+    : (dataGrantAccessId != null ? 'accepter' : null);
   return {
     eventId: (event && event.id) || null,
-    from: c.from || null,
-    reason: c.reason || null,
+    // Objects or null, never a stray scalar: the declared types say object, and
+    // `from` is compared field-by-field by `revocationMatches`.
+    from: (c.from != null && typeof c.from === 'object') ? c.from : null,
+    reason: (c.reason != null && typeof c.reason === 'object') ? c.reason : null,
     side,
-    localAccessId: c.backChannelAccessId || c.dataGrantAccessId || null,
+    localAccessId: backChannelAccessId || dataGrantAccessId || null,
     revokedAccessIds: Array.isArray(c.revokedAccessIds) ? c.revokedAccessIds : [],
     scopeStreamId: c.scopeStreamId || null,
     inviteEventId: c.inviteEventId || null,
@@ -468,29 +474,65 @@ function revocationFromEvent (event) {
 /**
  * Does a revocation record refer to the relationship the caller is holding?
  *
- * Matches on whichever identifiers BOTH sides have: the local access id, the
- * invite / offer / accept event ids, then the scope stream. A `relationship`
- * with no identifier in common returns false rather than a loose match, so a
- * caller holding several relationships with one peer cannot tear down the
- * wrong one. Scope alone is enough, and is the fallback when talking to a
- * server that predates the enrichment.
+ * **The most specific identifier the two sides share decides, and nothing
+ * falls through past it.** The tiers, narrowest first:
+ *
+ *   1. `accessId` — compared against `localAccessId` and `revokedAccessIds`;
+ *   2. `acceptEventId`; 3. `offerEventId`; 4. `inviteEventId`;
+ *   5. `scopeStreamId`.
+ *
+ * Falling through used to be the bug: on an **open (multi-use) invite link**
+ * every accepter's relationship carries the SAME `inviteEventId` and the SAME
+ * `scopeStreamId`, because those name the link rather than the subject. So a
+ * revocation by one subject matched every other subject of the same study, and
+ * a caller acting on the match tore down the wrong relationship. A narrower
+ * identifier that disagrees now returns false instead of letting a broader one
+ * rescue the match. The cost is that an `accessId` the caller no longer holds
+ * (the server already deleted it and did not list it) answers false rather than
+ * matching on scope; pass the ids you hold, not the ids you held.
+ *
+ * `relationship.from` (`{username, host}`) acts as a FILTER, not a match: a
+ * mismatch returns false before any tier is considered, and agreement alone
+ * never proves a match. It is the discriminator to add on an open link, and it
+ * is safe to trust because the server stamps `from` on every inbox arrival.
+ *
+ * A `relationship` sharing no identifier with the record returns false.
  *
  * @param {Object} record - from `revocationFromEvent`
- * @param {Object} relationship - any subset of
- *   `{accessId, inviteEventId, offerEventId, acceptEventId, scopeStreamId}`
+ * @param {Object} relationship - any subset of `{accessId, acceptEventId,
+ *   offerEventId, inviteEventId, scopeStreamId}`, plus an optional
+ *   `from: {username, host}` filter
  * @returns {boolean}
  */
 function revocationMatches (record, relationship) {
   if (record == null || relationship == null) return false;
   const r = relationship;
-  if (r.accessId != null) {
-    if (record.localAccessId === r.accessId) return true;
-    if (record.revokedAccessIds.indexOf(r.accessId) !== -1) return true;
+
+  // Filter first: a different peer is never this relationship, whatever ids
+  // the two happen to share through a shared link.
+  if (r.from != null) {
+    const f = record.from;
+    if (f == null || typeof f !== 'object') return false;
+    if (f.username !== r.from.username || f.host !== r.from.host) return false;
   }
-  if (r.inviteEventId != null && record.inviteEventId === r.inviteEventId) return true;
-  if (r.offerEventId != null && record.offerEventId === r.offerEventId) return true;
-  if (r.acceptEventId != null && record.acceptEventId === r.acceptEventId) return true;
-  if (r.scopeStreamId != null && record.scopeStreamId === r.scopeStreamId) return true;
+
+  // Tolerate a hand-built record, or a raw event passed in by mistake.
+  const revoked = Array.isArray(record.revokedAccessIds) ? record.revokedAccessIds : [];
+  if (r.accessId != null && (record.localAccessId != null || revoked.length > 0)) {
+    return record.localAccessId === r.accessId || revoked.indexOf(r.accessId) !== -1;
+  }
+  if (r.acceptEventId != null && record.acceptEventId != null) {
+    return record.acceptEventId === r.acceptEventId;
+  }
+  if (r.offerEventId != null && record.offerEventId != null) {
+    return record.offerEventId === r.offerEventId;
+  }
+  if (r.inviteEventId != null && record.inviteEventId != null) {
+    return record.inviteEventId === r.inviteEventId;
+  }
+  if (r.scopeStreamId != null && record.scopeStreamId != null) {
+    return record.scopeStreamId === r.scopeStreamId;
+  }
   return false;
 }
 

@@ -1537,5 +1537,89 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       expect(cmc.revocationMatches(r, { offerEventId: 'offer-9' })).to.equal(true);
       expect(cmc.revocationMatches(r, { scopeStreamId: ':_cmc:apps:a:b' })).to.equal(false);
     });
+
+    it('[CMCXRH] one open link, several subjects: a revocation matches only its own', function () {
+      // The case that makes a loose match dangerous. Every accepter of one
+      // open (multi-use) invite gets a relationship carrying the SAME
+      // inviteEventId and the SAME scopeStreamId, because those name the LINK,
+      // not the subject. Falling through to them matched every other subject
+      // of the same study, and a caller acting on that tore down the wrong
+      // relationship.
+      const SCOPE = ':_cmc:apps:study-app:study-a';
+      const bobRevoked = cmc.revocationFromEvent({
+        id: 'evt-rev-bob',
+        content: {
+          from: { username: 'bob', host: 'pryv.me' },
+          accessId: 'bob-side-id',
+          backChannelAccessId: 'bc-bob',
+          inviteEventId: 'invite-1',
+          scopeStreamId: SCOPE,
+          revokedAccessIds: ['bc-bob']
+        }
+      });
+      const aliceRelationship = {
+        accessId: 'bc-alice',
+        inviteEventId: 'invite-1',
+        scopeStreamId: SCOPE,
+        from: { username: 'alice', host: 'pryv.me' }
+      };
+
+      expect(cmc.revocationMatches(bobRevoked, aliceRelationship)).to.equal(false);
+      // Same, with NO peer filter: the access id alone must settle it, or the
+      // shared inviteEventId/scopeStreamId would rescue the match. This is the
+      // assertion that fails if the tiers ever fall through again.
+      expect(cmc.revocationMatches(bobRevoked, {
+        accessId: 'bc-alice', inviteEventId: 'invite-1', scopeStreamId: SCOPE
+      })).to.equal(false);
+      // Even without the access id, the peer filter settles it.
+      expect(cmc.revocationMatches(bobRevoked, {
+        inviteEventId: 'invite-1', from: { username: 'alice', host: 'pryv.me' }
+      })).to.equal(false);
+      // Bob's own relationship still matches, by either route.
+      expect(cmc.revocationMatches(bobRevoked, { accessId: 'bc-bob' })).to.equal(true);
+      expect(cmc.revocationMatches(bobRevoked, {
+        inviteEventId: 'invite-1', from: { username: 'bob', host: 'pryv.me' }
+      })).to.equal(true);
+    });
+
+    it('[CMCXRI] a narrower identifier that disagrees is decisive', function () {
+      // No fall-through: a matching scope must not rescue a mismatched access.
+      const r = cmc.revocationFromEvent({
+        content: {
+          accessId: 'their-id',
+          backChannelAccessId: 'bc-local',
+          scopeStreamId: ':_cmc:apps:a:b',
+          revokedAccessIds: ['bc-local']
+        }
+      });
+      expect(cmc.revocationMatches(r, {
+        accessId: 'bc-other', scopeStreamId: ':_cmc:apps:a:b'
+      })).to.equal(false);
+      expect(cmc.revocationMatches(r, {
+        accessId: 'bc-local', scopeStreamId: ':_cmc:apps:zzz'
+      })).to.equal(true);
+      // An id the record cannot speak to is not decisive: it falls to the next
+      // tier rather than answering false.
+      const legacy = cmc.revocationFromEvent({ content: { accessId: 'their-id', offerEventId: 'offer-9' } });
+      expect(cmc.revocationMatches(legacy, {
+        accessId: 'whatever-we-hold', offerEventId: 'offer-9'
+      })).to.equal(true);
+    });
+
+    it('[CMCXRJ] a record without revokedAccessIds does not throw', function () {
+      // A hand-built record, or a raw event passed by mistake, must not take
+      // down a Monitor callback.
+      expect(cmc.revocationMatches({ localAccessId: 'a' }, { accessId: 'a' })).to.equal(true);
+      expect(cmc.revocationMatches({ localAccessId: 'a' }, { accessId: 'b' })).to.equal(false);
+      expect(cmc.revocationMatches({}, { accessId: 'a' })).to.equal(false);
+    });
+
+    it('[CMCXRK] a non-object from or reason is dropped, not passed through', function () {
+      const r = cmc.revocationFromEvent({ content: { from: 'bob', reason: 'because' } });
+      expect(r.from).to.equal(null);
+      expect(r.reason).to.equal(null);
+      // And the filter refuses rather than throwing on it.
+      expect(cmc.revocationMatches(r, { from: { username: 'bob', host: 'pryv.me' } })).to.equal(false);
+    });
   });
 });
