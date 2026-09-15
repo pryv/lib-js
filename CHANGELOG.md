@@ -4,13 +4,20 @@
 
 ## [Unreleased]
 
-### Security
+### Added
 
-- Bumped the transitive `socket.io-parser` to 4.2.7, clearing a high-severity
-  advisory (zero-attachment memory exhaustion, GHSA-2m8v-j782-fhvr) reached
-  through `socket.io-client`. Lockfile only; no declared dependency range
-  changed and there is no API change. It was the only advisory affecting the
-  runtime dependency tree.
+- `@pryv/delegation` — new opt-in companion component with account-delegation
+  client helpers. `Delegation.fromConnection(conn)` wraps a personal
+  `pryv.Connection` and exposes the `delegations.*` API family: a controlled
+  account can `requestAttach` / `listDelegates` / `cancelInvite` /
+  `detachDelegate`, and a delegate can `acceptAttach` / `refuseAttach` /
+  `listControlled` / `dismissControlled` / `getToken` / `createAccount`.
+  `openControlled(username)` is a one-call helper returning a ready
+  `pryv.Connection` onto the controlled account. Failures carrying a
+  `delegation-*` id surface as a typed `DelegationError` (`.id` matching the
+  `errorIds` catalogue) — in particular `detachDelegate` distinctly reports
+  `delegation-genuine-login-required` so a UI can prompt the account owner to
+  log in directly.
 
 ### Fixed
 
@@ -25,6 +32,14 @@
   `connectFromKey` export) plus `Service#connectFromKey(key)` shipped at runtime
   in 3.5.0 but were missing from the type declarations, so TypeScript consumers
   hit `TS2339` / `TS2614`. Declarations only; no runtime change (#70).
+
+### Security
+
+- Bumped the transitive `socket.io-parser` to 4.2.7, clearing a high-severity
+  advisory (zero-attachment memory exhaustion, GHSA-2m8v-j782-fhvr) reached
+  through `socket.io-client`. Lockfile only; no declared dependency range
+  changed and there is no API change. It was the only advisory affecting the
+  runtime dependency tree.
 
 ## [3.11.0] - 2026-09-02
 
