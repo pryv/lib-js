@@ -4,6 +4,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- `@pryv/delegation` — new opt-in companion component with account-delegation
+  client helpers. `Delegation.fromConnection(conn)` wraps a personal
+  `pryv.Connection` and exposes the `delegations.*` API family: a controlled
+  account can `requestAttach` / `listDelegates` / `cancelInvite` /
+  `detachDelegate`, and a delegate can `acceptAttach` / `refuseAttach` /
+  `listControlled` / `dismissControlled` / `getToken` / `createAccount`.
+  `openControlled(username)` is a one-call helper returning a ready
+  `pryv.Connection` onto the controlled account. Failures carrying a
+  `delegation-*` id surface as a typed `DelegationError` (`.id` matching the
+  `errorIds` catalogue) — in particular `detachDelegate` distinctly reports
+  `delegation-genuine-login-required` so a UI can prompt the account owner to
+  log in directly.
+
 ### Fixed
 
 - Browser auth: the state dispatched by `AuthController` is now the state being
