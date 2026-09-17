@@ -168,6 +168,14 @@ const list = await cmc.listInvites(conn, { appCode: 'my-app', limit: 1000 });
 // list = { items: InviteRecord[], truncated: boolean }
 
 const one = await cmc.getInviteStatus(conn, invite.inviteEventId);
+// one.status: 'pending' | 'delivered' (open), 'accepted' / 'refused' / 'revoked'
+// (single-use, with one.counterparty and one.backChannelAccessId once accepted),
+// 'invalidated' (open-link), or 'expired' (derived). A refused single-use invite
+// may still be accepted later.
+
+const joined = await cmc.listInviteAccepters(conn, { inviteEventId: invite.inviteEventId });
+// joined = { items: [{ username, host, acceptedAt, backChannelAccessId, scopeStreamId }] }
+// Who is currently joined (both modes); a revoked relationship drops out.
 
 const update = await cmc.proposeScopeUpdate(conn, {
   collectorStreamId: ':_cmc:apps:my-app:collectors:bob--pryv-me',

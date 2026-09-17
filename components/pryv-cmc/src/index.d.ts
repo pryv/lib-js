@@ -150,6 +150,14 @@ declare module '@pryv/cmc' {
 
   // --- Level-1: protocol records ---
 
+  /**
+   * What a core reports on the request event. `pending` / `delivered`: still
+   * open. Single-use: `accepted`, `refused` (the link is not consumed, it may
+   * still be accepted), `revoked`. Open-link: `invalidated`; an open-link invite
+   * stays `pending` / `delivered` while it accepts joiners. `expired` is
+   * derived client-side. `completed` / `failed` are not produced for invites by
+   * current cores.
+   */
   export type InviteStatus = 'pending' | 'delivered' | 'accepted' | 'completed' | 'refused' | 'revoked' | 'invalidated' | 'expired' | 'failed';
   export type CapabilityMode = 'single-use' | 'open-link';
   export type PermissionLevel = 'read' | 'contribute' | 'manage' | 'create-only';
@@ -161,9 +169,20 @@ declare module '@pryv/cmc' {
     mode: CapabilityMode;
     status: InviteStatus;
     expiresAt: number | null;
+    /** Single-use: who accepted (or refused). Null for open-link: see listInviteAccepters. */
     counterparty?: { username: string; host: string; displayName?: string } | null;
     acceptedAt?: number | null;
+    /** Single-use, once accepted: the back-channel access of the relationship. */
+    backChannelAccessId?: string | null;
     scopeStreamId: string;
+  };
+
+  export type InviteAccepter = {
+    username: string;
+    host: string;
+    acceptedAt: number | null;
+    backChannelAccessId: string;
+    scopeStreamId: string | null;
   };
 
   export type RelationshipRecord = {
@@ -205,6 +224,9 @@ declare module '@pryv/cmc' {
   }): Promise<{ items: InviteRecord[]; truncated: boolean }>;
 
   export function getInviteStatus(conn: any, inviteEventId: string): Promise<InviteRecord>;
+
+  /** Who has joined an invite and is still joined (needs a token that can list accesses). */
+  export function listInviteAccepters(conn: any, params: { inviteEventId: string }): Promise<{ items: InviteAccepter[] }>;
 
   /**
    * Revoke a relationship (provider side). Two ways to identify the

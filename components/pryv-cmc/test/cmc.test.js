@@ -505,6 +505,72 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       const r = await statusOf({ capabilityUrl: 'https://x/', status: 'completed', capabilityExpiresAt: 1000 });
       expect(r.status).to.equal('completed');
     });
+
+    it('[CMCL1GE] an accepted invite maps counterparty, acceptedAt and backChannelAccessId', async function () {
+      const r = await statusOf({
+        capabilityUrl: 'https://x/',
+        status: 'accepted',
+        capabilityExpiresAt: 1000,
+        acceptedBy: { username: 'bob', host: 'b.example.com' },
+        acceptedAt: 1500,
+        backChannelAccessId: 'bc-1'
+      });
+      expect(r.status).to.equal('accepted');
+      expect(r.counterparty).to.deep.equal({ username: 'bob', host: 'b.example.com' });
+      expect(r.acceptedAt).to.equal(1500);
+      expect(r.backChannelAccessId).to.equal('bc-1');
+    });
+
+    it('[CMCL1GF] a refused invite maps counterparty from refusedBy', async function () {
+      const r = await statusOf({ capabilityUrl: 'https://x/', status: 'refused', refusedBy: { username: 'bob', host: 'b.example.com' } });
+      expect(r.status).to.equal('refused');
+      expect(r.counterparty).to.deep.equal({ username: 'bob', host: 'b.example.com' });
+      expect(r.backChannelAccessId).to.equal(null);
+    });
+
+    it('[CMCL1GG] revoked and invalidated pass through, never derived as expired', async function () {
+      for (const status of ['revoked', 'invalidated']) {
+        const r = await statusOf({ capabilityUrl: 'https://x/', status, capabilityExpiresAt: 1000 });
+        expect(r.status).to.equal(status);
+      }
+    });
+  });
+
+  describe('[CMCL1LA2] listInviteAccepters', function () {
+    it('[CMCL1LI] reads the invite then lists the live relationship accesses carrying its capabilityId', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.getOne': function (params) {
+            expect(params.id).to.equal('inv-1');
+            return { event: { id: 'inv-1', content: { capabilityId: 'cap-1' } } };
+          },
+          'accesses.get': function () {
+            return {
+              accesses: [
+                { id: 'bc-1', created: 100, clientData: { cmc: { role: 'counterparty', capabilityId: 'cap-1', scopeStreamId: ':_cmc:apps:a:s', counterparty: { username: 'bob', host: 'b.example.com' } } } },
+                { id: 'bc-2', created: 200, clientData: { cmc: { role: 'counterparty', capabilityId: 'cap-other', counterparty: { username: 'carol', host: 'c.example.com' } } } },
+                { id: 'cap-acc', created: 50, clientData: { cmc: { kind: 'capability', capabilityId: 'cap-1' } } },
+                { id: 'plain', created: 10, clientData: {} }
+              ]
+            };
+          }
+        }
+      });
+      const r = await cmc.listInviteAccepters(conn, { inviteEventId: 'inv-1' });
+      expect(r.items).to.deep.equal([
+        { username: 'bob', host: 'b.example.com', acceptedAt: 100, backChannelAccessId: 'bc-1', scopeStreamId: ':_cmc:apps:a:s' }
+      ]);
+    });
+
+    it('[CMCL1LJ] throws when the invite carries no capabilityId', async function () {
+      const conn = makeStubConnection({
+        handlers: { 'events.getOne': function () { return { event: { id: 'inv-2', content: {} } }; } }
+      });
+      let err = null;
+      try { await cmc.listInviteAccepters(conn, { inviteEventId: 'inv-2' }); } catch (e) { err = e; }
+      expect(err).to.be.an('error');
+      expect(err.message).to.match(/capabilityId/);
+    });
   });
 
   describe('[CMCL1R] revokeRelationship / revokeAcceptance', function () {

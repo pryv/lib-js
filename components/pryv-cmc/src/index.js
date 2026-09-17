@@ -585,8 +585,11 @@ function inviteRecordFromEvent (event) {
     mode: (c.capability && c.capability.mode) || 'single-use',
     status,
     expiresAt,
-    counterparty: c.acceptedBy || null,
+    // Single-use invites: who accepted (or refused). Open-link invites record
+    // no single counterparty: see listInviteAccepters.
+    counterparty: c.acceptedBy || c.refusedBy || null,
     acceptedAt: c.acceptedAt || null,
+    backChannelAccessId: c.backChannelAccessId || null,
     scopeStreamId: (event.streamIds && event.streamIds[0]) || event.streamId
   };
 }
@@ -601,6 +604,46 @@ function inviteRecordFromEvent (event) {
 async function getInviteStatus (conn, inviteEventId) {
   const result = await conn.apiOne('events.getOne', { id: inviteEventId }, 'event');
   return inviteRecordFromEvent(result);
+}
+
+/**
+ * List who has joined an invite and is still joined (provider side): the
+ * back-channel accesses carrying the invite's `capabilityId`. Works for both
+ * modes (0 or 1 item for single-use). A revoked relationship is gone from the
+ * list. Needs a connection allowed to list accesses (personal token).
+ *
+ * @param {Object} conn
+ * @param {Object} params
+ * @param {string} params.inviteEventId
+ * @returns {Promise<{items: Array<{username:string, host:string, acceptedAt:number|null, backChannelAccessId:string, scopeStreamId:string|null}>}>}
+ */
+async function listInviteAccepters (conn, params) {
+  if (params == null || !params.inviteEventId) {
+    throw new Error('listInviteAccepters: params.inviteEventId required');
+  }
+  const trigger = await conn.apiOne('events.getOne', { id: params.inviteEventId }, 'event');
+  const capabilityId = trigger && trigger.content && trigger.content.capabilityId;
+  if (!capabilityId) {
+    throw new Error('listInviteAccepters: could not locate capabilityId on invite event ' + params.inviteEventId);
+  }
+  const accesses = await conn.apiOne('accesses.get', {}, 'accesses');
+  const items = (accesses || [])
+    .filter(function (a) {
+      const cmc = a && a.clientData && a.clientData.cmc;
+      return cmc != null && cmc.role === 'counterparty' && cmc.capabilityId === capabilityId;
+    })
+    .map(function (a) {
+      const cmc = a.clientData.cmc;
+      const cp = cmc.counterparty || {};
+      return {
+        username: cp.username,
+        host: cp.host,
+        acceptedAt: a.created != null ? a.created : null,
+        backChannelAccessId: a.id,
+        scopeStreamId: cmc.scopeStreamId || null
+      };
+    });
+  return { items };
 }
 
 /**
@@ -1696,6 +1739,7 @@ module.exports = {
   createInvite,
   listInvites,
   getInviteStatus,
+  listInviteAccepters,
   revokeRelationship,
   invalidateCapability,
   proposeScopeUpdate,

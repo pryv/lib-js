@@ -4,6 +4,26 @@
 
 ## [Unreleased]
 
+## @pryv/cmc 3.16.0
+
+Only `@pryv/cmc` is released; `pryv`, `@pryv/socket.io` and `@pryv/monitor` are unchanged.
+
+### Added
+
+- `listInviteAccepters(conn, { inviteEventId })` lists who has joined an invite and
+  is still joined (`{ username, host, acceptedAt, backChannelAccessId, scopeStreamId }`),
+  read from the requester's relationship accesses. Works for both modes; needs a
+  token that can list accesses.
+- `InviteRecord.backChannelAccessId`: the relationship's back-channel access once a
+  single-use invite is accepted.
+
+### Changed
+
+- `getInviteStatus` / `listInvites` report the outcome a core now records on the
+  request event: `accepted`, `refused` or `revoked` for single-use invites (with
+  `counterparty` set from the accepter, or the refuser), `invalidated` for open-link
+  invites. Against an older core an invite keeps reporting `pending` / `delivered`.
+
 ## @pryv/cmc 3.15.0 — 2026-09-17
 
 Only `@pryv/cmc` is released; `pryv`, `@pryv/socket.io` and `@pryv/monitor` are unchanged.
