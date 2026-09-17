@@ -573,8 +573,12 @@ class Service {
    * apiEndpoint), and uses this method to build a working `Connection`.
    *
    * The implementation polls `<access>/<key>` once; the call MUST be
-   * made while the access is still in the ACCEPTED state (which
-   * persists until expiry — see `expireAfter` on the access request).
+   * made while the access request is still readable in the ACCEPTED
+   * state. Servers keep a decided request only for a short retention
+   * window after it is first polled (default 2 minutes, operator setting
+   * `access.terminalRetentionMs`), so call this promptly after the flow
+   * completes; afterwards the key is unknown. (`expireAfter` on the
+   * access request is the lifetime of the access created, not of the key.)
    *
    * @param {string} key - polling key from `startAccessRequest`
    * @returns {Promise<Connection>}
