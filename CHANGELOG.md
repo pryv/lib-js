@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 
-## @pryv/cmc 3.15.0
+## @pryv/cmc 3.15.0 — 2026-09-17
 
 Only `@pryv/cmc` is released; `pryv`, `@pryv/socket.io` and `@pryv/monitor` are unchanged.
 
