@@ -4,6 +4,40 @@
 
 ## [Unreleased]
 
+## @pryv/cmc 3.15.0
+
+Only `@pryv/cmc` is released; `pryv`, `@pryv/socket.io` and `@pryv/monitor` are unchanged.
+
+### Added
+
+- `createInvite({ mode: 'open-link', expiresAt: null })` requests a link without
+  expiry; the result's `expiresAt` (and `InviteRecord.expiresAt`) is `null`.
+  Open-link invites also accept any numeric `expiresAt` at least 60 s ahead, with
+  no upper bound (single-use keeps [60 s, 30 d]). Against a core that predates
+  these rules, `null` is minted with the 7-day default (check `expiresAt === null`
+  when you rely on it) and an open-link value beyond 30 days is refused with
+  `cmc-capability-ttl-out-of-range`. A core whose event-types catalogue predates
+  1.1.2 refuses `null` outright with `invalid-parameters-format` at
+  `#/request/expiresAt`.
+- `errorIds.CAPABILITY_NO_EXPIRY_NOT_ALLOWED` (`cmc-capability-no-expiry-not-allowed`),
+  and the missing `CAPABILITY_TTL_OUT_OF_RANGE` / `CAPABILITY_NO_EXPIRY_NOT_ALLOWED`
+  entries in the TypeScript `errorIds` / `CmcErrorId` typings.
+
+### Changed
+
+- `createInvite` throws `CmcError` `cmc-capability-no-expiry-not-allowed` before
+  writing anything when `expiresAt: null` is combined with `single-use`.
+- `getInviteStatus` / `listInvites` now report `status: 'expired'` (declared, never
+  set until now) when a pending or delivered invite's `expiresAt` is in the past,
+  using the client clock. Invites without expiry never become `expired`.
+- Against a core that ships the matching server fix, `acceptInvite` throws
+  `CmcError` with a typed id where it used to throw a generic one: an expired or
+  unknown capability URL gives `cmc-capability-invalid` (was
+  `cmc-handler-offer-read-failed`), and a refusal by the capability itself gives
+  `cmc-capability-consumed`, `cmc-capability-invalidated` or
+  `cmc-capability-already-accepted-by-you` (was `cmc-handler-delivery-rejected`,
+  with the id only in the error's detail).
+
 ## @pryv/cmc 3.14.0 — 2026-09-17
 
 Only `@pryv/cmc` is released; `pryv`, `@pryv/socket.io` and `@pryv/monitor` are unchanged.

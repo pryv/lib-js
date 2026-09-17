@@ -299,6 +299,58 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       expect(conn.calls[0].params.content.capability).to.deep.equal({ mode: 'open-link' });
       expect(res.mode).to.equal('open-link');
     });
+
+    function echoConnection (serverExpiresAt) {
+      return makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return {
+              event: {
+                id: 'evt-exp',
+                streamIds: params.streamIds,
+                content: Object.assign({}, params.content, {
+                  capabilityUrl: 'https://t@x/',
+                  capabilityExpiresAt: serverExpiresAt === undefined ? params.content.request.expiresAt : serverExpiresAt
+                })
+              }
+            };
+          }
+        }
+      });
+    }
+    const INVITE = { appCode: 'my-app', scopeStreamId: ':_cmc:apps:my-app', displayName: 'P', requestedPermissions: [] };
+
+    it('[CMCL1IC] open-link with expiresAt null sends null and returns expiresAt null', async function () {
+      const conn = echoConnection();
+      const res = await cmc.createInvite(conn, Object.assign({}, INVITE, { mode: 'open-link', expiresAt: null }));
+      expect(conn.calls[0].params.content.request).to.have.property('expiresAt', null);
+      expect(res.expiresAt).to.equal(null);
+    });
+
+    it('[CMCL1ID] single-use with expiresAt null throws before writing anything', async function () {
+      const conn = echoConnection();
+      let caught;
+      try {
+        await cmc.createInvite(conn, Object.assign({}, INVITE, { expiresAt: null }));
+      } catch (e) { caught = e; }
+      expect(caught).to.be.instanceOf(cmc.CmcError);
+      expect(caught.id).to.equal('cmc-capability-no-expiry-not-allowed');
+      expect(conn.calls).to.have.length(0);
+    });
+
+    it('[CMCL1IE] a core that predates no-expiry answers a number: the result carries it', async function () {
+      const conn = echoConnection(1735776000);
+      const res = await cmc.createInvite(conn, Object.assign({}, INVITE, { mode: 'open-link', expiresAt: null }));
+      expect(res.expiresAt).to.equal(1735776000);
+    });
+
+    it('[CMCL1IF] open-link expiresAt two years ahead is sent as is (no client-side cap)', async function () {
+      const twoYears = Math.floor(Date.now() / 1000) + 2 * 365 * 24 * 60 * 60;
+      const conn = echoConnection();
+      const res = await cmc.createInvite(conn, Object.assign({}, INVITE, { mode: 'open-link', expiresAt: twoYears }));
+      expect(conn.calls[0].params.content.request.expiresAt).to.equal(twoYears);
+      expect(res.expiresAt).to.equal(twoYears);
+    });
   });
 
   describe('[CMCL1L] listInvites', function () {
@@ -314,7 +366,7 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
                 content: {
                   capabilityUrl: 'https://x/',
                   status: 'pending',
-                  capabilityExpiresAt: 1234
+                  capabilityExpiresAt: 4102444800 // 2100, still pending
                 }
               }]
             };
@@ -425,6 +477,33 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       const r = await cmc.getInviteStatus(conn, 'evt-1');
       expect(r.status).to.equal('completed');
       expect(r.inviteEventId).to.equal('evt-1');
+    });
+
+    function statusOf (content) {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.getOne': function () {
+            return { event: { id: 'evt-s', streamIds: [':_cmc:apps:my-app'], content } };
+          }
+        }
+      });
+      return cmc.getInviteStatus(conn, 'evt-s');
+    }
+
+    it('[CMCL1GB] a pending invite past its expiresAt reports status expired', async function () {
+      const r = await statusOf({ capabilityUrl: 'https://x/', status: 'pending', capabilityExpiresAt: 1000 });
+      expect(r.status).to.equal('expired');
+    });
+
+    it('[CMCL1GC] an invite without expiry stays pending', async function () {
+      const r = await statusOf({ capabilityUrl: 'https://x/', status: 'pending', capabilityExpiresAt: null, request: { expiresAt: null } });
+      expect(r.status).to.equal('pending');
+      expect(r.expiresAt).to.equal(null);
+    });
+
+    it('[CMCL1GD] a past expiresAt never overrides a terminal status', async function () {
+      const r = await statusOf({ capabilityUrl: 'https://x/', status: 'completed', capabilityExpiresAt: 1000 });
+      expect(r.status).to.equal('completed');
     });
   });
 

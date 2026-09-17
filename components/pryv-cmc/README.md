@@ -92,7 +92,8 @@ Lifecycle / handler / chat-routing examples: `cmc.errorIds.CAPABILITY_INVALID` (
 
 | Const | String | When you'll see it |
 |---|---|---|
-| `CAPABILITY_TTL_OUT_OF_RANGE` | `'cmc-capability-ttl-out-of-range'` | `createInvite({ expiresAt })` resolves to a TTL outside `[60s, 30d]`. Omit `expiresAt` to use the 7-day default. |
+| `CAPABILITY_TTL_OUT_OF_RANGE` | `'cmc-capability-ttl-out-of-range'` | `createInvite({ expiresAt })` resolves outside the bounds for the mode: `[60s, 30d]` single-use; at least 60s, no upper bound, open-link. Omit `expiresAt` to use the 7-day default. |
+| `CAPABILITY_NO_EXPIRY_NOT_ALLOWED` | `'cmc-capability-no-expiry-not-allowed'` | `createInvite({ expiresAt: null })` without `mode: 'open-link'`. Thrown client-side before anything is written; the server refuses it too. |
 | `HANDLER_MISSING_CAPABILITY_ID` | `'cmc-handler-missing-capability-id'` | Plugin handler couldn't find `content.capabilityId` on the trigger event. |
 | `CHAT_DISABLED` | `'cmc-chat-disabled'` | `sendChat` against a relationship whose negotiated `features.chat: false`. Default-permit on omission. |
 | `SYSTEM_MESSAGING_DISABLED` | `'cmc-system-messaging-disabled'` | `sendSystemAlert` / ack against `features.systemMessaging: false`. Scope-request / scope-update remain permitted regardless. |
@@ -106,7 +107,11 @@ The full list lives in [`src/index.js`](src/index.js) (and the typed mirror in [
 
 #### Capability TTL bounds
 
-The server bounds `content.request.expiresAt` (Unix seconds) to `[60s, 30d]` from now at mint time. Pass `expiresAt` to `cmc.createInvite()` to override the default 7-day lifetime; omit it for the default. Out-of-range values reject with `cmc-capability-ttl-out-of-range` before the capability access is minted.
+The server validates `content.request.expiresAt` (Unix seconds) at mint time: a single-use invite must resolve to `[60s, 30d]` from now, an open-link invite to at least 60s with no upper bound. Pass `expiresAt` to `cmc.createInvite()` to override the default 7-day lifetime; omit it for the default. Out-of-bounds values reject with `cmc-capability-ttl-out-of-range` before the capability access is minted (the error data carries `mode` and `maxTtlSeconds`, `null` for open-link).
+
+Open-link invites may pass `expiresAt: null` for a link without expiry (for example a registration link published on a website); the link then works until `cmc.invalidateCapability()` and the result's `expiresAt` is `null`. `null` with `mode: 'single-use'` throws `cmc-capability-no-expiry-not-allowed` client-side.
+
+Against a core that predates these rules: `null` is minted with the 7-day default and the result carries a number, so check `expiresAt === null` when you rely on it; an open-link `expiresAt` beyond 30 days is refused with `cmc-capability-ttl-out-of-range` and `maxTtlSeconds: 2592000`. A core whose event-types catalogue predates 1.1.2 refuses `null` before the CMC plugin sees it, with `invalid-parameters-format` at `#/request/expiresAt`.
 
 #### Features negotiation
 
@@ -137,7 +142,7 @@ const invite = await cmc.createInvite(conn, {
   consent: { en: 'I consent to share data for this study.' },
   features: { chat: true, systemMessaging: true }
 });
-// invite = { inviteEventId, capabilityUrl, mode, expiresAt }
+// invite = { inviteEventId, capabilityUrl, mode, expiresAt (number | null) }
 
 const arrived = await cmc.waitForAccept(conn, {
   fromUsername: 'bob',           // identify the expected accepter
