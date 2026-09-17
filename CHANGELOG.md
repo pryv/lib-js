@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## 3.12.0 — 2026-09-17
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
+3.12.0; `@pryv/cmc` 3.16.1 (typings only).
+
 ### Added
 
 - **Auth requests can say how the consent screen should present each
