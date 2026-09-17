@@ -249,10 +249,14 @@ const errorIds = Object.freeze({
   CAPABILITY_TIMEOUT: 'cmc-capability-timeout',
   CAPABILITY_EMPTY: 'cmc-capability-empty',
   CAPABILITY_MULTIPLE_OFFERS: 'cmc-capability-multiple-offers',
-  // Caller's `content.expiresAt` on the trigger event resolves to a
-  // TTL outside the platform-allowed bounds [60s, 30d]. Either omit
-  // `expiresAt` to use the 7-day default or pick a bounded value.
+  // Caller's numeric `request.expiresAt` resolves to a TTL outside the
+  // bounds for the invite's mode: [60s, 30d] single-use, at least 60s
+  // (no upper bound) open-link. Either omit `expiresAt` to use the
+  // 7-day default or pick a bounded value.
   CAPABILITY_TTL_OUT_OF_RANGE: 'cmc-capability-ttl-out-of-range',
+  // `expiresAt: null` (no expiry) on a single-use invite. No expiry is
+  // only allowed with `mode: 'open-link'`.
+  CAPABILITY_NO_EXPIRY_NOT_ALLOWED: 'cmc-capability-no-expiry-not-allowed',
   // Trigger-event content shape
   HANDLER_MISSING_CAPABILITY_URL: 'cmc-handler-missing-capability-url',
   HANDLER_MISSING_CAPABILITY_ID: 'cmc-handler-missing-capability-id',
@@ -362,7 +366,11 @@ class CmcError extends Error {
  * @param {{en?:string}|Object} [params.description]
  * @param {{en?:string}|Object} [params.consent]
  * @param {{chat?:boolean, systemMessaging?:boolean}} [params.features]
- * @param {number} [params.expiresAt]
+ * @param {number|null} [params.expiresAt] - Unix seconds; omit for the
+ *   7-day default. The server bounds it per mode: single-use [60s, 30d],
+ *   open-link at least 60s with no upper bound. `null` (open-link only)
+ *   requests a link without expiry; a core that predates this mints the
+ *   7-day default instead, so check the result's `expiresAt === null`.
  * @param {'shared'|'app'} [params.accessType='shared'] - Pryv access type the
  *   accepted data-grant is minted as. Default `shared` (non-delegable). Set
  *   `app` to make the grant delegable — the approved requester can then
@@ -370,10 +378,14 @@ class CmcError extends Error {
  *   the grant) for least-privilege re-delegation with per-actor audit.
  * @param {string|null} [params.to=null]
  * @param {Object} [params.requesterMeta]
- * @returns {Promise<{inviteEventId:string, capabilityUrl:string, mode:string, expiresAt:number}>}
+ * @returns {Promise<{inviteEventId:string, capabilityUrl:string, mode:string, expiresAt:number|null}>}
  */
 async function createInvite (conn, params) {
   if (params == null) throw new Error('createInvite: params required');
+  if (params.expiresAt === null && (params.mode || 'single-use') !== 'open-link') {
+    throw new CmcError('createInvite: expiresAt: null (no expiry) requires mode "open-link"',
+      errorIds.CAPABILITY_NO_EXPIRY_NOT_ALLOWED);
+  }
   const requesterMeta = Object.assign(
     { displayName: params.displayName, appId: params.appCode },
     params.requesterMeta || {}
@@ -385,7 +397,7 @@ async function createInvite (conn, params) {
     permissions: params.requestedPermissions || []
   };
   if (params.features) request.features = params.features;
-  if (params.expiresAt) request.expiresAt = params.expiresAt;
+  if (params.expiresAt !== undefined) request.expiresAt = params.expiresAt;
   if (params.accessType) request.accessType = params.accessType;
   const content = {
     to: params.to === undefined ? null : params.to,
@@ -559,12 +571,20 @@ function revocationMatches (record, relationship) {
 
 function inviteRecordFromEvent (event) {
   const c = (event && event.content) || {};
+  const expiresAt = c.capabilityExpiresAt || (c.request && c.request.expiresAt) || null;
+  let status = c.status || 'pending';
+  // The server never stamps 'expired': derive it (client clock) for an
+  // invite still waiting. An invite without expiry never expires.
+  if ((status === 'pending' || status === 'delivered') && typeof expiresAt === 'number' &&
+      expiresAt <= Math.floor(Date.now() / 1000)) {
+    status = 'expired';
+  }
   return {
     inviteEventId: event.id,
     capabilityUrl: c.capabilityUrl || null,
     mode: (c.capability && c.capability.mode) || 'single-use',
-    status: c.status || 'pending',
-    expiresAt: c.capabilityExpiresAt || (c.request && c.request.expiresAt) || null,
+    status,
+    expiresAt,
     counterparty: c.acceptedBy || null,
     acceptedAt: c.acceptedAt || null,
     scopeStreamId: (event.streamIds && event.streamIds[0]) || event.streamId

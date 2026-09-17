@@ -77,6 +77,8 @@ declare module '@pryv/cmc' {
     | 'cmc-capability-timeout'
     | 'cmc-capability-empty'
     | 'cmc-capability-multiple-offers'
+    | 'cmc-capability-ttl-out-of-range'
+    | 'cmc-capability-no-expiry-not-allowed'
     | 'cmc-handler-missing-capability-url'
     | 'cmc-handler-offer-missing-capability-id'
     | 'cmc-offer-empty-permissions'
@@ -104,6 +106,8 @@ declare module '@pryv/cmc' {
     readonly CAPABILITY_TIMEOUT: 'cmc-capability-timeout';
     readonly CAPABILITY_EMPTY: 'cmc-capability-empty';
     readonly CAPABILITY_MULTIPLE_OFFERS: 'cmc-capability-multiple-offers';
+    readonly CAPABILITY_TTL_OUT_OF_RANGE: 'cmc-capability-ttl-out-of-range';
+    readonly CAPABILITY_NO_EXPIRY_NOT_ALLOWED: 'cmc-capability-no-expiry-not-allowed';
     readonly HANDLER_MISSING_CAPABILITY_URL: 'cmc-handler-missing-capability-url';
     readonly HANDLER_OFFER_MISSING_CAPABILITY_ID: 'cmc-handler-offer-missing-capability-id';
     readonly OFFER_EMPTY_PERMISSIONS: 'cmc-offer-empty-permissions';
@@ -185,10 +189,15 @@ declare module '@pryv/cmc' {
     description?: Record<string, string>;
     consent?: Record<string, string>;
     features?: { chat?: boolean; systemMessaging?: boolean };
-    expiresAt?: number;
+    /**
+     * Unix seconds; omit for the 7-day default. Server bounds: single-use
+     * [60s, 30d], open-link at least 60s with no upper bound. `null` (open-link
+     * only) requests no expiry; an older core mints the 7-day default instead.
+     */
+    expiresAt?: number | null;
     to?: string | null;
     requesterMeta?: { displayName?: string; appId?: string; appUrl?: string };
-  }): Promise<{ inviteEventId: string; capabilityUrl: string; mode: CapabilityMode; expiresAt: number }>;
+  }): Promise<{ inviteEventId: string; capabilityUrl: string; mode: CapabilityMode; expiresAt: number | null }>;
 
   export function listInvites(conn: any, params?: {
     scopeStreamId?: string;
