@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## @pryv/cmc 3.14.0 — 2026-09-17
+
+Only `@pryv/cmc` is released; `pryv`, `@pryv/socket.io` and `@pryv/monitor` are unchanged.
+
 ### Changed
 
 - `@pryv/cmc` 3.14.0: scope updates now report what actually happened.
