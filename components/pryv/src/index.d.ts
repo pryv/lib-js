@@ -940,7 +940,17 @@ declare module 'pryv' {
   export type AuthRequestConsentForm = {
     allowUserChoice: boolean;
     permissions: Array<
-      (AuthRequestedPermission | { feature: string; setting: string }) & {
+      (
+        | {
+            streamId: Identifier;
+            level: PermissionLevel;
+            /** Echoed only when the request carried it. */
+            defaultName?: string;
+            /** Present when the core resolved the stream's real name. */
+            name?: string;
+          }
+        | { feature: string; setting: string }
+      ) & {
         mandatory?: true;
         optIn?: true;
       }
