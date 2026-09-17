@@ -96,6 +96,9 @@ async function hmacSha256Hex (verifierSecret, message) {
  */
 async function create (connection, params) {
   const { signature, ...rest } = params || {};
+  /** The request body: built here, so its shape is wider than `params`
+   * (the HMAC form adds `keyHash` and a computed `signature`).
+   * @type {Record<string, any>} */
   const body = { ...rest };
   let key = null;
 
@@ -108,12 +111,12 @@ async function create (connection, params) {
       type: 'hmac-sha256',
       value: await hmacSha256Hex(signature.verifierSecret, random)
     };
-    const res = await connection.post('shared-secrets', body);
-    return { ...res.sharedSecret, key: res.sharedSecret.id + '.' + random };
+    const hmacRes = /** @type {any} */ (await connection.post('shared-secrets', body));
+    return { ...hmacRes.sharedSecret, key: hmacRes.sharedSecret.id + '.' + random };
   }
 
   if (signature != null) body.signature = signature;
-  const res = await connection.post('shared-secrets', body);
+  const res = /** @type {any} */ (await connection.post('shared-secrets', body));
   key = res.sharedSecret.key;
   return { ...res.sharedSecret, key };
 }
@@ -149,7 +152,11 @@ async function retrieve (apiEndpoint, key, options = {}) {
   });
   const parsed = await res.json();
   if (!res.ok) {
-    const err = new Error(parsed?.error?.message || 'Shared secret unavailable.');
+    // The API error id and the creator's returnUrl ride on the Error so a
+    // caller can tell WHY it was refused and where to send the user next.
+    const err = /** @type {Error & { id?: string, returnUrl?: string }} */ (
+      new Error(parsed?.error?.message || 'Shared secret unavailable.')
+    );
     err.id = parsed?.error?.id;
     err.returnUrl = parsed?.error?.data?.returnUrl;
     throw err;

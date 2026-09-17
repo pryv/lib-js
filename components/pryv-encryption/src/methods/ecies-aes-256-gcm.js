@@ -106,29 +106,30 @@ async function normalizeKey (material, usage) {
   }
 
   if (wantPrivate) {
-    return subtle.importKey('pkcs8', bytes, ALGORITHM, false, ['deriveBits']);
+  // See the boundary note in aes-256-gcm.js.
+    return subtle.importKey('pkcs8', /** @type {BufferSource} */ (bytes), ALGORITHM, false, ['deriveBits']);
   }
   if (bytes.length !== EPH_PUB_LENGTH || bytes[0] !== 0x04) {
     throw new Error('ecies-aes-256-gcm: public key must be a 65-byte SEC1 uncompressed point (0x04 || X || Y)');
   }
-  return subtle.importKey('raw', bytes, ALGORITHM, false, []);
+  return subtle.importKey('raw', /** @type {BufferSource} */ (bytes), ALGORITHM, false, []);
 }
 
 /**
  * Derive the AES-256-GCM key from an ECDH shared secret via HKDF-SHA-256.
  * @param {Uint8Array} secret - the 32-byte ECDH shared secret.
- * @param {string[]} usages
+ * @param {KeyUsage[]} usages
  * @returns {Promise<CryptoKey>}
  */
 async function deriveAesKey (secret, usages) {
   const subtle = globalThis.crypto.subtle;
-  const hkdfKey = await subtle.importKey('raw', secret, 'HKDF', false, ['deriveBits']);
+  const hkdfKey = await subtle.importKey('raw', /** @type {BufferSource} */ (secret), 'HKDF', false, ['deriveBits']);
   const aesBits = await subtle.deriveBits(
     { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: new TextEncoder().encode(INFO) },
     hkdfKey,
     256
   );
-  return subtle.importKey('raw', new Uint8Array(aesBits), 'AES-GCM', false, usages);
+  return subtle.importKey('raw', /** @type {BufferSource} */ (new Uint8Array(aesBits)), 'AES-GCM', false, usages);
 }
 
 /**
@@ -150,7 +151,7 @@ async function encryptBytes (bytes, key) {
   const aesKey = await deriveAesKey(new Uint8Array(secretBits), ['encrypt']);
 
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-  const cipherBuffer = await subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, bytes);
+  const cipherBuffer = await subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, /** @type {BufferSource} */ (bytes));
   const cipherBytes = new Uint8Array(cipherBuffer);
 
   const ephRaw = new Uint8Array(await subtle.exportKey('raw', ephemeral.publicKey));
