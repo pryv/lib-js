@@ -43,7 +43,11 @@ async function importKey (key) {
   if (raw.length !== KEY_LENGTH) {
     throw new Error(`aes-256-gcm: key must be ${KEY_LENGTH} bytes, got ${raw.length}`);
   }
-  return globalThis.crypto.subtle.importKey('raw', raw, ALGORITHM, false, ['encrypt', 'decrypt']);
+  // Cast at the Web Crypto boundary: since TypeScript 5.7 a bare
+  // `Uint8Array` is `Uint8Array<ArrayBufferLike>`, which admits
+  // SharedArrayBuffer and so is not a `BufferSource`. These bytes never
+  // come from shared memory, and Web Crypto rejects it regardless.
+  return globalThis.crypto.subtle.importKey('raw', /** @type {BufferSource} */ (raw), ALGORITHM, false, ['encrypt', 'decrypt']);
 }
 
 /**
@@ -58,7 +62,7 @@ async function importKey (key) {
 async function encryptBytes (bytes, key) {
   const cryptoKey = await importKey(key);
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-  const cipherBuffer = await globalThis.crypto.subtle.encrypt({ name: ALGORITHM, iv }, cryptoKey, bytes);
+  const cipherBuffer = await globalThis.crypto.subtle.encrypt({ name: ALGORITHM, iv }, cryptoKey, /** @type {BufferSource} */ (bytes));
   const cipherBytes = new Uint8Array(cipherBuffer);
 
   const out = new Uint8Array(iv.length + cipherBytes.length);

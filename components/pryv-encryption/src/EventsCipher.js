@@ -46,7 +46,7 @@ class EventsCipher {
    * `encrypt` is optional (a decrypt-only method supports reading existing
    * encrypted events but cannot produce new ones).
    * @param {string} name
-   * @param {{ decrypt: Function, encrypt?: Function }} method
+   * @param {{ decrypt: Function, encrypt?: Function, encryptBytes?: Function, decryptBytes?: Function }} method
    * @returns {EventsCipher} this, for chaining.
    */
   registerMethod (name, method) {
@@ -72,7 +72,7 @@ class EventsCipher {
    * @param {*} [params.hint]
    * @returns {Promise<{ type: string, content: { payload: string, keyRef?: string, hint?: * } }>}
    */
-  async encryptEventContent (material, params = {}) {
+  async encryptEventContent (material, params = /** @type {any} */ ({})) {
     const { method: methodName, keyRef, hint } = params;
     const method = this._methods[methodName];
     if (!method) {
@@ -103,7 +103,7 @@ class EventsCipher {
    * @param {*} [params.hint]
    * @returns {Promise<Object>} a new encrypted event (input is not mutated).
    */
-  async encryptEvent (plainEvent, params = {}) {
+  async encryptEvent (plainEvent, params = /** @type {any} */ ({})) {
     const { type, content } = await this.encryptEventContent(plainEvent, params);
     const encrypted = Object.assign({}, plainEvent);
     encrypted.type = type;
@@ -180,7 +180,7 @@ class EventsCipher {
    * @param {*} [params.hint]
    * @returns {Promise<Uint8Array>} raw payload-layout bytes.
    */
-  async encryptAttachmentData (bytes, params = {}) {
+  async encryptAttachmentData (bytes, params = /** @type {any} */ ({})) {
     const { method: methodName, keyRef, hint } = params;
     const method = this._methods[methodName];
     if (!method) {

@@ -45,7 +45,7 @@ function evpBytesToKey (passphrase, salt) {
     input.set(block, 0);
     input.set(passphrase, block.length);
     input.set(salt, block.length + passphrase.length);
-    block = md5(input);
+    block = /** @type {Uint8Array<ArrayBuffer>} */ (md5(input));
     const take = Math.min(block.length, needed - filled);
     derived.set(block.subarray(0, take), filled);
     filled += take;
@@ -85,8 +85,13 @@ async function decrypt (content, key) {
   const passphrase = new TextEncoder().encode(key);
   const { key: keyBytes, iv } = evpBytesToKey(passphrase, salt);
 
-  const cryptoKey = await globalThis.crypto.subtle.importKey('raw', keyBytes, 'AES-CBC', false, ['decrypt']);
-  const plainBuffer = await globalThis.crypto.subtle.decrypt({ name: 'AES-CBC', iv }, cryptoKey, ciphertext);
+  // See the boundary note in aes-256-gcm.js.
+  const cryptoKey = await globalThis.crypto.subtle.importKey('raw', /** @type {BufferSource} */ (keyBytes), 'AES-CBC', false, ['decrypt']);
+  const plainBuffer = await globalThis.crypto.subtle.decrypt(
+    { name: 'AES-CBC', iv: /** @type {BufferSource} */ (iv) },
+    cryptoKey,
+    /** @type {BufferSource} */ (ciphertext)
+  );
   return JSON.parse(new TextDecoder().decode(plainBuffer));
 }
 
