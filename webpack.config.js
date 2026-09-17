@@ -61,6 +61,7 @@ module.exports = [
     }
   },
   { // ES5
+    name: 'es5',
     mode: 'production',
     entry: {
       pryv: {
@@ -118,6 +119,9 @@ module.exports = [
     }
   },
   { // browser test suite (ES6)
+    // Copies dist/pryv.js(.map) emitted by the ES5 config: wait for it, or a
+    // build on a clean dist/ fails with "unable to locate ... glob".
+    dependencies: ['es5'],
     mode: 'development',
     entry: {
       'browser-tests': './test/browser-tests.js'

@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `just build` on a clean `dist/` no longer fails: the browser test bundle, which copies
+  `dist/pryv.js`, now waits for the ES5 build that emits it. `connectFromKey` documentation
+  describes the server retention window of a decided access request.
+
 ## 3.12.0 — 2026-09-17
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
