@@ -221,6 +221,9 @@ const granted = await cmc.acceptScopeUpdate(conn, scopeRequestEventId);
 // throws CmcError otherwise (err.id: 'cmc-scope-request-not-found', ...,
 // or 'cmc-scope-update-not-applied' against a server that does not apply them).
 // peerNotified: false = the grant changed but the provider could not be told yet.
+// Waits up to 20 s by default (the core's own delivery attempt takes up to 15 s).
+// err.id 'cmc-scope-update-outcome-unknown' = the wait ended before the core
+// recorded an outcome: not a failure, do not answer again.
 await cmc.refuseScopeUpdate(conn, scopeRequestEventId, { reason: { en: 'no thanks' } });
 ```
 

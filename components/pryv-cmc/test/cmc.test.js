@@ -633,6 +633,21 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       expect(r).to.deep.equal({ scopeRequestEventId: 's-1', remoteScopeRequestEventId: null, status: 'pending' });
     });
 
+    it('[CMCL1SE] delivery still pending after the wait: throws with the trigger id to keep watching', async function () {
+      const conn = proposeConn({ status: 'delivered' });
+      let err;
+      try {
+        await cmc.proposeScopeUpdate(conn, {
+          collectorStreamId: COLLECTOR_STREAM,
+          newPermissions: [{ streamId: 'sleep', level: 'read' }],
+          deliveryTimeoutMs: 20,
+          deliveryPollIntervalMs: 5
+        });
+      } catch (e) { err = e; }
+      expect(err.id).to.equal('cmc-scope-request-delivery-pending');
+      expect(err.cause.scopeRequestEventId).to.equal('s-1');
+    });
+
     it('[CMCL1SD] a failed delivery throws CmcError carrying the server reason', async function () {
       const conn = proposeConn({ status: 'failed', failure: { reason: 'cmc-system-counterparty-access-not-found' } });
       let err;
@@ -856,6 +871,56 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       const err = await rejection(cmc.acceptScopeUpdate(conn, 'sr-1'));
       expect(err).to.be.instanceOf(cmc.CmcError);
       expect(err.id).to.equal('cmc-scope-update-not-applied');
+    });
+
+    const FAST = { completionTimeoutMs: 20, completionPollIntervalMs: 5 };
+
+    it('[CMCL1UG] wait timed out but the server recorded the change: resolves with peerNotified false', async function () {
+      const conn = scopeConn({ status: 'delivered', applied: true, accessId: 'abc', newPermissions: STEPS });
+      const r = await cmc.acceptScopeUpdate(conn, 'sr-1', FAST);
+      expect(r.dataGrantAccessId).to.equal('abc');
+      expect(r.status).to.equal('delivered');
+      expect(r.peerNotified).to.equal(false);
+    });
+
+    it('[CMCL1UH] wait timed out with no recorded outcome: throws outcome-unknown, not a failure', async function () {
+      const conn = scopeConn({ status: 'delivered' });
+      const err = await rejection(cmc.acceptScopeUpdate(conn, 'sr-1', FAST));
+      expect(err.id).to.equal('cmc-scope-update-outcome-unknown');
+      expect(err.cause).to.deep.equal({ updateEventId: 'up-1', lastStatus: 'delivered' });
+    });
+
+    it('[CMCL1UI] a refusal recorded but not delivered resolves with peerNotified false', async function () {
+      const conn = scopeConn({ status: 'failed', applied: false, failure: { reason: 'cmc-handler-delivery-failed' } });
+      const r = await cmc.refuseScopeUpdate(conn, 'sr-2', { scopeStreamId: ':a' });
+      expect(r.peerNotified).to.equal(false);
+      expect(r.deliveryFailure.reason).to.equal('cmc-handler-delivery-failed');
+    });
+
+    it('[CMCL1UJ] the default wait exceeds the core delivery budget (15 s)', async function () {
+      // Still `delivered` at 14 s, then a real failure: a wait shorter than the
+      // delivery budget would time out first and report outcome-unknown instead.
+      const realNow = Date.now;
+      let offset = 0;
+      Date.now = function () { return realNow() + offset; };
+      try {
+        let polls = 0;
+        const conn = makeStubConnection({
+          handlers: {
+            'events.getOne': function (params) {
+              if (params.id.startsWith('sr-')) return { event: { id: params.id, streamIds: [REQUEST_STREAM] } };
+              polls++;
+              offset = polls * 7000; // each poll jumps the clock 7 s
+              return { event: { id: params.id, content: polls < 3 ? { status: 'delivered' } : { status: 'failed', failure: { reason: 'cmc-scope-request-expired' } } } };
+            },
+            'events.create': function (params) { return { event: { id: 'up-1', streamIds: params.streamIds, content: params.content } }; }
+          }
+        });
+        const err = await rejection(cmc.acceptScopeUpdate(conn, 'sr-1', { completionPollIntervalMs: 1 }));
+        expect(err.id).to.equal('cmc-scope-request-expired');
+      } finally {
+        Date.now = realNow;
+      }
     });
 
     it('[CMCL1UF] waitForCompletion:false returns right after the write', async function () {
@@ -1443,13 +1508,14 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
         });
         setTimeout(function () {
           for (const h of listeners.slice()) {
-            h({ data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'su-ev-1', action: 'accept' } });
+            h({ data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'su-ev-1', action: 'accept', peerNotified: false } });
           }
         }, 5);
         const result = await p;
         expect(result.ok).to.equal(true);
         expect(result.updateEventId).to.equal('su-ev-1');
         expect(result.action).to.equal('accept');
+        expect(result.peerNotified).to.equal(false);
       } finally {
         global.window = prevWindow;
       }

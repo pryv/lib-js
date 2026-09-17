@@ -313,7 +313,13 @@ const errorIds = Object.freeze({
   SCOPE_UPDATE_LOCAL_APPLY_FAILED: 'cmc-scope-update-local-apply-failed',
   // Client-side: the trigger completed but the server did not report the
   // change as applied (a server that predates applying approved requests).
-  SCOPE_UPDATE_NOT_APPLIED: 'cmc-scope-update-not-applied'
+  SCOPE_UPDATE_NOT_APPLIED: 'cmc-scope-update-not-applied',
+  // Client-side: waiting timed out before the server recorded an outcome.
+  // Not a failure; the answer may still be applied. Do not answer again.
+  SCOPE_UPDATE_OUTCOME_UNKNOWN: 'cmc-scope-update-outcome-unknown',
+  // Client-side: the scope request was written but not delivered within the
+  // wait. `err.cause.scopeRequestEventId` names the trigger to keep watching.
+  SCOPE_REQUEST_DELIVERY_PENDING: 'cmc-scope-request-delivery-pending'
 });
 
 // --- Level-1 protocol functions ---
@@ -687,10 +693,6 @@ async function invalidateCapability (conn, params) {
  * deprecated alias (see module.exports below); remove after one
  * release cycle.
  *
- * @param {Object} conn
- * @param {Object} params
- * @param {string} params.collectorStreamId       - the provider's own collector stream
- * @param {Array<{streamId,level:string}>} params.newPermissions
  * By default waits until the request is delivered to the user and returns
  * `remoteScopeRequestEventId`: the id the request has on the USER's account.
  * That is the id the user side answers (`acceptScopeUpdate`, and the
@@ -704,7 +706,7 @@ async function invalidateCapability (conn, params) {
  * @param {Object} [params.message]
  * @param {number} [params.expires]
  * @param {boolean} [params.waitForDelivery=true]
- * @param {number}  [params.deliveryTimeoutMs=10000]
+ * @param {number}  [params.deliveryTimeoutMs=20000] - must exceed the core outbound delivery timeout (15 s by default)
  * @param {number}  [params.deliveryPollIntervalMs=200]
  * @returns {Promise<{scopeRequestEventId:string, remoteScopeRequestEventId:string|null, status:string}>}
  */
@@ -721,10 +723,19 @@ async function proposeScopeUpdate (conn, params) {
   if (params.waitForDelivery === false) {
     return { scopeRequestEventId: event.id, remoteScopeRequestEventId: null, status: 'pending' };
   }
-  const finalEvent = await pollTriggerCompletion(conn, event.id, {
-    timeoutMs: params.deliveryTimeoutMs || 10000,
-    intervalMs: params.deliveryPollIntervalMs || 200
-  });
+  let finalEvent;
+  try {
+    finalEvent = await pollTriggerCompletion(conn, event.id, {
+      timeoutMs: params.deliveryTimeoutMs || SCOPE_WAIT_DEFAULT_MS,
+      intervalMs: params.deliveryPollIntervalMs || 200
+    });
+  } catch (err) {
+    if (!(err instanceof CmcError) || err.id !== errorIds.CAPABILITY_TIMEOUT) throw err;
+    // The request exists and may still be delivered: hand back its id so the
+    // caller can keep watching its own trigger for `remoteEventId`.
+    throw new CmcError('CMC scope request not delivered yet', errorIds.SCOPE_REQUEST_DELIVERY_PENDING,
+      { scopeRequestEventId: event.id });
+  }
   const fc = finalEvent.content || {};
   if (fc.status === 'failed') {
     const reason = (fc.failure && fc.failure.reason) || errorIds.HANDLER_THREW;
@@ -1190,7 +1201,7 @@ async function sendSystemAck (conn, params) {
  * @param {Object} [opts]
  * @param {string} [opts.scopeStreamId]   - own collector stream (defaults to the request's stream)
  * @param {boolean} [opts.waitForCompletion=true]
- * @param {number}  [opts.completionTimeoutMs=10000]
+ * @param {number}  [opts.completionTimeoutMs=20000] - must exceed the core outbound delivery timeout (15 s by default)
  * @param {number}  [opts.completionPollIntervalMs=200]
  * @returns {Promise<Object>}
  */
@@ -1235,7 +1246,7 @@ async function acceptScopeUpdate (conn, scopeRequestEventId, opts) {
  * @param {string} [opts.scopeStreamId]
  * @param {Object} [opts.reason]
  * @param {boolean} [opts.waitForCompletion=true]
- * @param {number}  [opts.completionTimeoutMs=10000]
+ * @param {number}  [opts.completionTimeoutMs=20000]
  * @param {number}  [opts.completionPollIntervalMs=200]
  * @returns {Promise<{updateRefuseEventId:string, status:string, peerNotified?:boolean}>}
  */
@@ -1253,16 +1264,47 @@ async function refuseScopeUpdate (conn, scopeRequestEventId, opts) {
     return { updateRefuseEventId: event.id, status: 'pending' };
   }
   const fc = await waitScopeUpdate(conn, event.id, opts);
+  // The refusal stands once the server recorded it (`applied: false`); only
+  // telling the collector may still be pending or failed.
+  if (fc.applied === false && fc.status !== 'completed') {
+    const failure = fc.failure && fc.failure.reason;
+    if (fc.status === 'failed' && !(typeof failure === 'string' && failure.startsWith('cmc-handler-delivery'))) {
+      throw scopeUpdateFailure(fc);
+    }
+    const result = { updateRefuseEventId: event.id, status: fc.status, peerNotified: false };
+    if (fc.status === 'failed') result.deliveryFailure = fc.failure;
+    return result;
+  }
   if (fc.status === 'failed') throw scopeUpdateFailure(fc);
   return { updateRefuseEventId: event.id, status: fc.status, peerNotified: true };
 }
 
+// Default wait for scope triggers. Must exceed the core's single outbound
+// delivery attempt (15 s by default): the grant is applied before delivery, so
+// giving up earlier would report a failure for a change that happened.
+const SCOPE_WAIT_DEFAULT_MS = 20000;
+
+/**
+ * Wait for a scope trigger to settle. On timeout, read it once more: an
+ * outcome the server already recorded (`applied` true or false) is returned
+ * as is (status still `delivered`, the peer not reached yet); otherwise throw
+ * `cmc-scope-update-outcome-unknown` rather than claiming a failure.
+ */
 async function waitScopeUpdate (conn, eventId, opts) {
-  const finalEvent = await pollTriggerCompletion(conn, eventId, {
-    timeoutMs: opts.completionTimeoutMs || 10000,
-    intervalMs: opts.completionPollIntervalMs || 200
-  });
-  return finalEvent.content || {};
+  try {
+    const finalEvent = await pollTriggerCompletion(conn, eventId, {
+      timeoutMs: opts.completionTimeoutMs || SCOPE_WAIT_DEFAULT_MS,
+      intervalMs: opts.completionPollIntervalMs || 200
+    });
+    return finalEvent.content || {};
+  } catch (err) {
+    if (!(err instanceof CmcError) || err.id !== errorIds.CAPABILITY_TIMEOUT) throw err;
+    const last = await conn.apiOne('events.getOne', { id: eventId }, 'event');
+    const lc = (last && last.content) || {};
+    if (typeof lc.applied === 'boolean') return lc;
+    throw new CmcError('CMC scope update outcome not known yet (last status: ' + lc.status + ')',
+      errorIds.SCOPE_UPDATE_OUTCOME_UNKNOWN, { updateEventId: eventId, lastStatus: lc.status });
+  }
 }
 
 function scopeUpdateFailure (fc) {
@@ -1517,6 +1559,7 @@ function requestScopeUpdate (opts) {
           ok: true,
           updateEventId: data.updateEventId,
           action: data.action,
+          peerNotified: data.peerNotified,
         });
       } else {
         reject(new CmcError('CMC scope-update hand-off returned ok=false: ' + (data.reason || 'unknown'),

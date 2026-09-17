@@ -19,12 +19,21 @@
     be told yet). It throws `CmcError` when nothing was applied; against a
     server that does not apply approved requests the id is
     `cmc-scope-update-not-applied`. `refuseScopeUpdate` waits and throws the
-    same way. `waitForCompletion: false` opts out of waiting.
+    same way, except that a refusal the core recorded but could not deliver yet
+    resolves with `peerNotified: false`. `waitForCompletion: false` opts out of
+    waiting.
+  - Waits default to 20 s, above the core's own delivery attempt (15 s). When a
+    wait ends before the core recorded an outcome, `acceptScopeUpdate` /
+    `refuseScopeUpdate` throw `cmc-scope-update-outcome-unknown` (not a failure:
+    do not answer again) and `proposeScopeUpdate` throws
+    `cmc-scope-request-delivery-pending` with `err.cause.scopeRequestEventId`.
+  - `requestScopeUpdate` (popup) now forwards `peerNotified` from the page.
   - New `errorIds`: `SCOPE_REQUEST_NOT_FOUND`, `SCOPE_REQUEST_NOT_FROM_PEER`,
     `SCOPE_REQUEST_STREAM_MISMATCH`, `SCOPE_REQUEST_EXPIRED`,
     `SCOPE_REQUEST_ALREADY_ANSWERED`, `SCOPE_REQUEST_INVALID`,
     `SCOPE_UPDATE_TARGET_NOT_COUNTERPARTY`, `SCOPE_UPDATE_NOTHING_TO_APPLY`,
-    `SCOPE_UPDATE_LOCAL_APPLY_FAILED`, `SCOPE_UPDATE_NOT_APPLIED`.
+    `SCOPE_UPDATE_LOCAL_APPLY_FAILED`, `SCOPE_UPDATE_NOT_APPLIED`,
+    `SCOPE_UPDATE_OUTCOME_UNKNOWN`, `SCOPE_REQUEST_DELIVERY_PENDING`.
   - Requires a Pryv.io core that applies approved scope requests (see the
     open-pryv.io changelog, issue #136).
 

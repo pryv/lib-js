@@ -132,6 +132,8 @@ declare module '@pryv/cmc' {
     readonly SCOPE_UPDATE_NOTHING_TO_APPLY: 'cmc-scope-update-nothing-to-apply';
     readonly SCOPE_UPDATE_LOCAL_APPLY_FAILED: 'cmc-scope-update-local-apply-failed';
     readonly SCOPE_UPDATE_NOT_APPLIED: 'cmc-scope-update-not-applied';
+    readonly SCOPE_UPDATE_OUTCOME_UNKNOWN: 'cmc-scope-update-outcome-unknown';
+    readonly SCOPE_REQUEST_DELIVERY_PENDING: 'cmc-scope-request-delivery-pending';
   };
 
   /** Typed CMC failure surfaced by Level-1 functions. */
@@ -349,7 +351,13 @@ declare module '@pryv/cmc' {
   export function refuseScopeUpdate(conn: any, scopeRequestEventId: string, opts?: {
     scopeStreamId?: string;
     reason?: Record<string, string>;
-  } & CmcScopeUpdateWaitOptions): Promise<{ updateRefuseEventId: string; status: string; peerNotified?: boolean }>;
+  } & CmcScopeUpdateWaitOptions): Promise<{
+    updateRefuseEventId: string;
+    status: string;
+    /** False when the refusal is recorded but the collector has not been told yet. */
+    peerNotified?: boolean;
+    deliveryFailure?: { reason: string; detail?: any };
+  }>;
 
   // --- Accept hand-off (app-web-user-account) ---
 
