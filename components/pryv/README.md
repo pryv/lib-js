@@ -114,8 +114,23 @@ Here is an implementation of the [Pryv.io authentication process](https://api.pr
             streamId: 'test',
             defaultName: 'test',
             level: 'manage'
+          },
+          {
+            streamId: 'location',
+            defaultName: 'Location',
+            level: 'read'
           }
         ],
+        // optional: how the consent screen should present each permission.
+        // Ids are a stream permission's streamId (or a feature permission's
+        // feature). Ignored by older cores, which fall back to
+        // all-or-nothing rather than failing.
+        consent: {
+          allowUserChoice: true,   // false (the default) = accept all or deny
+          mandatory: ['test'],     // required: cannot be unticked
+          optIn: ['location']      // offered UNticked; the user opts in
+          // a permission in neither list is optional and shown pre-selected
+        },
         clientData: {
           'app-web-auth:description': {
             'type': 'note/txt', 'content': 'This is a consent message.'

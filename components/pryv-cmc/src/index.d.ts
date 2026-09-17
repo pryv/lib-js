@@ -163,6 +163,23 @@ declare module '@pryv/cmc' {
   export type PermissionLevel = 'read' | 'contribute' | 'manage' | 'create-only';
   export type Permission = { streamId: string; level: PermissionLevel };
 
+  /**
+   * A permission as it appears in an OFFER, with the consent-layer
+   * annotations the server has enforced since 2026-07:
+   *
+   *   mandatory  `mandatory: true` : the accepter must grant it
+   *   opt-out    neither flag      : optional, consent UI pre-selects it
+   *   opt-in     `optIn: true`     : optional, consent UI does NOT
+   *
+   * Both are display/offer-layer only: they are stripped before the
+   * data-grant access is minted, so they never appear on a granted
+   * permission. Setting both on one entry is rejected.
+   */
+  export type OfferedPermission = Permission & {
+    mandatory?: boolean;
+    optIn?: boolean;
+  };
+
   export type InviteRecord = {
     inviteEventId: string;
     capabilityUrl: string | null;
@@ -202,7 +219,12 @@ declare module '@pryv/cmc' {
     appCode: string;
     scopeStreamId: string;
     displayName: string;
-    requestedPermissions: Permission[];
+    requestedPermissions: OfferedPermission[];
+    /**
+     * Default false: the accepter may only grant the whole set or refuse.
+     * true lets them grant a subset, except `mandatory` entries.
+     */
+    allowUserChoice?: boolean;
     mode?: CapabilityMode;
     title?: Record<string, string>;
     description?: Record<string, string>;
@@ -248,7 +270,9 @@ declare module '@pryv/cmc' {
 
   export function proposeScopeUpdate(conn: any, params: {
     collectorStreamId: string;
-    newPermissions: Permission[];
+    newPermissions: OfferedPermission[];
+    /** See `createInvite.allowUserChoice`. */
+    allowUserChoice?: boolean;
     message?: Record<string, string>;
     expires?: number;
     waitForDelivery?: boolean;
@@ -267,7 +291,9 @@ declare module '@pryv/cmc' {
   export function readOffer(capabilityUrl: string, opts?: { pryv?: any }): Promise<{
     requester: { username: string | null; host: string; displayName?: string };
     consent?: Record<string, string>;
-    requestedPermissions: Permission[];
+    requestedPermissions: OfferedPermission[];
+    /** Whether the accepter may grant a subset (default false). */
+    allowUserChoice?: boolean;
     mode: CapabilityMode;
     features: { chat?: boolean; systemMessaging?: boolean };
   }>;

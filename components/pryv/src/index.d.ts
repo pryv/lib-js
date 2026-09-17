@@ -871,6 +871,8 @@ declare module 'pryv' {
       authUrl: string;
       poll: string;
       pollRateMs: number;
+      /** Echoed only by a core that understood `authRequest.consent`. */
+      consent?: AuthRequestConsentForm;
     }>;
     pollAccessRequest(keyOrPollUrl: string): Promise<any>;
     /**
@@ -906,6 +908,55 @@ declare module 'pryv' {
     level: PermissionLevel;
   };
 
+  /**
+   * How the consent screen should present each requested permission.
+   *
+   * The lists name permission ids: a stream permission's `streamId`, a
+   * feature permission's `feature`. Together they give three words for
+   * what an entry means to the user:
+   *
+   *   mandatory  listed in `mandatory` : required; cannot be unticked
+   *   opt-out    in neither list       : optional, shown pre-selected
+   *   opt-in     listed in `optIn`     : optional, shown NOT pre-selected
+   *
+   * An id may not appear in both lists, and every id must match exactly
+   * one requested permission. A core that predates this ignores the whole
+   * object, so the consent falls back to all-or-nothing instead of
+   * failing; `AuthRequestConsentForm` echoed back is how you tell.
+   */
+  export type AuthRequestConsent = {
+    /** Default false: the user may only accept the whole set or deny. */
+    allowUserChoice?: boolean;
+    mandatory?: string[];
+    optIn?: string[];
+  };
+
+  /**
+   * The resolved consent form: the requested permissions with their
+   * annotations attached, as the auth page renders them. Returned by the
+   * auth-request POST and carried on the NEED_SIGNIN poll, in both cases
+   * ONLY when the request carried a `consent` object the core understood.
+   */
+  export type AuthRequestConsentForm = {
+    allowUserChoice: boolean;
+    permissions: Array<
+      (
+        | {
+            streamId: Identifier;
+            level: PermissionLevel;
+            /** Echoed only when the request carried it. */
+            defaultName?: string;
+            /** Present when the core resolved the stream's real name. */
+            name?: string;
+          }
+        | { feature: string; setting: string }
+      ) & {
+        mandatory?: true;
+        optIn?: true;
+      }
+    >;
+  };
+
   export type States =
     | 'ERROR'
     | 'LOADING'
@@ -938,6 +989,7 @@ declare module 'pryv' {
         level: PermissionLevel;
         defaultName: string;
       }>;
+      consent?: AuthRequestConsentForm;
       requestingAppId: string;
       returnUrl?: string | null;
       serviceInfo?: ServiceInfo;
@@ -975,6 +1027,7 @@ declare module 'pryv' {
     poll_rate_ms: number;
     requestingAppId: string;
     requestedPermissions: AuthRequestedPermission[];
+    consent?: AuthRequestConsentForm;
     lang?: string;
     returnURL?: string;
     clientData?: KeyValue;
@@ -989,6 +1042,7 @@ declare module 'pryv' {
       requestingAppId: string;
       languageCode?: string;
       requestedPermissions: AuthRequestedPermission[];
+      consent?: AuthRequestConsent;
       returnUrl?: string | boolean;
       referer?: string;
       clientData?: KeyValue;
