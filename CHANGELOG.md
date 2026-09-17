@@ -4,6 +4,45 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Auth requests can say how the consent screen should present each
+  permission.** `authRequest.consent` carries three things beside the plain
+  `requestedPermissions`: `allowUserChoice` (false by default, meaning the user
+  may only accept the whole set or deny), `mandatory` (ids the user cannot
+  leave out) and `optIn` (ids offered NOT pre-selected, so the user has to
+  choose them). An id in neither list is optional and shown pre-selected.
+
+  The ids are a stream permission's `streamId` or a feature permission's
+  `feature`. The annotations travel beside the entries, never inside them,
+  because the API rejects unknown per-entry fields.
+
+  ```js
+  authRequest: {
+    requestingAppId: 'my-app',
+    requestedPermissions: [
+      { streamId: 'diary', defaultName: 'Journal', level: 'read' },
+      { streamId: 'location', defaultName: 'Location', level: 'read' }
+    ],
+    consent: { allowUserChoice: true, mandatory: ['diary'], optIn: ['location'] }
+  }
+  ```
+
+  `Service.startAccessRequest` posts the object untouched and returns the
+  resolved consent form as `consent` when the core understood it. A core that
+  predates this ignores the field and answers without it, so the consent falls
+  back to all-or-nothing rather than failing, and the absence of `consent` in
+  the answer is how an app detects that.
+
+### Fixed
+
+- **`@pryv/cmc` typings caught up with the server.** The offer shapes
+  (`createInvite`, `proposeScopeUpdate`, `readOffer`) were missing
+  `allowUserChoice` and the per-entry `mandatory` annotation, although the
+  server has enforced both since 2026-07. They now use a dedicated
+  `OfferedPermission` type that also carries `optIn`. Typings only: no
+  behaviour change.
+
 ## 3.13.0 — 2026-09-15
 
 `@pryv/cmc@3.12.0` was published from a tree that did not yet carry the code the

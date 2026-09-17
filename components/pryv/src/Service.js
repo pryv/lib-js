@@ -473,13 +473,28 @@ class Service {
    * @param {Object} authRequest - The auth-request body
    * @param {string} authRequest.requestingAppId
    * @param {Array<{ streamId: string, level: string, defaultName: string }>} authRequest.requestedPermissions
+   * @param {Object} [authRequest.consent] - Says how the consent screen
+   *   should present each requested permission. `mandatory` and `optIn`
+   *   name permission ids (a stream permission's `streamId`, a feature
+   *   permission's `feature`); an id in neither list is optional and
+   *   shown pre-selected. Ignored by cores that predate it, so the flow
+   *   falls back to all-or-nothing rather than failing: the returned
+   *   `consent` tells you which happened.
+   * @param {boolean} [authRequest.consent.allowUserChoice=false] - false
+   *   means the user may only accept the whole set or deny.
+   * @param {string[]} [authRequest.consent.mandatory] - ids the user
+   *   cannot leave out.
+   * @param {string[]} [authRequest.consent.optIn] - ids offered NOT
+   *   pre-selected, so the user has to choose them.
    * @param {string} [authRequest.languageCode='en']
    * @param {string|boolean} [authRequest.returnUrl]
    * @param {string} [authRequest.referer]
    * @param {Object} [authRequest.clientData]
    * @param {string} [authRequest.deviceName]
    * @param {number} [authRequest.expireAfter]
-   * @returns {Promise<{ key: string, authUrl: string, poll: string, pollRateMs: number }>}
+   * @returns {Promise<{ key: string, authUrl: string, poll: string, pollRateMs: number, consent?: Object }>}
+   *   `consent` is echoed back only by a core that understood the
+   *   annotations, which is how you detect support.
    * @throws {PryvError} on non-2xx
    */
   async startAccessRequest (authRequest) {
@@ -499,12 +514,18 @@ class Service {
         'Invalid access-request response: ' + JSON.stringify(body)
       );
     }
-    return {
+    const envelope = {
       key: body.key,
       authUrl: body.authUrl || body.url,
       poll: body.poll,
       pollRateMs: body.poll_rate_ms != null ? body.poll_rate_ms : body.pollRateMs
     };
+    // Present only when the core understood a `consent` sidecar. Absent
+    // means the annotations were ignored and the consent screen will be
+    // all-or-nothing, which a caller may want to know before showing the
+    // approve link.
+    if (body.consent != null) envelope.consent = body.consent;
+    return envelope;
   }
 
   /**
