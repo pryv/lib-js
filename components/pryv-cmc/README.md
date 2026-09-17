@@ -169,7 +169,11 @@ const update = await cmc.proposeScopeUpdate(conn, {
   newPermissions: [{ streamId: 'fertility', level: 'read' }, { streamId: 'cycle', level: 'read' }],
   message: { en: 'Adding cycle stream for sub-study.' }
 });
-// update = { scopeRequestEventId }
+// update = { scopeRequestEventId, remoteScopeRequestEventId, status }
+// Waits for delivery by default (`waitForDelivery: false` to skip).
+// ⚑ Hand `remoteScopeRequestEventId` to the user side (acceptScopeUpdate or the
+// /cmc-scope-update hand-off): it is the request's id on the USER's account.
+// `scopeRequestEventId` is your own trigger and cannot be answered.
 // (renamed in 3.9.0 from `requestScopeUpdate` — that name now refers to
 //  the user-side accept hand-off helper. Old name removed; importers
 //  must use `proposeScopeUpdate`.)
@@ -209,8 +213,14 @@ await cmc.revokeAcceptance(conn, {
 const relationships = await cmc.listAcceptedRelationships(conn, { appCode: 'my-app' });
 // relationships = RelationshipRecord[]
 
-// Respond to a scope-update request from the provider:
-await cmc.acceptScopeUpdate(conn, scopeRequestEventId);
+// Respond to a scope-update request from the provider. The id is the
+// request's id on YOUR account (the provider gets it as remoteScopeRequestEventId).
+const granted = await cmc.acceptScopeUpdate(conn, scopeRequestEventId);
+// granted = { updateAcceptEventId, dataGrantAccessId, newPermissions, status, peerNotified }
+// Resolves only once the server APPLIED the request's permissions to the grant;
+// throws CmcError otherwise (err.id: 'cmc-scope-request-not-found', ...,
+// or 'cmc-scope-update-not-applied' against a server that does not apply them).
+// peerNotified: false = the grant changed but the provider could not be told yet.
 await cmc.refuseScopeUpdate(conn, scopeRequestEventId, { reason: { en: 'no thanks' } });
 ```
 
@@ -259,10 +269,10 @@ Scope-update hand-off (same shape, different page):
 const result = await cmc.requestScopeUpdate({
   authUrl: 'https://pryv.github.io/app-web-user-account/cmc-scope-update', // /cmc-scope-update route
   pryvApi: 'https://reg.pryv.me/',
-  scopeRequestEventId: 'evt-scope-req-abc123',                  // from the collector's proposal
+  scopeRequestEventId: update.remoteScopeRequestEventId,        // the request's id on the USER's account
   // scopeStreamId is optional — defaults to the scope-request event's home stream
 });
-// result = { ok: true, updateEventId, action: 'accept' | 'refuse' }
+// result = { ok: true, updateEventId, action: 'accept' | 'refuse', peerNotified? }
 // Rejects with CmcError (id: 'cmc-scope-update-popup-closed' | 'cmc-scope-update-popup-blocked'
 // | 'cmc-scope-update-timeout' | the server's `failure.reason` on ok:false).
 

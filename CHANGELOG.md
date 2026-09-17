@@ -4,6 +4,30 @@
 
 ## [Unreleased]
 
+### Changed
+
+- `@pryv/cmc` 3.14.0: scope updates now report what actually happened.
+  - `proposeScopeUpdate` waits for delivery by default and returns
+    `remoteScopeRequestEventId`: the request's id on the **user's** account.
+    That is the id the user side must answer (`acceptScopeUpdate`, and the
+    `scopeRequestEventId` of `requestScopeUpdateUrl` / `requestScopeUpdate`);
+    the collector-side `scopeRequestEventId` cannot be answered.
+    `waitForDelivery: false` restores the immediate return.
+  - `acceptScopeUpdate` waits for the server's outcome and resolves only once
+    the grant changed, with `dataGrantAccessId`, `newPermissions`, `status` and
+    `peerNotified` (`false` when the grant changed but the collector could not
+    be told yet). It throws `CmcError` when nothing was applied; against a
+    server that does not apply approved requests the id is
+    `cmc-scope-update-not-applied`. `refuseScopeUpdate` waits and throws the
+    same way. `waitForCompletion: false` opts out of waiting.
+  - New `errorIds`: `SCOPE_REQUEST_NOT_FOUND`, `SCOPE_REQUEST_NOT_FROM_PEER`,
+    `SCOPE_REQUEST_STREAM_MISMATCH`, `SCOPE_REQUEST_EXPIRED`,
+    `SCOPE_REQUEST_ALREADY_ANSWERED`, `SCOPE_REQUEST_INVALID`,
+    `SCOPE_UPDATE_TARGET_NOT_COUNTERPARTY`, `SCOPE_UPDATE_NOTHING_TO_APPLY`,
+    `SCOPE_UPDATE_LOCAL_APPLY_FAILED`, `SCOPE_UPDATE_NOT_APPLIED`.
+  - Requires a Pryv.io core that applies approved scope requests (see the
+    open-pryv.io changelog, issue #136).
+
 ## 3.13.0 — 2026-09-15
 
 `@pryv/cmc@3.12.0` was published from a tree that did not yet carry the code the

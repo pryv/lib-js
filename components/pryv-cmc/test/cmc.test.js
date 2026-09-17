@@ -571,21 +571,76 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
   });
 
   describe('[CMCL1S] proposeScopeUpdate', function () {
-    it('[CMCL1SA] posts consent/scope-request-cmc with newPermissions', async function () {
-      const conn = makeStubConnection({
+    const COLLECTOR_STREAM = ':_cmc:apps:my-app:study-A:collectors:alice--pryv-me';
+
+    function proposeConn (finalContent) {
+      return makeStubConnection({
         handlers: {
           'events.create': function (params) {
             return { event: { id: 's-1', streamIds: params.streamIds, content: params.content } };
+          },
+          'events.getOne': function () {
+            return { event: { id: 's-1', content: finalContent } };
           }
         }
       });
+    }
+
+    it('[CMCL1SA] posts consent/scope-request-cmc with newPermissions', async function () {
+      const conn = proposeConn({ status: 'completed', remoteEventId: 'remote-s-1' });
       const r = await cmc.proposeScopeUpdate(conn, {
-        collectorStreamId: ':_cmc:apps:my-app:study-A:collectors:alice--pryv-me',
+        collectorStreamId: COLLECTOR_STREAM,
         newPermissions: [{ streamId: 'sleep', level: 'read' }],
         message: { en: 'plus sleep please' }
       });
       expect(conn.calls[0].params.type).to.equal('consent/scope-request-cmc');
+      expect(conn.calls[0].params.content.newPermissions).to.deep.equal([{ streamId: 'sleep', level: 'read' }]);
       expect(r.scopeRequestEventId).to.equal('s-1');
+    });
+
+    it('[CMCL1SB] waits for delivery and returns the request id on the user account', async function () {
+      let polls = 0;
+      const conn = makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return { event: { id: 's-1', streamIds: params.streamIds, content: params.content } };
+          },
+          'events.getOne': function (params) {
+            expect(params.id).to.equal('s-1');
+            polls++;
+            return { event: { id: 's-1', content: polls < 2 ? { status: 'delivered' } : { status: 'completed', remoteEventId: 'remote-s-1' } } };
+          }
+        }
+      });
+      const r = await cmc.proposeScopeUpdate(conn, {
+        collectorStreamId: COLLECTOR_STREAM,
+        newPermissions: [{ streamId: 'sleep', level: 'read' }],
+        deliveryPollIntervalMs: 1
+      });
+      expect(r.remoteScopeRequestEventId).to.equal('remote-s-1');
+      expect(r.status).to.equal('completed');
+      expect(polls).to.equal(2);
+    });
+
+    it('[CMCL1SC] waitForDelivery:false returns after the write only', async function () {
+      const conn = proposeConn({ status: 'completed', remoteEventId: 'never-read' });
+      const r = await cmc.proposeScopeUpdate(conn, {
+        collectorStreamId: COLLECTOR_STREAM,
+        newPermissions: [{ streamId: 'sleep', level: 'read' }],
+        waitForDelivery: false
+      });
+      expect(conn.calls).to.have.length(1);
+      expect(r).to.deep.equal({ scopeRequestEventId: 's-1', remoteScopeRequestEventId: null, status: 'pending' });
+    });
+
+    it('[CMCL1SD] a failed delivery throws CmcError carrying the server reason', async function () {
+      const conn = proposeConn({ status: 'failed', failure: { reason: 'cmc-system-counterparty-access-not-found' } });
+      let err;
+      try {
+        await cmc.proposeScopeUpdate(conn, { collectorStreamId: COLLECTOR_STREAM, newPermissions: [{ streamId: 'sleep', level: 'read' }] });
+      } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal('cmc-system-counterparty-access-not-found');
     });
   });
 
@@ -730,37 +785,84 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
   });
 
   describe('[CMCL1U] acceptScopeUpdate / refuseScopeUpdate', function () {
-    it('[CMCL1UA] acceptScopeUpdate posts scope-update-cmc with accept:true', async function () {
-      const conn = makeStubConnection({
+    const REQUEST_STREAM = ':_cmc:apps:p:i:collectors:doctor--example-com';
+    const STEPS = [{ streamId: 'steps', level: 'read' }];
+
+    // events.getOne answers the request lookup ('sr-*') and the trigger poll ('up-*').
+    function scopeConn (triggerContent) {
+      return makeStubConnection({
         handlers: {
           'events.getOne': function (params) {
-            expect(params.id).to.equal('sr-1');
-            return { event: { id: 'sr-1', streamIds: [':_cmc:apps:p:i:collectors:doctor--example-com'] } };
+            if (params.id.startsWith('sr-')) return { event: { id: params.id, streamIds: [REQUEST_STREAM] } };
+            return { event: { id: params.id, content: triggerContent } };
           },
           'events.create': function (params) {
-            return { event: { id: 'up-1', streamIds: params.streamIds, content: Object.assign({}, params.content, { newAccessId: 'abc:2' }) } };
+            return { event: { id: 'up-1', streamIds: params.streamIds, content: params.content } };
           }
         }
       });
+    }
+
+    async function rejection (promise) {
+      try { await promise; } catch (e) { return e; }
+      throw new Error('expected a rejection');
+    }
+
+    it('[CMCL1UA] acceptScopeUpdate posts accept:true and resolves with what the server applied', async function () {
+      const conn = scopeConn({ status: 'completed', applied: true, accessId: 'abc', newPermissions: STEPS });
       const r = await cmc.acceptScopeUpdate(conn, 'sr-1');
-      expect(conn.calls).to.have.length(2);
+      expect(conn.calls[1].method).to.equal('events.create');
+      expect(conn.calls[1].params.streamIds).to.deep.equal([REQUEST_STREAM]);
       expect(conn.calls[1].params.type).to.equal('consent/scope-update-cmc');
       expect(conn.calls[1].params.content).to.deep.equal({ scopeRequestEventId: 'sr-1', accept: true });
       expect(r.updateAcceptEventId).to.equal('up-1');
-      expect(r.newDataGrantAccessId).to.equal('abc:2');
+      expect(r.dataGrantAccessId).to.equal('abc');
+      expect(r.newDataGrantAccessId).to.equal('abc');
+      expect(r.newPermissions).to.deep.equal(STEPS);
+      expect(r.status).to.equal('completed');
+      expect(r.peerNotified).to.equal(true);
     });
 
-    it('[CMCL1UB] refuseScopeUpdate posts scope-update-cmc with accept:false', async function () {
-      const conn = makeStubConnection({
-        handlers: {
-          'events.create': function (params) {
-            return { event: { id: 'up-2', streamIds: params.streamIds, content: params.content } };
-          }
-        }
-      });
+    it('[CMCL1UB] refuseScopeUpdate posts accept:false and waits; a rejected refusal throws', async function () {
+      const conn = scopeConn({ status: 'completed', applied: false });
       const r = await cmc.refuseScopeUpdate(conn, 'sr-2', { scopeStreamId: ':a' });
       expect(conn.calls[0].params.content.accept).to.equal(false);
-      expect(r.updateRefuseEventId).to.equal('up-2');
+      expect(r.updateRefuseEventId).to.equal('up-1');
+      expect(r.status).to.equal('completed');
+      const failed = scopeConn({ status: 'failed', failure: { reason: 'cmc-scope-request-not-from-peer' } });
+      const err = await rejection(cmc.refuseScopeUpdate(failed, 'sr-2', { scopeStreamId: ':a' }));
+      expect(err.id).to.equal('cmc-scope-request-not-from-peer');
+    });
+
+    it('[CMCL1UC] a failed answer that applied nothing throws CmcError with the server reason', async function () {
+      const conn = scopeConn({ status: 'failed', failure: { reason: 'cmc-scope-request-not-found' } });
+      const err = await rejection(cmc.acceptScopeUpdate(conn, 'sr-1'));
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal(cmc.errorIds.SCOPE_REQUEST_NOT_FOUND);
+    });
+
+    it('[CMCL1UD] applied but the collector not reached: resolves with peerNotified false', async function () {
+      const conn = scopeConn({
+        status: 'failed', applied: true, accessId: 'abc', newPermissions: STEPS, failure: { reason: 'cmc-handler-delivery-failed' }
+      });
+      const r = await cmc.acceptScopeUpdate(conn, 'sr-1');
+      expect(r.dataGrantAccessId).to.equal('abc');
+      expect(r.peerNotified).to.equal(false);
+      expect(r.deliveryFailure.reason).to.equal('cmc-handler-delivery-failed');
+    });
+
+    it('[CMCL1UE] completed without applied (older server) throws cmc-scope-update-not-applied', async function () {
+      const conn = scopeConn({ status: 'completed' });
+      const err = await rejection(cmc.acceptScopeUpdate(conn, 'sr-1'));
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal('cmc-scope-update-not-applied');
+    });
+
+    it('[CMCL1UF] waitForCompletion:false returns right after the write', async function () {
+      const conn = scopeConn({ status: 'completed', applied: true });
+      const r = await cmc.acceptScopeUpdate(conn, 'sr-1', { scopeStreamId: REQUEST_STREAM, waitForCompletion: false });
+      expect(conn.calls).to.have.length(1);
+      expect(r).to.deep.equal({ updateAcceptEventId: 'up-1', status: 'pending' });
     });
   });
 

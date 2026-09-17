@@ -298,7 +298,22 @@ const errorIds = Object.freeze({
   // The peer-side `content.from` stamping hook rejects when the
   // writer's counterparty access has no stored `{username,host}`
   // identity — wiring bug at handshake time; surface for ops.
-  COUNTERPARTY_IDENTITY_MISSING: 'cmc-counterparty-identity-missing'
+  COUNTERPARTY_IDENTITY_MISSING: 'cmc-counterparty-identity-missing',
+  // Scope-update answering a collector's request. The server resolves the
+  // request as it arrived on the user's account and binds it to the
+  // collector's grant; these name why an answer changed nothing.
+  SCOPE_REQUEST_NOT_FOUND: 'cmc-scope-request-not-found',
+  SCOPE_REQUEST_NOT_FROM_PEER: 'cmc-scope-request-not-from-peer',
+  SCOPE_REQUEST_STREAM_MISMATCH: 'cmc-scope-request-stream-mismatch',
+  SCOPE_REQUEST_EXPIRED: 'cmc-scope-request-expired',
+  SCOPE_REQUEST_ALREADY_ANSWERED: 'cmc-scope-request-already-answered',
+  SCOPE_REQUEST_INVALID: 'cmc-scope-request-invalid',
+  SCOPE_UPDATE_TARGET_NOT_COUNTERPARTY: 'cmc-scope-update-target-not-counterparty',
+  SCOPE_UPDATE_NOTHING_TO_APPLY: 'cmc-scope-update-nothing-to-apply',
+  SCOPE_UPDATE_LOCAL_APPLY_FAILED: 'cmc-scope-update-local-apply-failed',
+  // Client-side: the trigger completed but the server did not report the
+  // change as applied (a server that predates applying approved requests).
+  SCOPE_UPDATE_NOT_APPLIED: 'cmc-scope-update-not-applied'
 });
 
 // --- Level-1 protocol functions ---
@@ -676,9 +691,22 @@ async function invalidateCapability (conn, params) {
  * @param {Object} params
  * @param {string} params.collectorStreamId       - the provider's own collector stream
  * @param {Array<{streamId,level:string}>} params.newPermissions
+ * By default waits until the request is delivered to the user and returns
+ * `remoteScopeRequestEventId`: the id the request has on the USER's account.
+ * That is the id the user side answers (`acceptScopeUpdate`, and the
+ * `scopeRequestEventId` of a `/cmc-scope-update` hand-off). The returned
+ * `scopeRequestEventId` is the collector-side trigger and cannot be answered.
+ *
+ * @param {Object} conn
+ * @param {Object} params
+ * @param {string} params.collectorStreamId       - the provider's own collector stream
+ * @param {Array<{streamId,level:string}>} params.newPermissions
  * @param {Object} [params.message]
  * @param {number} [params.expires]
- * @returns {Promise<{scopeRequestEventId:string}>}
+ * @param {boolean} [params.waitForDelivery=true]
+ * @param {number}  [params.deliveryTimeoutMs=10000]
+ * @param {number}  [params.deliveryPollIntervalMs=200]
+ * @returns {Promise<{scopeRequestEventId:string, remoteScopeRequestEventId:string|null, status:string}>}
  */
 async function proposeScopeUpdate (conn, params) {
   if (params == null) throw new Error('proposeScopeUpdate: params required');
@@ -690,7 +718,23 @@ async function proposeScopeUpdate (conn, params) {
     type: ET_SCOPE_REQUEST,
     content
   }, 'event');
-  return { scopeRequestEventId: event.id };
+  if (params.waitForDelivery === false) {
+    return { scopeRequestEventId: event.id, remoteScopeRequestEventId: null, status: 'pending' };
+  }
+  const finalEvent = await pollTriggerCompletion(conn, event.id, {
+    timeoutMs: params.deliveryTimeoutMs || 10000,
+    intervalMs: params.deliveryPollIntervalMs || 200
+  });
+  const fc = finalEvent.content || {};
+  if (fc.status === 'failed') {
+    const reason = (fc.failure && fc.failure.reason) || errorIds.HANDLER_THREW;
+    throw new CmcError('CMC scope request failed: ' + reason, reason, fc.failure);
+  }
+  return {
+    scopeRequestEventId: event.id,
+    remoteScopeRequestEventId: fc.remoteEventId || null,
+    status: fc.status
+  };
 }
 
 // --- Consumer side ---
@@ -1126,14 +1170,29 @@ async function sendSystemAck (conn, params) {
 
 /**
  * Accept a scope-update proposal. Posts `consent/scope-update-cmc` with
- * `{ scopeRequestEventId, accept: true }`. Server-side plugin runs
- * `accesses.update` on the local data-grant.
+ * `{ scopeRequestEventId, accept: true }`; the server applies the request's
+ * permission set to the collector's data-grant.
+ *
+ * `scopeRequestEventId` is the id of the request ON THIS ACCOUNT (the
+ * collector's `proposeScopeUpdate` returns it as `remoteScopeRequestEventId`).
+ *
+ * By default waits for the outcome and resolves only once the grant changed:
+ * `{ updateAcceptEventId, dataGrantAccessId, newPermissions, status,
+ * peerNotified, deliveryFailure? }`. `peerNotified: false` means the grant
+ * changed but the collector could not be told yet. Throws `CmcError` when
+ * nothing was applied (`err.id` is the server's reason, or
+ * `cmc-scope-update-not-applied` against a server that does not apply
+ * approved requests). `waitForCompletion: false` returns right after the
+ * write as `{ updateAcceptEventId, status: 'pending' }`.
  *
  * @param {Object} conn
  * @param {string} scopeRequestEventId
  * @param {Object} [opts]
  * @param {string} [opts.scopeStreamId]   - own collector stream (defaults to the request's stream)
- * @returns {Promise<{updateAcceptEventId:string, newDataGrantAccessId:string|null}>}
+ * @param {boolean} [opts.waitForCompletion=true]
+ * @param {number}  [opts.completionTimeoutMs=10000]
+ * @param {number}  [opts.completionPollIntervalMs=200]
+ * @returns {Promise<Object>}
  */
 async function acceptScopeUpdate (conn, scopeRequestEventId, opts) {
   opts = opts || {};
@@ -1143,21 +1202,42 @@ async function acceptScopeUpdate (conn, scopeRequestEventId, opts) {
     type: ET_SCOPE_UPDATE,
     content: { scopeRequestEventId, accept: true }
   }, 'event');
-  return {
+  if (opts.waitForCompletion === false) {
+    return { updateAcceptEventId: event.id, status: 'pending' };
+  }
+  const fc = await waitScopeUpdate(conn, event.id, opts);
+  if (fc.applied !== true) {
+    if (fc.status === 'failed') throw scopeUpdateFailure(fc);
+    throw new CmcError('CMC scope update completed without being applied (the server does not apply approved scope requests)',
+      errorIds.SCOPE_UPDATE_NOT_APPLIED, fc);
+  }
+  const result = {
     updateAcceptEventId: event.id,
-    newDataGrantAccessId: (event.content && event.content.newAccessId) || null
+    dataGrantAccessId: fc.accessId || null,
+    // Kept for callers of earlier versions; same value as dataGrantAccessId.
+    newDataGrantAccessId: fc.accessId || null,
+    newPermissions: fc.newPermissions || [],
+    status: fc.status,
+    peerNotified: fc.status === 'completed'
   };
+  if (fc.status === 'failed') result.deliveryFailure = fc.failure;
+  return result;
 }
 
 /**
- * Refuse a scope-update proposal.
+ * Refuse a scope-update proposal. Same id and waiting rules as
+ * `acceptScopeUpdate`; resolves `{ updateRefuseEventId, status, peerNotified }`
+ * and throws `CmcError` when the server rejected the refusal.
  *
  * @param {Object} conn
  * @param {string} scopeRequestEventId
  * @param {Object} [opts]
  * @param {string} [opts.scopeStreamId]
  * @param {Object} [opts.reason]
- * @returns {Promise<{updateRefuseEventId:string}>}
+ * @param {boolean} [opts.waitForCompletion=true]
+ * @param {number}  [opts.completionTimeoutMs=10000]
+ * @param {number}  [opts.completionPollIntervalMs=200]
+ * @returns {Promise<{updateRefuseEventId:string, status:string, peerNotified?:boolean}>}
  */
 async function refuseScopeUpdate (conn, scopeRequestEventId, opts) {
   opts = opts || {};
@@ -1169,7 +1249,25 @@ async function refuseScopeUpdate (conn, scopeRequestEventId, opts) {
     type: ET_SCOPE_UPDATE,
     content
   }, 'event');
-  return { updateRefuseEventId: event.id };
+  if (opts.waitForCompletion === false) {
+    return { updateRefuseEventId: event.id, status: 'pending' };
+  }
+  const fc = await waitScopeUpdate(conn, event.id, opts);
+  if (fc.status === 'failed') throw scopeUpdateFailure(fc);
+  return { updateRefuseEventId: event.id, status: fc.status, peerNotified: true };
+}
+
+async function waitScopeUpdate (conn, eventId, opts) {
+  const finalEvent = await pollTriggerCompletion(conn, eventId, {
+    timeoutMs: opts.completionTimeoutMs || 10000,
+    intervalMs: opts.completionPollIntervalMs || 200
+  });
+  return finalEvent.content || {};
+}
+
+function scopeUpdateFailure (fc) {
+  const reason = (fc.failure && fc.failure.reason) || errorIds.HANDLER_THREW;
+  return new CmcError('CMC scope update failed: ' + reason, reason, fc.failure);
 }
 
 async function resolveScopeRequestStream (conn, scopeRequestEventId) {
@@ -1337,7 +1435,7 @@ const REQUEST_SCOPE_UPDATE_POSTMSG_TYPE = 'cmc-scope-update-result';
  * @param {Object} opts
  * @param {string} opts.authUrl              - app-web-user-account base + `/cmc-scope-update`.
  * @param {string} opts.pryvApi              - user's Pryv API base.
- * @param {string} opts.scopeRequestEventId  - the collector-side scope-request event id.
+ * @param {string} opts.scopeRequestEventId  - the id of the request on the USER's account: `remoteScopeRequestEventId` from `proposeScopeUpdate` (not the collector-side trigger id).
  * @param {string} [opts.scopeStreamId]      - own collector stream (defaults to the request's home stream when omitted).
  * @param {string} [opts.returnUrl]          - switches to redirect mode.
  * @returns {string}

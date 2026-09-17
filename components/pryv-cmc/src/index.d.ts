@@ -122,6 +122,16 @@ declare module '@pryv/cmc' {
     readonly CHAT_COUNTERPARTY_ACCESS_NOT_FOUND: 'cmc-chat-counterparty-access-not-found';
     readonly CHAT_NO_REMOTE_APIENDPOINT: 'cmc-chat-no-remote-apiendpoint';
     readonly CHAT_NO_REMOTE_CHAT_STREAM: 'cmc-chat-no-remote-chat-stream';
+    readonly SCOPE_REQUEST_NOT_FOUND: 'cmc-scope-request-not-found';
+    readonly SCOPE_REQUEST_NOT_FROM_PEER: 'cmc-scope-request-not-from-peer';
+    readonly SCOPE_REQUEST_STREAM_MISMATCH: 'cmc-scope-request-stream-mismatch';
+    readonly SCOPE_REQUEST_EXPIRED: 'cmc-scope-request-expired';
+    readonly SCOPE_REQUEST_ALREADY_ANSWERED: 'cmc-scope-request-already-answered';
+    readonly SCOPE_REQUEST_INVALID: 'cmc-scope-request-invalid';
+    readonly SCOPE_UPDATE_TARGET_NOT_COUNTERPARTY: 'cmc-scope-update-target-not-counterparty';
+    readonly SCOPE_UPDATE_NOTHING_TO_APPLY: 'cmc-scope-update-nothing-to-apply';
+    readonly SCOPE_UPDATE_LOCAL_APPLY_FAILED: 'cmc-scope-update-local-apply-failed';
+    readonly SCOPE_UPDATE_NOT_APPLIED: 'cmc-scope-update-not-applied';
   };
 
   /** Typed CMC failure surfaced by Level-1 functions. */
@@ -208,7 +218,16 @@ declare module '@pryv/cmc' {
     newPermissions: Permission[];
     message?: Record<string, string>;
     expires?: number;
-  }): Promise<{ scopeRequestEventId: string }>;
+    waitForDelivery?: boolean;
+    deliveryTimeoutMs?: number;
+    deliveryPollIntervalMs?: number;
+  }): Promise<{
+    /** Collector-side trigger id. Not answerable by the user. */
+    scopeRequestEventId: string;
+    /** The request's id on the user's account: what the user side answers. Null when not waiting. */
+    remoteScopeRequestEventId: string | null;
+    status: string;
+  }>;
 
   // --- Level-1: consumer side ---
 
@@ -302,14 +321,35 @@ declare module '@pryv/cmc' {
     ackId: string;
   }): Promise<{ ackEventId: string }>;
 
+  export type CmcScopeUpdateWaitOptions = {
+    waitForCompletion?: boolean;
+    completionTimeoutMs?: number;
+    completionPollIntervalMs?: number;
+  };
+
+  export type CmcScopeUpdateAcceptResult = {
+    updateAcceptEventId: string;
+    /** 'pending' when waitForCompletion is false; the fields below are then absent. */
+    status: string;
+    dataGrantAccessId?: string | null;
+    /** @deprecated same value as dataGrantAccessId. */
+    newDataGrantAccessId?: string | null;
+    /** The user-facing permission set now in force on the grant. */
+    newPermissions?: Permission[];
+    /** False when the grant changed but the collector could not be told yet. */
+    peerNotified?: boolean;
+    deliveryFailure?: { reason: string; detail?: any };
+  };
+
+  /** `scopeRequestEventId` is the request's id on this (the user's) account. Throws CmcError when nothing was applied. */
   export function acceptScopeUpdate(conn: any, scopeRequestEventId: string, opts?: {
     scopeStreamId?: string;
-  }): Promise<{ updateAcceptEventId: string; newDataGrantAccessId: string | null }>;
+  } & CmcScopeUpdateWaitOptions): Promise<CmcScopeUpdateAcceptResult>;
 
   export function refuseScopeUpdate(conn: any, scopeRequestEventId: string, opts?: {
     scopeStreamId?: string;
     reason?: Record<string, string>;
-  }): Promise<{ updateRefuseEventId: string }>;
+  } & CmcScopeUpdateWaitOptions): Promise<{ updateRefuseEventId: string; status: string; peerNotified?: boolean }>;
 
   // --- Accept hand-off (app-web-user-account) ---
 
@@ -349,6 +389,7 @@ declare module '@pryv/cmc' {
   export type CmcRequestScopeUpdateOptions = {
     authUrl: string;
     pryvApi: string;
+    /** The request's id on the user's account (`remoteScopeRequestEventId`). */
     scopeRequestEventId: string;
     scopeStreamId?: string;
     returnUrl?: string;
@@ -360,6 +401,8 @@ declare module '@pryv/cmc' {
     action?: 'accept' | 'refuse';
     reason?: string;
     redirected?: boolean;
+    /** Set by pages that report it: false when the change was applied but the collector not yet told. */
+    peerNotified?: boolean;
   };
 
   export function requestScopeUpdateUrl(opts: CmcRequestScopeUpdateOptions): string;
