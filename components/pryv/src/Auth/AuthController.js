@@ -108,6 +108,14 @@ class AuthController {
    */
   async handleClick () {
     if (isAuthorized.call(this)) {
+      // A button with an account menu opens it (logout happens from there,
+      // through `signOut()`); otherwise the legacy SIGNOUT state lets the
+      // button confirm the logout itself.
+      const loginButton = this.loginButton;
+      if (loginButton != null && typeof loginButton.showMenu === 'function' &&
+          loginButton.showMenu() !== false) {
+        return;
+      }
       this.state = { status: AuthStates.SIGNOUT };
     } else if (isInitialized.call(this)) {
       this.startAuthRequest();
@@ -127,6 +135,50 @@ class AuthController {
     function isNeedSignIn () {
       return this.state.status === AuthStates.NEED_SIGNIN;
     }
+  }
+
+  /**
+   * Log out: emit SIGNOUT once, forget the stored credentials and return to
+   * INITIALIZED. This is the confirmed logout (no further confirmation).
+   * @returns {Promise<void>}
+   */
+  async signOut () {
+    this._signingOut = true;
+    try {
+      this.state = { status: AuthStates.SIGNOUT };
+    } finally {
+      this._signingOut = false;
+    }
+    if (this.loginButton != null && typeof this.loginButton.deleteAuthorizationData === 'function') {
+      await this.loginButton.deleteAuthorizationData();
+    }
+    await this.init();
+  }
+
+  /**
+   * URL of the account app (profile page) for this platform, or null when
+   * it cannot be determined. Resolution order: `settings.accountUrl`, then
+   * the service's `account`, then the auth page URL of the last auth
+   * request with its trailing `/auth` removed.
+   * @returns {string|null}
+   */
+  accountUrl () {
+    let base = this.settings.accountUrl || this.serviceInfo?.account || accountUrlFromAuthUrl(this._authUrl);
+    if (typeof base !== 'string' || base === '') return null;
+    base = base.replace(/\/+$/, '');
+    const serviceInfoUrl = this.service?._serviceInfoUrl;
+    return base + '/account/profile' +
+      (serviceInfoUrl ? '?pryvServiceInfoUrl=' + encodeURIComponent(serviceInfoUrl) : '');
+  }
+
+  /**
+   * Open the account app in a new tab.
+   * @returns {string|null} the URL opened, or null when unknown
+   */
+  openAccountApp () {
+    const url = this.accountUrl();
+    if (url != null) window.open(url, '_blank', 'noopener');
+    return url;
   }
 
   /**
@@ -184,6 +236,8 @@ class AuthController {
     // state can be handed `{ key, serviceInfo? }` (the polling response
     // itself doesn't echo `key` back).
     this._authFlowKey = this.state?.key;
+    // Kept to locate the account app when the service does not name it.
+    if (this.state?.authUrl) this._authUrl = this.state.authUrl;
 
     await doPolling.call(this);
 
@@ -304,6 +358,22 @@ function filterForExternalListener (state) {
   const out = { status: state.status, id: state.id, key: state.key };
   if (state.serviceInfo != null) out.serviceInfo = state.serviceInfo;
   return out;
+}
+
+/**
+ * The account app is served next to the auth page: strip a trailing `/auth`
+ * path segment (and the query) from the auth page URL. Null when the URL
+ * does not have that shape.
+ * @param {string} [authUrl]
+ * @returns {string|null}
+ */
+function accountUrlFromAuthUrl (authUrl) {
+  if (typeof authUrl !== 'string') return null;
+  let url;
+  try { url = new URL(authUrl); } catch (e) { return null; }
+  const path = url.pathname.replace(/\/+$/, '');
+  if (!path.endsWith('/auth')) return null;
+  return url.origin + path.slice(0, -'/auth'.length);
 }
 
 async function checkAutoLogin (authController) {

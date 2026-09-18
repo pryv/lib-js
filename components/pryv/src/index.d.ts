@@ -793,12 +793,16 @@ declare module 'pryv' {
     terms: string;
     eventTypes: string;
     version?: string;
+    /** Root URL of the platform's account app, when the platform names one. */
+    account?: string;
     assets?: {
       definitions: string;
     };
     serial?: string;
     features?: {
       noHF?: boolean;
+      /** Account delegation is available on this platform. */
+      delegation?: boolean;
       [key: string]: any;
     };
   };
@@ -1034,10 +1038,28 @@ declare module 'pryv' {
     serviceInfo?: ServiceInfo;
   };
 
+  /**
+   * Account menu entries of the sign-in button. `false` on an entry, or its
+   * name in `hide`, hides it.
+   */
+  export type LoginButtonMenuSettings = {
+    logout?: boolean;
+    account?: boolean;
+    info?: boolean;
+    hide?: Array<'logout' | 'account' | 'info'>;
+  };
+
   export type AuthSettings = {
     spanButtonID?: string;
     onStateChange?: (state: StateChange<States>) => void;
     returnURL?: string;
+    /**
+     * Account menu shown when the signed-in button is clicked (default: on).
+     * `false` restores the plain logout confirmation.
+     */
+    menu?: LoginButtonMenuSettings | false;
+    /** Root URL of the account app; overrides the service's `account`. */
+    accountUrl?: string;
     authRequest: {
       requestingAppId: string;
       languageCode?: string;
@@ -1093,6 +1115,12 @@ declare module 'pryv' {
     saveAuthorizationData?: (authData: StoredAuthorizationData) => void;
     deleteAuthorizationData?: () => Promise<void>;
     finishAuthProcessAfterRedirection?: (authController: AuthController) => Promise<void>;
+    /**
+     * Called when the signed-in button is clicked. Return `false` to fall
+     * back to the SIGNOUT state (logout confirmation); log out from the menu
+     * with `AuthController.signOut()`.
+     */
+    showMenu?: () => boolean | void;
   };
 
   export class LoginButton implements CustomLoginButton {
@@ -1115,6 +1143,8 @@ declare module 'pryv' {
     saveAuthorizationData(authData: StoredAuthorizationData): void;
     deleteAuthorizationData(): Promise<void>;
     finishAuthProcessAfterRedirection(authController: AuthController): Promise<void>;
+    showMenu(): boolean;
+    closeMenu(): void;
   }
 
   export class AuthController {
@@ -1141,6 +1171,12 @@ declare module 'pryv' {
       navigatorForTests?: string,
     ): string | boolean;
     startAuthRequest(): Promise<AuthRequestResponse>;
+    /** Log out: emits SIGNOUT once, clears the stored credentials, re-initializes. */
+    signOut(): Promise<void>;
+    /** Account app profile URL, or null when it cannot be determined. */
+    accountUrl(): string | null;
+    /** Opens the account app in a new tab; returns the URL, or null. */
+    openAccountApp(): string | null;
     set state(newState: AuthStatePayload);
     get state(): AuthStatePayload;
   }

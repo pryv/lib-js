@@ -72,6 +72,9 @@ class LoginButton {
         });
         break;
       case AuthStates.SIGNOUT: {
+        // A confirmed logout (the menu's "Log out", or `auth.signOut()`)
+        // clears the credentials itself.
+        if (this.auth?._signingOut) break;
         const message = this.messages.SIGNOUT_CONFIRM ? this.messages.SIGNOUT_CONFIRM : 'Logout ?';
         if (confirm(message)) {
           this.deleteAuthorizationData();
@@ -89,6 +92,34 @@ class LoginButton {
     if (this.loginButtonText) {
       // @ts-ignore
       this.loginButtonText.innerHTML = this.text;
+    }
+  }
+
+  /**
+   * Open the account menu (signed-in account, "Manage my account",
+   * "Log out"). Returns false, and opens nothing, when the menu is disabled
+   * with `settings.menu: false`: the caller then falls back to the logout
+   * confirmation.
+   * @returns {boolean}
+   */
+  showMenu () {
+    if (this.authSettings.menu === false || typeof document === 'undefined') return false;
+    this.closeMenu();
+    this.menu = buildMenu(this);
+    document.body.appendChild(this.menu.overlay);
+    this.menu.focusables()[0]?.focus();
+    return true;
+  }
+
+  /** Close the account menu if it is open. */
+  closeMenu () {
+    if (this.menu == null) return;
+    const menu = this.menu;
+    this.menu = null;
+    document.removeEventListener('keydown', menu.onKeyDown, true);
+    if (menu.overlay.parentNode != null) menu.overlay.parentNode.removeChild(menu.overlay);
+    if (menu.previousFocus != null && typeof menu.previousFocus.focus === 'function') {
+      menu.previousFocus.focus();
     }
   }
 
@@ -180,6 +211,141 @@ async function startLoginScreen (loginButton, authUrl) {
   } else if (window.focus) {
     loginButton.popup.focus();
   }
+}
+
+const MENU_OPTIONS = ['logout', 'account', 'info'];
+
+/**
+ * Which menu entries to show: all by default; `settings.menu.<option>: false`
+ * or `settings.menu.hide: ['<option>', ...]` hides one.
+ */
+function menuOptions (menuSettings) {
+  const options = {};
+  MENU_OPTIONS.forEach((o) => { options[o] = true; });
+  if (menuSettings != null && typeof menuSettings === 'object') {
+    MENU_OPTIONS.forEach((o) => { if (menuSettings[o] === false) options[o] = false; });
+    if (Array.isArray(menuSettings.hide)) {
+      menuSettings.hide.forEach((o) => { if (o in options) options[o] = false; });
+    }
+  }
+  return options;
+}
+
+const MENU_CSS = `
+.pryv-menu-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 2147483000; display: flex;
+  align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.35); }
+.pryv-menu { background: #fff; color: #222; min-width: 280px; max-width: 90vw; border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25); font: 14px/1.4 system-ui, sans-serif; }
+.pryv-menu-header { display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; padding: 16px 16px 8px; }
+.pryv-menu-username { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+.pryv-menu-info { color: #666; font-size: 13px; padding: 0 16px 12px; overflow-wrap: anywhere; }
+.pryv-menu-close { border: 0; background: none; font-size: 20px; line-height: 1; cursor: pointer; color: #666; }
+.pryv-menu-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end;
+  padding: 12px 16px 16px; border-top: 1px solid #eee; }
+.pryv-menu-actions button { padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc;
+  background: #f7f7f7; cursor: pointer; font: inherit; }
+.pryv-menu-actions button:focus-visible, .pryv-menu-close:focus-visible { outline: 2px solid #4a90d9; }
+`;
+
+/** The built-in menu style, added once. A service's button CSS can override
+ * the `.pryv-menu*` classes. */
+function ensureMenuStyle () {
+  if (document.getElementById('pryv-menu-style') != null) return;
+  const style = document.createElement('style');
+  style.id = 'pryv-menu-style';
+  style.textContent = MENU_CSS;
+  document.head.appendChild(style);
+}
+
+function menuElement (tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text != null) el.textContent = text;
+  return el;
+}
+
+/**
+ * Build the account menu: a modal dialog, closed by its close button,
+ * Escape, or a click outside it, with focus kept inside while open.
+ */
+function buildMenu (loginBtn) {
+  ensureMenuStyle();
+  const auth = loginBtn.auth;
+  const messages = Object.assign({}, loginBtn.messages, auth.messages);
+  const options = menuOptions(loginBtn.authSettings.menu);
+  const username = auth.state?.username || '';
+
+  const overlay = menuElement('div', 'pryv-menu-overlay');
+  const dialog = menuElement('div', 'pryv-menu');
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-modal', 'true');
+  dialog.setAttribute('aria-label', messages.MENU_TITLE);
+  overlay.appendChild(dialog);
+
+  const header = menuElement('div', 'pryv-menu-header');
+  header.appendChild(menuElement('div', 'pryv-menu-username', username));
+  const close = menuElement('button', 'pryv-menu-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', messages.CLOSE);
+  close.addEventListener('click', () => loginBtn.closeMenu());
+  header.appendChild(close);
+  dialog.appendChild(header);
+
+  if (options.info) {
+    const serviceName = loginBtn.serviceInfo?.name || '';
+    const appId = loginBtn.authSettings.authRequest.requestingAppId;
+    dialog.appendChild(menuElement('div', 'pryv-menu-info', serviceName + ' · ' + messages.APP + ': ' + appId));
+  }
+
+  const actions = menuElement('div', 'pryv-menu-actions');
+  if (options.account && auth.accountUrl() != null) {
+    const manage = menuElement('button', 'pryv-menu-account', messages.MANAGE_ACCOUNT + ' ↗');
+    manage.type = 'button';
+    manage.addEventListener('click', () => {
+      auth.openAccountApp();
+      loginBtn.closeMenu();
+    });
+    actions.appendChild(manage);
+  }
+  if (options.logout) {
+    const logout = menuElement('button', 'pryv-menu-logout', messages.LOGOUT);
+    logout.type = 'button';
+    logout.addEventListener('click', () => {
+      loginBtn.closeMenu();
+      auth.signOut();
+    });
+    actions.appendChild(logout);
+  }
+  dialog.appendChild(actions);
+
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) loginBtn.closeMenu();
+  });
+
+  const focusables = () => Array.from(dialog.querySelectorAll('button'));
+  const onKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      loginBtn.closeMenu();
+    } else if (event.key === 'Tab') {
+      const list = focusables();
+      if (list.length === 0) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  };
+  document.addEventListener('keydown', onKeyDown, true);
+
+  return { overlay, dialog, onKeyDown, focusables, previousFocus: document.activeElement };
 }
 
 function setupButton (loginBtn) {

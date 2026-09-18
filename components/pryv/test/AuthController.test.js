@@ -133,6 +133,95 @@ describe('[ACNX] AuthController', function () {
     });
   });
 
+  describe('[ACUX] account app URL and signOut', function () {
+    function controller (extraSettings) {
+      return new AuthController(Object.assign({
+        authRequest: { requestingAppId: 'test-app', requestedPermissions: [] }
+      }, extraSettings), service);
+    }
+    const profile = (base) => base + '/account/profile?pryvServiceInfoUrl=' + encodeURIComponent(testData.serviceInfoUrl);
+
+    it('[ACUA] resolves settings.accountUrl, then the service account, then the auth page URL', async function () {
+      const auth = controller({ accountUrl: 'https://own.example.com/' });
+      await auth.init();
+      auth.serviceInfo = Object.assign({}, auth.serviceInfo, { account: 'https://account.example.com' });
+      auth._authUrl = 'https://ui.example.com/auth?key=abc';
+      expect(auth.accountUrl()).to.equal(profile('https://own.example.com'));
+      delete auth.settings.accountUrl;
+      expect(auth.accountUrl()).to.equal(profile('https://account.example.com'));
+      delete auth.serviceInfo.account;
+      expect(auth.accountUrl()).to.equal(profile('https://ui.example.com'));
+    });
+
+    it('[ACUB] is null when nothing names the account app', async function () {
+      const auth = controller();
+      await auth.init();
+      auth.serviceInfo = Object.assign({}, auth.serviceInfo);
+      delete auth.serviceInfo.account;
+      expect(auth.accountUrl()).to.equal(null);
+      for (const authUrl of ['https://ui.example.com/access/login?key=x', 'not a url', 'https://ui.example.com/authorize']) {
+        auth._authUrl = authUrl;
+        expect(auth.accountUrl(), authUrl).to.equal(null);
+      }
+    });
+
+    it('[ACUC] openAccountApp opens the profile page in a new tab without an opener', async function () {
+      const auth = controller({ accountUrl: 'https://own.example.com' });
+      await auth.init();
+      const opened = [];
+      const original = window.open;
+      window.open = (...args) => { opened.push(args); return null; };
+      try {
+        expect(auth.openAccountApp()).to.equal(profile('https://own.example.com'));
+      } finally { window.open = original; }
+      expect(opened).to.deep.equal([[profile('https://own.example.com'), '_blank', 'noopener']]);
+    });
+
+    it('[ACUD] signOut emits SIGNOUT once, clears the stored credentials and re-initializes', async function () {
+      const states = [];
+      let deleted = 0;
+      const button = {
+        getAuthorizationData: () => null,
+        deleteAuthorizationData: async () => { deleted++; },
+        onStateChange: async () => {},
+        onClick: () => {}
+      };
+      const auth = new AuthController({
+        authRequest: { requestingAppId: 'test-app', requestedPermissions: [] },
+        onStateChange: (s) => states.push(s.status)
+      }, service, button);
+      await auth.init();
+      auth._state = { status: AuthStates.AUTHORIZED, username: 'u' };
+      states.length = 0;
+      await auth.signOut();
+      expect(states.filter((s) => s === AuthStates.SIGNOUT)).to.have.lengthOf(1);
+      expect(deleted).to.equal(1);
+      expect(auth.state.status).to.equal(AuthStates.INITIALIZED);
+    });
+
+    it('[ACUE] a button with showMenu gets the click instead of SIGNOUT, unless it declines', async function () {
+      for (const [answer, expectSignout] of [[true, false], [undefined, false], [false, true]]) {
+        const states = [];
+        let menus = 0;
+        const button = {
+          getAuthorizationData: () => null,
+          onStateChange: async () => {},
+          onClick: () => {},
+          showMenu: () => { menus++; return answer; }
+        };
+        const auth = new AuthController({
+          authRequest: { requestingAppId: 'test-app', requestedPermissions: [] },
+          onStateChange: (s) => states.push(s.status)
+        }, service, button);
+        await auth.init();
+        auth._state = { status: AuthStates.AUTHORIZED };
+        await auth.handleClick();
+        expect(menus).to.equal(1);
+        expect(states.includes(AuthStates.SIGNOUT), 'showMenu returned ' + answer).to.equal(expectSignout);
+      }
+    });
+  });
+
   describe('[ACSX] stopAuthRequest', function () {
     it('[ACSA] sets error state with message', async function () {
       const auth = new AuthController({

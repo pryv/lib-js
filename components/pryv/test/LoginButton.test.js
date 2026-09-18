@@ -2,7 +2,7 @@
  * @license
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
-/* global describe, it, before, after, expect, JSDOM, testData */
+/* global describe, it, before, after, afterEach, expect, JSDOM, testData */
 
 const LoginButton = require('../src/Browser/LoginButton');
 const Service = require('../src/Service');
@@ -177,6 +177,137 @@ describe('[LBTX] LoginButton', function () {
     it('[LBSF] handles unknown state gracefully', async function () {
       // Should log warning but not throw
       await loginBtn.onStateChange({ status: 'UNKNOWN_STATE' });
+    });
+  });
+
+  describe('[LBMX] account menu', function () {
+    let confirms;
+    let originalConfirm;
+
+    before(() => {
+      originalConfirm = global.confirm;
+      global.confirm = () => { confirms++; return true; };
+    });
+    after(() => { global.confirm = originalConfirm; });
+
+    async function signedInButton (extra) {
+      confirms = 0;
+      const states = [];
+      const settings = Object.assign({
+        spanButtonID: 'loginButton',
+        authRequest: { requestingAppId: 'test-app-menu', requestedPermissions: [] },
+        onStateChange: (s) => states.push(s.status),
+        accountUrl: 'https://account.example.com'
+      }, extra);
+      const loginBtn = new LoginButton(settings, service);
+      await loginBtn.init();
+      loginBtn.auth.state = { status: AuthStates.AUTHORIZED, username: 'menu-user', apiEndpoint: 'https://tok@menu-user.example.com/' };
+      states.length = 0;
+      return { loginBtn, states };
+    }
+    const dialog = () => document.querySelector('.pryv-menu');
+    const key = (k, opts) => document.dispatchEvent(new window.KeyboardEvent('keydown', Object.assign({ key: k, bubbles: true }, opts)));
+
+    afterEach(() => {
+      document.querySelectorAll('.pryv-menu-overlay').forEach((n) => n.parentNode.removeChild(n));
+    });
+
+    it('[LBMA] a click on the signed-in button opens the menu and emits no state', async function () {
+      const { loginBtn, states } = await signedInButton();
+      loginBtn.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(states).to.deep.equal([]);
+      expect(confirms).to.equal(0);
+      expect(dialog()).to.exist;
+      expect(dialog().getAttribute('role')).to.equal('dialog');
+      expect(dialog().getAttribute('aria-modal')).to.equal('true');
+      expect(dialog().querySelector('.pryv-menu-username').textContent).to.equal('menu-user');
+      expect(dialog().querySelector('.pryv-menu-info').textContent).to.include('test-app-menu');
+      expect(dialog().querySelector('.pryv-menu-logout')).to.exist;
+      expect(dialog().querySelector('.pryv-menu-account')).to.exist;
+    });
+
+    it('[LBMB] "Log out" emits SIGNOUT exactly once, without a confirmation, and clears the credentials', async function () {
+      const { loginBtn, states } = await signedInButton();
+      loginBtn.saveAuthorizationData({ apiEndpoint: 'https://tok@menu-user.example.com/', username: 'menu-user' });
+      loginBtn.showMenu();
+      dialog().querySelector('.pryv-menu-logout').click();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(states.filter((s) => s === AuthStates.SIGNOUT)).to.have.lengthOf(1);
+      expect(confirms).to.equal(0);
+      expect(dialog()).to.equal(null);
+      expect(loginBtn.auth.state.status).to.equal(AuthStates.INITIALIZED);
+      const stored = loginBtn.getAuthorizationData();
+      expect(stored == null || stored.deleted === true).to.equal(true);
+    });
+
+    it('[LBMC] closes on its close button, on Escape and on a click outside, without logging out', async function () {
+      const { loginBtn, states } = await signedInButton();
+      loginBtn.showMenu();
+      dialog().querySelector('.pryv-menu-close').click();
+      expect(dialog()).to.equal(null);
+      loginBtn.showMenu();
+      key('Escape');
+      expect(dialog()).to.equal(null);
+      loginBtn.showMenu();
+      document.querySelector('.pryv-menu-overlay').click();
+      expect(dialog()).to.equal(null);
+      loginBtn.showMenu();
+      dialog().click(); // inside: stays open
+      expect(dialog()).to.exist;
+      expect(states).to.deep.equal([]);
+    });
+
+    it('[LBMD] keeps focus inside the menu', async function () {
+      const { loginBtn } = await signedInButton();
+      loginBtn.showMenu();
+      const buttons = Array.from(dialog().querySelectorAll('button'));
+      expect(document.activeElement).to.equal(buttons[0]);
+      buttons[buttons.length - 1].focus();
+      key('Tab');
+      expect(document.activeElement).to.equal(buttons[0]);
+      key('Tab', { shiftKey: true });
+      expect(document.activeElement).to.equal(buttons[buttons.length - 1]);
+    });
+
+    it('[LBME] "Manage my account" opens the account app and closes the menu; hidden when unknown', async function () {
+      const { loginBtn } = await signedInButton();
+      const opened = [];
+      const original = window.open;
+      window.open = (...args) => { opened.push(args); return null; };
+      try {
+        loginBtn.showMenu();
+        dialog().querySelector('.pryv-menu-account').click();
+      } finally { window.open = original; }
+      expect(opened).to.have.lengthOf(1);
+      expect(opened[0][0]).to.match(/^https:\/\/account\.example\.com\/account\/profile\?pryvServiceInfoUrl=/);
+      expect(dialog()).to.equal(null);
+
+      const { loginBtn: unknown } = await signedInButton({ accountUrl: undefined });
+      unknown.auth.serviceInfo = Object.assign({}, unknown.auth.serviceInfo, { account: undefined });
+      unknown.showMenu();
+      expect(dialog().querySelector('.pryv-menu-account')).to.equal(null);
+    });
+
+    it('[LBMF] entries can be hidden', async function () {
+      for (const menu of [{ hide: ['account', 'info'] }, { account: false, info: false }]) {
+        const { loginBtn } = await signedInButton({ menu });
+        loginBtn.showMenu();
+        expect(dialog().querySelector('.pryv-menu-account')).to.equal(null);
+        expect(dialog().querySelector('.pryv-menu-info')).to.equal(null);
+        expect(dialog().querySelector('.pryv-menu-logout')).to.exist;
+        loginBtn.closeMenu();
+      }
+    });
+
+    it('[LBMG] menu: false keeps the legacy logout confirmation (SIGNOUT on click)', async function () {
+      const { loginBtn, states } = await signedInButton({ menu: false });
+      expect(loginBtn.showMenu()).to.equal(false);
+      loginBtn.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(dialog()).to.equal(null);
+      expect(states.filter((s) => s === AuthStates.SIGNOUT)).to.have.lengthOf(1);
+      expect(confirms).to.equal(1);
     });
   });
 

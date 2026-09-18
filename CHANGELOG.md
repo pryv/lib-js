@@ -4,6 +4,25 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **The signed-in sign-in button opens an account menu instead of a logout
+  confirmation.** It shows the signed-in username, the service and the app id,
+  **Manage my account** (opens the platform's account app in a new tab) and **Log
+  out**. `SIGNOUT` is now emitted when "Log out" is chosen, no longer on the click
+  itself. Set `authSettings.menu: false` to keep the previous confirmation;
+  `authSettings.menu.hide` hides entries. The account app URL comes from
+  `authSettings.accountUrl`, the service's `account`, or the auth page URL.
+
+### Added
+
+- `AuthController.signOut()`, `openAccountApp()` and `accountUrl()`; optional
+  `showMenu()` on custom buttons; `ServiceInfo.account` and
+  `ServiceInfo.features.delegation` typings.
+- Button messages `MENU_TITLE`, `LOGOUT`, `MANAGE_ACCOUNT`, `APP`, `CLOSE` (`en`,
+  `fr`). A service's message definitions now override the defaults key by key, so
+  keys it does not define keep their default text.
+
 ### Fixed
 
 - `just build` on a clean `dist/` no longer fails: the browser test bundle, which copies
