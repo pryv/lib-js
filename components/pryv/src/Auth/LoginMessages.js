@@ -39,6 +39,10 @@ const Messages = {
   CLOSE: {
     en: 'Close',
     fr: 'Fermer'
+  },
+  CANCEL: {
+    en: 'Cancel',
+    fr: 'Annuler'
   }
 };
 

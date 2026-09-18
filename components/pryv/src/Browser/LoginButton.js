@@ -8,7 +8,7 @@ const AuthController = require('../Auth/AuthController');
 const Messages = require('../Auth/LoginMessages');
 const utils = require('../utils');
 
-/* global location, confirm */
+/* global location */
 
 /**
  * @memberof pryv.Browser
@@ -77,11 +77,9 @@ class LoginButton {
         // A confirmed logout (the menu's "Log out", or `auth.signOut()`)
         // clears the credentials itself.
         if (this.auth?._signingOut) break;
-        const message = this.messages.SIGNOUT_CONFIRM ? this.messages.SIGNOUT_CONFIRM : 'Logout ?';
-        if (confirm(message)) {
-          this.deleteAuthorizationData();
-          this.auth.init();
-        }
+        // Menu disabled (`settings.menu: false`): confirm in a small built-in
+        // dialog, then clear the credentials.
+        this.openMenu({ confirmLogout: true });
         break;
       }
       case AuthStates.ERROR:
@@ -105,19 +103,34 @@ class LoginButton {
    * @returns {boolean}
    */
   showMenu () {
-    if (this.authSettings.menu === false || typeof document === 'undefined') return false;
+    if (this.authSettings.menu === false) return false;
+    return this.openMenu({ confirmLogout: false });
+  }
+
+  /**
+   * @private Open the account menu, or (`confirmLogout`) the plain "Log out?"
+   * confirmation used when the menu is disabled.
+   */
+  openMenu ({ confirmLogout }) {
+    if (typeof document === 'undefined') return false;
     this.closeMenu();
-    this.menu = buildMenu(this);
+    this.menu = buildMenu(this, confirmLogout);
     document.body.appendChild(this.menu.overlay);
     this.menu.focusables()[0]?.focus();
     return true;
   }
 
-  /** Close the account menu if it is open. */
-  closeMenu () {
+  /**
+   * Close the account menu if it is open. Dismissing the "Log out?" question
+   * (anything but "Log out") returns to the signed-in state: SIGNOUT was
+   * already emitted by the click, and the button would otherwise stay inert.
+   * @param {boolean} [loggingOut] - closed by the "Log out" action
+   */
+  closeMenu (loggingOut) {
     if (this.menu == null) return;
     const menu = this.menu;
     this.menu = null;
+    if (menu.confirmLogout && !loggingOut) this.auth.init();
     document.removeEventListener('keydown', menu.onKeyDown, true);
     if (menu.overlay.parentNode != null) menu.overlay.parentNode.removeChild(menu.overlay);
     if (menu.previousFocus != null && typeof menu.previousFocus.focus === 'function') {
@@ -272,13 +285,19 @@ function menuElement (tag, className, text) {
 /**
  * Build the account menu: a modal dialog, closed by its close button,
  * Escape, or a click outside it, with focus kept inside while open.
+ * `confirmLogout`: the same dialog reduced to the "Log out?" question, for
+ * `settings.menu: false` (SIGNOUT was already emitted by the click).
  */
-function buildMenu (loginBtn) {
+function buildMenu (loginBtn, confirmLogout) {
   ensureMenuStyle();
   const auth = loginBtn.auth;
   const messages = Object.assign({}, loginBtn.messages, auth.messages);
-  const options = menuOptions(loginBtn.authSettings.menu);
-  const username = auth.state?.username || '';
+  const options = confirmLogout
+    ? { logout: true, account: false, info: false }
+    : menuOptions(loginBtn.authSettings.menu);
+  const username = confirmLogout
+    ? (messages.SIGNOUT_CONFIRM || 'Logout?')
+    : (auth.state?.username || '');
 
   const overlay = menuElement('div', 'pryv-menu-overlay');
   const dialog = menuElement('div', 'pryv-menu');
@@ -321,9 +340,21 @@ function buildMenu (loginBtn) {
     const logout = menuElement('button', 'pryv-menu-logout', messages.LOGOUT);
     logout.type = 'button';
     logout.addEventListener('click', () => {
-      loginBtn.closeMenu();
-      auth.signOut();
+      loginBtn.closeMenu(true);
+      if (confirmLogout) {
+        // SIGNOUT was emitted by the click already (legacy contract).
+        loginBtn.deleteAuthorizationData();
+        auth.init();
+      } else {
+        auth.signOut();
+      }
     });
+    if (confirmLogout) {
+      const cancel = menuElement('button', 'pryv-menu-cancel', messages.CANCEL);
+      cancel.type = 'button';
+      cancel.addEventListener('click', () => loginBtn.closeMenu());
+      actions.appendChild(cancel);
+    }
     actions.appendChild(logout);
   }
   dialog.appendChild(actions);
@@ -354,7 +385,7 @@ function buildMenu (loginBtn) {
   };
   document.addEventListener('keydown', onKeyDown, true);
 
-  return { overlay, dialog, onKeyDown, focusables, previousFocus: document.activeElement };
+  return { overlay, dialog, onKeyDown, focusables, previousFocus: document.activeElement, confirmLogout };
 }
 
 function setupButton (loginBtn) {

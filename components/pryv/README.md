@@ -634,11 +634,11 @@ async onStateChange (state) {
       });
       break;
     case AuthStates.SIGNOUT:
-      const message = this.messages.SIGNOUT_CONFIRM ? this.messages.SIGNOUT_CONFIRM : 'Logout ?';
-      if (confirm(message)) {
-        this.deleteAuthorizationData();
-        this.auth.init();
-      }
+      // With the account menu, SIGNOUT comes from a confirmed "Log out"
+      // (auth.signOut() clears the credentials). With `menu: false` it comes
+      // from the click: ask in a built-in dialog (never window.confirm), then
+      // deleteAuthorizationData() + auth.init().
+      if (!this.auth._signingOut) this.openMenu({ confirmLogout: true });
       break;
     case AuthStates.ERROR:
       this.text = getErrorMessage(this, state.message);
@@ -685,7 +685,7 @@ async handleClick () {
 
 Clicking the default button once signed in opens a small account menu: the signed-in username, the service and the app id, **Manage my account** (opens the platform's account app in a new tab) and **Log out**. `SIGNOUT` is emitted once, when "Log out" is chosen.
 
-- `authSettings.menu: false` restores the previous behaviour (a logout confirmation on click).
+- `authSettings.menu: false` restores the previous flow: `SIGNOUT` on click, then a plain "Log out?" confirmation (a built-in dialog, no longer `window.confirm()`).
 - `authSettings.menu: { hide: ['account', 'info'] }` (or `{ account: false }`) hides entries: `'logout'`, `'account'`, `'info'`.
 - `authSettings.accountUrl` sets the account app root. Otherwise it is the service's `account` (`service/info`), then the auth page URL of the last sign-in without its trailing `/auth`; when none is known, "Manage my account" is not shown.
 - The menu uses the `.pryv-menu*` CSS classes, which a service's button stylesheet can override; its texts come from the button messages (`MENU_TITLE`, `LOGOUT`, `MANAGE_ACCOUNT`, `APP`, `CLOSE`).

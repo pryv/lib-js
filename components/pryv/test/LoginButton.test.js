@@ -167,11 +167,11 @@ describe('[LBTX] LoginButton', function () {
       expect(loginBtn.text).to.include('Test error');
     });
 
-    it('[LBSE] handles SIGNOUT state when confirmed', async function () {
-      // Save some auth data first
+    it('[LBSE] handles SIGNOUT state by asking in a built-in dialog', async function () {
       loginBtn.saveAuthorizationData({ test: 'data' });
       await loginBtn.onStateChange({ status: AuthStates.SIGNOUT });
-      // Confirm is mocked to return true
+      expect(document.querySelector('.pryv-menu .pryv-menu-logout')).to.exist;
+      loginBtn.closeMenu();
     });
 
     it('[LBSF] handles unknown state gracefully', async function () {
@@ -309,14 +309,32 @@ describe('[LBTX] LoginButton', function () {
       }
     });
 
-    it('[LBMG] menu: false keeps the legacy logout confirmation (SIGNOUT on click)', async function () {
+    it('[LBMG] menu: false keeps the legacy flow (SIGNOUT on click) with a built-in "Log out?" dialog, never confirm()', async function () {
       const { loginBtn, states } = await signedInButton({ menu: false });
       expect(loginBtn.showMenu()).to.equal(false);
+      loginBtn.saveAuthorizationData({ apiEndpoint: 'https://tok@menu-user.example.com/', username: 'menu-user' });
       loginBtn.onClick();
       await new Promise((resolve) => setTimeout(resolve, 50));
-      expect(dialog()).to.equal(null);
       expect(states.filter((s) => s === AuthStates.SIGNOUT)).to.have.lengthOf(1);
-      expect(confirms).to.equal(1);
+      expect(confirms).to.equal(0);
+      expect(dialog().querySelector('.pryv-menu-username').textContent).to.equal('Logout?');
+      expect(dialog().querySelector('.pryv-menu-account')).to.equal(null);
+      // Cancel keeps the credentials and returns to the signed-in state
+      // (the button used to stay inert after a cancelled logout)
+      dialog().querySelector('.pryv-menu-cancel').click();
+      expect(dialog()).to.equal(null);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(loginBtn.getAuthorizationData().username).to.equal('menu-user');
+      expect(loginBtn.auth.state.status).to.equal(AuthStates.AUTHORIZED);
+      // Log out clears them and re-initializes
+      loginBtn.onClick();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      dialog().querySelector('.pryv-menu-logout').click();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(confirms).to.equal(0);
+      expect(loginBtn.auth.state.status).to.equal(AuthStates.INITIALIZED);
+      const stored = loginBtn.getAuthorizationData();
+      expect(stored == null || stored.deleted === true).to.equal(true);
     });
   });
 

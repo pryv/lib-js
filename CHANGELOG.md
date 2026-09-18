@@ -10,7 +10,9 @@
   confirmation.** It shows the signed-in username, the service and the app id,
   **Manage my account** (opens the platform's account app in a new tab) and **Log
   out**. `SIGNOUT` is now emitted when "Log out" is chosen, no longer on the click
-  itself. Set `authSettings.menu: false` to keep the previous confirmation;
+  itself. Set `authSettings.menu: false` to keep the previous flow (SIGNOUT on
+  click, then a "Log out?" question, now asked in a built-in dialog: the button
+  no longer calls `window.confirm()`);
   `authSettings.menu.hide` hides entries. The account app URL comes from
   `authSettings.accountUrl`, the service's `account`, or the auth page URL of the
   sign-in (kept with the stored credentials as `authUrl`, so it survives a reload).
