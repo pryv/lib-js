@@ -18,10 +18,12 @@
   `authSettings.accountUrl`, the service's `account`, or the auth page URL of the
   sign-in (kept with the stored credentials as `authUrl`, without its query, so it
   survives a reload).
-- **The sign-in button remembers several accounts per app.** The stored credentials
-  keep a `profiles` list (most recently used first, at most `authSettings.maxProfiles`,
-  default 5) next to the active account, which stays at the top level so older
-  versions still read it. The account menu lists them under "Use this app for",
+- **The sign-in button remembers several accounts per app.** The default button keeps
+  the remembered accounts (most recently used first, at most `authSettings.maxProfiles`,
+  default 5) in a second cookie, `pryv-libjs-<appId>-profiles`; the usual cookie holds
+  only the active account (and is removed when none is active), so older versions read
+  it as before and never mistake the list for a signed-in account. The least recently
+  used accounts are forgotten first when the list would not fit in a cookie. The account menu lists them under "Use this app for",
   switches without a sign-in when the stored access is still valid, marks an account
   whose access was revoked (e.g. by a delegation detach) as "no longer available" and
   asks for it again. On platforms with account delegation it offers "Another
@@ -75,8 +77,8 @@
 - A cancelled logout no longer leaves the sign-in button inert until a page reload
   (the controller stayed in `SIGNOUT`). The service's button stylesheet is added to
   the page once, not again on every re-initialization.
-- An auth request replaced by a newer one, a log out or a re-initialization no
-  longer changes the state when its poll answers later.
+- An auth request replaced by a newer one, stopped (`stopAuthRequest()`), a log out or
+  a re-initialization no longer changes the state when its poll answers later.
 - The account menu no longer closes when a text selection started inside it ends
   outside it. A failed re-initialization after a dismissed "Log out?" no longer
   leaves an unhandled promise rejection.

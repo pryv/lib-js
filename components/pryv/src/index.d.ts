@@ -1175,6 +1175,7 @@ declare module 'pryv' {
    * Stored sign-in data. The top-level `apiEndpoint` / `username` are the
    * active account (absent after logging out of one of several accounts);
    * `profiles` lists every remembered account, most recently used first.
+   * The default button stores the two parts in two cookies.
    */
   export type StoredAuthorizationData = {
     apiEndpoint?: string;

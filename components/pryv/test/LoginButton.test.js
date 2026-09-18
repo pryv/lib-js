@@ -669,6 +669,71 @@ describe('[LBTX] LoginButton', function () {
       expect(stored == null || stored.deleted === true || stored.username == null).to.equal(true);
     });
 
+    it('[LBPO] the main cookie only ever holds the active account: an older version never reads the remembered list as signed in', async function () {
+      const Cookies = require('../src/Browser/CookieUtils');
+      const { loginBtn } = await button(null, {
+        username: KIM,
+        apiEndpoint: 'https://tok2@kim.example.com/',
+        authUrl: 'https://ui.example.com/auth',
+        profiles: [{ username: PARENT, apiEndpoint: 'https://tok1@parent.example.com/' }]
+      });
+      const key = loginBtn._cookieKey;
+      // what versions without account switching read
+      const main = Cookies.get(key);
+      expect(main.username).to.equal(KIM);
+      expect(main.profiles).to.equal(undefined);
+      expect(Cookies.get(key + '-profiles').profiles.map((p) => p.username)).to.deep.equal([KIM, PARENT]);
+      // log out of the active account: nothing left for them to sign in with
+      loginBtn.showMenu();
+      document.querySelector('.pryv-menu-logout').click();
+      await loginBtn.pending;
+      const after = Cookies.get(key);
+      expect(after == null || after.deleted === true).to.equal(true);
+      const remembered = loginBtn.getAuthorizationData();
+      expect(remembered.username).to.equal(undefined);
+      expect(remembered.profiles.map((p) => p.username)).to.deep.equal([PARENT]);
+      expect(remembered.authUrl).to.equal('https://ui.example.com/auth');
+      // log out of all: both cookies gone
+      await loginBtn.auth.signOut({ all: true });
+      const none = loginBtn.getAuthorizationData();
+      expect(none == null || none.deleted === true).to.equal(true);
+      const list = Cookies.get(key + '-profiles');
+      expect(list == null || list.deleted === true).to.equal(true);
+    });
+
+    it('[LBPQ] the remembered accounts are trimmed, least recent first, to fit in a cookie', async function () {
+      const Cookies = require('../src/Browser/CookieUtils');
+      const profiles = [];
+      for (let i = 0; i < 20; i++) {
+        profiles.push({ username: 'user-' + i, apiEndpoint: 'https://' + 'x'.repeat(120) + i + '@user-' + i + '.example.com/' });
+      }
+      const { loginBtn } = await button({ maxProfiles: 50 }, null);
+      loginBtn.saveAuthorizationData({ username: 'user-0', apiEndpoint: profiles[0].apiEndpoint, profiles });
+      const stored = Cookies.get(loginBtn._cookieKey + '-profiles');
+      expect(stored).to.exist;
+      expect(stored.profiles.length).to.be.below(20);
+      expect(stored.profiles.length).to.be.above(5);
+      expect(stored.profiles[0].username).to.equal('user-0');
+      expect(stored.profiles[stored.profiles.length - 1].username).to.equal('user-' + (stored.profiles.length - 1));
+    });
+
+    it('[LBPP] a stopped auth request no longer changes the state when its poll answers', async function () {
+      const { loginBtn } = await button(null, null);
+      let answer;
+      utils.fetchPost = async () => ({ response: { ok: true }, body: { status: 'NEED_SIGNIN', key: 'k3', poll: 'https://reg.example.com/access/k3', poll_rate_ms: 10, authUrl: 'https://ui.example.com/auth' } });
+      utils.fetchGet = (url, ...rest) => url === 'https://reg.example.com/access/k3'
+        ? new Promise((resolve) => { answer = resolve; })
+        : originals.fetchGet(url, ...rest);
+      const request = loginBtn.auth.startAuthRequest();
+      await settle();
+      loginBtn.auth.stopAuthRequest('stopped by the app');
+      answer({ response: { status: 200 }, body: { status: 'ACCEPTED', username: PARENT, apiEndpoint: 'https://tok1@parent.example.com/' } });
+      await request;
+      await settle();
+      expect(loginBtn.auth.state.status).to.equal(AuthStates.ERROR);
+      expect(loginBtn.auth.state.message).to.equal('stopped by the app');
+    });
+
     it('[LBPM] only a refused access marks an account unavailable; a server error or a network failure keeps the previous account', async function () {
       const stored = {
         username: PARENT,
