@@ -19,6 +19,12 @@
     <button type="button" id="pryv-button">My custom button</button>
   </div>
 
+  <dialog id="signout-dialog">
+    <p>Do you wish to sign out?</p>
+    <button type="button" class="no">Cancel</button>
+    <button type="button" class="yes">Sign out</button>
+  </dialog>
+
   <script>
     const authSettings = {
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
@@ -57,6 +63,16 @@
       this.auth.handleClick();
     }
 
+    // Called when the signed-in button is clicked: ask in the page's own
+    // dialog (never window.confirm), then log out through the controller.
+    showMenu() {
+      const dialog = document.getElementById('signout-dialog');
+      dialog.querySelector('.yes').onclick = () => { dialog.close(); this.auth.signOut(); };
+      dialog.querySelector('.no').onclick = () => dialog.close();
+      dialog.showModal();
+      return true;
+    }
+
     async onStateChange (state) {
       switch (state.status) {
         case pryv.Auth.AuthStates.LOADING:
@@ -82,11 +98,12 @@
           });
           break;
         case pryv.Auth.AuthStates.SIGNOUT:
-          const message = 'Do you wish to sign out?';
-          if (confirm(message)) {
-            this.deleteAuthorizationData();
-            this.auth.init();
-          }
+          // Emitted once the user confirmed in showMenu() below; the
+          // controller clears the credentials itself.
+          break;
+        case pryv.Auth.AuthStates.SWITCHING:
+          // An account switch (auth.switchTo(), auth.addAccount()) is running.
+          this.text = 'Switching...';
           break;
         case pryv.Auth.AuthStates.ERROR:
           this.text = getErrorMessage(this, state.message);
