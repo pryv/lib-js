@@ -707,6 +707,8 @@ The button remembers the accounts signed in on the app (at most `authSettings.ma
 - "Log out" logs out of the active account and keeps the others (no account is signed in afterwards); "Log out of all accounts", shown when several are remembered, forgets them all.
 - `authSettings.authRequest.actAs`: `'allow'` (the server default: the popup may offer the accounts the user controls), `'deny'` (never), or a username to preselect. An app that supplies its own fixed access `token` and lets users switch accounts ends up with the same token value on several accounts; use `actAs: 'deny'` to avoid it.
 
+A switch that needs no sign-in, and the return to the previous account after a switch that did not complete, end in an `AUTHORIZED` state without a `key`: like the sign-in from stored credentials on page load, it carries the stored `username` and `apiEndpoint`.
+
 Controller API: `auth.switchTo(username)` (`null`: the user's own account), `auth.addAccount()`, `auth.profiles()` (`[{ username, actingAs?, active, available }]`), `auth.currentProfile()` and `auth.signOut({ all: true })`.
 
 ##### Custom button usage

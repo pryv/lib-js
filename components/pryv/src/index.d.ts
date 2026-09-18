@@ -1026,6 +1026,13 @@ declare module 'pryv' {
       apiEndpoint: string;
       username: string;
       token?: string;
+      /**
+       * Key of the auth request that just completed (use it with
+       * `connectFromKey`). Absent when the account comes from stored
+       * credentials: page load, an account switch without sign-in, or the
+       * return to the previous account after a switch that did not complete.
+       */
+      key?: string;
       /** Display hint posted by the auth page for a grant on a controlled account; `accessInfo().delegation` is authoritative. */
       delegation?: {
         isDelegatedAccess: true;

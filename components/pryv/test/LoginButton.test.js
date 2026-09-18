@@ -599,6 +599,80 @@ describe('[LBTX] LoginButton', function () {
       loginBtn.auth.init = async () => { throw new Error('offline'); };
       await loginBtn.closeMenu();
     });
+    it('[LBPJ] "switch back" never activates another remembered account: without the delegate\'s own, it asks for a sign-in', async function () {
+      const { loginBtn } = await button(null, {
+        username: KIM,
+        apiEndpoint: 'https://tok2@kim.example.com/',
+        actingAs: { username: KIM, delegate: PARENT },
+        profiles: [{ username: 'someone-else', apiEndpoint: testData.apiEndpointWithToken }]
+      });
+      let probed = 0;
+      loginBtn.auth._accessInfo = async () => { probed++; return { user: {} }; };
+      const posted = stubAuthRequest({ response: { status: 200 }, body: { status: 'ACCEPTED', username: PARENT, apiEndpoint: 'https://tok1@parent.example.com/' } });
+      await loginBtn.auth.switchTo(null);
+      await settle();
+      expect(probed).to.equal(0);
+      expect(posted[0].actAs).to.equal('deny');
+      expect(loginBtn.auth.currentProfile().username).to.equal(PARENT);
+    });
+
+    it('[LBPK] a refused switch returns to the previous account without the key of its consumed sign-in', async function () {
+      const { loginBtn, states } = await button(null, { username: PARENT, apiEndpoint: 'https://tok1@parent.example.com/' });
+      loginBtn.auth.state = { status: AuthStates.AUTHORIZED, username: PARENT, apiEndpoint: 'https://tok1@parent.example.com/', key: 'k-consumed', profile: { username: PARENT, apiEndpoint: 'https://tok1@parent.example.com/' } };
+      states.length = 0;
+      stubAuthRequest({ response: { status: 403 }, body: { status: 'REFUSED' } });
+      await loginBtn.auth.addAccount();
+      await settle();
+      const last = states[states.length - 1];
+      expect(last.status).to.equal(AuthStates.AUTHORIZED);
+      expect(last.key).to.equal(undefined);
+      expect(last.username).to.equal(PARENT);
+      expect(loginBtn.auth.state.key).to.equal(undefined);
+    });
+
+    it('[LBPL] a switch abandoned by a log out cannot sign back in when its request is answered later', async function () {
+      const { loginBtn } = await button(null, { username: PARENT, apiEndpoint: 'https://tok1@parent.example.com/' });
+      let answer;
+      utils.fetchPost = async () => ({ response: { ok: true }, body: { status: 'NEED_SIGNIN', key: 'k2', poll: 'https://reg.example.com/access/k2', poll_rate_ms: 10, authUrl: 'https://ui.example.com/auth' } });
+      utils.fetchGet = (url, ...rest) => url === 'https://reg.example.com/access/k2'
+        ? new Promise((resolve) => { answer = resolve; })
+        : originals.fetchGet(url, ...rest);
+      const switching = loginBtn.auth.addAccount();
+      await settle();
+      await loginBtn.auth.signOut();
+      expect(loginBtn.auth.state.status).to.equal(AuthStates.INITIALIZED);
+      // a late grant of the abandoned request must not sign anyone in
+      answer({ response: { status: 200 }, body: { status: 'ACCEPTED', username: KIM, apiEndpoint: 'https://tok2@kim.example.com/' } });
+      await switching;
+      await settle();
+      expect(loginBtn.auth.state.status).to.equal(AuthStates.INITIALIZED);
+      const stored = loginBtn.getAuthorizationData();
+      expect(stored == null || stored.deleted === true || stored.username == null).to.equal(true);
+    });
+
+    it('[LBPM] only a refused access marks an account unavailable; a server error or a network failure keeps the previous account', async function () {
+      const stored = {
+        username: PARENT,
+        apiEndpoint: 'https://tok1@parent.example.com/',
+        profiles: [{ username: KIM, apiEndpoint: 'https://tok2@kim.example.com/', actingAs: { username: KIM, delegate: PARENT } }]
+      };
+      const { loginBtn } = await button(null, stored);
+      utils.fetchPost = async () => { throw new Error('no auth request expected'); };
+      for (const probe of [async () => ({ error: { id: 'unexpected-error' } }), async () => { throw new Error('offline'); }]) {
+        loginBtn.auth._accessInfo = probe;
+        let failed = false;
+        try { await loginBtn.auth.switchTo(KIM); } catch (e) { failed = true; }
+        expect(failed).to.equal(true);
+        expect(loginBtn.auth.currentProfile().username).to.equal(PARENT);
+        expect(loginBtn.auth.profiles().find((p) => p.username === KIM).available).to.equal(true);
+      }
+      // a refused token does mark it
+      loginBtn.auth._accessInfo = async () => ({ error: { id: 'invalid-access-token' } });
+      stubAuthRequest({ response: { status: 403 }, body: { status: 'REFUSED' } });
+      await loginBtn.auth.switchTo(KIM);
+      await settle();
+      expect(loginBtn.auth.profiles().find((p) => p.username === KIM).available).to.equal(false);
+    });
   });
 
   describe('[LBWX] Without spanButtonID', function () {

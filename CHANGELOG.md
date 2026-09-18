@@ -36,6 +36,9 @@
 - New `SWITCHING` state (`{ from, to }`) at the start of an account switch, followed by
   `ACCEPTED`, or by the previous account's `ACCEPTED` when the switch sign-in is refused.
   Listeners that ignore it see the usual `NEED_SIGNIN` then `ACCEPTED` sequence.
+  An `ACCEPTED` reached without a sign-in (switch to a remembered account, return
+  to the previous one) has no `key` and carries the stored `username` and
+  `apiEndpoint`, like the sign-in from stored credentials on page load.
 - `AuthController.switchTo(username | null)` (`null`: the user's own account),
   `addAccount()`, `profiles()`, `currentProfile()`, `signOut({ all })`;
   `authSettings.authRequest.actAs` (`'allow'`, `'deny'` or a username to preselect)
@@ -62,6 +65,8 @@
 - A cancelled logout no longer leaves the sign-in button inert until a page reload
   (the controller stayed in `SIGNOUT`). The service's button stylesheet is added to
   the page once, not again on every re-initialization.
+- An auth request replaced by a newer one, a log out or a re-initialization no
+  longer changes the state when its poll answers later.
 - The account menu no longer closes when a text selection started inside it ends
   outside it. A failed re-initialization after a dismissed "Log out?" no longer
   leaves an unhandled promise rejection.

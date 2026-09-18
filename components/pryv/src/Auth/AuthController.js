@@ -40,6 +40,11 @@ class AuthController {
     this.messages = Messages(this.languageCode);
 
     this.loginButton = loginButton;
+    // Incremented by every new auth request, sign-out and re-initialization:
+    // an older request's poll then no longer changes the state.
+    this._authFlowId = 0;
+    /** @type {Object|null} signed-in state to return to if a switch does not complete */
+    this._switchPrevious = null;
 
     function validateSettings (settings) {
       if (!settings) { throw new Error('settings cannot be null'); }
@@ -64,6 +69,7 @@ class AuthController {
    * @returns {Promise<Service>} Promise resolving to the Service instance
    */
   async init () {
+    cancelAuthFlow(this);
     this.serviceInfo = this.service.infoSync();
     this.state = { status: AuthStates.LOADING };
     this.assets = await loadAssets(this);
@@ -150,6 +156,7 @@ class AuthController {
    */
   async signOut (options) {
     const all = options?.all === true;
+    cancelAuthFlow(this);
     const store = this._readProfiles();
     const current = this.state?.username;
     this._signingOut = true;
@@ -208,20 +215,23 @@ class AuthController {
     if (username == null) {
       if (current != null && current.actingAs == null) return;
       const delegate = current?.actingAs?.delegate;
-      target = store.profiles.find((p) => delegate != null && p.username === delegate && p.actingAs == null) ||
-        store.profiles.find((p) => p.actingAs == null);
+      // Acting for an account: back to the delegate's own account only, never
+      // to another remembered one. Not signed in: the most recent own account.
+      target = delegate != null
+        ? store.profiles.find((p) => p.username === delegate && p.actingAs == null)
+        : store.profiles.find((p) => p.actingAs == null);
     } else {
       if (current != null && current.username === username) return;
       target = store.profiles.find((p) => p.username === username);
     }
     const toUsername = target?.username ?? username ?? null;
-    const previous = this.state?.status === AuthStates.AUTHORIZED ? this.state : null;
+    const previous = restorableState(this.state);
     this.state = { status: AuthStates.SWITCHING, from: current?.username ?? null, to: toUsername };
 
     if (target != null && target.unavailable !== true) {
       let info;
       try {
-        info = await accessInfoOf(target.apiEndpoint);
+        info = await this._accessInfo(target.apiEndpoint);
       } catch (e) {
         // network failure: stay on the previous account
         this.state = previous ?? { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
@@ -231,6 +241,11 @@ class AuthController {
         const profile = profileFromAccessInfo(target, info);
         this.state = { status: AuthStates.AUTHORIZED, username: profile.username, apiEndpoint: profile.apiEndpoint, profile };
         return;
+      }
+      if (!ACCESS_GONE_ERRORS.includes(info?.error?.id)) {
+        // any other answer (server error, rate limit) says nothing about the access
+        this.state = previous ?? { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
+        throw new Error('Cannot check the access of ' + target.username + ': ' + JSON.stringify(info?.error));
       }
       // revoked or expired (a detach revokes the accesses granted through it)
       this._saveProfiles(ProfileStore.markUnavailable(this._readProfiles(), target.username));
@@ -246,9 +261,19 @@ class AuthController {
    */
   async addAccount () {
     const current = this.currentProfile();
-    const previous = this.state?.status === AuthStates.AUTHORIZED ? this.state : null;
+    const previous = restorableState(this.state);
     this.state = { status: AuthStates.SWITCHING, from: current?.username ?? null, to: null };
     await this.startAuthRequest({ actAs: 'allow' }, previous);
+  }
+
+  /**
+   * @private The access-info of a stored account (`{ error }` when refused).
+   * @param {string} apiEndpoint
+   */
+  async _accessInfo (apiEndpoint) {
+    // required here: Connection is not needed before the first switch
+    const Connection = require('../Connection');
+    return await new Connection(apiEndpoint).accessInfo(true);
   }
 
   /** @private */
@@ -349,9 +374,13 @@ class AuthController {
    * @see https://pryv.github.io/reference/#auth-request
    */
   async startAuthRequest (overrides, previous) {
+    cancelAuthFlow(this);
+    const flowId = this._authFlowId;
     this._switchPrevious = previous ?? null;
     // @ts-ignore - postAccess uses .call(this) for context
-    this.state = await postAccess.call(this);
+    const requested = await postAccess.call(this);
+    if (this._authFlowId !== flowId) return; // replaced while posting
+    this.state = requested;
     // Remember the polling key so listeners on the terminal AUTHORIZED
     // state can be handed `{ key, serviceInfo? }` (the polling response
     // itself doesn't echo `key` back).
@@ -375,6 +404,7 @@ class AuthController {
         }
         return body;
       } catch (e) {
+        if (this._authFlowId !== flowId) throw e; // replaced while posting
         const previous = this._switchPrevious;
         this._switchPrevious = null;
         this.state = previous ?? {
@@ -389,11 +419,14 @@ class AuthController {
     /** @this {AuthController} */
     async function doPolling () {
       // @ts-ignore - this is bound via .call()
-      if (this.state?.status !== AuthStates.NEED_SIGNIN) {
+      if (this._authFlowId !== flowId || this.state?.status !== AuthStates.NEED_SIGNIN) {
         return;
       }
       // @ts-ignore - this is bound via .call()
       const pollResponse = await pollAccess(this.state?.poll);
+      // a newer request, a sign-out or a re-initialization replaced this one
+      // @ts-ignore - this is bound via .call()
+      if (this._authFlowId !== flowId) return;
 
       if (pollResponse.status === AuthStates.NEED_SIGNIN) {
         // @ts-ignore - this is bound via .call()
@@ -541,10 +574,26 @@ function profileFromAccessInfo (stored, info) {
   return profile;
 }
 
-async function accessInfoOf (apiEndpoint) {
-  // required here: Connection is not needed before the first switch
-  const Connection = require('../Connection');
-  return await new Connection(apiEndpoint).accessInfo(true);
+/** API errors that mean a stored access is no longer usable. */
+const ACCESS_GONE_ERRORS = ['invalid-access-token', 'forbidden'];
+
+/**
+ * The signed-in state to return to when an account switch does not
+ * complete: the account as stored, without the `key` of its sign-in (that
+ * auth request is consumed), like a sign-in from stored credentials.
+ */
+function restorableState (state) {
+  if (state?.status !== AuthStates.AUTHORIZED) return null;
+  const restored = { status: AuthStates.AUTHORIZED, username: state.username, apiEndpoint: state.apiEndpoint };
+  if (state.profile != null) restored.profile = state.profile;
+  if (state.authUrl != null) restored.authUrl = state.authUrl;
+  return restored;
+}
+
+/** Stop any auth request in progress: its poll no longer changes the state. */
+function cancelAuthFlow (authController) {
+  authController._authFlowId = (authController._authFlowId || 0) + 1;
+  authController._switchPrevious = null;
 }
 
 // ------------------ ACTIONS  ----------- //

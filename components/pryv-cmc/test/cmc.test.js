@@ -594,9 +594,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     it('[CMCL1RC] revokeRelationship({inviteEventId}) resolves backChannelAccessId via inbox lookup', async function () {
       // Doctor-side convenience path: the SDK looks up the inbox accept
       // event matching the original inviteEventId, reads the back-channel
-      // accessId stamped by the plugin (post-PR-72 + Phase 1.1 of Plan
-      // 68 atwork — handleIncomingAccept now stamps `inviteEventId` on
-      // the inbox-mirror from the capability access's
+      // accessId stamped by the plugin (handleIncomingAccept stamps
+      // `inviteEventId` on the inbox mirror from the capability access's
       // `clientData.cmc.requestEventId`). Then issues the revoke.
       //
       // Contract: the lookup matches when the inbox event content carries
