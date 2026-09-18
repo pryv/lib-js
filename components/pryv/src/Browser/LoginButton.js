@@ -13,6 +13,8 @@ const utils = require('../utils');
 
 /** Suffix of the cookie that holds the remembered accounts. */
 const PROFILES_COOKIE_SUFFIX = '-profiles';
+/** Encoded length kept under the ~4096-byte cookie limit (name and attributes included). */
+const PROFILES_COOKIE_MAX_LENGTH = 3500;
 
 /**
  * @memberof pryv.Browser
@@ -188,7 +190,14 @@ class LoginButton {
       Cookies.del(this._cookieKey);
     }
     if (Array.isArray(profiles)) {
-      Cookies.set(this._cookieKey + PROFILES_COOKIE_SUFFIX, Object.assign({ profiles }, active.authUrl != null ? { authUrl: active.authUrl } : {}));
+      const remembered = Object.assign({ profiles: profiles.slice() }, active.authUrl != null ? { authUrl: active.authUrl } : {});
+      // A browser drops a cookie over ~4 KB: forget the least recently used
+      // accounts (the list is most recent first) until it fits.
+      while (remembered.profiles.length > 1 &&
+             encodeURIComponent(JSON.stringify(remembered)).length > PROFILES_COOKIE_MAX_LENGTH) {
+        remembered.profiles.pop();
+      }
+      Cookies.set(this._cookieKey + PROFILES_COOKIE_SUFFIX, remembered);
     } else {
       Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX);
     }

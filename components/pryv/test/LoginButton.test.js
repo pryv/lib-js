@@ -701,6 +701,22 @@ describe('[LBTX] LoginButton', function () {
       expect(list == null || list.deleted === true).to.equal(true);
     });
 
+    it('[LBPQ] the remembered accounts are trimmed, least recent first, to fit in a cookie', async function () {
+      const Cookies = require('../src/Browser/CookieUtils');
+      const profiles = [];
+      for (let i = 0; i < 20; i++) {
+        profiles.push({ username: 'user-' + i, apiEndpoint: 'https://' + 'x'.repeat(120) + i + '@user-' + i + '.example.com/' });
+      }
+      const { loginBtn } = await button({ maxProfiles: 50 }, null);
+      loginBtn.saveAuthorizationData({ username: 'user-0', apiEndpoint: profiles[0].apiEndpoint, profiles });
+      const stored = Cookies.get(loginBtn._cookieKey + '-profiles');
+      expect(stored).to.exist;
+      expect(stored.profiles.length).to.be.below(20);
+      expect(stored.profiles.length).to.be.above(5);
+      expect(stored.profiles[0].username).to.equal('user-0');
+      expect(stored.profiles[stored.profiles.length - 1].username).to.equal('user-' + (stored.profiles.length - 1));
+    });
+
     it('[LBPP] a stopped auth request no longer changes the state when its poll answers', async function () {
       const { loginBtn } = await button(null, null);
       let answer;

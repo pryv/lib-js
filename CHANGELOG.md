@@ -22,7 +22,8 @@
   the remembered accounts (most recently used first, at most `authSettings.maxProfiles`,
   default 5) in a second cookie, `pryv-libjs-<appId>-profiles`; the usual cookie holds
   only the active account (and is removed when none is active), so older versions read
-  it as before and never mistake the list for a signed-in account. The account menu lists them under "Use this app for",
+  it as before and never mistake the list for a signed-in account. The least recently
+  used accounts are forgotten first when the list would not fit in a cookie. The account menu lists them under "Use this app for",
   switches without a sign-in when the stored access is still valid, marks an account
   whose access was revoked (e.g. by a delegation detach) as "no longer available" and
   asks for it again. On platforms with account delegation it offers "Another
