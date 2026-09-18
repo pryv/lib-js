@@ -30,6 +30,8 @@ const TTL_MS = 10 * 60 * 1000;
 
 /** poll key -> { apiEndpoint, username, token, expiresAt } */
 const cache = new Map();
+/** poll key -> Promise, so concurrent resolves for one key redeem once. */
+const inflight = new Map();
 
 function cacheGet (key) {
   if (key == null) return null;
@@ -42,20 +44,33 @@ function cacheGet (key) {
   return entry;
 }
 
+/** Drop expired entries so cached tokens do not linger for the process
+ * lifetime in a long-running Node service (a browser page is short-lived, but
+ * the same module runs server-side too). Called on every set; the map holds
+ * one entry per in-flight sign-in, so the scan is trivially small. */
+function sweep () {
+  const now = Date.now();
+  for (const [k, entry] of cache) {
+    if (now > entry.expiresAt) cache.delete(k);
+  }
+}
+
 function cacheSet (key, value) {
   if (key == null) return;
+  sweep();
   cache.set(key, Object.assign({}, value, { expiresAt: Date.now() + TTL_MS }));
 }
 
-/** Drop one entry (sign-out), or everything when called with no key. */
+/** Drop one entry (sign-out). Passing no key is an explicit clear-all. */
 function cacheClear (key) {
-  if (key == null) cache.clear();
+  if (arguments.length === 0) cache.clear();
   else cache.delete(key);
 }
 
 /** Does an ACCEPTED poll body deliver by shared-secret hand-off? */
 function isHandoffBody (body) {
-  return body != null && body.handoff != null && typeof body.handoff.key === 'string';
+  return body != null && body.handoff != null &&
+    body.handoff.type === 'shared-secret' && typeof body.handoff.key === 'string';
 }
 
 /**
@@ -71,7 +86,23 @@ function isHandoffBody (body) {
 async function resolveHandoff (pollBody, cacheKey) {
   const cached = cacheGet(cacheKey);
   if (cached != null) return cached;
+  // De-duplicate concurrent redemptions of the same key (e.g. React
+  // StrictMode double-invoking an effect that calls connectFromKey twice):
+  // both would otherwise miss the cache and the second would 403 the
+  // already-consumed one-time secret.
+  if (cacheKey != null && inflight.has(cacheKey)) return inflight.get(cacheKey);
 
+  const promise = doResolve(pollBody, cacheKey);
+  if (cacheKey == null) return promise;
+  inflight.set(cacheKey, promise);
+  try {
+    return await promise;
+  } finally {
+    inflight.delete(cacheKey);
+  }
+}
+
+async function doResolve (pollBody, cacheKey) {
   let result;
   try {
     result = await SharedSecrets.retrieve(pollBody.apiEndpoint, pollBody.handoff.key);
@@ -81,8 +112,9 @@ async function resolveHandoff (pollBody, cacheKey) {
         (err && (err.id || err.message)) + '); restart the auth request.',
       err
     );
-    // Prefer the machine id the retrieve refusal carries in `data.id`
-    // (`shared-secret-unavailable`) over the coarse HTTP id.
+    // Stable id for callers that branch on the hand-off failure; the finer
+    // reason (`shared-secret-unavailable`) rides on `innerObject.id`, which
+    // `SharedSecrets.retrieve` now takes from the refusal's `data.id`.
     pe.id = 'credential-handoff-failed';
     throw pe;
   }

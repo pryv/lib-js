@@ -162,8 +162,10 @@ class AuthController {
     } finally {
       this._signingOut = false;
     }
-    // Drop any cached hand-off credential for this flow's key.
-    handoff.cacheClear(this._authFlowKey);
+    // Drop any cached hand-off credential for this flow's key. Guard the
+    // key: on a cookie-autologin session there is no `_authFlowKey`, and
+    // clearing with `undefined` would wipe an unrelated concurrent flow.
+    if (this._authFlowKey != null) handoff.cacheClear(this._authFlowKey);
     if (this.loginButton != null && typeof this.loginButton.deleteAuthorizationData === 'function') {
       await this.loginButton.deleteAuthorizationData();
     }
