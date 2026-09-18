@@ -171,7 +171,8 @@ describe('[LBTX] LoginButton', function () {
       loginBtn.saveAuthorizationData({ test: 'data' });
       await loginBtn.onStateChange({ status: AuthStates.SIGNOUT });
       expect(document.querySelector('.pryv-menu .pryv-menu-logout')).to.exist;
-      loginBtn.closeMenu();
+      expect(document.querySelector('.pryv-menu').getAttribute('role')).to.equal('alertdialog');
+      loginBtn.closeMenu(true); // no re-initialization running into the next test
     });
 
     it('[LBSF] handles unknown state gracefully', async function () {
@@ -234,6 +235,10 @@ describe('[LBTX] LoginButton', function () {
       const { loginBtn } = await signedInButton();
       await loginBtn.onStateChange({ status: AuthStates.AUTHORIZED, username: 'menu-user', apiEndpoint: 'https://tok@menu-user.example.com/', authUrl: 'https://ui.example.com/auth' });
       expect(loginBtn.getAuthorizationData().authUrl).to.equal('https://ui.example.com/auth');
+      // the ACCEPTED poll body carries no authUrl: the one remembered from the request is used
+      loginBtn.auth._authUrl = 'https://ui2.example.com/auth';
+      await loginBtn.onStateChange({ status: AuthStates.AUTHORIZED, username: 'menu-user', apiEndpoint: 'https://tok@menu-user.example.com/' });
+      expect(loginBtn.getAuthorizationData().authUrl).to.equal('https://ui2.example.com/auth');
     });
 
     it('[LBMB] "Log out" emits SIGNOUT exactly once, without a confirmation, and clears the credentials', async function () {
@@ -321,11 +326,15 @@ describe('[LBTX] LoginButton', function () {
       expect(dialog().querySelector('.pryv-menu-account')).to.equal(null);
       // Cancel keeps the credentials and returns to the signed-in state
       // (the button used to stay inert after a cancelled logout)
+      states.length = 0;
       dialog().querySelector('.pryv-menu-cancel').click();
       expect(dialog()).to.equal(null);
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(loginBtn.getAuthorizationData().username).to.equal('menu-user');
       expect(loginBtn.auth.state.status).to.equal(AuthStates.AUTHORIZED);
+      // the documented contract: re-initialized from the stored credentials
+      expect(states).to.deep.equal([AuthStates.LOADING, AuthStates.AUTHORIZED]);
+      expect(document.querySelectorAll('link[rel="stylesheet"]').length).to.be.at.most(1);
       // Log out clears them and re-initializes
       loginBtn.onClick();
       await new Promise((resolve) => setTimeout(resolve, 50));

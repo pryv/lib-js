@@ -603,7 +603,7 @@ The [authentication process](https://api.pryv.com/reference/#authenticate-your-a
 2. `INITIALIZED`: visuals assets are loaded, or when [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Refused**
 3. `NEED_SIGNIN`: from the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
 4. `AUTHORIZED`: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
-5. `SIGNOUT`: when the user confirms a logout (the account menu's "Log out", or the logout confirmation when the menu is off), just before the client-side authorization credentials are deleted
+5. `SIGNOUT`: with the account menu, when the user confirms "Log out", just before the client-side authorization credentials are deleted. With `menu: false`, on the click itself, before the "Log out?" question: if the user cancels, the controller re-initializes from the stored credentials (`LOADING` then `AUTHORIZED`)
 6. `ERROR`: see message for more information
 
 You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only have `status`. The `ERROR` state carries a `message` property.
@@ -634,11 +634,8 @@ async onStateChange (state) {
       });
       break;
     case AuthStates.SIGNOUT:
-      // With the account menu, SIGNOUT comes from a confirmed "Log out"
-      // (auth.signOut() clears the credentials). With `menu: false` it comes
-      // from the click: ask in a built-in dialog (never window.confirm), then
-      // deleteAuthorizationData() + auth.init().
-      if (!this.auth._signingOut) this.openMenu({ confirmLogout: true });
+      // Emitted by auth.signOut() after the user confirmed in showMenu()
+      // (below); the controller clears the credentials itself.
       break;
     case AuthStates.ERROR:
       this.text = getErrorMessage(this, state.message);
@@ -660,6 +657,14 @@ The button actions should be handled by the [AuthController](src/Auth/AuthContro
 // LoginButton.js
 onClick () {
   this.auth.handleClick();
+}
+
+// Optional: called on a click once signed in. Ask in your own dialog (never
+// window.confirm), then log out through the controller. Return false to get
+// the SIGNOUT state on the click instead.
+showMenu () {
+  myDialog.open({ onLogout: () => this.auth.signOut() });
+  return true;
 }
 ```
 

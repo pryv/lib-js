@@ -301,7 +301,8 @@ function buildMenu (loginBtn, confirmLogout) {
 
   const overlay = menuElement('div', 'pryv-menu-overlay');
   const dialog = menuElement('div', 'pryv-menu');
-  dialog.setAttribute('role', 'dialog');
+  // A question that needs an answer is an alertdialog; the menu is a dialog.
+  dialog.setAttribute('role', confirmLogout ? 'alertdialog' : 'dialog');
   dialog.setAttribute('aria-modal', 'true');
   dialog.setAttribute('aria-labelledby', 'pryv-menu-username');
   overlay.appendChild(dialog);
