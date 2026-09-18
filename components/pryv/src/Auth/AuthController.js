@@ -119,6 +119,8 @@ class AuthController {
    * Stops poll for auth request
    */
   stopAuthRequest (msg) {
+    // its poll must not change the state any more
+    cancelAuthFlow(this);
     this.state = { status: AuthStates.ERROR, message: msg };
   }
 

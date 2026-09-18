@@ -11,6 +11,9 @@ const utils = require('../utils');
 
 /* global location */
 
+/** Suffix of the cookie that holds the remembered accounts. */
+const PROFILES_COOKIE_SUFFIX = '-profiles';
+
 /**
  * @memberof pryv.Browser
  */
@@ -153,16 +156,47 @@ class LoginButton {
     return Promise.resolve();
   }
 
+  /**
+   * The stored sign-in: the active account from the main cookie (the only
+   * cookie versions without account switching read) and the remembered
+   * accounts from a second one.
+   */
   getAuthorizationData () {
-    return Cookies.get(this._cookieKey);
+    const active = Cookies.get(this._cookieKey);
+    const remembered = Cookies.get(this._cookieKey + PROFILES_COOKIE_SUFFIX);
+    if (remembered == null || !Array.isArray(remembered.profiles)) return active;
+    const data = Object.assign({}, active != null && active.deleted !== true ? active : {}, { profiles: remembered.profiles });
+    if (data.authUrl == null && remembered.authUrl != null) data.authUrl = remembered.authUrl;
+    return data;
   }
 
+  /**
+   * Store the sign-in. The main cookie holds the active account only (or is
+   * removed when none is active), so an older version never reads a list of
+   * remembered accounts as a signed-in one.
+   */
   saveAuthorizationData (authData) {
-    Cookies.set(this._cookieKey, authData);
+    if (authData == null) {
+      Cookies.del(this._cookieKey);
+      Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX);
+      return;
+    }
+    const { profiles, ...active } = authData;
+    if (typeof active.username === 'string' && typeof active.apiEndpoint === 'string') {
+      Cookies.set(this._cookieKey, active);
+    } else {
+      Cookies.del(this._cookieKey);
+    }
+    if (Array.isArray(profiles)) {
+      Cookies.set(this._cookieKey + PROFILES_COOKIE_SUFFIX, Object.assign({ profiles }, active.authUrl != null ? { authUrl: active.authUrl } : {}));
+    } else {
+      Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX);
+    }
   }
 
   async deleteAuthorizationData () {
     Cookies.del(this._cookieKey);
+    Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX);
   }
 
   /**
