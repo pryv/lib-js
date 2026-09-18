@@ -367,6 +367,11 @@ this is the first version that actually ships it. 3.12.0 is deprecated on npm.
 
 ## [3.8.1] - 2026-07-17
 
+First published version carrying the OAuth2 client: the Added / Changed / Notes
+entries below were first written under a second `3.8.0` heading, but 3.8.0 had
+already been published on 2026-07-03 without them. Note that the Node floor
+change ships in this patch release.
+
 ### Fixed
 
 - `pryv.OAuth2Client.refresh()` is now production-safe against an always-rotating
@@ -379,8 +384,6 @@ this is the first version that actually ships it. 3.12.0 is deprecated on npm.
   `refreshToken` constructor option, a `refreshToken` getter, and an
   `onTokenRotated` callback — so apps persist only the minimal secret across
   reloads instead of the whole `lastTokenResponse` blob.
-
-## [3.8.0]
 
 ### Added
 
@@ -407,7 +410,7 @@ this is the first version that actually ships it. 3.12.0 is deprecated on npm.
   (webpack 5 / vite / rollup / esbuild — all fine). webpack-4 / browserify users
   should consume the prebuilt `dist/` bundle instead.
 
-## [3.8.0]
+## [3.8.0] - 2026-07-03
 
 `pryv` + `@pryv/socket.io` + `@pryv/monitor` 3.8.0; ships alongside
 `@pryv/cmc` 3.8.0/3.9.0 (versioned separately).
