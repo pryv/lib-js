@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## 3.13.0 — 2026-09-18
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
+3.13.0; `@pryv/cmc` unchanged (3.16.1, test changes only).
+
 ### Changed
 
 - **The signed-in sign-in button opens an account menu instead of a logout
