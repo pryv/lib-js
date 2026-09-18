@@ -5,6 +5,7 @@
 const utils = require('./utils.js');
 const PryvError = require('./lib/PryvError.js');
 const MfaRequiredError = require('./lib/MfaRequiredError.js');
+const handoff = require('./lib/handoff.js');
 // Connection is required at the end of this file to allow circular requires.
 const Assets = require('./ServiceAssets.js');
 
@@ -537,7 +538,9 @@ class Service {
    *
    * Returns the raw body. Inspect `body.status` to drive the flow:
    *   - `'NEED_SIGNIN'` → user has not interacted yet; keep polling.
-   *   - `'ACCEPTED'`    → `body.apiEndpoint` + `body.username` + `body.token` are set.
+   *   - `'ACCEPTED'`    → `body.apiEndpoint` + `body.username`, plus either
+   *     `body.token` (inline) or a one-time `body.handoff` key (shared-secret
+   *     delivery). Prefer `connectFromKey`, which handles both shapes.
    *   - `'REFUSED'`     → user declined.
    *
    * @param {string} keyOrPollUrl
@@ -580,19 +583,37 @@ class Service {
    * completes; afterwards the key is unknown. (`expireAfter` on the
    * access request is the lifetime of the access created, not of the key.)
    *
+   * When the request asked for shared-secret delivery the ACCEPTED body
+   * carries a one-time `handoff` key instead of the token; this redeems it
+   * exactly once and caches the result keyed by `key`, so it is safe to call
+   * more than once for the same key (the second call reuses the cache rather
+   * than hitting the already-consumed one-time secret). A retrieve that finds
+   * the secret gone throws a `PryvError` (id `credential-handoff-failed`);
+   * restart the auth request.
+   *
    * @param {string} key - polling key from `startAccessRequest`
    * @returns {Promise<Connection>}
    * @throws {PryvError} if the key is not ACCEPTED (NEED_SIGNIN, REFUSED, ERROR)
+   *   or the hand-off secret could not be retrieved
    */
   async connectFromKey (key) {
     if (!key) {
       throw new PryvError('connectFromKey requires a key');
     }
+    // A prior resolve (this call, or the AuthController polling loop) may have
+    // already redeemed the one-time secret; reuse it rather than re-polling.
+    const cached = handoff.cacheGet(key);
+    if (cached != null) return new Connection(cached.apiEndpoint, this);
+
     const body = await this.pollAccessRequest(key);
     if (body.status !== 'ACCEPTED') {
       throw new PryvError(
         'connectFromKey: access is not ACCEPTED (status=' + body.status + ')'
       );
+    }
+    if (handoff.isHandoffBody(body)) {
+      const entry = await handoff.resolveHandoff(body, key);
+      return new Connection(entry.apiEndpoint, this);
     }
     if (!body.apiEndpoint) {
       throw new PryvError(

@@ -157,7 +157,10 @@ async function retrieve (apiEndpoint, key, options = {}) {
     const err = /** @type {Error & { id?: string, returnUrl?: string }} */ (
       new Error(parsed?.error?.message || 'Shared secret unavailable.')
     );
-    err.id = parsed?.error?.id;
+    // Prefer the fine machine id the method carries in `data.id`
+    // (e.g. `shared-secret-unavailable`) over the coarse HTTP id (`forbidden`),
+    // so a caller can tell a consumed/expired secret from a generic refusal.
+    err.id = parsed?.error?.data?.id || parsed?.error?.id;
     err.returnUrl = parsed?.error?.data?.returnUrl;
     throw err;
   }

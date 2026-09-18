@@ -59,6 +59,20 @@ describe('[ACNX] AuthController', function () {
         authRequest: { requestingAppId: 'test-app' }
       }, service)).to.throw('Missing settings.authRequest.requestedPermissions');
     });
+
+    it('[ACVE] defaults the request to shared-secret credential hand-off', function () {
+      const settings = { authRequest: { requestingAppId: 'test-app', requestedPermissions: [] } };
+      // eslint-disable-next-line no-new
+      new AuthController(settings, service);
+      expect(settings.authRequest.credentialHandoff).to.equal('shared-secret');
+    });
+
+    it('[ACVF] credentialHandoff:\'inline\' opts out and sends no field', function () {
+      const settings = { authRequest: { requestingAppId: 'test-app', requestedPermissions: [], credentialHandoff: 'inline' } };
+      // eslint-disable-next-line no-new
+      new AuthController(settings, service);
+      expect(settings.authRequest).to.not.have.property('credentialHandoff');
+    });
   });
 
   describe('[ACLX] Listeners', function () {
@@ -381,6 +395,83 @@ describe('[ACNX] AuthController', function () {
       const last = seen[seen.length - 1];
       expect(last.status).to.equal(AuthStates.ERROR);
       expect(last.message).to.equal('boom');
+    });
+  });
+
+  describe('[ACGX] credential hand-off polling', function () {
+    let realFetch;
+    let handoffKeyCounter = 0;
+
+    /** Stub the whole flow: access POST -> NEED_SIGNIN, poll GET -> pollBody,
+     *  shared-secrets/retrieve -> retrieveResponse. */
+    function stubFlow (pollBody, retrieveResponse) {
+      realFetch = global.fetch;
+      global.fetch = async function (url, options) {
+        const u = String(url);
+        if (u.includes('shared-secrets/retrieve')) {
+          return {
+            ok: retrieveResponse.ok !== false,
+            status: retrieveResponse.status || 200,
+            json: async () => retrieveResponse.body
+          };
+        }
+        if (options && options.method === 'POST' && u.includes('/access')) {
+          return {
+            ok: true,
+            status: 201,
+            json: async () => ({
+              status: 'NEED_SIGNIN',
+              key: 'ho-key-' + (++handoffKeyCounter),
+              poll: 'https://reg.test.local/access/pk' + handoffKeyCounter,
+              poll_rate_ms: 5
+            })
+          };
+        }
+        if (u.includes('/access/')) { // the poll GET
+          return { ok: true, status: 200, json: async () => pollBody };
+        }
+        return { ok: true, status: 200, json: async () => ({}) };
+      };
+    }
+
+    afterEach(function () {
+      if (realFetch) global.fetch = realFetch;
+      realFetch = null;
+    });
+
+    function makeAuth () {
+      const auth = new AuthController({
+        authRequest: { requestingAppId: 'test-app', requestedPermissions: [] }
+      }, service);
+      // Skip init() (asset loading): set the service info the flow needs.
+      auth.serviceInfo = { access: 'https://reg.test.local/access', register: 'https://reg.test.local/' };
+      return auth;
+    }
+
+    it('[ACGA] redeems a hand-off ACCEPTED body and rewrites the internal state to the legacy shape (token, no handoff)', async function () {
+      stubFlow(
+        { status: 'ACCEPTED', username: 'eve', apiEndpoint: 'https://eve.test.local/', handoff: { type: 'shared-secret', key: 'evt.' + 'e'.repeat(40) } },
+        { body: { secret: { username: 'eve', token: 'tok-eve', apiEndpoint: 'https://eve.test.local/' } } }
+      );
+      const auth = makeAuth();
+      await auth.startAuthRequest();
+      expect(auth.state.status).to.equal(AuthStates.AUTHORIZED);
+      expect(auth.state.token).to.equal('tok-eve');
+      expect(auth.state.apiEndpoint).to.contain('tok-eve@');
+      expect(auth.state.apiEndpoint).to.contain('eve.test.local');
+      // The one-time key must not survive into the state the cookie/listener see.
+      expect(auth.state.handoff).to.equal(undefined);
+    });
+
+    it('[ACGB] a failed hand-off retrieve puts the controller in ERROR, not a broken AUTHORIZED', async function () {
+      stubFlow(
+        { status: 'ACCEPTED', username: 'frank', apiEndpoint: 'https://frank.test.local/', handoff: { type: 'shared-secret', key: 'evt.' + 'f'.repeat(40) } },
+        { ok: false, status: 403, body: { error: { id: 'forbidden', message: 'used', data: { id: 'shared-secret-unavailable' } } } }
+      );
+      const auth = makeAuth();
+      await auth.startAuthRequest();
+      expect(auth.state.status).to.equal(AuthStates.ERROR);
+      expect(auth.state.token).to.equal(undefined);
     });
   });
 });
