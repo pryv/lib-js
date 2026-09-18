@@ -66,10 +66,12 @@ class LoginButton {
       }
       case AuthStates.AUTHORIZED:
         this.text = state.username;
-        this.saveAuthorizationData({
+        this.saveAuthorizationData(Object.assign({
           apiEndpoint: state.apiEndpoint,
           username: state.username
-        });
+        },
+        // Kept to locate the account app after a reload (see AuthController.accountUrl).
+        (state.authUrl || this.auth?._authUrl) ? { authUrl: state.authUrl || this.auth._authUrl } : {}));
         break;
       case AuthStates.SIGNOUT: {
         // A confirmed logout (the menu's "Log out", or `auth.signOut()`)
@@ -255,7 +257,9 @@ function ensureMenuStyle () {
   const style = document.createElement('style');
   style.id = 'pryv-menu-style';
   style.textContent = MENU_CSS;
-  document.head.appendChild(style);
+  // First in <head>: a service stylesheet loaded before or after the menu
+  // opens then wins at equal specificity.
+  document.head.insertBefore(style, document.head.firstChild);
 }
 
 function menuElement (tag, className, text) {
@@ -280,11 +284,13 @@ function buildMenu (loginBtn) {
   const dialog = menuElement('div', 'pryv-menu');
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
-  dialog.setAttribute('aria-label', messages.MENU_TITLE);
+  dialog.setAttribute('aria-labelledby', 'pryv-menu-username');
   overlay.appendChild(dialog);
 
   const header = menuElement('div', 'pryv-menu-header');
-  header.appendChild(menuElement('div', 'pryv-menu-username', username));
+  const title = menuElement('div', 'pryv-menu-username', username || messages.MENU_TITLE);
+  title.id = 'pryv-menu-username';
+  header.appendChild(title);
   const close = menuElement('button', 'pryv-menu-close', '×');
   close.type = 'button';
   close.setAttribute('aria-label', messages.CLOSE);
@@ -300,7 +306,10 @@ function buildMenu (loginBtn) {
 
   const actions = menuElement('div', 'pryv-menu-actions');
   if (options.account && auth.accountUrl() != null) {
-    const manage = menuElement('button', 'pryv-menu-account', messages.MANAGE_ACCOUNT + ' ↗');
+    const manage = menuElement('button', 'pryv-menu-account', messages.MANAGE_ACCOUNT + ' ');
+    const arrow = menuElement('span', null, '↗');
+    arrow.setAttribute('aria-hidden', 'true');
+    manage.appendChild(arrow);
     manage.type = 'button';
     manage.addEventListener('click', () => {
       auth.openAccountApp();

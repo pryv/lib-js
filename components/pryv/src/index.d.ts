@@ -1105,6 +1105,8 @@ declare module 'pryv' {
   export type StoredAuthorizationData = {
     apiEndpoint: string;
     username: string;
+    /** Auth page of the sign-in, kept to locate the account app. */
+    authUrl?: string;
   } | null;
 
   export type CustomLoginButton = {

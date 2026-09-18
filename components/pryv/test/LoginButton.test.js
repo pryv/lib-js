@@ -225,6 +225,15 @@ describe('[LBTX] LoginButton', function () {
       expect(dialog().querySelector('.pryv-menu-info').textContent).to.include('test-app-menu');
       expect(dialog().querySelector('.pryv-menu-logout')).to.exist;
       expect(dialog().querySelector('.pryv-menu-account')).to.exist;
+      // the built-in style comes first, so a service stylesheet overrides it
+      expect(document.head.firstChild.id).to.equal('pryv-menu-style');
+      expect(dialog().getAttribute('aria-labelledby')).to.equal('pryv-menu-username');
+    });
+
+    it('[LBMH] the stored credentials keep the auth page URL of the sign-in', async function () {
+      const { loginBtn } = await signedInButton();
+      await loginBtn.onStateChange({ status: AuthStates.AUTHORIZED, username: 'menu-user', apiEndpoint: 'https://tok@menu-user.example.com/', authUrl: 'https://ui.example.com/auth' });
+      expect(loginBtn.getAuthorizationData().authUrl).to.equal('https://ui.example.com/auth');
     });
 
     it('[LBMB] "Log out" emits SIGNOUT exactly once, without a confirmation, and clears the credentials', async function () {

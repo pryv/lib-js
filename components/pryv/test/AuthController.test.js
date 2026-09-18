@@ -199,6 +199,36 @@ describe('[ACNX] AuthController', function () {
       expect(auth.state.status).to.equal(AuthStates.INITIALIZED);
     });
 
+    it('[ACUF] the auth page URL of a sign-in locates the account app, and survives a reload', async function () {
+      const utils = require('../src/utils');
+      const { fetchPost, fetchGet } = utils;
+      utils.fetchPost = async () => ({ response: { ok: true }, body: { status: AuthStates.NEED_SIGNIN, key: 'k1', poll: 'https://core.example.com/reg/access/k1', poll_rate_ms: 1, authUrl: 'https://ui.example.com/auth?key=k1' } });
+      utils.fetchGet = async () => ({ response: { status: 200 }, body: { status: AuthStates.AUTHORIZED, username: 'u', token: 't', apiEndpoint: 'https://t@u.example.com/' } });
+      let saved = null;
+      const button = {
+        getAuthorizationData: () => saved,
+        saveAuthorizationData: (d) => { saved = d; },
+        onStateChange: async (state) => {
+          if (state.status === AuthStates.AUTHORIZED) saved = { apiEndpoint: state.apiEndpoint, username: state.username, authUrl: auth._authUrl };
+        },
+        onClick: () => {}
+      };
+      const auth = new AuthController({ authRequest: { requestingAppId: 'test-app', requestedPermissions: [] } }, service, button);
+      try {
+        await auth.init();
+        auth.serviceInfo = Object.assign({}, auth.serviceInfo, { account: undefined });
+        await auth.startAuthRequest();
+      } finally { utils.fetchPost = fetchPost; utils.fetchGet = fetchGet; }
+      expect(auth.accountUrl()).to.equal(profile('https://ui.example.com'));
+
+      // a new page load: only the stored data is known
+      const reloaded = new AuthController({ authRequest: { requestingAppId: 'test-app', requestedPermissions: [] } }, service, button);
+      await reloaded.init();
+      reloaded.serviceInfo = Object.assign({}, reloaded.serviceInfo, { account: undefined });
+      expect(reloaded.state.status).to.equal(AuthStates.AUTHORIZED);
+      expect(reloaded.accountUrl()).to.equal(profile('https://ui.example.com'));
+    });
+
     it('[ACUE] a button with showMenu gets the click instead of SIGNOUT, unless it declines', async function () {
       for (const [answer, expectSignout] of [[true, false], [undefined, false], [false, true]]) {
         const states = [];

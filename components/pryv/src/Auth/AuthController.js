@@ -384,6 +384,7 @@ async function checkAutoLogin (authController) {
 
   const storedCredentials = await loginButton.getAuthorizationData();
   if (storedCredentials != null) {
+    if (typeof storedCredentials.authUrl === 'string') authController._authUrl = storedCredentials.authUrl;
     authController.state = Object.assign({}, { status: AuthStates.AUTHORIZED }, storedCredentials);
   }
 }

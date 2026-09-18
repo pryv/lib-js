@@ -12,7 +12,8 @@
   out**. `SIGNOUT` is now emitted when "Log out" is chosen, no longer on the click
   itself. Set `authSettings.menu: false` to keep the previous confirmation;
   `authSettings.menu.hide` hides entries. The account app URL comes from
-  `authSettings.accountUrl`, the service's `account`, or the auth page URL.
+  `authSettings.accountUrl`, the service's `account`, or the auth page URL of the
+  sign-in (kept with the stored credentials as `authUrl`, so it survives a reload).
 
 ### Added
 
