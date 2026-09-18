@@ -5,6 +5,7 @@
 const Cookies = require('./CookieUtils');
 const AuthStates = require('../Auth/AuthStates');
 const AuthController = require('../Auth/AuthController');
+const ProfileStore = require('../Auth/ProfileStore');
 const Messages = require('../Auth/LoginMessages');
 const utils = require('../utils');
 
@@ -64,14 +65,20 @@ class LoginButton {
         }
         break;
       }
-      case AuthStates.AUTHORIZED:
-        this.text = state.username;
-        this.saveAuthorizationData(Object.assign({
-          apiEndpoint: state.apiEndpoint,
-          username: state.username
-        },
+      case AuthStates.AUTHORIZED: {
+        const profile = state.profile || ProfileStore.fromAccepted(state);
+        this.text = profileLabel(this, profile);
+        const store = ProfileStore.read(this.getAuthorizationData());
         // Kept to locate the account app after a reload (see AuthController.accountUrl).
-        (state.authUrl || this.auth?._authUrl) ? { authUrl: state.authUrl || this.auth._authUrl } : {}));
+        const authUrl = withoutQuery(state.authUrl || this.auth?._authUrl) || store.authUrl;
+        this.saveAuthorizationData(ProfileStore.write(Object.assign(
+          ProfileStore.activate(store, profile, this.authSettings.maxProfiles),
+          { authUrl }
+        )));
+        break;
+      }
+      case AuthStates.SWITCHING:
+        this.text = this.messages.SWITCHING || '...';
         break;
       case AuthStates.SIGNOUT: {
         // A confirmed logout (the menu's "Log out", or `auth.signOut()`)
@@ -134,11 +141,13 @@ class LoginButton {
     this.menu = null;
     document.removeEventListener('keydown', menu.onKeyDown, true);
     if (menu.overlay.parentNode != null) menu.overlay.parentNode.removeChild(menu.overlay);
-    if (menu.previousFocus != null && typeof menu.previousFocus.focus === 'function') {
-      menu.previousFocus.focus();
+    const previousFocus = /** @type {HTMLElement|null} */ (menu.previousFocus);
+    if (previousFocus != null && typeof previousFocus.focus === 'function') {
+      previousFocus.focus();
     }
     if (menu.confirmLogout && !loggingOut) {
-      this.pending = this.auth.init().then(() => {});
+      // init() reports its own failures as the ERROR state
+      this.pending = this.auth.init().then(() => {}, (e) => { console.log('Error while re-initializing', e); });
       return this.pending;
     }
     return Promise.resolve();
@@ -171,6 +180,7 @@ class LoginButton {
     if (pollUrl !== null) {
       try {
         const { body } = await utils.fetchGet(pollUrl);
+        if (body?.status === AuthStates.AUTHORIZED && typeof body.username === 'string') body.profile = ProfileStore.fromAccepted(body);
         authController.state = body;
       } catch (e) {
         authController.state = {
@@ -234,7 +244,24 @@ async function startLoginScreen (loginButton, authUrl) {
   }
 }
 
-const MENU_OPTIONS = ['logout', 'account', 'info'];
+const MENU_OPTIONS = ['logout', 'account', 'switch', 'info'];
+
+/** `kim-doe (via parent-doe)` for an account used through delegation. */
+function profileLabel (loginButton, profile) {
+  if (profile?.actingAs == null) return profile?.username;
+  return profile.username + ' (' + loginButton.messages.VIA + ' ' + profile.actingAs.delegate + ')';
+}
+
+/** The auth page URL without its query and fragment (they may carry a key). */
+function withoutQuery (url) {
+  if (typeof url !== 'string') return undefined;
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname;
+  } catch (e) {
+    return undefined;
+  }
+}
 
 /**
  * Which menu entries to show: all by default; `settings.menu.<option>: false`
@@ -266,7 +293,16 @@ const MENU_CSS = `
   padding: 12px 16px 16px; border-top: 1px solid #eee; }
 .pryv-menu-actions button { padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc;
   background: #f7f7f7; cursor: pointer; font: inherit; }
-.pryv-menu-actions button:focus-visible, .pryv-menu-close:focus-visible { outline: 2px solid #4a90d9; }
+.pryv-menu-actions button:focus-visible, .pryv-menu-close:focus-visible,
+.pryv-menu-switch button:focus-visible { outline: 2px solid #4a90d9; }
+.pryv-menu-acting { font-weight: 400; color: #666; font-size: 13px; }
+.pryv-menu-switch { padding: 8px 16px 12px; border-top: 1px solid #eee; }
+.pryv-menu-switch-title { color: #666; font-size: 13px; margin-bottom: 4px; }
+.pryv-menu-switch button { display: block; width: 100%; text-align: left; padding: 6px 8px; border: 0;
+  border-radius: 4px; background: none; cursor: pointer; font: inherit; color: inherit; }
+.pryv-menu-switch button:hover { background: #f2f2f2; }
+.pryv-menu-switch button[aria-current="true"] { font-weight: 600; cursor: default; }
+.pryv-menu-switch .pryv-menu-note { color: #888; font-size: 12px; }
 `;
 
 /** The built-in menu style, added once. A service's button CSS can override
@@ -316,6 +352,12 @@ function buildMenu (loginBtn, confirmLogout) {
   const header = menuElement('div', 'pryv-menu-header');
   const title = menuElement('div', 'pryv-menu-username', username || messages.MENU_TITLE);
   title.id = 'pryv-menu-username';
+  const current = confirmLogout ? null : auth.currentProfile();
+  const actingAs = current?.actingAs;
+  if (actingAs != null) {
+    title.appendChild(menuElement('span', 'pryv-menu-acting',
+      ' (' + messages.ACTING_AS + ', ' + messages.VIA + ' ' + actingAs.delegate + ')'));
+  }
   header.appendChild(title);
   const close = menuElement('button', 'pryv-menu-close', '×');
   close.type = 'button';
@@ -330,9 +372,18 @@ function buildMenu (loginBtn, confirmLogout) {
     dialog.appendChild(menuElement('div', 'pryv-menu-info', serviceName + ' · ' + messages.APP + ': ' + appId));
   }
 
+  const profiles = confirmLogout ? [] : auth.profiles();
+  if (options.switch) {
+    const section = switchSection(loginBtn, messages, current, profiles);
+    if (section != null) dialog.appendChild(section);
+  }
+
   const actions = menuElement('div', 'pryv-menu-actions');
   if (options.account && auth.accountUrl() != null) {
-    const manage = menuElement('button', 'pryv-menu-account', messages.MANAGE_ACCOUNT + ' ');
+    const manageText = actingAs != null
+      ? (messages.MANAGE_ACCOUNT_OF || '').replace('{username}', current.username)
+      : messages.MANAGE_ACCOUNT;
+    const manage = menuElement('button', 'pryv-menu-account', manageText + ' ');
     const arrow = menuElement('span', null, '↗');
     arrow.setAttribute('aria-hidden', 'true');
     manage.appendChild(arrow);
@@ -363,11 +414,26 @@ function buildMenu (loginBtn, confirmLogout) {
       actions.appendChild(cancel);
     }
     actions.appendChild(logout);
+    // "Log out" leaves the other remembered accounts; this one forgets them all
+    if (profiles.length > 1) {
+      const logoutAll = menuElement('button', 'pryv-menu-logout-all', messages.LOGOUT_ALL);
+      logoutAll.type = 'button';
+      logoutAll.addEventListener('click', () => {
+        loginBtn.closeMenu(true);
+        loginBtn.pending = auth.signOut({ all: true });
+      });
+      actions.appendChild(logoutAll);
+    }
   }
   dialog.appendChild(actions);
 
+  // Close on a click outside the dialog, not on a text selection that
+  // started inside it and ended outside.
+  let pressedOutside = false;
+  overlay.addEventListener('mousedown', (event) => { pressedOutside = event.target === overlay; });
   overlay.addEventListener('click', (event) => {
-    if (event.target === overlay) loginBtn.closeMenu();
+    if (event.target === overlay && pressedOutside) loginBtn.closeMenu();
+    pressedOutside = false;
   });
 
   const focusables = () => Array.from(dialog.querySelectorAll('button'));
@@ -393,6 +459,53 @@ function buildMenu (loginBtn, confirmLogout) {
   document.addEventListener('keydown', onKeyDown, true);
 
   return { overlay, dialog, onKeyDown, focusables, previousFocus: document.activeElement, confirmLogout };
+}
+
+/**
+ * The account switcher: "Switch back to <delegate>" while acting for an
+ * account; otherwise the remembered accounts and "Another account..." (when
+ * the platform has account delegation). Null when there is nothing to offer.
+ */
+function switchSection (loginBtn, messages, current, profiles) {
+  const auth = loginBtn.auth;
+  const run = (action) => {
+    loginBtn.closeMenu();
+    loginBtn.pending = action().catch((e) => { console.log('Error while switching account', e); });
+  };
+  const section = menuElement('div', 'pryv-menu-switch');
+  if (current?.actingAs != null) {
+    const back = menuElement('button', 'pryv-menu-switch-back',
+      (messages.SWITCH_BACK || '').replace('{username}', current.actingAs.delegate));
+    back.type = 'button';
+    back.addEventListener('click', () => run(() => auth.switchTo(null)));
+    section.appendChild(back);
+    return section;
+  }
+  const delegation = loginBtn.serviceInfo?.features?.delegation === true;
+  if (profiles.length < 2 && !delegation) return null;
+  section.appendChild(menuElement('div', 'pryv-menu-switch-title', messages.USE_FOR));
+  profiles.forEach((p) => {
+    const item = menuElement('button', 'pryv-menu-profile', p.username + ' ');
+    item.type = 'button';
+    const note = p.actingAs != null
+      ? messages.VIA + ' ' + p.actingAs.delegate
+      : '(' + messages.ME + ')';
+    item.appendChild(menuElement('span', 'pryv-menu-note',
+      note + (p.available ? '' : ' · ' + messages.UNAVAILABLE)));
+    if (p.active) {
+      item.setAttribute('aria-current', 'true');
+    } else {
+      item.addEventListener('click', () => run(() => auth.switchTo(p.username)));
+    }
+    section.appendChild(item);
+  });
+  if (delegation) {
+    const other = menuElement('button', 'pryv-menu-add-account', messages.OTHER_ACCOUNT);
+    other.type = 'button';
+    other.addEventListener('click', () => run(() => auth.addAccount()));
+    section.appendChild(other);
+  }
+  return section;
 }
 
 function setupButton (loginBtn) {

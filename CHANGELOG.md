@@ -16,9 +16,42 @@
   from the stored credentials, so listeners see `LOADING` then `AUTHORIZED`);
   `authSettings.menu.hide` hides entries. The account app URL comes from
   `authSettings.accountUrl`, the service's `account`, or the auth page URL of the
-  sign-in (kept with the stored credentials as `authUrl`, so it survives a reload).
+  sign-in (kept with the stored credentials as `authUrl`, without its query, so it
+  survives a reload).
+- **The sign-in button remembers several accounts per app.** The stored credentials
+  keep a `profiles` list (most recently used first, at most `authSettings.maxProfiles`,
+  default 5) next to the active account, which stays at the top level so older
+  versions still read it. The account menu lists them under "Use this app for",
+  switches without a sign-in when the stored access is still valid, marks an account
+  whose access was revoked (e.g. by a delegation detach) as "no longer available" and
+  asks for it again. On platforms with account delegation it offers "Another
+  account..." (the sign-in popup then offers the accounts the user controls). An
+  access granted for a controlled account is labelled `kim (via parent)`, and the
+  menu offers "Switch back to parent". "Log out" logs out of the active account only
+  and keeps the others; "Log out of all accounts" (shown when several are remembered)
+  forgets them all.
 
 ### Added
+
+- New `SWITCHING` state (`{ from, to }`) at the start of an account switch, followed by
+  `ACCEPTED`, or by the previous account's `ACCEPTED` when the switch sign-in is refused.
+  Listeners that ignore it see the usual `NEED_SIGNIN` then `ACCEPTED` sequence.
+  An `ACCEPTED` reached without a sign-in (switch to a remembered account, return
+  to the previous one) has no `key` and carries the stored `username` and
+  `apiEndpoint`, like the sign-in from stored credentials on page load.
+- `AuthController.switchTo(username | null)` (`null`: the user's own account),
+  `addAccount()`, `profiles()`, `currentProfile()`, `signOut({ all })`;
+  `authSettings.authRequest.actAs` (`'allow'`, `'deny'` or a username to preselect)
+  is sent with the auth request; `authSettings.maxProfiles`; menu entry `switch`
+  (hide with `menu.hide: ['switch']`). The `ACCEPTED` state carries a `profile`
+  (`{ username, actingAs? }`) for the button; external `onStateChange` listeners keep
+  the narrowed shape.
+- `@pryv/delegation`: `errorIds.GRANT_REQUIRES_OWNER` (`delegation-grant-requires-owner`,
+  returned when a delegate token or an access granted through a delegation tries to
+  accept, update or request a CMC consent on the controlled account). `pryv` typings:
+  `AccessInfo.delegation`.
+- Button messages `LOGOUT_ALL`, `MANAGE_ACCOUNT_OF`, `USE_FOR`, `ME`, `VIA`,
+  `ACTING_AS`, `SWITCH_BACK`, `SWITCHING`, `OTHER_ACCOUNT`, `UNAVAILABLE` (`en`, `fr`).
 
 - `AuthController.signOut()`, `openAccountApp()` and `accountUrl()`; optional
   `showMenu()` on custom buttons; `ServiceInfo.account` and
@@ -32,6 +65,14 @@
 - A cancelled logout no longer leaves the sign-in button inert until a page reload
   (the controller stayed in `SIGNOUT`). The service's button stylesheet is added to
   the page once, not again on every re-initialization.
+- An auth request replaced by a newer one, a log out or a re-initialization no
+  longer changes the state when its poll answers later.
+- The account menu no longer closes when a text selection started inside it ends
+  outside it. A failed re-initialization after a dismissed "Log out?" no longer
+  leaves an unhandled promise rejection.
+- The in-browser test page declares UTF-8 (a non-ASCII passphrase in the encryption
+  test vectors was decoded wrongly), and now also runs the `@pryv/cmc`,
+  `@pryv/delegation`, sign-in button, cookie and message suites.
 
 ## 3.12.1 — 2026-09-18
 

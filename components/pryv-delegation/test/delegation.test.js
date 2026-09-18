@@ -61,6 +61,7 @@ describe('[DELX] @pryv/delegation Level-0 surface', function () {
     it('[DELXEA] is frozen + mirrors the server delegation-* ids', function () {
       expect(errorIds).to.be.frozen;
       expect(errorIds.GENUINE_LOGIN_REQUIRED).to.equal('delegation-genuine-login-required');
+      expect(errorIds.GRANT_REQUIRES_OWNER).to.equal('delegation-grant-requires-owner');
       expect(errorIds.NOT_ACTIVE).to.equal('delegation-not-active');
       expect(errorIds.ALREADY_EXISTS).to.equal('delegation-already-exists');
       expect(errorIds.USERNAME_TAKEN).to.equal('delegation-username-taken');

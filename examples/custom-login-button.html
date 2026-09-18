@@ -101,6 +101,10 @@
           // Emitted once the user confirmed in showMenu() below; the
           // controller clears the credentials itself.
           break;
+        case pryv.Auth.AuthStates.SWITCHING:
+          // An account switch (auth.switchTo(), auth.addAccount()) is running.
+          this.text = 'Switching...';
+          break;
         case pryv.Auth.AuthStates.ERROR:
           this.text = getErrorMessage(this, state.message);
           break;

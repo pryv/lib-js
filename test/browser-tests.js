@@ -22,6 +22,18 @@ describe('pryv', function () {
   require('pryv/test/ServiceAssets.test.js');
   require('pryv/test/Browser.test.js');
   require('pryv/test/Browser.AuthController.test.js');
+  require('pryv/test/CookieUtils.test.js');
+  require('pryv/test/LoginMessages.test.js');
+  require('pryv/test/ProfileStore.test.js');
+  require('pryv/test/LoginButton.test.js');
+});
+
+describe('@pryv/cmc', function () {
+  require('../components/pryv-cmc/test/cmc.test.js');
+});
+
+describe('@pryv/delegation', function () {
+  require('../components/pryv-delegation/test/delegation.test.js');
 });
 
 describe('@pryv/socket.io', function () {

@@ -76,7 +76,14 @@ const errorIds = Object.freeze({
   UNKNOWN_CORE: 'delegation-unknown-core',
   CREATION_FAILED: 'delegation-creation-failed',
   PERSONAL_TOKEN_REQUIRED: 'delegation-personal-token-required',
-  MIRROR_NOT_STALE: 'delegation-mirror-not-stale'
+  MIRROR_NOT_STALE: 'delegation-mirror-not-stale',
+  /**
+   * A delegate token, or an access granted through the delegation, tried to
+   * create a durable grant on the controlled account through a path that
+   * records no delegation lineage (CMC consent accept / scope update /
+   * request). Only the account owner can.
+   */
+  GRANT_REQUIRES_OWNER: 'delegation-grant-requires-owner'
 });
 
 const DELEGATION_ID_VALUES = new Set(Object.values(errorIds));

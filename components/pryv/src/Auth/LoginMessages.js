@@ -43,6 +43,46 @@ const Messages = {
   CANCEL: {
     en: 'Cancel',
     fr: 'Annuler'
+  },
+  LOGOUT_ALL: {
+    en: 'Log out of all accounts',
+    fr: 'Se déconnecter de tous les comptes'
+  },
+  MANAGE_ACCOUNT_OF: {
+    en: 'Manage {username}\'s account',
+    fr: 'Gérer le compte de {username}'
+  },
+  USE_FOR: {
+    en: 'Use this app for',
+    fr: 'Utiliser cette app pour'
+  },
+  ME: {
+    en: 'me',
+    fr: 'moi'
+  },
+  VIA: {
+    en: 'via',
+    fr: 'via'
+  },
+  ACTING_AS: {
+    en: 'acting as',
+    fr: 'pour le compte'
+  },
+  SWITCH_BACK: {
+    en: 'Switch back to {username}',
+    fr: 'Revenir à {username}'
+  },
+  SWITCHING: {
+    en: 'Switching...',
+    fr: 'Changement...'
+  },
+  OTHER_ACCOUNT: {
+    en: 'Another account...',
+    fr: 'Un autre compte...'
+  },
+  UNAVAILABLE: {
+    en: 'no longer available',
+    fr: 'plus disponible'
   }
 };
 

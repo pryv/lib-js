@@ -594,9 +594,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     it('[CMCL1RC] revokeRelationship({inviteEventId}) resolves backChannelAccessId via inbox lookup', async function () {
       // Doctor-side convenience path: the SDK looks up the inbox accept
       // event matching the original inviteEventId, reads the back-channel
-      // accessId stamped by the plugin (post-PR-72 + Phase 1.1 of Plan
-      // 68 atwork — handleIncomingAccept now stamps `inviteEventId` on
-      // the inbox-mirror from the capability access's
+      // accessId stamped by the plugin (handleIncomingAccept stamps
+      // `inviteEventId` on the inbox mirror from the capability access's
       // `clientData.cmc.requestEventId`). Then issues the revoke.
       //
       // Contract: the lookup matches when the inbox event content carries
@@ -1470,6 +1469,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
 
     it('[CMCAH5] requestAccept resolves with the postMessage payload', async function () {
+      // stubs `window`, which a real browser does not let a test replace
+      if (typeof document !== 'undefined') return this.skip();
       // Stub a minimal browser environment.
       const listeners = [];
       const fakePopup = { closed: false, close: function () { this.closed = true; } };
@@ -1509,6 +1510,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
 
     it('[CMCAH6] requestAccept rejects with CmcError on popup-closed', async function () {
+      // stubs `window`, which a real browser does not let a test replace
+      if (typeof document !== 'undefined') return this.skip();
       const fakePopup = { closed: false, close: function () { this.closed = true; } };
       const fakeWindow = {
         open: function () { return fakePopup; },
@@ -1537,6 +1540,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
 
     it('[CMCAH7] requestAccept rejects with cmc-accept-popup-blocked when window.open returns null', async function () {
+      // stubs `window`, which a real browser does not let a test replace
+      if (typeof document !== 'undefined') return this.skip();
       const fakeWindow = {
         open: function () { return null; },
         addEventListener: function () {},
@@ -1563,6 +1568,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
 
     it('[CMCAH8] requestAccept in redirect mode calls window.location.assign and resolves immediately', async function () {
+      // stubs `window`, which a real browser does not let a test replace
+      if (typeof document !== 'undefined') return this.skip();
       const assigned = [];
       const fakeWindow = {
         open: function () { return { closed: false, close: function () {} }; },
@@ -1630,6 +1637,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
 
     it('[CMCSUH4] requestScopeUpdate resolves with the postMessage payload', async function () {
+      // stubs `window`, which a real browser does not let a test replace
+      if (typeof document !== 'undefined') return this.skip();
       const listeners = [];
       const fakePopup = { closed: false, close: function () { this.closed = true; } };
       const fakeWindow = {
@@ -1667,6 +1676,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
 
     it('[CMCSUH5] requestScopeUpdate rejects on popup-blocked', async function () {
+      // stubs `window`, which a real browser does not let a test replace
+      if (typeof document !== 'undefined') return this.skip();
       const fakeWindow = {
         open: function () { return null; },
         addEventListener: function () {},
@@ -1692,6 +1703,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
 
     it('[CMCSUH6] requestScopeUpdate redirect mode calls location.assign', async function () {
+      // stubs `window`, which a real browser does not let a test replace
+      if (typeof document !== 'undefined') return this.skip();
       const assigned = [];
       const fakeWindow = {
         open: function () { return { closed: false, close: function () {} }; },

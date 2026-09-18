@@ -26,7 +26,8 @@ declare module '@pryv/delegation' {
     | 'delegation-unknown-core'
     | 'delegation-creation-failed'
     | 'delegation-personal-token-required'
-    | 'delegation-mirror-not-stale';
+    | 'delegation-mirror-not-stale'
+    | 'delegation-grant-requires-owner';
 
   export const errorIds: {
     readonly CLIENTDATA_FORBIDDEN: 'delegation-clientdata-forbidden';
@@ -46,6 +47,7 @@ declare module '@pryv/delegation' {
     readonly CREATION_FAILED: 'delegation-creation-failed';
     readonly PERSONAL_TOKEN_REQUIRED: 'delegation-personal-token-required';
     readonly MIRROR_NOT_STALE: 'delegation-mirror-not-stale';
+    readonly GRANT_REQUIRES_OWNER: 'delegation-grant-requires-owner';
   };
 
   /** Typed delegation failure surfaced by {@link Delegation} methods. */
