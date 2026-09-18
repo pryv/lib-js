@@ -59,6 +59,20 @@ describe('[ACNX] AuthController', function () {
         authRequest: { requestingAppId: 'test-app' }
       }, service)).to.throw('Missing settings.authRequest.requestedPermissions');
     });
+
+    it('[ACVE] defaults the request to shared-secret credential hand-off', function () {
+      const settings = { authRequest: { requestingAppId: 'test-app', requestedPermissions: [] } };
+      // eslint-disable-next-line no-new
+      new AuthController(settings, service);
+      expect(settings.authRequest.credentialHandoff).to.equal('shared-secret');
+    });
+
+    it('[ACVF] credentialHandoff:\'inline\' opts out and sends no field', function () {
+      const settings = { authRequest: { requestingAppId: 'test-app', requestedPermissions: [], credentialHandoff: 'inline' } };
+      // eslint-disable-next-line no-new
+      new AuthController(settings, service);
+      expect(settings.authRequest).to.not.have.property('credentialHandoff');
+    });
   });
 
   describe('[ACLX] Listeners', function () {

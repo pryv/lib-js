@@ -1002,7 +1002,10 @@ declare module 'pryv' {
       serviceInfo?: ServiceInfo;
       apiEndpoint: string;
       username: string;
+      /** Present on inline delivery; absent when a one-time `handoff` key is used. */
       token?: string;
+      /** One-time credential hand-off key (shared-secret delivery), in place of `token`. */
+      handoff?: { type: 'shared-secret'; key: string };
     };
     SIGNOUT: {};
     REFUSED: {
@@ -1070,6 +1073,13 @@ declare module 'pryv' {
       clientData?: KeyValue;
       deviceName?: string;
       expireAfter?: number;
+      /**
+       * Credential delivery mode. Defaults to `'shared-secret'`: the token is
+       * delivered through a one-time secret instead of the ACCEPTED poll, and
+       * `connectFromKey` redeems it. `'inline'` opts out (no field sent, legacy
+       * inline delivery). An older core ignores the field and delivers inline.
+       */
+      credentialHandoff?: 'shared-secret' | 'inline';
       serviceInfo?: Partial<ServiceInfo>;
     };
   };

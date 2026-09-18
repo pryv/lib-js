@@ -5,6 +5,7 @@
 const utils = require('../utils');
 const AuthStates = require('./AuthStates');
 const Messages = require('./LoginMessages');
+const handoff = require('../lib/handoff');
 
 /**
  * Controller for authentication flow
@@ -54,6 +55,18 @@ class AuthController {
       }
       if (!settings.authRequest.requestedPermissions) {
         throw new Error('Missing settings.authRequest.requestedPermissions');
+      }
+
+      // Delivery mode. Default to the one-time shared-secret hand-off so the
+      // token is never returned in the poll: a new core echoes
+      // `credentialHandoff` and delivers a `handoff` key (redeemed once here),
+      // an older core drops the field and falls back to inline delivery.
+      // Opt out with `authRequest.credentialHandoff = 'inline'`, which sends no
+      // field at all, so the request is byte-identical to the legacy one.
+      if (settings.authRequest.credentialHandoff === 'inline') {
+        delete settings.authRequest.credentialHandoff;
+      } else if (settings.authRequest.credentialHandoff == null) {
+        settings.authRequest.credentialHandoff = 'shared-secret';
       }
     }
   }
@@ -149,6 +162,8 @@ class AuthController {
     } finally {
       this._signingOut = false;
     }
+    // Drop any cached hand-off credential for this flow's key.
+    handoff.cacheClear(this._authFlowKey);
     if (this.loginButton != null && typeof this.loginButton.deleteAuthorizationData === 'function') {
       await this.loginButton.deleteAuthorizationData();
     }
@@ -277,6 +292,23 @@ class AuthController {
         // @ts-ignore - this is bound via .call()
         setTimeout(await doPolling.bind(this), this.state?.poll_rate_ms);
       } else {
+        // Shared-secret delivery: the ACCEPTED body carries a one-time
+        // `handoff` key, not the token. Redeem it once here (caching under the
+        // poll key so a later connectFromKey reuses it) and rewrite the body to
+        // the legacy shape, so the cookie / LoginButton path and the external
+        // listener filter are untouched.
+        if (handoff.isHandoffBody(pollResponse)) {
+          try {
+            const entry = await handoff.resolveHandoff(pollResponse, this._authFlowKey);
+            pollResponse.apiEndpoint = entry.apiEndpoint;
+            pollResponse.token = entry.token;
+            pollResponse.username = entry.username;
+            delete pollResponse.handoff;
+          } catch (e) {
+            this.state = { status: AuthStates.ERROR, message: 'Credential hand-off failed', error: e };
+            return;
+          }
+        }
         // Carry the key forward — listeners on the narrow public surface
         // need it, and the server doesn't echo it back on ACCEPTED.
         if (this._authFlowKey != null && pollResponse.key == null) {
