@@ -9,6 +9,12 @@
 - `just build` on a clean `dist/` no longer fails: the browser test bundle, which copies
   `dist/pryv.js`, now waits for the ES5 build that emits it. `connectFromKey` documentation
   describes the server retention window of a decided access request.
+- `LoginButton`: confirming a sign-out now waits for the controller to re-initialise before
+  the state handler returns. The re-init used to run in the background; after loading the
+  service assets it resumed and consumed whatever poll URL the page showed by then, so it
+  could race a sign-in in progress (and made a test fail intermittently on CI).
+- `just test <component> --grep "A|B"`: parameters reach mocha verbatim instead of being
+  split by the shell.
 
 ## 3.12.0 — 2026-09-17
 

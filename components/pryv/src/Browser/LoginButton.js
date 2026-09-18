@@ -74,8 +74,11 @@ class LoginButton {
       case AuthStates.SIGNOUT: {
         const message = this.messages.SIGNOUT_CONFIRM ? this.messages.SIGNOUT_CONFIRM : 'Logout ?';
         if (confirm(message)) {
-          this.deleteAuthorizationData();
-          this.auth.init();
+          // Awaited: a re-init left running in the background resumes later
+          // (after loading assets) and consumes whatever poll URL the page shows
+          // by then, racing any other sign-in in progress.
+          await this.deleteAuthorizationData();
+          await this.auth.init();
         }
         break;
       }

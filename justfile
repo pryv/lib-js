@@ -51,20 +51,33 @@ lint-fix *params:
 typecheck:
     npx tsc --noEmit -p tsconfig.json
 
-# Run tests on the given component ('all' for all components) with optional extra parameters
+# Run tests on the given component ('all' for all components) with optional extra parameters.
+# Positional-arguments + "$@" so params reach mocha verbatim: an unquoted {{params}}
+# hands shell metacharacters in e.g. --grep "A|B" to the shell (a pipe) instead of mocha.
+[positional-arguments]
 test component *params:
-    NODE_ENV=test COMPONENT={{component}} components-run \
-        npx mocha -- {{params}}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    shift
+    NODE_ENV=test COMPONENT={{component}} components-run npx mocha -- "$@"
 
 # Run tests for debugging
+[positional-arguments]
 test-debug component *params:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    shift
     NODE_ENV=test COMPONENT={{component}} components-run \
-        npx mocha -- --timeout 3600000 --inspect-brk=40000 {{params}}
+        npx mocha -- --timeout 3600000 --inspect-brk=40000 "$@"
 
 # Run tests and generate coverage report
+[positional-arguments]
 test-cover component *params:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    shift
     NODE_ENV=test COMPONENT={{component}} c8 --reporter=lcov --reporter=text --reports-dir=./coverage \
-        components-run npx mocha -- {{params}}
+        components-run npx mocha -- "$@"
 
 # Run tests for ci
 test-cover-ci:
