@@ -52,7 +52,17 @@
   `AccessInfo.delegation`.
 - Button messages `LOGOUT_ALL`, `MANAGE_ACCOUNT_OF`, `USE_FOR`, `ME`, `VIA`,
   `ACTING_AS`, `SWITCH_BACK`, `SWITCHING`, `OTHER_ACCOUNT`, `UNAVAILABLE` (`en`, `fr`).
-
+- **Credential hand-off by one-time shared secret.** The auth-request flow now
+  requests `credentialHandoff: 'shared-secret'` by default: the token is
+  delivered through a one-time secret on the user's core instead of being
+  returned in the ACCEPTED poll. `connectFromKey` transparently redeems it
+  (caching the result keyed by the poll key, so it is safe to call more than
+  once), and the `LoginButton` / cookie autologin path is unchanged (the
+  controller redeems the secret and stores the usual `apiEndpoint`). Opt out
+  with `authRequest.credentialHandoff: 'inline'`; an older core ignores the
+  field and delivers inline. A hand-off retrieve that finds the secret already
+  consumed throws a `PryvError` (id `credential-handoff-failed`) — restart the
+  auth request.
 - `AuthController.signOut()`, `openAccountApp()` and `accountUrl()`; optional
   `showMenu()` on custom buttons; `ServiceInfo.account` and
   `ServiceInfo.features.delegation` typings.
