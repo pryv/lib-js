@@ -612,6 +612,7 @@ describe('[LBTX] LoginButton', function () {
       await loginBtn.auth.switchTo(null);
       await settle();
       expect(probed).to.equal(0);
+      expect(posted).to.have.lengthOf(1);
       expect(posted[0].actAs).to.equal('deny');
       expect(loginBtn.auth.currentProfile().username).to.equal(PARENT);
     });
@@ -645,6 +646,24 @@ describe('[LBTX] LoginButton', function () {
       answer({ response: { status: 200 }, body: { status: 'ACCEPTED', username: KIM, apiEndpoint: 'https://tok2@kim.example.com/' } });
       await switching;
       await settle();
+      expect(loginBtn.auth.state.status).to.equal(AuthStates.INITIALIZED);
+      const stored = loginBtn.getAuthorizationData();
+      expect(stored == null || stored.deleted === true || stored.username == null).to.equal(true);
+    });
+
+    it('[LBPN] a log out during the access check of a switch ends the switch', async function () {
+      const { loginBtn } = await button(null, {
+        username: PARENT,
+        apiEndpoint: 'https://tok1@parent.example.com/',
+        profiles: [{ username: KIM, apiEndpoint: 'https://tok2@kim.example.com/', actingAs: { username: KIM, delegate: PARENT } }]
+      });
+      let answer;
+      loginBtn.auth._accessInfo = () => new Promise((resolve) => { answer = resolve; });
+      const switching = loginBtn.auth.switchTo(KIM);
+      await settle();
+      await loginBtn.auth.signOut({ all: true });
+      answer({ user: { username: KIM } });
+      await switching;
       expect(loginBtn.auth.state.status).to.equal(AuthStates.INITIALIZED);
       const stored = loginBtn.getAuthorizationData();
       expect(stored == null || stored.deleted === true || stored.username == null).to.equal(true);

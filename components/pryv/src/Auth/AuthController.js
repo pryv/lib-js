@@ -158,7 +158,8 @@ class AuthController {
     const all = options?.all === true;
     cancelAuthFlow(this);
     const store = this._readProfiles();
-    const current = this.state?.username;
+    // during a switch, the account being left
+    const current = this.state?.username ?? this.state?.from;
     this._signingOut = true;
     try {
       this.state = { status: AuthStates.SIGNOUT };
@@ -226,6 +227,9 @@ class AuthController {
     }
     const toUsername = target?.username ?? username ?? null;
     const previous = restorableState(this.state);
+    // a log out or re-initialization during the access check ends this switch
+    cancelAuthFlow(this);
+    const flowId = this._authFlowId;
     this.state = { status: AuthStates.SWITCHING, from: current?.username ?? null, to: toUsername };
 
     if (target != null && target.unavailable !== true) {
@@ -233,10 +237,12 @@ class AuthController {
       try {
         info = await this._accessInfo(target.apiEndpoint);
       } catch (e) {
+        if (this._authFlowId !== flowId) throw e;
         // network failure: stay on the previous account
         this.state = previous ?? { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
         throw e;
       }
+      if (this._authFlowId !== flowId) return;
       if (info != null && info.error == null) {
         const profile = profileFromAccessInfo(target, info);
         this.state = { status: AuthStates.AUTHORIZED, username: profile.username, apiEndpoint: profile.apiEndpoint, profile };
