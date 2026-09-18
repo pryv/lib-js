@@ -39,6 +39,7 @@ describe('[LBTX] LoginButton', function () {
     delete global.document;
     delete global.window;
     delete global.location;
+    delete global.navigator;
     delete global.confirm;
   });
 

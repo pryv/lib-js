@@ -253,11 +253,12 @@ class AuthController {
     this._state = newState;
 
     // Dispatch the state that was just set (`newState`), NOT the live `this.state`
-    // getter: a listener that synchronously changes the state mid-dispatch (e.g.
-    // the LoginButton's logout confirm re-initializing to INITIALIZED) would
-    // otherwise overwrite `this._state`, so later listeners in this loop would
-    // receive the wrong state (a logout would deliver INITIALIZED instead of
-    // SIGNOUT to the app's onStateChange).
+    // getter: a listener that synchronously changes the state mid-dispatch (e.g. a
+    // custom listener re-initializing to INITIALIZED on SIGNOUT; the LoginButton's
+    // own re-init now starts a microtask later) would otherwise overwrite
+    // `this._state`, so later listeners in this loop would receive the wrong state
+    // (a logout would deliver INITIALIZED instead of SIGNOUT to the app's
+    // onStateChange).
     this.stateChangeListeners.forEach((listener) => {
       try {
         listener(newState);

@@ -112,9 +112,10 @@ describe('[AUTX] Browser.LoginButton', function () {
       const seen = [];
       const a = makeAuth((s) => seen.push(s.status));
       await a.init();
-      // Mimic LoginButton (registered after the external app listener): on
-      // SIGNOUT it confirms + re-initializes, synchronously driving the state
-      // to INITIALIZED during the same dispatch.
+      // Worst case of a LoginButton-like listener (registered after the external
+      // app listener): on SIGNOUT it re-initializes synchronously, driving the
+      // state to INITIALIZED during the same dispatch. (The real LoginButton
+      // awaits its re-init, which starts a microtask later.)
       a.stateChangeListeners.push((s) => {
         if (s.status === AuthStates.SIGNOUT) a.state = { status: AuthStates.INITIALIZED, serviceInfo: {} };
       });
