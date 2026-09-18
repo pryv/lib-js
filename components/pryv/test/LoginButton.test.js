@@ -39,6 +39,7 @@ describe('[LBTX] LoginButton', function () {
     delete global.document;
     delete global.window;
     delete global.location;
+    delete global.navigator;
     delete global.confirm;
   });
 
@@ -172,6 +173,23 @@ describe('[LBTX] LoginButton', function () {
       loginBtn.saveAuthorizationData({ test: 'data' });
       await loginBtn.onStateChange({ status: AuthStates.SIGNOUT });
       // Confirm is mocked to return true
+    });
+
+    it('[LBSG] SIGNOUT waits for the re-init to finish (none left running in the background)', async function () {
+      // A re-init that outlives onStateChange resumes later and consumes
+      // whatever poll URL the page shows by then (it raced [LBRU] on CI).
+      const originalInit = loginBtn.auth.init;
+      let reinitDone = false;
+      loginBtn.auth.init = async function () {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        reinitDone = true;
+      };
+      try {
+        await loginBtn.onStateChange({ status: AuthStates.SIGNOUT });
+        expect(reinitDone).to.equal(true);
+      } finally {
+        loginBtn.auth.init = originalInit;
+      }
     });
 
     it('[LBSF] handles unknown state gracefully', async function () {
