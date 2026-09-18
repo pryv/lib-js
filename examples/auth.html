@@ -22,6 +22,10 @@
   <script>
     const authSettings = {
       spanButtonID: 'pryv-button', // span id the DOM that will be replaced by the Service specific button
+      // optional: clicking the signed-in button opens an account menu ("Manage my account", "Log out").
+      // menu: false, // plain logout confirmation instead
+      // menu: { hide: ['account'] }, // hide entries: 'logout', 'account', 'info'
+      // accountUrl: 'https://account.example.com', // account app root, when the service does not name one
       onStateChange: function authStateChanged(state) { // called each time the authentication state changed
         switch(state.id) {
           case pryv.Auth.AuthStates.LOADING:

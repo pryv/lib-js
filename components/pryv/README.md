@@ -603,7 +603,7 @@ The [authentication process](https://api.pryv.com/reference/#authenticate-your-a
 2. `INITIALIZED`: visuals assets are loaded, or when [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Refused**
 3. `NEED_SIGNIN`: from the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
 4. `AUTHORIZED`: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
-5. `SIGNOUT`: when the user triggers a deletion of the client-side authorization credentials, usually by clicking the button after being signed in
+5. `SIGNOUT`: with the account menu, when the user confirms "Log out", just before the client-side authorization credentials are deleted. With `menu: false`, on the click itself, before the "Log out?" question: if the user cancels, the controller re-initializes from the stored credentials (`LOADING` then `AUTHORIZED`)
 6. `ERROR`: see message for more information
 
 You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only have `status`. The `ERROR` state carries a `message` property.
@@ -634,11 +634,8 @@ async onStateChange (state) {
       });
       break;
     case AuthStates.SIGNOUT:
-      const message = this.messages.SIGNOUT_CONFIRM ? this.messages.SIGNOUT_CONFIRM : 'Logout ?';
-      if (confirm(message)) {
-        this.deleteAuthorizationData();
-        this.auth.init();
-      }
+      // Emitted by auth.signOut() after the user confirmed in showMenu()
+      // (below); the controller clears the credentials itself.
       break;
     case AuthStates.ERROR:
       this.text = getErrorMessage(this, state.message);
@@ -661,12 +658,22 @@ The button actions should be handled by the [AuthController](src/Auth/AuthContro
 onClick () {
   this.auth.handleClick();
 }
+
+// Optional: called on a click once signed in. Ask in your own dialog (never
+// window.confirm), then log out through the controller. Return false to get
+// the SIGNOUT state on the click instead.
+showMenu () {
+  myDialog.open({ onLogout: () => this.auth.signOut() });
+  return true;
+}
 ```
 
 ```js
 // AuthController.js
 async handleClick () {
   if (isAuthorized.call(this)) {
+    // a button implementing showMenu() opens its menu (logout through auth.signOut())
+    if (typeof this.loginButton?.showMenu === 'function' && this.loginButton.showMenu() !== false) return;
     this.state = { status: AuthStates.SIGNOUT };
   } else if (isInitialized.call(this)) {
     this.startAuthRequest();
@@ -678,6 +685,17 @@ async handleClick () {
   }
 }
 ```
+
+##### Account menu
+
+Clicking the default button once signed in opens a small account menu: the signed-in username, the service and the app id, **Manage my account** (opens the platform's account app in a new tab) and **Log out**. `SIGNOUT` is emitted once, when "Log out" is chosen.
+
+- `authSettings.menu: false` restores the previous flow: `SIGNOUT` on click, then a plain "Log out?" confirmation (a built-in dialog, no longer `window.confirm()`).
+- `authSettings.menu: { hide: ['account', 'info'] }` (or `{ account: false }`) hides entries: `'logout'`, `'account'`, `'info'`.
+- `authSettings.accountUrl` sets the account app root. Otherwise it is the service's `account` (`service/info`), then the auth page URL of the last sign-in without its trailing `/auth`; when none is known, "Manage my account" is not shown.
+- The menu uses the `.pryv-menu*` CSS classes, which a service's button stylesheet can override; its texts come from the button messages (`MENU_TITLE`, `LOGOUT`, `MANAGE_ACCOUNT`, `APP`, `CLOSE`).
+
+The controller exposes the same actions: `auth.signOut()`, `auth.openAccountApp()` and `auth.accountUrl()`. A custom button may implement `showMenu()` to show its own menu (return `false` to fall back to `SIGNOUT`).
 
 ##### Custom button usage
 

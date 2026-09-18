@@ -4,6 +4,35 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **The signed-in sign-in button opens an account menu instead of a logout
+  confirmation.** It shows the signed-in username, the service and the app id,
+  **Manage my account** (opens the platform's account app in a new tab) and **Log
+  out**. `SIGNOUT` is now emitted when "Log out" is chosen, no longer on the click
+  itself. Set `authSettings.menu: false` to keep the previous flow (SIGNOUT on
+  click, then a "Log out?" question, now asked in a built-in dialog: the button
+  no longer calls `window.confirm()`; cancelling it re-initializes the controller
+  from the stored credentials, so listeners see `LOADING` then `AUTHORIZED`);
+  `authSettings.menu.hide` hides entries. The account app URL comes from
+  `authSettings.accountUrl`, the service's `account`, or the auth page URL of the
+  sign-in (kept with the stored credentials as `authUrl`, so it survives a reload).
+
+### Added
+
+- `AuthController.signOut()`, `openAccountApp()` and `accountUrl()`; optional
+  `showMenu()` on custom buttons; `ServiceInfo.account` and
+  `ServiceInfo.features.delegation` typings.
+- Button messages `MENU_TITLE`, `LOGOUT`, `MANAGE_ACCOUNT`, `APP`, `CLOSE`, `CANCEL`
+  (`en`, `fr`). A service's message definitions now override the defaults key by key, so
+  keys it does not define keep their default text.
+
+### Fixed
+
+- A cancelled logout no longer leaves the sign-in button inert until a page reload
+  (the controller stayed in `SIGNOUT`). The service's button stylesheet is added to
+  the page once, not again on every re-initialization.
+
 ## 3.12.1 — 2026-09-18
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`

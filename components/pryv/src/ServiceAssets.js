@@ -132,6 +132,9 @@ class ServiceAssets {
 module.exports = ServiceAssets;
 
 function loadCSS (url) {
+  // Once per page: the controller re-initializes (and reloads assets) on
+  // logout and on a cancelled logout.
+  if (document.getElementById(url) != null) return;
   const head = document.getElementsByTagName('head')[0];
   const link = document.createElement('link');
   link.id = url;

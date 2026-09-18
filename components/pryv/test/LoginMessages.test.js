@@ -45,4 +45,12 @@ describe('[MSGX] LoginMessages', function () {
     const msgs = Messages('fr', customDefs);
     expect(msgs.TEST).to.equal('English only');
   });
+
+  it('[MSGF] keys a service does not define keep their default text', function () {
+    // a service's message asset written before the account menu existed
+    const msgs = Messages('fr', { LOADING: { en: 'Loading...' } });
+    expect(msgs.LOADING).to.equal('Loading...');
+    expect(msgs.LOGOUT).to.equal('Se déconnecter');
+    expect(msgs.MANAGE_ACCOUNT).to.equal('Gérer mon compte');
+  });
 });
