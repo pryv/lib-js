@@ -243,7 +243,7 @@ Only `@pryv/cmc` is released; `pryv`, `@pryv/socket.io` and `@pryv/monitor` are 
   - Requires a Pryv.io core that applies approved scope requests (see the
     open-pryv.io changelog, issue #136).
 
-## 3.13.0 — 2026-09-15
+## @pryv/cmc 3.13.0 — 2026-09-15
 
 `@pryv/cmc@3.12.0` was published from a tree that did not yet carry the code the
 bump was for: its tarball has none of the API below. It cannot be republished, so
