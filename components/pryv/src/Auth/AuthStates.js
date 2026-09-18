@@ -4,7 +4,8 @@
  */
 /**
  * The possible auth states:
- * ERROR, LOADING, INITIALIZED, NEED_SIGNIN, AUTHORIZED, SIGNOUT, REFUSED
+ * ERROR, LOADING, INITIALIZED, NEED_SIGNIN, AUTHORIZED, SIGNOUT, REFUSED,
+ * SWITCHING (an account switch is running)
  * @readonly
  * @enum {string}
  * @memberof pryv.Browser
@@ -16,5 +17,6 @@ module.exports = {
   NEED_SIGNIN: 'NEED_SIGNIN',
   AUTHORIZED: 'ACCEPTED',
   SIGNOUT: 'SIGNOUT',
-  REFUSED: 'REFUSED'
+  REFUSED: 'REFUSED',
+  SWITCHING: 'SWITCHING'
 };

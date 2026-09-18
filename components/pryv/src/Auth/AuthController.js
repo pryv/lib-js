@@ -5,6 +5,7 @@
 const utils = require('../utils');
 const AuthStates = require('./AuthStates');
 const Messages = require('./LoginMessages');
+const ProfileStore = require('./ProfileStore');
 
 /**
  * Controller for authentication flow
@@ -119,6 +120,8 @@ class AuthController {
       this.state = { status: AuthStates.SIGNOUT };
     } else if (isInitialized.call(this)) {
       this.startAuthRequest();
+    } else if (this.state.status === AuthStates.SWITCHING) {
+      // a switch is running; its outcome arrives as a state change
     } else if (isNeedSignIn.call(this)) {
       // reopen popup (HACK for now: set to private property to avoid self-assignment)
       this.state = this._state;
@@ -138,21 +141,133 @@ class AuthController {
   }
 
   /**
-   * Log out: emit SIGNOUT once, forget the stored credentials and return to
-   * INITIALIZED. This is the confirmed logout (no further confirmation).
+   * Log out: emit SIGNOUT once, forget the active account and return to
+   * INITIALIZED. The other remembered accounts are kept (`all` forgets them
+   * too). This is the confirmed logout (no further confirmation).
+   * @param {Object} [options]
+   * @param {boolean} [options.all] - forget every remembered account
    * @returns {Promise<void>}
    */
-  async signOut () {
+  async signOut (options) {
+    const all = options?.all === true;
+    const store = this._readProfiles();
+    const current = this.state?.username;
     this._signingOut = true;
     try {
       this.state = { status: AuthStates.SIGNOUT };
     } finally {
       this._signingOut = false;
     }
-    if (this.loginButton != null && typeof this.loginButton.deleteAuthorizationData === 'function') {
-      await this.loginButton.deleteAuthorizationData();
+    const others = current == null ? store.profiles : ProfileStore.remove(store, current).profiles;
+    const loginButton = this.loginButton;
+    if (!all && others.length > 0 && loginButton != null && typeof loginButton.saveAuthorizationData === 'function') {
+      loginButton.saveAuthorizationData(ProfileStore.write(Object.assign({}, store, { active: null, profiles: others })));
+    } else if (loginButton != null && typeof loginButton.deleteAuthorizationData === 'function') {
+      await loginButton.deleteAuthorizationData();
     }
     await this.init();
+  }
+
+  /**
+   * The accounts remembered for this app, most recently used first.
+   * @returns {Array<{username: string, actingAs?: {username: string, delegate: string}, active: boolean, available: boolean}>}
+   */
+  profiles () {
+    const current = this.currentProfile();
+    return this._readProfiles().profiles.map((p) => {
+      const out = { username: p.username, active: current != null && current.username === p.username, available: p.unavailable !== true };
+      if (p.actingAs != null) out.actingAs = p.actingAs;
+      return out;
+    });
+  }
+
+  /**
+   * The signed-in account, or null.
+   * @returns {{username: string, actingAs?: {username: string, delegate: string}}|null}
+   */
+  currentProfile () {
+    if (this.state?.status !== AuthStates.AUTHORIZED || this.state.profile == null) return null;
+    const out = { username: this.state.profile.username };
+    if (this.state.profile.actingAs != null) out.actingAs = this.state.profile.actingAs;
+    return out;
+  }
+
+  /**
+   * Switch to another account. `username` null means the signed-in person's
+   * own account (switch back). A remembered account whose access is still
+   * valid is activated without a sign-in; otherwise the auth request runs
+   * again, asking for that account (`actAs`). Emits SWITCHING first; ends in
+   * AUTHORIZED, or back on the previous account when the sign-in is refused.
+   * @param {string|null} username
+   * @returns {Promise<void>}
+   */
+  async switchTo (username) {
+    const store = this._readProfiles();
+    const current = this.currentProfile();
+    let target;
+    if (username == null) {
+      if (current != null && current.actingAs == null) return;
+      const delegate = current?.actingAs?.delegate;
+      target = store.profiles.find((p) => delegate != null && p.username === delegate && p.actingAs == null) ||
+        store.profiles.find((p) => p.actingAs == null);
+    } else {
+      if (current != null && current.username === username) return;
+      target = store.profiles.find((p) => p.username === username);
+    }
+    const toUsername = target?.username ?? username ?? null;
+    const previous = this.state?.status === AuthStates.AUTHORIZED ? this.state : null;
+    this.state = { status: AuthStates.SWITCHING, from: current?.username ?? null, to: toUsername };
+
+    if (target != null && target.unavailable !== true) {
+      let info;
+      try {
+        info = await accessInfoOf(target.apiEndpoint);
+      } catch (e) {
+        // network failure: stay on the previous account
+        this.state = previous ?? { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
+        throw e;
+      }
+      if (info != null && info.error == null) {
+        const profile = profileFromAccessInfo(target, info);
+        this.state = { status: AuthStates.AUTHORIZED, username: profile.username, apiEndpoint: profile.apiEndpoint, profile };
+        return;
+      }
+      // revoked or expired (a detach revokes the accesses granted through it)
+      this._saveProfiles(ProfileStore.markUnavailable(this._readProfiles(), target.username));
+    }
+    // own account: a sign-in that offers no other account; otherwise ask for that one
+    await this.startAuthRequest({ actAs: username == null ? 'deny' : username }, previous);
+  }
+
+  /**
+   * Sign in to one more account (the popup may offer the accounts the person
+   * can act for); the remembered accounts are kept.
+   * @returns {Promise<void>}
+   */
+  async addAccount () {
+    const current = this.currentProfile();
+    const previous = this.state?.status === AuthStates.AUTHORIZED ? this.state : null;
+    this.state = { status: AuthStates.SWITCHING, from: current?.username ?? null, to: null };
+    await this.startAuthRequest({ actAs: 'allow' }, previous);
+  }
+
+  /** @private */
+  _readProfiles () {
+    const loginButton = this.loginButton;
+    if (loginButton == null || typeof loginButton.getAuthorizationData !== 'function') return ProfileStore.read(null);
+    return ProfileStore.read(loginButton.getAuthorizationData());
+  }
+
+  /** @private */
+  _saveProfiles (store) {
+    const loginButton = this.loginButton;
+    if (loginButton == null || typeof loginButton.saveAuthorizationData !== 'function') return;
+    const data = ProfileStore.write(store);
+    if (data == null && typeof loginButton.deleteAuthorizationData === 'function') {
+      loginButton.deleteAuthorizationData();
+    } else if (data != null) {
+      loginButton.saveAuthorizationData(data);
+    }
   }
 
   /**
@@ -166,6 +281,7 @@ class AuthController {
     let base = this.settings.accountUrl || this.serviceInfo?.account || accountUrlFromAuthUrl(this._authUrl);
     if (typeof base !== 'string' || base === '') return null;
     base = base.replace(/\/+$/, '');
+    // @ts-ignore - Service keeps the URL it was created with
     const serviceInfoUrl = this.service?._serviceInfoUrl;
     return base + '/account/profile' +
       (serviceInfoUrl ? '?pryvServiceInfoUrl=' + encodeURIComponent(serviceInfoUrl) : '');
@@ -226,10 +342,14 @@ class AuthController {
 
   /**
    * Start the authentication request and polling process
+   * @param {Object} [overrides] - auth request fields for this request only (e.g. `actAs`)
+   * @param {Object} [previous] - AUTHORIZED state to return to when this
+   *   request (an account switch) does not end in AUTHORIZED
    * @returns {Promise<void>}
    * @see https://pryv.github.io/reference/#auth-request
    */
-  async startAuthRequest () {
+  async startAuthRequest (overrides, previous) {
+    this._switchPrevious = previous ?? null;
     // @ts-ignore - postAccess uses .call(this) for context
     this.state = await postAccess.call(this);
     // Remember the polling key so listeners on the terminal AUTHORIZED
@@ -248,14 +368,16 @@ class AuthController {
           // @ts-ignore - this is bound via .call()
           this.serviceInfo.access,
           // @ts-ignore - this is bound via .call()
-          this.settings.authRequest
+          Object.assign({}, this.settings.authRequest, overrides)
         );
         if (!response.ok) {
           throw new Error('Access request failed: ' + JSON.stringify(body));
         }
         return body;
       } catch (e) {
-        this.state = {
+        const previous = this._switchPrevious;
+        this._switchPrevious = null;
+        this.state = previous ?? {
           status: AuthStates.ERROR,
           message: 'Requesting access',
           error: e
@@ -281,6 +403,15 @@ class AuthController {
         // need it, and the server doesn't echo it back on ACCEPTED.
         if (this._authFlowKey != null && pollResponse.key == null) {
           pollResponse.key = this._authFlowKey;
+        }
+        const previous = this._switchPrevious;
+        this._switchPrevious = null;
+        if (pollResponse.status === AuthStates.AUTHORIZED) {
+          pollResponse.profile = ProfileStore.fromAccepted(pollResponse);
+        } else if (previous != null) {
+          // an account switch that did not complete: stay on the previous account
+          this.state = previous;
+          return;
         }
         this.state = pollResponse;
       }
@@ -384,10 +515,36 @@ async function checkAutoLogin (authController) {
   }
 
   const storedCredentials = await loginButton.getAuthorizationData();
-  if (storedCredentials != null) {
-    if (typeof storedCredentials.authUrl === 'string') authController._authUrl = storedCredentials.authUrl;
-    authController.state = Object.assign({}, { status: AuthStates.AUTHORIZED }, storedCredentials);
+  if (storedCredentials == null) return;
+  if (typeof storedCredentials.authUrl === 'string') authController._authUrl = storedCredentials.authUrl;
+  if (Array.isArray(storedCredentials.profiles)) {
+    // Several remembered accounts: sign in to the active one, if any
+    const store = ProfileStore.read(storedCredentials);
+    if (store.active == null) return;
+    const state = { status: AuthStates.AUTHORIZED, username: store.active.username, apiEndpoint: store.active.apiEndpoint, profile: store.active };
+    if (store.authUrl != null) state.authUrl = store.authUrl;
+    authController.state = state;
+    return;
   }
+  const state = Object.assign({}, { status: AuthStates.AUTHORIZED }, storedCredentials);
+  if (typeof state.username === 'string' && typeof state.apiEndpoint === 'string') state.profile = ProfileStore.profileOf(state);
+  authController.state = state;
+}
+
+/** A stored profile refreshed with what its access says about itself. */
+function profileFromAccessInfo (stored, info) {
+  const profile = { username: stored.username, apiEndpoint: stored.apiEndpoint };
+  const d = info.delegation;
+  if (d != null && d.isDelegatedAccess === true && typeof d.delegate?.username === 'string') {
+    profile.actingAs = { username: stored.username, delegate: d.delegate.username };
+  }
+  return profile;
+}
+
+async function accessInfoOf (apiEndpoint) {
+  // required here: Connection is not needed before the first switch
+  const Connection = require('../Connection');
+  return await new Connection(apiEndpoint).accessInfo(true);
 }
 
 // ------------------ ACTIONS  ----------- //

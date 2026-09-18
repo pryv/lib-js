@@ -604,7 +604,8 @@ The [authentication process](https://api.pryv.com/reference/#authenticate-your-a
 3. `NEED_SIGNIN`: from the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
 4. `AUTHORIZED`: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
 5. `SIGNOUT`: with the account menu, when the user confirms "Log out", just before the client-side authorization credentials are deleted. With `menu: false`, on the click itself, before the "Log out?" question: if the user cancels, the controller re-initializes from the stored credentials (`LOADING` then `AUTHORIZED`)
-6. `ERROR`: see message for more information
+6. `SWITCHING`: an account switch started (`{ from, to }`, `to` is `null` when the account is chosen in the sign-in popup); followed by `AUTHORIZED` for the new account, or for the previous one when the switch sign-in is refused. Listeners that ignore it see the usual `NEED_SIGNIN` then `AUTHORIZED` sequence
+7. `ERROR`: see message for more information
 
 You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only have `status`. The `ERROR` state carries a `message` property.
 
@@ -691,11 +692,22 @@ async handleClick () {
 Clicking the default button once signed in opens a small account menu: the signed-in username, the service and the app id, **Manage my account** (opens the platform's account app in a new tab) and **Log out**. `SIGNOUT` is emitted once, when "Log out" is chosen.
 
 - `authSettings.menu: false` restores the previous flow: `SIGNOUT` on click, then a plain "Log out?" confirmation (a built-in dialog, no longer `window.confirm()`).
-- `authSettings.menu: { hide: ['account', 'info'] }` (or `{ account: false }`) hides entries: `'logout'`, `'account'`, `'info'`.
+- `authSettings.menu: { hide: ['account', 'info'] }` (or `{ account: false }`) hides entries: `'logout'`, `'account'`, `'switch'`, `'info'`.
 - `authSettings.accountUrl` sets the account app root. Otherwise it is the service's `account` (`service/info`), then the auth page URL of the last sign-in without its trailing `/auth`; when none is known, "Manage my account" is not shown.
 - The menu uses the `.pryv-menu*` CSS classes, which a service's button stylesheet can override; its texts come from the button messages (`MENU_TITLE`, `LOGOUT`, `MANAGE_ACCOUNT`, `APP`, `CLOSE`).
 
 The controller exposes the same actions: `auth.signOut()`, `auth.openAccountApp()` and `auth.accountUrl()`. A custom button may implement `showMenu()` to show its own menu (return `false` to fall back to `SIGNOUT`).
+
+##### Several accounts and account switching
+
+The button remembers the accounts signed in on the app (at most `authSettings.maxProfiles`, default 5; the least recently used is forgotten first). The stored credentials keep them in a `profiles` list next to the active account, which stays at the top level (`apiEndpoint`, `username`).
+
+- The menu lists them under "Use this app for". Choosing one activates it without a sign-in when its access is still valid (checked with `access-info`); an access that was revoked (for example by the end of an account delegation) is marked "no longer available" and asked for again through the sign-in popup.
+- On platforms with account delegation (`features.delegation` in `service/info`), "Another account..." runs the auth request again with `actAs: 'allow'`: after signing in, the popup asks whom the access is for (the user's own account or an account they control). An access granted for a controlled account is shown as `kim (via parent)`, and the menu offers "Switch back to parent". The app receives an access on the controlled account, never the delegate's own credentials; `connection.accessInfo().delegation` tells it so authoritatively.
+- "Log out" logs out of the active account and keeps the others (no account is signed in afterwards); "Log out of all accounts", shown when several are remembered, forgets them all.
+- `authSettings.authRequest.actAs`: `'allow'` (the server default: the popup may offer the accounts the user controls), `'deny'` (never), or a username to preselect. An app that supplies its own fixed access `token` and lets users switch accounts ends up with the same token value on several accounts; use `actAs: 'deny'` to avoid it.
+
+Controller API: `auth.switchTo(username)` (`null`: the user's own account), `auth.addAccount()`, `auth.profiles()` (`[{ username, actingAs?, active, available }]`), `auth.currentProfile()` and `auth.signOut({ all: true })`.
 
 ##### Custom button usage
 

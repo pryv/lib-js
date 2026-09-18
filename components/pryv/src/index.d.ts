@@ -684,6 +684,19 @@ declare module 'pryv' {
   export type AccessInfo =  Access & {
     calls: KeyValue;
     user: KeyValue;
+    /**
+     * Present when the access works through account delegation: a delegate
+     * token or an access granted through it (`isDelegatedAccess`, with
+     * `grantedVia: 'app'` for an app access granted by the delegate), or the
+     * control access of a delegation (`kind: 'control'`).
+     */
+    delegation?: {
+      isDelegatedAccess?: true;
+      kind?: 'control';
+      controlledUsername: string;
+      delegate: { username: string; hostSlug?: string };
+      grantedVia?: 'app';
+    };
   }
 
   export type EventAPICallRes = {
@@ -968,7 +981,17 @@ declare module 'pryv' {
     | 'NEED_SIGNIN'
     | 'ACCEPTED'
     | 'SIGNOUT'
-    | 'REFUSED';
+    | 'REFUSED'
+    | 'SWITCHING';
+
+  /**
+   * An account remembered by the sign-in button. `actingAs` marks an account
+   * used through account delegation (`delegate`: the person acting).
+   */
+  export type AuthProfile = {
+    username: string;
+    actingAs?: { username: string; delegate: string };
+  };
 
   export type StateChangeTypes = {
     ERROR: {
@@ -1003,8 +1026,20 @@ declare module 'pryv' {
       apiEndpoint: string;
       username: string;
       token?: string;
+      /** Display hint posted by the auth page for a grant on a controlled account; `accessInfo().delegation` is authoritative. */
+      delegation?: {
+        isDelegatedAccess: true;
+        controlledUsername: string;
+        delegate: { username: string; hostSlug?: string };
+      };
+      profile?: AuthProfile;
     };
     SIGNOUT: {};
+    SWITCHING: {
+      from: string | null;
+      /** null: the account is chosen in the sign-in popup */
+      to: string | null;
+    };
     REFUSED: {
       reasonID?: string;
       message?: string;
@@ -1046,7 +1081,9 @@ declare module 'pryv' {
     logout?: boolean;
     account?: boolean;
     info?: boolean;
-    hide?: Array<'logout' | 'account' | 'info'>;
+    /** Account switcher (remembered accounts, "Another account...", "Switch back"). */
+    switch?: boolean;
+    hide?: Array<'logout' | 'account' | 'info' | 'switch'>;
   };
 
   export type AuthSettings = {
@@ -1060,6 +1097,8 @@ declare module 'pryv' {
     menu?: LoginButtonMenuSettings | false;
     /** Root URL of the account app; overrides the service's `account`. */
     accountUrl?: string;
+    /** Most accounts remembered for this app (default 5); the least recently used is forgotten first. */
+    maxProfiles?: number;
     authRequest: {
       requestingAppId: string;
       languageCode?: string;
@@ -1071,6 +1110,12 @@ declare module 'pryv' {
       deviceName?: string;
       expireAfter?: number;
       serviceInfo?: Partial<ServiceInfo>;
+      /**
+       * Whether the sign-in may grant the access for an account the user
+       * controls through account delegation: 'allow' (server default),
+       * 'deny', or the username to preselect.
+       */
+      actAs?: 'allow' | 'deny' | string;
     };
   };
 
@@ -1094,6 +1139,7 @@ declare module 'pryv' {
     AUTHORIZED: 'ACCEPTED';
     SIGNOUT: 'SIGNOUT';
     REFUSED: 'REFUSED';
+    SWITCHING: 'SWITCHING';
   };
 
   type AuthStatePayload = {
@@ -1102,11 +1148,24 @@ declare module 'pryv' {
     error?: Error | unknown;
   };
 
-  export type StoredAuthorizationData = {
+  /** A remembered account as stored (credentials included). */
+  export type StoredAuthProfile = AuthProfile & {
     apiEndpoint: string;
-    username: string;
-    /** Auth page of the sign-in, kept to locate the account app. */
+    unavailable?: true;
+  };
+
+  /**
+   * Stored sign-in data. The top-level `apiEndpoint` / `username` are the
+   * active account (absent after logging out of one of several accounts);
+   * `profiles` lists every remembered account, most recently used first.
+   */
+  export type StoredAuthorizationData = {
+    apiEndpoint?: string;
+    username?: string;
+    actingAs?: AuthProfile['actingAs'];
+    /** Auth page of the sign-in (without query), kept to locate the account app. */
     authUrl?: string;
+    profiles?: StoredAuthProfile[];
   } | null;
 
   export type CustomLoginButton = {
@@ -1175,9 +1234,26 @@ declare module 'pryv' {
       windowLocationForTest?: string,
       navigatorForTests?: string,
     ): string | boolean;
-    startAuthRequest(): Promise<AuthRequestResponse>;
-    /** Log out: emits SIGNOUT once, clears the stored credentials, re-initializes. */
-    signOut(): Promise<void>;
+    /** `overrides`: auth request fields for this request only; `previous`: state to return to if an account switch does not complete. */
+    startAuthRequest(overrides?: Partial<AuthSettings['authRequest']>, previous?: AuthStatePayload): Promise<AuthRequestResponse>;
+    /**
+     * Log out: emits SIGNOUT once, forgets the active account (every
+     * remembered account with `all`), re-initializes.
+     */
+    signOut(options?: { all?: boolean }): Promise<void>;
+    /** The remembered accounts, most recently used first. */
+    profiles(): Array<AuthProfile & { active: boolean; available: boolean }>;
+    /** The signed-in account, or null. */
+    currentProfile(): AuthProfile | null;
+    /**
+     * Switch account (`null`: the signed-in person's own account). A
+     * remembered account with a valid access needs no sign-in; otherwise the
+     * auth request runs again with `actAs`. Emits SWITCHING, ends in ACCEPTED,
+     * or back on the previous account when the sign-in is refused.
+     */
+    switchTo(username: string | null): Promise<void>;
+    /** Sign in to one more account (`actAs: 'allow'`), keeping the remembered ones. */
+    addAccount(): Promise<void>;
     /** Account app profile URL, or null when it cannot be determined. */
     accountUrl(): string | null;
     /** Opens the account app in a new tab; returns the URL, or null. */
