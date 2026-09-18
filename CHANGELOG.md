@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## 3.12.1 — 2026-09-18
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
+3.12.1; `@pryv/cmc` unchanged (3.16.1).
+
 ### Fixed
 
 - `just build` on a clean `dist/` no longer fails: the browser test bundle, which copies

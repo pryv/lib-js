@@ -1,6 +1,6 @@
 {
   "name": "@pryv/delegation",
-  "version": "3.12.0",
+  "version": "3.12.1",
   "description": "Account-delegation client helpers for Pryv.io",
   "keywords": [
     "Pryv",
