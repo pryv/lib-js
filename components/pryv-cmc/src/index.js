@@ -1395,6 +1395,24 @@ async function resolveScopeRequestStream (conn, scopeRequestEventId) {
 const REQUEST_ACCEPT_POSTMSG_TYPE = 'cmc-accept-result';
 
 /**
+ * True when a `message` event was posted by the popup this helper opened
+ * (and, when `opts.expectedOrigin` is set, from that origin). Any other
+ * window or frame can post to the opener, so a result is only trusted
+ * when `ev.source` is the popup. The origin is not compared to `authUrl`
+ * by default: the account app may redirect to another origin.
+ * @param {MessageEvent} ev
+ * @param {Window} popup
+ * @param {Object} [opts]
+ * @returns {boolean}
+ */
+function isFromPopup (ev, popup, opts) {
+  if (ev == null || ev.source == null || ev.source !== popup) return false;
+  if (opts && typeof opts.expectedOrigin === 'string' && opts.expectedOrigin.length > 0 &&
+      ev.origin !== opts.expectedOrigin) return false;
+  return true;
+}
+
+/**
  * Build the `/cmc-accept` URL with query parameters for the
  * app-web-user-account hand-off. Use this if you want to drive the navigation
  * yourself (e.g., custom popup options, deep-link on mobile).
@@ -1449,7 +1467,8 @@ function requestAcceptUrl (opts) {
  *
  * Popup mode (default):
  *   Opens a child window, listens for a `cmc-accept-result`
- *   postMessage from it, returns `{ ok, dataGrantApiEndpoint,
+ *   postMessage from it (messages whose `source` is not that window
+ *   are ignored), returns `{ ok, dataGrantApiEndpoint,
  *   acceptEventId }`. Rejects with CmcError on `ok: false`, on user
  *   closing the popup without acting, or on timeout.
  *
@@ -1463,6 +1482,7 @@ function requestAcceptUrl (opts) {
  * @param {'popup'|'redirect'} [opts.mode='popup']
  * @param {string} [opts.popupFeatures]  `window.open` features string (popup mode).
  * @param {number} [opts.timeoutMs=600000]  popup-mode max wait (default 10 min).
+ * @param {string} [opts.expectedOrigin]  popup mode: also require the result message to come from this origin.
  * @returns {Promise<{ok:boolean, dataGrantApiEndpoint?:string, acceptEventId?:string, reason?:string}>}
  */
 function requestAccept (opts) {
@@ -1485,7 +1505,8 @@ function requestAccept (opts) {
   return new Promise(function (resolve, reject) {
     let settled = false;
     function onMessage (ev) {
-      const data = ev && ev.data;
+      if (!isFromPopup(ev, popup, opts)) return;
+      const data = ev.data;
       if (data == null || data.type !== REQUEST_ACCEPT_POSTMSG_TYPE) return;
       settle();
       if (data.ok) {
@@ -1579,7 +1600,8 @@ function requestScopeUpdateUrl (opts) {
  *
  * Popup mode (default):
  *   Opens a child window; listens for a `cmc-scope-update-result`
- *   postMessage from it. Resolves with `{ ok: true, updateEventId,
+ *   postMessage from it (messages whose `source` is not that window
+ *   are ignored). Resolves with `{ ok: true, updateEventId,
  *   action: 'accept'|'refuse' }` on success; rejects with CmcError on
  *   ok: false / user-cancel / popup-blocked / timeout.
  *
@@ -1593,6 +1615,7 @@ function requestScopeUpdateUrl (opts) {
  * @param {'popup'|'redirect'} [opts.mode='popup']
  * @param {string} [opts.popupFeatures]
  * @param {number} [opts.timeoutMs=600000]
+ * @param {string} [opts.expectedOrigin]  popup mode: also require the result message to come from this origin.
  * @returns {Promise<{ok:boolean, updateEventId?:string, action?:'accept'|'refuse', reason?:string, redirected?:boolean}>}
  */
 function requestScopeUpdate (opts) {
@@ -1614,7 +1637,8 @@ function requestScopeUpdate (opts) {
   return new Promise(function (resolve, reject) {
     let settled = false;
     function onMessage (ev) {
-      const data = ev && ev.data;
+      if (!isFromPopup(ev, popup, opts)) return;
+      const data = ev.data;
       if (data == null || data.type !== REQUEST_SCOPE_UPDATE_POSTMSG_TYPE) return;
       settle();
       if (data.ok) {

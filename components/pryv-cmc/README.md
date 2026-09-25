@@ -266,8 +266,12 @@ const result = await cmc.requestAccept({
   capabilityUrl,
   scopeStreamId: ':_cmc:apps:my-app',
   // mode: 'popup' is the default. timeoutMs default: 10 min.
+  // expectedOrigin: 'https://account.example.com'   // optional: also require this origin
 });
 // result = { ok: true, dataGrantApiEndpoint, acceptEventId }
+// Only a message posted by the popup this call opened is trusted (`ev.source`);
+// messages from any other window or frame are ignored. The origin is not compared
+// to authUrl by default, since the account app may redirect to another origin.
 // Rejects with CmcError (id: 'cmc-accept-popup-closed' | 'cmc-accept-popup-blocked'
 // | 'cmc-accept-timeout' | the server's `failure.reason` on ok:false).
 
@@ -289,6 +293,8 @@ const result = await cmc.requestScopeUpdate({
   // scopeStreamId is optional — defaults to the scope-request event's home stream
 });
 // result = { ok: true, updateEventId, action: 'accept' | 'refuse', peerNotified? }
+// Same popup contract as requestAccept: only the opened popup's message is trusted
+// (optional expectedOrigin).
 // Rejects with CmcError (id: 'cmc-scope-update-popup-closed' | 'cmc-scope-update-popup-blocked'
 // | 'cmc-scope-update-timeout' | the server's `failure.reason` on ok:false).
 

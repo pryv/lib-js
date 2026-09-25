@@ -446,6 +446,8 @@ declare module '@pryv/cmc' {
       mode?: 'popup' | 'redirect';
       popupFeatures?: string;
       timeoutMs?: number;
+      /** Popup mode: also require the result message to come from this origin. */
+      expectedOrigin?: string;
     }
   ): Promise<CmcRequestAcceptResult>;
 
@@ -477,6 +479,8 @@ declare module '@pryv/cmc' {
       mode?: 'popup' | 'redirect';
       popupFeatures?: string;
       timeoutMs?: number;
+      /** Popup mode: also require the result message to come from this origin. */
+      expectedOrigin?: string;
     }
   ): Promise<CmcRequestScopeUpdateResult>;
 
