@@ -331,7 +331,7 @@ declare module '@pryv/cmc' {
     completionTimeoutMs?: number;
     completionPollIntervalMs?: number;
   }): Promise<
-    | { acceptEventId: string; dataGrantAccessId: string | null; status: 'pending' }
+    | { acceptEventId: string; dataGrantAccessId: string | null; counterparty: any; features: any; status: string }
     | { acceptEventId: string; dataGrantAccessId: string | null; counterparty: any; features: any }
   >;
 
