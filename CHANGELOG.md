@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## @pryv/cmc 3.17.0 — 2026-09-25
+
+`@pryv/cmc` 3.17.0 only; `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation`
+and `@pryv/encryption` unchanged (3.13.0). Minor: a public result type loses a property
+(see Removed).
+
 ### Security
 
 - **`@pryv/cmc`: the popup hand-offs only trust the popup they opened.**
