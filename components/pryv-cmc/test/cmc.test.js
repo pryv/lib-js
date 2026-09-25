@@ -1502,7 +1502,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
         }, 5);
         const result = await p;
         expect(result.ok).to.equal(true);
-        expect(result.dataGrantApiEndpoint).to.equal('https://t@x/');
+        // an endpoint posted by the page is not part of the result contract
+        expect(result).to.not.have.property('dataGrantApiEndpoint');
         expect(result.acceptEventId).to.equal('ev-1');
       } finally {
         global.window = prevWindow;

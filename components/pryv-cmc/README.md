@@ -267,7 +267,7 @@ const result = await cmc.requestAccept({
   scopeStreamId: ':_cmc:apps:my-app',
   // mode: 'popup' is the default. timeoutMs default: 10 min.
 });
-// result = { ok: true, dataGrantApiEndpoint, acceptEventId }
+// result = { ok: true, acceptEventId }
 // Rejects with CmcError (id: 'cmc-accept-popup-closed' | 'cmc-accept-popup-blocked'
 // | 'cmc-accept-timeout' | the server's `failure.reason` on ok:false).
 
@@ -298,7 +298,9 @@ const url = cmc.requestScopeUpdateUrl({
 });
 ```
 
-The `/cmc-accept` page is part of [app-web-user-account](https://github.com/pryv/app-web-user-account); operators serving Pryv.io's auth pages get it automatically. The result payload (popup or redirect) carries `{ type: 'cmc-accept-result', ok, dataGrantApiEndpoint, acceptEventId }`.
+The `/cmc-accept` page is part of [app-web-user-account](https://github.com/pryv/app-web-user-account); operators serving Pryv.io's auth pages get it automatically. The result payload (popup or redirect) carries `{ type: 'cmc-accept-result', ok, acceptEventId }` on success and `{ ..., ok: false, reason }` on failure. It carries no data-grant endpoint: the accepter's accept record is stored without the access token, so no accepter-side result can hold one.
+
+`acceptEventId` (and `dataGrantAccessId` from `acceptInvite`) are ids on the accepter's account. The requester's handle on the accept is the inbox arrival: call `waitForAccept` on the requester's connection to get `acceptInboxEventId` and `grantedAccessApiEndpoint`, the endpoint of the data grant.
 
 #### Cross-direction (chat, system messages)
 

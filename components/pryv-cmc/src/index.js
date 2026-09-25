@@ -1449,9 +1449,12 @@ function requestAcceptUrl (opts) {
  *
  * Popup mode (default):
  *   Opens a child window, listens for a `cmc-accept-result`
- *   postMessage from it, returns `{ ok, dataGrantApiEndpoint,
- *   acceptEventId }`. Rejects with CmcError on `ok: false`, on user
- *   closing the popup without acting, or on timeout.
+ *   postMessage from it, returns `{ ok, acceptEventId }`. Rejects
+ *   with CmcError on `ok: false`, on user closing the popup without
+ *   acting, or on timeout. `acceptEventId` is an id on the accepter's
+ *   account and carries no access token: the requester obtains the
+ *   data-grant endpoint on its own side with `waitForAccept`
+ *   (`grantedAccessApiEndpoint`).
  *
  * Redirect mode:
  *   Navigates the current window to `/cmc-accept` with a `returnUrl`
@@ -1463,7 +1466,7 @@ function requestAcceptUrl (opts) {
  * @param {'popup'|'redirect'} [opts.mode='popup']
  * @param {string} [opts.popupFeatures]  `window.open` features string (popup mode).
  * @param {number} [opts.timeoutMs=600000]  popup-mode max wait (default 10 min).
- * @returns {Promise<{ok:boolean, dataGrantApiEndpoint?:string, acceptEventId?:string, reason?:string}>}
+ * @returns {Promise<{ok:boolean, acceptEventId?:string, reason?:string, redirected?:boolean}>}
  */
 function requestAccept (opts) {
   if (typeof window === 'undefined') {
@@ -1491,7 +1494,6 @@ function requestAccept (opts) {
       if (data.ok) {
         resolve({
           ok: true,
-          dataGrantApiEndpoint: data.dataGrantApiEndpoint,
           acceptEventId: data.acceptEventId
         });
       } else {
