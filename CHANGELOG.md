@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`@pryv/cmc`: the accept result contract is corrected.** `acceptInvite` and
+  `requestAccept` no longer promise a `dataGrantApiEndpoint`: the server stores the
+  accept record without the access token, so no accepter-side result can carry one.
+  The field is removed from the typings, the JSDoc and the README, and
+  `requestAccept` no longer forwards it from the hand-off page. The accept hand-off
+  result is `{ ok, acceptEventId }` (with `reason` on failure). The requester gets
+  the data-grant endpoint on its own side with `waitForAccept`
+  (`grantedAccessApiEndpoint`).
+
 ## 3.13.0 — 2026-09-18
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`

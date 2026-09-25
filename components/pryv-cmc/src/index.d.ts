@@ -332,7 +332,7 @@ declare module '@pryv/cmc' {
     completionPollIntervalMs?: number;
   }): Promise<
     | { acceptEventId: string; dataGrantAccessId: string | null; status: 'pending' }
-    | { acceptEventId: string; dataGrantAccessId: string | null; dataGrantApiEndpoint: string | null; counterparty: any; features: any }
+    | { acceptEventId: string; dataGrantAccessId: string | null; counterparty: any; features: any }
   >;
 
   /**
@@ -433,7 +433,6 @@ declare module '@pryv/cmc' {
 
   export type CmcRequestAcceptResult = {
     ok: boolean;
-    dataGrantApiEndpoint?: string;
     acceptEventId?: string;
     reason?: string;
     redirected?: boolean;
