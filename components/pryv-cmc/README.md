@@ -266,12 +266,18 @@ const result = await cmc.requestAccept({
   capabilityUrl,
   scopeStreamId: ':_cmc:apps:my-app',
   // mode: 'popup' is the default. timeoutMs default: 10 min.
-  // expectedOrigin: 'https://account.example.com'   // optional: also require this origin
+  expectedOrigin: 'https://account.example.com'     // recommended: the account app's origin
 });
 // result = { ok: true, dataGrantApiEndpoint, acceptEventId }
 // Only a message posted by the popup this call opened is trusted (`ev.source`);
 // messages from any other window or frame are ignored. The origin is not compared
 // to authUrl by default, since the account app may redirect to another origin.
+// The source check proves which window posted, not what it currently displays (a
+// popup navigated to hostile content, or a hostile frame opening the same window
+// name `cmcAccept`, still passes), so set expectedOrigin whenever the account
+// app's origin is known. Any absolute URL works (reduced to its origin: case,
+// trailing slash and default port do not matter); an unparsable value rejects
+// with CmcError id 'cmc-invalid-expected-origin'.
 // Rejects with CmcError (id: 'cmc-accept-popup-closed' | 'cmc-accept-popup-blocked'
 // | 'cmc-accept-timeout' | the server's `failure.reason` on ok:false).
 
@@ -293,8 +299,9 @@ const result = await cmc.requestScopeUpdate({
   // scopeStreamId is optional — defaults to the scope-request event's home stream
 });
 // result = { ok: true, updateEventId, action: 'accept' | 'refuse', peerNotified? }
-// Same popup contract as requestAccept: only the opened popup's message is trusted
-// (optional expectedOrigin).
+// Same popup contract as requestAccept: only the opened popup's message is trusted,
+// with the same residual risk (window name `cmcScopeUpdate`); set expectedOrigin
+// whenever the account app's origin is known.
 // Rejects with CmcError (id: 'cmc-scope-update-popup-closed' | 'cmc-scope-update-popup-blocked'
 // | 'cmc-scope-update-timeout' | the server's `failure.reason` on ok:false).
 
