@@ -1395,6 +1395,46 @@ async function resolveScopeRequestStream (conn, scopeRequestEventId) {
 const REQUEST_ACCEPT_POSTMSG_TYPE = 'cmc-accept-result';
 
 /**
+ * Normalise `opts.expectedOrigin` to a serialized origin (lowercase
+ * scheme + host, default port dropped, no path or trailing slash), as
+ * found in `MessageEvent.origin`. Returns null when not set.
+ * @param {Object} [opts]
+ * @param {string} fnName  caller name, for the error message.
+ * @returns {string|null}
+ * @throws {CmcError} 'cmc-invalid-expected-origin' when not a parsable absolute URL.
+ */
+function normalizeExpectedOrigin (opts, fnName) {
+  const raw = opts && opts.expectedOrigin;
+  if (raw == null || raw === '') return null;
+  let origin = null;
+  if (typeof raw === 'string') {
+    try { origin = new URL(raw).origin; } catch (_e) { origin = null; }
+  }
+  if (origin == null || origin === 'null') {
+    throw new CmcError(fnName + ': opts.expectedOrigin must be an absolute URL such as \'https://account.example.com\' (got ' + JSON.stringify(raw) + ')',
+      'cmc-invalid-expected-origin');
+  }
+  return origin;
+}
+
+/**
+ * True when a `message` event was posted by the popup this helper opened
+ * (and, when `expectedOrigin` is set, from that origin). Any other
+ * window or frame can post to the opener, so a result is only trusted
+ * when `ev.source` is the popup. The origin is not compared to `authUrl`
+ * by default: the account app may redirect to another origin.
+ * @param {MessageEvent} ev
+ * @param {Window} popup
+ * @param {string|null} expectedOrigin  normalised origin, or null.
+ * @returns {boolean}
+ */
+function isFromPopup (ev, popup, expectedOrigin) {
+  if (ev == null || ev.source == null || ev.source !== popup) return false;
+  if (expectedOrigin != null && ev.origin !== expectedOrigin) return false;
+  return true;
+}
+
+/**
  * Build the `/cmc-accept` URL with query parameters for the
  * app-web-user-account hand-off. Use this if you want to drive the navigation
  * yourself (e.g., custom popup options, deep-link on mobile).
@@ -1449,7 +1489,8 @@ function requestAcceptUrl (opts) {
  *
  * Popup mode (default):
  *   Opens a child window, listens for a `cmc-accept-result`
- *   postMessage from it, returns `{ ok, acceptEventId }`. Rejects
+ *   postMessage from it (messages whose `source` is not that window
+ *   are ignored), returns `{ ok, acceptEventId }`. Rejects
  *   with CmcError on `ok: false`, on user closing the popup without
  *   acting, or on timeout. `acceptEventId` is an id on the accepter's
  *   account and carries no access token: the requester obtains the
@@ -1466,6 +1507,10 @@ function requestAcceptUrl (opts) {
  * @param {'popup'|'redirect'} [opts.mode='popup']
  * @param {string} [opts.popupFeatures]  `window.open` features string (popup mode).
  * @param {number} [opts.timeoutMs=600000]  popup-mode max wait (default 10 min).
+ * @param {string} [opts.expectedOrigin]  popup mode: also require the result message to come from this
+ *   origin. Any absolute URL is accepted and reduced to its origin (`https://Account.Example.com:443/x`
+ *   becomes `https://account.example.com`); an unparsable value rejects with `cmc-invalid-expected-origin`.
+ *   Recommended whenever the account app's origin is known.
  * @returns {Promise<{ok:boolean, acceptEventId?:string, reason?:string, redirected?:boolean}>}
  */
 function requestAccept (opts) {
@@ -1480,6 +1525,12 @@ function requestAccept (opts) {
   }
   // popup mode
   const features = (opts && opts.popupFeatures) || 'width=480,height=720,resizable=yes,scrollbars=yes';
+  let expectedOrigin;
+  try {
+    expectedOrigin = normalizeExpectedOrigin(opts, 'requestAccept');
+  } catch (e) {
+    return Promise.reject(e);
+  }
   const popup = window.open(url, 'cmcAccept', features);
   if (popup == null) {
     return Promise.reject(new CmcError('requestAccept: popup blocked. Pass opts.returnUrl + mode=\'redirect\' as a fallback.', 'cmc-accept-popup-blocked'));
@@ -1488,7 +1539,8 @@ function requestAccept (opts) {
   return new Promise(function (resolve, reject) {
     let settled = false;
     function onMessage (ev) {
-      const data = ev && ev.data;
+      if (!isFromPopup(ev, popup, expectedOrigin)) return;
+      const data = ev.data;
       if (data == null || data.type !== REQUEST_ACCEPT_POSTMSG_TYPE) return;
       settle();
       if (data.ok) {
@@ -1581,7 +1633,8 @@ function requestScopeUpdateUrl (opts) {
  *
  * Popup mode (default):
  *   Opens a child window; listens for a `cmc-scope-update-result`
- *   postMessage from it. Resolves with `{ ok: true, updateEventId,
+ *   postMessage from it (messages whose `source` is not that window
+ *   are ignored). Resolves with `{ ok: true, updateEventId,
  *   action: 'accept'|'refuse' }` on success; rejects with CmcError on
  *   ok: false / user-cancel / popup-blocked / timeout.
  *
@@ -1595,6 +1648,10 @@ function requestScopeUpdateUrl (opts) {
  * @param {'popup'|'redirect'} [opts.mode='popup']
  * @param {string} [opts.popupFeatures]
  * @param {number} [opts.timeoutMs=600000]
+ * @param {string} [opts.expectedOrigin]  popup mode: also require the result message to come from this
+ *   origin. Any absolute URL is accepted and reduced to its origin (`https://Account.Example.com:443/x`
+ *   becomes `https://account.example.com`); an unparsable value rejects with `cmc-invalid-expected-origin`.
+ *   Recommended whenever the account app's origin is known.
  * @returns {Promise<{ok:boolean, updateEventId?:string, action?:'accept'|'refuse', reason?:string, redirected?:boolean}>}
  */
 function requestScopeUpdate (opts) {
@@ -1608,6 +1665,12 @@ function requestScopeUpdate (opts) {
     return Promise.resolve({ ok: true, redirected: true });
   }
   const features = (opts && opts.popupFeatures) || 'width=480,height=720,resizable=yes,scrollbars=yes';
+  let expectedOrigin;
+  try {
+    expectedOrigin = normalizeExpectedOrigin(opts, 'requestScopeUpdate');
+  } catch (e) {
+    return Promise.reject(e);
+  }
   const popup = window.open(url, 'cmcScopeUpdate', features);
   if (popup == null) {
     return Promise.reject(new CmcError('requestScopeUpdate: popup blocked. Pass opts.returnUrl + mode=\'redirect\' as a fallback.', 'cmc-scope-update-popup-blocked'));
@@ -1616,7 +1679,8 @@ function requestScopeUpdate (opts) {
   return new Promise(function (resolve, reject) {
     let settled = false;
     function onMessage (ev) {
-      const data = ev && ev.data;
+      if (!isFromPopup(ev, popup, expectedOrigin)) return;
+      const data = ev.data;
       if (data == null || data.type !== REQUEST_SCOPE_UPDATE_POSTMSG_TYPE) return;
       settle();
       if (data.ok) {

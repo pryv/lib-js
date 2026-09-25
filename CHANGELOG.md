@@ -4,6 +4,21 @@
 
 ## [Unreleased]
 
+### Security
+
+- **`@pryv/cmc`: the popup hand-offs only trust the popup they opened.**
+  `requestAccept` and `requestScopeUpdate` (popup mode) accepted any
+  `cmc-accept-result` / `cmc-scope-update-result` message posted to the window,
+  so another window or frame could resolve the call with a forged result. A
+  result is now accepted only when the message's `source` is the popup window the
+  call opened; other messages are ignored. The origin is not compared to
+  `authUrl` by default, so account apps that redirect to another origin keep
+  working. The source check proves which window posted, not what it displays (a
+  popup navigated to hostile content still passes), so pass the new
+  `expectedOrigin` option whenever the account app's origin is known: any
+  absolute URL, reduced to its origin; an unparsable value rejects with
+  `cmc-invalid-expected-origin`.
+
 ### Removed
 
 - **`@pryv/cmc`: `dataGrantApiEndpoint` is removed from the accept results.**

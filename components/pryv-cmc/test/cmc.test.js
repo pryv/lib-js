@@ -1471,21 +1471,9 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     it('[CMCAH5] requestAccept resolves with the postMessage payload', async function () {
       // stubs `window`, which a real browser does not let a test replace
       if (typeof document !== 'undefined') return this.skip();
-      // Stub a minimal browser environment.
-      const listeners = [];
-      const fakePopup = { closed: false, close: function () { this.closed = true; } };
-      const fakeWindow = {
-        open: function () { return fakePopup; },
-        addEventListener: function (type, handler) { if (type === 'message') listeners.push(handler); },
-        removeEventListener: function (type, handler) {
-          if (type !== 'message') return;
-          const i = listeners.indexOf(handler);
-          if (i >= 0) listeners.splice(i, 1);
-        },
-        location: { assign: function () { throw new Error('redirect path not expected in this test'); } }
-      };
+      const stub = stubPopupWindow();
       const prevWindow = global.window;
-      global.window = fakeWindow;
+      global.window = stub.win;
       try {
         const p = cmc.requestAccept({
           authUrl: BASE,
@@ -1496,9 +1484,7 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
         });
         // Simulate the page posting the result.
         setTimeout(function () {
-          for (const h of listeners.slice()) {
-            h({ data: { type: 'cmc-accept-result', ok: true, dataGrantApiEndpoint: 'https://t@x/', acceptEventId: 'ev-1' } });
-          }
+          stub.post({ source: stub.popup, data: { type: 'cmc-accept-result', ok: true, dataGrantApiEndpoint: 'https://t@x/', acceptEventId: 'ev-1' } });
         }, 5);
         const result = await p;
         expect(result.ok).to.equal(true);
@@ -1640,20 +1626,9 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     it('[CMCSUH4] requestScopeUpdate resolves with the postMessage payload', async function () {
       // stubs `window`, which a real browser does not let a test replace
       if (typeof document !== 'undefined') return this.skip();
-      const listeners = [];
-      const fakePopup = { closed: false, close: function () { this.closed = true; } };
-      const fakeWindow = {
-        open: function () { return fakePopup; },
-        addEventListener: function (type, handler) { if (type === 'message') listeners.push(handler); },
-        removeEventListener: function (type, handler) {
-          if (type !== 'message') return;
-          const i = listeners.indexOf(handler);
-          if (i >= 0) listeners.splice(i, 1);
-        },
-        location: { assign: function () { throw new Error('redirect path not expected in this test'); } },
-      };
+      const stub = stubPopupWindow();
       const prevWindow = global.window;
-      global.window = fakeWindow;
+      global.window = stub.win;
       try {
         const p = cmc.requestScopeUpdate({
           authUrl: BASE,
@@ -1662,9 +1637,7 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           timeoutMs: 1000,
         });
         setTimeout(function () {
-          for (const h of listeners.slice()) {
-            h({ data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'su-ev-1', action: 'accept', peerNotified: false } });
-          }
+          stub.post({ source: stub.popup, data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'su-ev-1', action: 'accept', peerNotified: false } });
         }, 5);
         const result = await p;
         expect(result.ok).to.equal(true);
@@ -1728,6 +1701,141 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
         expect(result.redirected).to.equal(true);
       } finally {
         global.window = prevWindow;
+      }
+    });
+  });
+
+  /**
+   * Minimal browser stub for the popup hand-off helpers: `open` returns
+   * `popup`; `post(ev)` delivers a message event to every listener.
+   */
+  function stubPopupWindow () {
+    const listeners = [];
+    const popup = { closed: false, close: function () { this.closed = true; } };
+    const win = {
+      open: function () { return popup; },
+      addEventListener: function (type, handler) { if (type === 'message') listeners.push(handler); },
+      removeEventListener: function (type, handler) {
+        if (type !== 'message') return;
+        const i = listeners.indexOf(handler);
+        if (i >= 0) listeners.splice(i, 1);
+      },
+      location: { assign: function () { throw new Error('redirect path not expected in this test'); } }
+    };
+    function post (ev) { for (const h of listeners.slice()) h(ev); }
+    return { win, popup, post, listeners };
+  }
+
+  /** Resolves to 'pending' if `p` has not settled within `ms`. */
+  function stateAfter (p, ms) {
+    return Promise.race([
+      p.then(function () { return 'resolved'; }, function () { return 'rejected'; }),
+      new Promise(function (resolve) { setTimeout(function () { resolve('pending'); }, ms); })
+    ]);
+  }
+
+  describe('[CMS] popup hand-off only trusts messages from the popup it opened', function () {
+    const BASE = 'https://example.com/cmc-accept';
+    const PRYV_API = 'https://reg.pryv.me/';
+    const CAP_URL = 'https://cap-token@host.example/';
+    const SCOPE = ':_cmc:apps:test';
+    let prevWindow;
+    beforeEach(function () {
+      // stubs `window`, which a real browser does not let a test replace
+      if (typeof document !== 'undefined') return this.skip();
+      prevWindow = global.window;
+    });
+    afterEach(function () {
+      if (typeof document !== 'undefined') return;
+      global.window = prevWindow;
+    });
+
+    it('[CMS1] requestAccept ignores a forged result from another window, then resolves with the popup result', async function () {
+      const stub = stubPopupWindow();
+      global.window = stub.win;
+      const p = cmc.requestAccept({ authUrl: BASE, pryvApi: PRYV_API, capabilityUrl: CAP_URL, scopeStreamId: SCOPE, timeoutMs: 2000 });
+      const otherWindow = { closed: false };
+      stub.post({ source: otherWindow, origin: 'https://example.com', data: { type: 'cmc-accept-result', ok: true, dataGrantApiEndpoint: 'https://evil@attacker.example/', acceptEventId: 'forged' } });
+      stub.post({ data: { type: 'cmc-accept-result', ok: true, dataGrantApiEndpoint: 'https://evil@attacker.example/', acceptEventId: 'no-source' } });
+      stub.post({ source: otherWindow, data: { type: 'cmc-accept-result', ok: false, reason: 'forged-failure' } });
+      expect(await stateAfter(p, 30)).to.equal('pending');
+      expect(stub.listeners.length).to.equal(1);
+      stub.post({ source: stub.popup, origin: 'https://example.com', data: { type: 'cmc-accept-result', ok: true, acceptEventId: 'ev-1' } });
+      const result = await p;
+      expect(result.acceptEventId).to.equal('ev-1');
+      expect(stub.listeners.length).to.equal(0);
+    });
+
+    it('[CMS2] requestAccept with expectedOrigin also ignores a popup message from another origin', async function () {
+      const stub = stubPopupWindow();
+      global.window = stub.win;
+      const p = cmc.requestAccept({ authUrl: BASE, pryvApi: PRYV_API, capabilityUrl: CAP_URL, scopeStreamId: SCOPE, timeoutMs: 2000, expectedOrigin: 'https://account.example.com' });
+      stub.post({ source: stub.popup, origin: 'https://other.example.com', data: { type: 'cmc-accept-result', ok: true, dataGrantApiEndpoint: 'https://evil@attacker.example/', acceptEventId: 'forged' } });
+      expect(await stateAfter(p, 30)).to.equal('pending');
+      stub.post({ source: stub.popup, origin: 'https://account.example.com', data: { type: 'cmc-accept-result', ok: true, acceptEventId: 'ev-2' } });
+      const result = await p;
+      expect(result.acceptEventId).to.equal('ev-2');
+    });
+
+    it('[CMS3] requestScopeUpdate ignores a forged result from another window, then resolves with the popup result', async function () {
+      const stub = stubPopupWindow();
+      global.window = stub.win;
+      const p = cmc.requestScopeUpdate({ authUrl: 'https://example.com/cmc-scope-update', pryvApi: PRYV_API, scopeRequestEventId: 'sr-1', timeoutMs: 2000 });
+      const otherWindow = { closed: false };
+      stub.post({ source: otherWindow, data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'forged', action: 'accept' } });
+      stub.post({ data: { type: 'cmc-scope-update-result', ok: false, reason: 'forged-failure' } });
+      expect(await stateAfter(p, 30)).to.equal('pending');
+      stub.post({ source: stub.popup, data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'su-ev-2', action: 'refuse' } });
+      const result = await p;
+      expect(result.updateEventId).to.equal('su-ev-2');
+      expect(result.action).to.equal('refuse');
+    });
+
+    it('[CMS4] requestScopeUpdate with expectedOrigin also ignores a popup message from another origin', async function () {
+      const stub = stubPopupWindow();
+      global.window = stub.win;
+      const p = cmc.requestScopeUpdate({ authUrl: 'https://example.com/cmc-scope-update', pryvApi: PRYV_API, scopeRequestEventId: 'sr-1', timeoutMs: 2000, expectedOrigin: 'https://account.example.com' });
+      stub.post({ source: stub.popup, origin: 'https://other.example.com', data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'forged', action: 'accept' } });
+      expect(await stateAfter(p, 30)).to.equal('pending');
+      stub.post({ source: stub.popup, origin: 'https://account.example.com', data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'su-ev-3', action: 'accept' } });
+      const result = await p;
+      expect(result.updateEventId).to.equal('su-ev-3');
+    });
+
+    it('[CMS5] expectedOrigin is reduced to its origin: trailing slash, case and default port still match', async function () {
+      const variants = ['https://account.example.com/', 'HTTPS://Account.Example.com', 'https://account.example.com:443/some/path'];
+      for (const expectedOrigin of variants) {
+        const stub = stubPopupWindow();
+        global.window = stub.win;
+        const p = cmc.requestAccept({ authUrl: BASE, pryvApi: PRYV_API, capabilityUrl: CAP_URL, scopeStreamId: SCOPE, timeoutMs: 2000, expectedOrigin });
+        stub.post({ source: stub.popup, origin: 'https://account.example.com', data: { type: 'cmc-accept-result', ok: true, acceptEventId: 'ev-5' } });
+        expect(await stateAfter(p, 30), expectedOrigin).to.equal('resolved');
+        expect((await p).acceptEventId).to.equal('ev-5');
+      }
+      const stub = stubPopupWindow();
+      global.window = stub.win;
+      const p = cmc.requestScopeUpdate({ authUrl: 'https://example.com/cmc-scope-update', pryvApi: PRYV_API, scopeRequestEventId: 'sr-1', timeoutMs: 2000, expectedOrigin: 'HTTPS://Account.Example.com:443/' });
+      stub.post({ source: stub.popup, origin: 'https://account.example.com', data: { type: 'cmc-scope-update-result', ok: true, updateEventId: 'su-ev-5', action: 'accept' } });
+      expect(await stateAfter(p, 30)).to.equal('resolved');
+    });
+
+    it('[CMS6] an unparsable expectedOrigin rejects immediately without opening the popup', async function () {
+      for (const call of [
+        function (o) { return cmc.requestAccept(Object.assign({ authUrl: BASE, pryvApi: PRYV_API, capabilityUrl: CAP_URL, scopeStreamId: SCOPE, timeoutMs: 2000 }, o)); },
+        function (o) { return cmc.requestScopeUpdate(Object.assign({ authUrl: 'https://example.com/cmc-scope-update', pryvApi: PRYV_API, scopeRequestEventId: 'sr-1', timeoutMs: 2000 }, o)); }
+      ]) {
+        for (const expectedOrigin of ['account.example.com', 'not a url', 42]) {
+          const stub = stubPopupWindow();
+          let opened = false;
+          stub.win.open = function () { opened = true; return stub.popup; };
+          global.window = stub.win;
+          let caught;
+          try { await call({ expectedOrigin }); } catch (e) { caught = e; }
+          expect(caught, String(expectedOrigin)).to.be.an('error');
+          expect(caught.id).to.equal('cmc-invalid-expected-origin');
+          expect(opened).to.equal(false);
+          expect(stub.listeners.length).to.equal(0);
+        }
       }
     });
   });

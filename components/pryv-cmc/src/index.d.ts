@@ -445,6 +445,13 @@ declare module '@pryv/cmc' {
       mode?: 'popup' | 'redirect';
       popupFeatures?: string;
       timeoutMs?: number;
+      /**
+       * Popup mode: also require the result message to come from this origin. Any absolute
+       * URL, reduced to its origin (case, trailing slash and default port do not matter);
+       * an unparsable value rejects with `cmc-invalid-expected-origin`. Recommended whenever
+       * the account app's origin is known.
+       */
+      expectedOrigin?: string;
     }
   ): Promise<CmcRequestAcceptResult>;
 
@@ -476,6 +483,13 @@ declare module '@pryv/cmc' {
       mode?: 'popup' | 'redirect';
       popupFeatures?: string;
       timeoutMs?: number;
+      /**
+       * Popup mode: also require the result message to come from this origin. Any absolute
+       * URL, reduced to its origin (case, trailing slash and default port do not matter);
+       * an unparsable value rejects with `cmc-invalid-expected-origin`. Recommended whenever
+       * the account app's origin is known.
+       */
+      expectedOrigin?: string;
     }
   ): Promise<CmcRequestScopeUpdateResult>;
 
