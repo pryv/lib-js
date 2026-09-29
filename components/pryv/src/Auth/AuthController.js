@@ -143,6 +143,9 @@ class AuthController {
       this.startAuthRequest();
     } else if (this.state.status === AuthStates.SWITCHING) {
       // a switch is running; its outcome arrives as a state change
+    } else if (this.state.status === AuthStates.ERROR) {
+      // start over (stored sign-in or the sign-in button) rather than stay inert
+      await this.init();
     } else if (isNeedSignIn.call(this)) {
       // reopen popup (HACK for now: set to private property to avoid self-assignment)
       this.state = this._state;

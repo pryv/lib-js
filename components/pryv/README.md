@@ -607,7 +607,7 @@ The [authentication process](https://api.pryv.com/reference/#authenticate-your-a
 6. `SWITCHING`: an account switch started (`{ from, to }`, `to` is `null` when the account is chosen in the sign-in popup); followed by `AUTHORIZED` for the new account, or for the previous one when the switch sign-in is refused. Listeners that ignore it see the usual `NEED_SIGNIN` then `AUTHORIZED` sequence
 7. `ERROR`: see message for more information
 
-You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only have `status`. The `ERROR` state carries a `message` property.
+You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only have `status`. The `ERROR` state carries a `message` property, and an `error` (with an `id` such as `'unexpected-auth-return'` when available); a click on the button in `ERROR` starts over.
 
 ```js
 async onStateChange (state) {
@@ -731,6 +731,8 @@ For a more advanced scenario, you can check the default button implementation in
 #### Redirect user to the authentication page
 
 There is a possibility that you would like to register the user in another page. You can find an example [here](https://github.com/pryv/lib-js/blob/master/examples/auth-with-redirection.html), and try it running [there](https://api.pryv.com/lib-js/examples/auth-with-redirection.html). Again, to run these examples locally, see below.
+
+Set `authRequest.returnURL`: `'self#'` always redirects and comes back to the current page, `'auto#'` (the default) opens a popup on desktop and redirects on a phone or tablet, and a URL always redirects and comes back to that URL. Before leaving, the button keeps the auth request it started in `sessionStorage`; on the way back it finishes only that request, in the same tab and on the same origin, and any other return ends in `ERROR` with `error.id` `'unexpected-auth-return'`. If your app starts the auth request itself (`Service.startAccessRequest`) and comes back to a page with the button, finish the sign-in yourself: poll the `poll` URL the request returned with `Service.pollAccessRequest(pollUrl)` (or `Service.connectFromKey(key)` on a single-core platform).
 
 
 ### Running examples locally

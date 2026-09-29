@@ -64,6 +64,10 @@ class LoginButton {
       case AuthStates.NEED_SIGNIN: {
         const loginUrl = state.authUrl || state.url; // url is deprecated
         if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup)
+          // Remember the request this page started: on the way back, only
+          // its key is accepted and only its (server-issued) poll URL is
+          // fetched (see finishAuthProcessAfterRedirection).
+          writeAuthFlow(this._cookieKey, { key: state.key, poll: state.poll, authUrl: loginUrl });
           location.href = loginUrl;
           return;
         } else {
@@ -223,8 +227,26 @@ class LoginButton {
     // 3. Check if there is a pryvKey / pryvPoll (or legacy prYvkey /
     //    prYvpoll) as result of "out of page login"
     const url = window.location.href;
-    const { pollUrl, key } = retrievePollUrl(url);
-    if (pollUrl !== null) {
+    const key = retrieveKey(url);
+    if (key !== null) {
+      // Only finish the auth request this page started (kept across the
+      // redirect by onStateChange), and poll the URL the server gave for
+      // it: a link carrying another key or poll URL must not sign the page
+      // in (to a foreign host, or to someone else's account).
+      const flow = readAuthFlow(this._cookieKey);
+      if (flow == null || flow.key !== key || typeof flow.poll !== 'string') {
+        console.warn('pryv: ignoring a sign-in return for a request this page did not start');
+        authController.state = {
+          status: AuthStates.ERROR,
+          message: 'Sign-in return does not match a sign-in started on this page',
+          error: { id: 'unexpected-auth-return' }
+        };
+        cleanUrl();
+        return;
+      }
+      clearAuthFlow(this._cookieKey);
+      const pollUrl = flow.poll;
+      if (typeof flow.authUrl === 'string') authController._authUrl = flow.authUrl;
       // the flow of this sign-in: a sign-out clears its cached credential
       authController._authFlowKey = key;
       let response, body;
@@ -262,32 +284,69 @@ class LoginButton {
       }
       if (body?.status === AuthStates.AUTHORIZED && typeof body.username === 'string') body.profile = ProfileStore.fromAccepted(body);
       authController.state = body;
-      // These params are one-shot; leaving them in the visible URL puts
-      // stale auth state into bookmarks / copied links.
+      cleanUrl();
+    } else if (utils.cleanURLFromPrYvParams(url) !== url) {
+      // leftover one-shot params without a key (e.g. only `prYvstatus`)
+      cleanUrl();
+    }
+
+    // These params are one-shot; leaving them in the visible URL puts
+    // stale auth state into bookmarks / copied links.
+    function cleanUrl () {
       if (window.history && typeof window.history.replaceState === 'function') {
         window.history.replaceState(null, '', utils.cleanURLFromPrYvParams(url));
       }
     }
 
-    function retrievePollUrl (url) {
+    /** The key of the returning auth request, or null when the URL is not a return. */
+    function retrieveKey (url) {
       // Modern lowercase form (pryvKey / pryvPoll) is preferred; the
       // capital-Y form (prYvkey / prYvpoll) is accepted for back-compat
       // with apps emitting the legacy URL contract — see
       // [DEPRECATED] notes on cleanURLFromPrYvParams.
       const params = utils.getQueryParamsFromURL(url);
-      let pollUrl = null;
-      let key = params.pryvKey || params.prYvkey || null;
-      if (key) {
-        pollUrl = authController.serviceInfo.access + key;
-      }
+      const key = params.pryvKey || params.prYvkey;
+      if (key) return key;
       const poll = params.pryvPoll || params.prYvpoll;
-      if (poll) {
-        pollUrl = poll;
-        // the poll URL ends with the key (`<access>/<key>`)
-        if (key == null) key = pollUrl.split(/[?#]/)[0].split('/').filter(Boolean).pop() || pollUrl;
-      }
-      return { pollUrl, key };
+      // the poll URL ends with the key (`<access>/<key>`); only the key is
+      // used, the poll URL fetched is the one stored when the flow started
+      if (poll) return poll.split(/[?#]/)[0].split('/').filter(Boolean).pop() || null;
+      return null;
     }
+  }
+}
+
+// ---- the auth request started by this page, kept across the redirect ----
+// sessionStorage: per tab and origin, gone when the tab closes, readable by
+// no other origin. Any failure (storage blocked) reads as "no flow".
+
+function authFlowStorageKey (cookieKey) {
+  return cookieKey + '-authflow';
+}
+
+function writeAuthFlow (cookieKey, flow) {
+  try {
+    window.sessionStorage.setItem(authFlowStorageKey(cookieKey), JSON.stringify(flow));
+  } catch (e) {
+    // the return will then be refused, as for any unknown request
+  }
+}
+
+function readAuthFlow (cookieKey) {
+  try {
+    const raw = window.sessionStorage.getItem(authFlowStorageKey(cookieKey));
+    const flow = raw == null ? null : JSON.parse(raw);
+    return flow != null && typeof flow === 'object' ? flow : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearAuthFlow (cookieKey) {
+  try {
+    window.sessionStorage.removeItem(authFlowStorageKey(cookieKey));
+  } catch (e) {
+    // nothing stored
   }
 }
 
