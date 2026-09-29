@@ -4,6 +4,29 @@
 
 ## [Unreleased]
 
+### Security
+
+- **The sign-in button finishes a sign-in by redirection only for the auth
+  request it started on this page.** On every page load the button read a poll
+  URL (`pryvPoll` / `prYvpoll`) or key (`pryvKey` / `prYvkey`) from the page's
+  query string, fetched it and trusted the answer, whatever the page's
+  `returnURL` setting. A crafted link could therefore sign the page in with an
+  account and an `apiEndpoint` of someone else's choosing (a foreign host, or a
+  real account that is not the visitor's), saved in the sign-in cookie, so the
+  app could then send the visitor's data there. Before navigating to the auth
+  page, the button now keeps the request's key and the poll URL the server gave
+  for it in `sessionStorage` (this tab and origin only); on the way back it
+  accepts only that key and fetches only that poll URL, never one taken from the
+  page URL. Any other return ends in `ERROR` (`error.id`
+  `'unexpected-auth-return'`) without a request, a cookie write or a sign-in.
+  ⚑ Apps that start the auth request outside the button (their own `POST` to the
+  access URL, or `Service.startAccessRequest`) and relied on the button to finish
+  it on the returning page now get that `ERROR`: finish the sign-in yourself with
+  `Service.connectFromKey(key)`. A return that lands in another tab or on
+  another origin than the page that started the sign-in is refused too.
+  After a sign-in by redirection the auth page URL is known again, so "Manage my
+  account" finds the account app as after a popup sign-in.
+
 ## 3.14.0 - 2026-09-29
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
