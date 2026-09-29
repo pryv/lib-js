@@ -303,7 +303,13 @@ const utils = module.exports = {
     url.replace(QUERY_REGEXP,
       // @ts-ignore - replace callback is used for side effects
       function (m, key, value) {
-        vars[key] = decodeURIComponent(value);
+        // a malformed escape (`%` not followed by hex) is kept as is rather
+        // than throwing: any page URL reaches this parser
+        try {
+          vars[key] = decodeURIComponent(value);
+        } catch (e) {
+          vars[key] = value;
+        }
       });
     return vars;
   }

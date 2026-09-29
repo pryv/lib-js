@@ -374,6 +374,53 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     expect(loginBtn.getAuthorizationData()).to.equal(undefined);
   });
 
+  it('[LBRB9] a stored flow without a usable poll URL is refused without any fetch', async () => {
+    f.setPage('http://localhost/app?prYvkey=k1');
+    global.window.sessionStorage.setItem(COOKIE_KEY + '-authflow', JSON.stringify({ key: 'k1' }));
+    f.poll(ACCEPTED);
+    const authController = { serviceInfo: SERVICE_INFO };
+    await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
+    expectRefused(authController);
+  });
+
+  it('[LBRBA] an account switch by redirection ends on the new account, the previous one remembered', async () => {
+    f.setPage('http://localhost/app?prYvkey=k1');
+    const loginBtn = new LoginButton({ authRequest: { requestingAppId: 'lbrba-app', requestedPermissions: [], returnURL: 'self#' } },
+      fakeService(Object.assign({ name: 'Test' }, SERVICE_INFO)));
+    loginBtn._cookieKey = 'pryv-libjs-lbrba-app';
+    loginBtn.saveAuthorizationData({ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/', profiles: [{ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/' }] });
+    seedFlow('k1', CORE_POLL, 'pryv-libjs-lbrba-app');
+    f.poll(ACCEPTED);
+    await loginBtn.init();
+    expect(f.fetchCalls).to.deep.equal([CORE_POLL]);
+    expect(loginBtn.auth.state.username).to.equal('alice');
+    const stored = loginBtn.getAuthorizationData();
+    expect(stored.username).to.equal('alice');
+    expect(stored.profiles.map((p) => p.username)).to.deep.equal(['alice', 'bob']);
+    await loginBtn.deleteAuthorizationData();
+  });
+
+  it('[LBRBB] a click on the button in ERROR starts over instead of doing nothing', async () => {
+    f.setPage('http://localhost/app?prYvkey=forged');
+    const loginBtn = new LoginButton({ authRequest: { requestingAppId: 'lbrbb-app', requestedPermissions: [], returnURL: 'self#' } },
+      fakeService(Object.assign({ name: 'Test' }, SERVICE_INFO)));
+    await loginBtn.init();
+    expect(loginBtn.auth.state.status).to.equal('ERROR');
+    await loginBtn.auth.handleClick();
+    expect(loginBtn.auth.state.status).to.equal('INITIALIZED');
+  });
+
+  it('[LBRBC] leftover one-shot params without a key are cleaned; a malformed escape does not break init', async () => {
+    f.setPage('http://localhost/app?x=1&prYvstatus=ACCEPTED');
+    await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, { serviceInfo: SERVICE_INFO });
+    expect(global.window.location.href).to.equal('http://localhost/app?x=1');
+
+    f.setPage('http://localhost/app?q=100%&prYvkey=k1');
+    const authController = { serviceInfo: SERVICE_INFO };
+    await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
+    expect(authController.state.error.id).to.equal('unexpected-auth-return');
+  });
+
   it('[LBRB8] without sessionStorage, a redirect sign-in still navigates and a return is refused', async () => {
     f.setPage('http://localhost/app?prYvkey=k1');
     Object.defineProperty(global.window, 'sessionStorage', { get () { throw new Error('blocked'); }, configurable: true });

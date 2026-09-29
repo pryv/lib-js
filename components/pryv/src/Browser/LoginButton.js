@@ -285,6 +285,9 @@ class LoginButton {
       if (body?.status === AuthStates.AUTHORIZED && typeof body.username === 'string') body.profile = ProfileStore.fromAccepted(body);
       authController.state = body;
       cleanUrl();
+    } else if (utils.cleanURLFromPrYvParams(url) !== url) {
+      // leftover one-shot params without a key (e.g. only `prYvstatus`)
+      cleanUrl();
     }
 
     // These params are one-shot; leaving them in the visible URL puts

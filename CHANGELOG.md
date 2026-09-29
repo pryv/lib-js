@@ -21,11 +21,24 @@
   `'unexpected-auth-return'`) without a request, a cookie write or a sign-in.
   ⚑ Apps that start the auth request outside the button (their own `POST` to the
   access URL, or `Service.startAccessRequest`) and relied on the button to finish
-  it on the returning page now get that `ERROR`: finish the sign-in yourself with
-  `Service.connectFromKey(key)`. A return that lands in another tab or on
-  another origin than the page that started the sign-in is refused too.
+  it on the returning page now get that `ERROR`: finish the sign-in yourself by
+  polling the `poll` URL your access request returned
+  (`Service.pollAccessRequest(pollUrl)`), or with `Service.connectFromKey(key)`
+  on a single-core platform (it polls the access URL, which may not reach the
+  right core on a multi-core platform). A return that lands in another tab or
+  on another origin than the page that started the sign-in is refused too.
   After a sign-in by redirection the auth page URL is known again, so "Manage my
   account" finds the account app as after a popup sign-in.
+
+### Fixed
+
+- **Sign-in button: a click in `ERROR` starts over** (re-initializes: stored
+  sign-in or the sign-in button) instead of doing nothing until a reload.
+- **Sign-in button: one-shot `prYv*` parameters left without a key** (for
+  example only `prYvstatus`) are removed from the page URL.
+- **`utils.getQueryParamsFromURL` no longer throws on a malformed escape** (a
+  `%` not followed by two hex digits): the raw value is kept, so such a page URL
+  no longer makes the sign-in button's `init()` fail.
 
 ## 3.14.0 - 2026-09-29
 
