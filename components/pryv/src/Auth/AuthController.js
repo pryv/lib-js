@@ -350,9 +350,9 @@ class AuthController {
   /**
    * Compute the return URL for authentication redirect.
    * Used only in browser environments.
-   * @param {string} [returnURL] - The return URL setting ('auto#', 'self#', or custom URL)
+   * @param {string|false} [returnURL] - The return URL setting ('auto#', 'self#', or custom URL)
    * @param {string} [windowLocationForTest] - Mock window.location.href for testing
-   * @param {string|Navigator} [navigatorForTests] - Mock navigator for testing
+   * @param {string|Navigator} [navigatorForTests] - Mock navigator for testing (defaults to the browser's own)
    * @returns {string|boolean} The computed return URL, or false if using popup mode
    */
   getReturnURL (
@@ -361,6 +361,7 @@ class AuthController {
     navigatorForTests
   ) {
     const RETURN_URL_AUTO = 'auto';
+    const nav = navigatorForTests ?? globalThis.navigator;
 
     returnURL = returnURL || RETURN_URL_AUTO + '#';
 
@@ -372,11 +373,11 @@ class AuthController {
     }
     // auto mode for desktop
     if (returnUrlIsAuto(returnURL) &&
-        !utils.browserIsMobileOrTablet(navigatorForTests)) {
+        !utils.browserIsMobileOrTablet(nav)) {
       return false;
     // auto mode for mobile or self
     } else if ((returnUrlIsAuto(returnURL) &&
-                utils.browserIsMobileOrTablet(navigatorForTests)) ||
+                utils.browserIsMobileOrTablet(nav)) ||
                returnURL.indexOf('self') === 0) {
       // set self as return url?
       // eventually clean-up current url from previous pryv returnURL
@@ -598,18 +599,30 @@ async function checkAutoLogin (authController) {
     return;
   }
 
-  const storedCredentials = await loginButton.getAuthorizationData();
+  let storedCredentials = await loginButton.getAuthorizationData();
   if (storedCredentials == null) return;
+  // Forget the stored sign-ins that carry no token (3.13.0 saved some after a
+  // redirect return): they would sign in to a session the API refuses, or
+  // stay listed as available accounts.
+  const stored = ProfileStore.read(storedCredentials);
+  const tokenless = stored.profiles.filter((p) => !ProfileStore.carriesToken(p.apiEndpoint));
+  if (tokenless.length > 0) {
+    authController._saveProfiles(tokenless.reduce((s, p) => ProfileStore.remove(s, p.username), stored));
+    storedCredentials = await loginButton.getAuthorizationData();
+    if (storedCredentials == null) return;
+  }
   if (typeof storedCredentials.authUrl === 'string') authController._authUrl = storedCredentials.authUrl;
   if (Array.isArray(storedCredentials.profiles)) {
     // Several remembered accounts: sign in to the active one, if any
     const store = ProfileStore.read(storedCredentials);
-    if (store.active == null) return;
+    if (store.active == null || !ProfileStore.carriesToken(store.active.apiEndpoint)) return;
     const state = { status: AuthStates.AUTHORIZED, username: store.active.username, apiEndpoint: store.active.apiEndpoint, profile: store.active };
     if (store.authUrl != null) state.authUrl = store.authUrl;
     authController.state = state;
     return;
   }
+  // a button that cannot rewrite its storage still must not sign in to it
+  if (typeof storedCredentials.apiEndpoint === 'string' && !ProfileStore.carriesToken(storedCredentials.apiEndpoint)) return;
   const state = Object.assign({}, { status: AuthStates.AUTHORIZED }, storedCredentials);
   if (typeof state.username === 'string' && typeof state.apiEndpoint === 'string') state.profile = ProfileStore.profileOf(state);
   authController.state = state;

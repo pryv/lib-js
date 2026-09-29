@@ -243,6 +243,55 @@ describe('[ACNX] AuthController', function () {
       expect(reloaded.accountUrl()).to.equal(profile('https://ui.example.com'));
     });
 
+    it('[ACAT] autologin skips a stored sign-in without a token (legacy and multi-account shapes)', async function () {
+      const cases = [
+        [{ username: 'u', apiEndpoint: 'https://u.example.com/' }, AuthStates.INITIALIZED],
+        [{ username: 'u', apiEndpoint: 'https://t@u.example.com/' }, AuthStates.AUTHORIZED],
+        [{ username: 'u', apiEndpoint: 'https://u.example.com/', profiles: [{ username: 'u', apiEndpoint: 'https://u.example.com/' }] }, AuthStates.INITIALIZED],
+        [{ username: 'u', apiEndpoint: 'https://t@u.example.com/', profiles: [{ username: 'u', apiEndpoint: 'https://t@u.example.com/' }] }, AuthStates.AUTHORIZED]
+      ];
+      for (const [stored, expected] of cases) {
+        const button = {
+          getAuthorizationData: () => stored,
+          onStateChange: async () => {},
+          onClick: () => {}
+        };
+        const auth = new AuthController({ authRequest: { requestingAppId: 'test-app', requestedPermissions: [] } }, service, button);
+        await auth.init();
+        expect(auth.state.status, JSON.stringify(stored)).to.equal(expected);
+      }
+    });
+
+    it('[ACAU] autologin forgets the stored sign-ins without a token and keeps the usable ones', async function () {
+      let saved = {
+        username: 'u',
+        apiEndpoint: 'https://t@u.example.com/',
+        profiles: [
+          { username: 'u', apiEndpoint: 'https://t@u.example.com/' },
+          { username: 'stale', apiEndpoint: 'https://stale.example.com/' }
+        ]
+      };
+      let deleted = 0;
+      const button = {
+        getAuthorizationData: () => saved,
+        saveAuthorizationData: (d) => { saved = d; },
+        deleteAuthorizationData: () => { deleted++; saved = null; },
+        onStateChange: async () => {},
+        onClick: () => {}
+      };
+      const auth = new AuthController({ authRequest: { requestingAppId: 'test-app', requestedPermissions: [] } }, service, button);
+      await auth.init();
+      expect(auth.state.status).to.equal(AuthStates.AUTHORIZED);
+      expect(saved.profiles.map((p) => p.username)).to.deep.equal(['u']);
+
+      // only token-less sign-ins stored: all forgotten, not signed in
+      saved = { username: 'stale', apiEndpoint: 'https://stale.example.com/' };
+      const auth2 = new AuthController({ authRequest: { requestingAppId: 'test-app', requestedPermissions: [] } }, service, button);
+      await auth2.init();
+      expect(auth2.state.status).to.equal(AuthStates.INITIALIZED);
+      expect(deleted).to.equal(1);
+    });
+
     it('[ACUE] a button with showMenu gets the click instead of SIGNOUT, unless it declines', async function () {
       for (const [answer, expectSignout] of [[true, false], [undefined, false], [false, true]]) {
         const states = [];
@@ -306,6 +355,26 @@ describe('[ACNX] AuthController', function () {
       // Desktop browser (Safari) returns false for auto mode
       const result = auth.getReturnURL(undefined, 'http://test.com', { userAgent: 'Safari' });
       expect(result).to.equal(false);
+    });
+
+    it('[ACNV] auto mode reads the browser navigator when no mock is given', function () {
+      const auth = new AuthController({
+        authRequest: {
+          requestingAppId: 'test-app',
+          requestedPermissions: []
+        }
+      }, service);
+      const saved = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+      const iPhone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
+      try {
+        Object.defineProperty(globalThis, 'navigator', { value: { userAgent: iPhone }, configurable: true, writable: true });
+        expect(auth.getReturnURL('auto#', 'http://test.com/app')).to.equal('http://test.com/app#');
+        Object.defineProperty(globalThis, 'navigator', { value: { userAgent: 'Safari' }, configurable: true, writable: true });
+        expect(auth.getReturnURL('auto#', 'http://test.com/app')).to.equal(false);
+      } finally {
+        if (saved) Object.defineProperty(globalThis, 'navigator', saved);
+        else delete globalThis.navigator;
+      }
     });
   });
 

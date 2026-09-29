@@ -4,6 +4,47 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Sign-in by redirection (`authRequest.returnURL`) works again against a core
+  that honours `credentialHandoff`** ([open-pryv.io#140](https://github.com/pryv/open-pryv.io/issues/140)).
+  Since 3.13.0 the one-time credential hand-off (the default) was redeemed on the
+  popup path only: returning from a redirect ended in `AUTHORIZED` with a
+  token-less `apiEndpoint`, which was also saved in the sign-in cookie, so every
+  later page load signed back into a session the API refused. The redirect return
+  now redeems the hand-off like the popup path (under the flow's poll key, so a
+  sign-out clears the cached credential) and ends in `ERROR` ("Credential
+  hand-off failed") instead of a token-less `AUTHORIZED` when it cannot. The
+  button never stores a sign-in without a token, and token-less sign-ins already
+  saved by 3.13.0 are forgotten on the next page load (the button shows the
+  sign-in again instead of a session the API refuses). A refused request now
+  returns to the sign-in button, and an unknown or expired key shows an error,
+  on the redirect return as on the popup path.
+  ⚑ **The `AUTHORIZED` state your `onStateChange` receives differs by path, as
+  before:** the popup path gives `{ status, id, key }` (use `connectFromKey`),
+  the redirect return gives the legacy state with `username` and a
+  token-bearing `apiEndpoint` and no `key`. Since `'auto#'` (the default) now
+  redirects on phones and tablets (below), an app on default settings sees both
+  shapes depending on the device: handle both, e.g.
+  `state.key ? connectFromKey(state.key, url) : new Connection(state.apiEndpoint)`.
+- **`returnURL: 'auto#'` (the default) redirects on phones and tablets as
+  documented** ([open-pryv.io#142](https://github.com/pryv/open-pryv.io/issues/142)).
+  `getReturnURL` never read the browser's `navigator`, so every device got the
+  popup. Mobile sign-ins with the default settings now use the redirect flow,
+  which is why this ships together with the fix above.
+- **Typings: `authRequest.returnURL`** ([open-pryv.io#141](https://github.com/pryv/open-pryv.io/issues/141)).
+  `AuthSettings` declares the key the library reads, `authRequest.returnURL?:
+  string | false`, with its `'auto#'` / `'self#'` / URL values documented; the
+  `NEED_SIGNIN` state declares `returnURL` (was `returnUrl`). The declarations
+  now also compile with `skipLibCheck: false` (`PryvError.name` is `string`, so
+  subclasses such as `MfaRequiredError` no longer fail with TS2416).
+
+### Removed
+
+- **Typings: `authRequest.returnUrl` and the top-level `AuthSettings.returnURL`.**
+  Neither was ever read: setting them silently kept the popup flow. TypeScript
+  code that sets them stops compiling; use `authRequest.returnURL`.
+
 ## @pryv/cmc 3.17.0 — 2026-09-25
 
 `@pryv/cmc` 3.17.0 only; `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation`

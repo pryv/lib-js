@@ -44,21 +44,21 @@
       authRequest: { // See: https://api.pryv.com/reference/#auth-request
         requestingAppId: 'lib-js-test',
         languageCode: 'fr', // optional (default english)
-        returnURL: 'auto#',
         requestedPermissions: [{
           streamId: 'test',
           defaultName: 'Test',
           level: 'read',
         }],
-        // the login page where user will be redirected
-        returnURL: 'https://l.backloop.dev:9443/demos/auth-with-redirection.html#'
+        // always sign in on the auth page (no popup), then come back to this page;
+        // 'auto#' (the default) redirects on phones and tablets only
+        returnURL: 'self#'
       }
     };
 
     const serviceInfoUrl = null; // 'https://api.pryv.com/lib-js/demos/service-info.json';
     const serviceInfoJson = {
       "register": "https://reg.pryv.me",
-      "access": "https://access.pryv.me/access",
+      "access": "https://access.pryv.me/access/",
       "api": "https://{username}.pryv.me/",
       "name": "Pryv Lab",
       "home": "https://www.pryv.com",
