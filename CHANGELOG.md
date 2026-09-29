@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## 3.14.1 - 2026-09-29
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
+3.14.1; `@pryv/cmc` unchanged (3.17.0). Security release. 3.14.0 was not published
+on its own: 3.14.1 is the first published version carrying the 3.14.0 changes below.
+
 ### Security
 
 - **The sign-in button finishes a sign-in by redirection only for the auth
