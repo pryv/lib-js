@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## 3.14.0 - 2026-09-29
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
+3.14.0; `@pryv/cmc` unchanged (3.17.0). Minor: two never-read keys leave the typings
+(see Removed).
+
 ### Fixed
 
 - **Sign-in by redirection (`authRequest.returnURL`) works again against a core
