@@ -488,7 +488,9 @@ class Service {
    * @param {string[]} [authRequest.consent.optIn] - ids offered NOT
    *   pre-selected, so the user has to choose them.
    * @param {string} [authRequest.languageCode='en']
-   * @param {string|boolean} [authRequest.returnUrl]
+   * @param {string} [authRequest.returnURL] - URL the auth page returns
+   *   to after the decision, sent as is (the 'auto#' / 'self#' shortcuts
+   *   are resolved only by the sign-in button, not here).
    * @param {string} [authRequest.referer]
    * @param {Object} [authRequest.clientData]
    * @param {string} [authRequest.deviceName]

@@ -7,6 +7,7 @@ const AuthStates = require('../Auth/AuthStates');
 const AuthController = require('../Auth/AuthController');
 const ProfileStore = require('../Auth/ProfileStore');
 const Messages = require('../Auth/LoginMessages');
+const handoff = require('../lib/handoff');
 const utils = require('../utils');
 
 /* global location */
@@ -219,19 +220,36 @@ class LoginButton {
     // 3. Check if there is a pryvKey / pryvPoll (or legacy prYvkey /
     //    prYvpoll) as result of "out of page login"
     const url = window.location.href;
-    const pollUrl = retrievePollUrl(url);
+    const { pollUrl, key } = retrievePollUrl(url);
     if (pollUrl !== null) {
+      let body;
       try {
-        const { body } = await utils.fetchGet(pollUrl);
-        if (body?.status === AuthStates.AUTHORIZED && typeof body.username === 'string') body.profile = ProfileStore.fromAccepted(body);
-        authController.state = body;
+        ({ body } = await utils.fetchGet(pollUrl));
       } catch (e) {
-        authController.state = {
+        body = {
           status: AuthStates.ERROR,
           message: 'Cannot fetch result',
           error: e
         };
       }
+      // Shared-secret delivery: the ACCEPTED body carries a one-time
+      // `handoff` key, not the token. Redeem it exactly as the polling path
+      // does, under the flow key (so a sign-out clears the cached
+      // credential), and never report a token-less AUTHORIZED.
+      if (handoff.isHandoffBody(body)) {
+        authController._authFlowKey = key;
+        try {
+          const entry = await handoff.resolveHandoff(body, key);
+          body.apiEndpoint = entry.apiEndpoint;
+          body.token = entry.token;
+          body.username = entry.username;
+          delete body.handoff;
+        } catch (e) {
+          body = { status: AuthStates.ERROR, message: 'Credential hand-off failed', error: e };
+        }
+      }
+      if (body?.status === AuthStates.AUTHORIZED && typeof body.username === 'string') body.profile = ProfileStore.fromAccepted(body);
+      authController.state = body;
       // These params are one-shot; leaving them in the visible URL puts
       // stale auth state into bookmarks / copied links.
       if (window.history && typeof window.history.replaceState === 'function') {
@@ -246,15 +264,17 @@ class LoginButton {
       // [DEPRECATED] notes on cleanURLFromPrYvParams.
       const params = utils.getQueryParamsFromURL(url);
       let pollUrl = null;
-      const key = params.pryvKey || params.prYvkey;
+      let key = params.pryvKey || params.prYvkey || null;
       if (key) {
         pollUrl = authController.serviceInfo.access + key;
       }
       const poll = params.pryvPoll || params.prYvpoll;
       if (poll) {
         pollUrl = poll;
+        // the poll URL ends with the key (`<access>/<key>`)
+        if (key == null) key = pollUrl.split(/[?#]/)[0].split('/').filter(Boolean).pop() || pollUrl;
       }
-      return pollUrl;
+      return { pollUrl, key };
     }
   }
 }

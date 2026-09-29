@@ -26,11 +26,12 @@ module.exports = {
  * @param {string} [settings.authRequest.languageCode] Language code, as per LoginButton Messages: 'en', 'fr
  * @param {string} settings.authRequest.requestingAppId Application id, ex: 'my-app'
  * @param {Object} settings.authRequest.requestedPermissions
- * @param {string | boolean} settings.authRequest.returnURL : false, // set this if you don't want a popup
+ * @param {string | false} [settings.authRequest.returnURL] 'auto#' (default, also when unset or false):
+ *   popup on desktop, redirect on a phone or tablet; 'self#': always redirect back to this page;
+ *   a URL: always redirect back to that URL. Must end with '#', '?' or '&'.
  * @param {string} [settings.authRequest.referer] To track registration source
  * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
  * @param {Function} settings.onStateChange
- * @param {string} [settings.returnURL] Set to "self#" to disable popup and force using the same page
  * @param {string} serviceInfoUrl
  * @param {Object} [serviceCustomizations] override properties of serviceInfoUrl
  * @returns {Promise<Service>}

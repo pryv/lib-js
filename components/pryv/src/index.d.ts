@@ -160,7 +160,8 @@ declare module 'pryv' {
    */
   export class PryvError extends globalThis.Error {
     constructor(message: string, innerObject?: globalThis.Error | object);
-    name: 'PryvError';
+    /** `'PryvError'`, or the subclass name (`'MfaRequiredError'`, ...). */
+    name: string;
     innerObject?: globalThis.Error | object;
     id?: string;
     status?: number;
@@ -1018,7 +1019,7 @@ declare module 'pryv' {
       }>;
       consent?: AuthRequestConsentForm;
       requestingAppId: string;
-      returnUrl?: string | null;
+      returnURL?: string | null;
       serviceInfo?: ServiceInfo;
     };
     ACCEPTED: {
@@ -1099,7 +1100,6 @@ declare module 'pryv' {
   export type AuthSettings = {
     spanButtonID?: string;
     onStateChange?: (state: StateChange<States>) => void;
-    returnURL?: string;
     /**
      * Account menu shown when the signed-in button is clicked (default: on).
      * `false` restores the plain logout confirmation.
@@ -1114,7 +1114,14 @@ declare module 'pryv' {
       languageCode?: string;
       requestedPermissions: AuthRequestedPermission[];
       consent?: AuthRequestConsent;
-      returnUrl?: string | boolean;
+      /**
+       * Where the sign-in happens: `'auto#'` (default, also when unset or
+       * `false`) opens a popup on desktop and redirects on a phone or tablet;
+       * `'self#'` always redirects and comes back to the current page; a URL
+       * always redirects and comes back to that URL. Must end with `#`, `?`
+       * or `&`.
+       */
+      returnURL?: string | false;
       referer?: string;
       clientData?: KeyValue;
       deviceName?: string;
@@ -1248,9 +1255,9 @@ declare module 'pryv' {
     stopAuthRequest(msg: string): void;
     handleClick(): Promise<void>;
     getReturnURL(
-      returnURL?: string,
+      returnURL?: string | false,
       windowLocationForTest?: string,
-      navigatorForTests?: string,
+      navigatorForTests?: string | Navigator,
     ): string | boolean;
     /** `overrides`: auth request fields for this request only; `previous`: state to return to if an account switch does not complete. */
     startAuthRequest(overrides?: Partial<AuthSettings['authRequest']>, previous?: AuthStatePayload): Promise<AuthRequestResponse>;

@@ -273,7 +273,9 @@ describe('[LBTX] LoginButton', function () {
       loginBtn.saveAuthorizationData({ apiEndpoint: 'https://tok@menu-user.example.com/', username: 'menu-user' });
       loginBtn.showMenu();
       dialog().querySelector('.pryv-menu-logout').click();
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      // the re-init after a logout is exposed as `pending`: wait for it, not
+      // for a fixed delay (a slow re-init was still LOADING after 50 ms)
+      await loginBtn.pending;
       expect(states.filter((s) => s === AuthStates.SIGNOUT)).to.have.lengthOf(1);
       expect(confirms).to.equal(0);
       expect(dialog()).to.equal(null);
