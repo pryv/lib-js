@@ -251,7 +251,7 @@ Two helper pairs, both ship in `@pryv/cmc@3.9`:
 ```js
 // 1. URL only (caller drives navigation — custom popup, mobile deep-link, …).
 const url = cmc.requestAcceptUrl({
-  authUrl: 'https://pryv.github.io/app-web-user-account/cmc-accept', // /cmc-accept route on the deployed app-web-user-account
+  authUrl: 'https://account.pryv.me/cmc-accept',          // /cmc-accept route on the deployed app-web-user-account
   pryvApi: 'https://reg.pryv.me/',                        // recipient's Pryv API base
   capabilityUrl,                                           // from the requester's invite (out-of-band)
   scopeStreamId: ':_cmc:apps:my-app',                     // recipient's own :_cmc:apps:* stream
@@ -293,7 +293,7 @@ Scope-update hand-off (same shape, different page):
 ```js
 // Browser flow — open the auth page and wait for the user to accept / refuse.
 const result = await cmc.requestScopeUpdate({
-  authUrl: 'https://pryv.github.io/app-web-user-account/cmc-scope-update', // /cmc-scope-update route
+  authUrl: 'https://account.pryv.me/cmc-scope-update',          // /cmc-scope-update route
   pryvApi: 'https://reg.pryv.me/',
   scopeRequestEventId: update.remoteScopeRequestEventId,        // the request's id on the USER's account
   // scopeStreamId is optional — defaults to the scope-request event's home stream

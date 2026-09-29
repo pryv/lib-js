@@ -1440,7 +1440,7 @@ function isFromPopup (ev, popup, expectedOrigin) {
  * yourself (e.g., custom popup options, deep-link on mobile).
  *
  * @param {Object} opts
- * @param {string} opts.authUrl         - app-web-user-account base + `/cmc-accept` path (e.g. `https://pryv.github.io/app-web-user-account/cmc-accept`).
+ * @param {string} opts.authUrl         - app-web-user-account base + `/cmc-accept` path (e.g. `https://account.pryv.me/cmc-accept`).
  * @param {string} opts.pryvApi         - recipient's Pryv API base (e.g. `https://reg.pryv.me/`).
  * @param {string} opts.capabilityUrl   - capability URL from the requester's invite.
  * @param {string} opts.scopeStreamId   - recipient's `:_cmc:apps:<app>[:...]` stream.
