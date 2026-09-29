@@ -74,6 +74,9 @@ class LoginButton {
       case AuthStates.AUTHORIZED: {
         const profile = state.profile || ProfileStore.fromAccepted(state);
         this.text = profileLabel(this, profile);
+        // Never remember a sign-in that cannot call the API (it would be
+        // restored on every page load).
+        if (!ProfileStore.carriesToken(profile?.apiEndpoint)) break;
         const store = ProfileStore.read(this.getAuthorizationData());
         // Kept to locate the account app after a reload (see AuthController.accountUrl).
         const authUrl = withoutQuery(state.authUrl || this.auth?._authUrl) || store.authUrl;
@@ -222,9 +225,11 @@ class LoginButton {
     const url = window.location.href;
     const { pollUrl, key } = retrievePollUrl(url);
     if (pollUrl !== null) {
-      let body;
+      // the flow of this sign-in: a sign-out clears its cached credential
+      authController._authFlowKey = key;
+      let response, body;
       try {
-        ({ body } = await utils.fetchGet(pollUrl));
+        ({ response, body } = await utils.fetchGet(pollUrl));
       } catch (e) {
         body = {
           status: AuthStates.ERROR,
@@ -232,12 +237,19 @@ class LoginButton {
           error: e
         };
       }
+      if (response?.status === 403 && body?.status === 'REFUSED') {
+        // refused on the auth page: back to the sign-in button (as the popup path)
+        body = { status: AuthStates.INITIALIZED, serviceInfo: authController.serviceInfo };
+      } else if (body?.status == null) {
+        // unknown or expired key, or no answer the button can show
+        body = { status: AuthStates.ERROR, message: 'Cannot fetch result', error: body?.error ?? body };
+      }
       // Shared-secret delivery: the ACCEPTED body carries a one-time
       // `handoff` key, not the token. Redeem it exactly as the polling path
-      // does, under the flow key (so a sign-out clears the cached
-      // credential), and never report a token-less AUTHORIZED.
+      // does, under the flow key, and never report a token-less AUTHORIZED.
+      // Unlike the polling path, the state keeps its legacy shape (no `key`,
+      // credentials included), which existing redirect apps read.
       if (handoff.isHandoffBody(body)) {
-        authController._authFlowKey = key;
         try {
           const entry = await handoff.resolveHandoff(body, key);
           body.apiEndpoint = entry.apiEndpoint;

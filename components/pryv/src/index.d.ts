@@ -1033,6 +1033,10 @@ declare module 'pryv' {
        * `connectFromKey`). Absent when the account comes from stored
        * credentials: page load, an account switch without sign-in, or the
        * return to the previous account after a switch that did not complete.
+       * Also absent on the return from a sign-in by redirection (`returnURL`,
+       * including `'auto#'` on a phone or tablet): that state carries
+       * `apiEndpoint` with its token instead. Handle both:
+       * `state.key ? connectFromKey(state.key) : new Connection(state.apiEndpoint)`.
        */
       key?: string;
       /** Display hint posted by the auth page for a grant on a controlled account; `accessInfo().delegation` is authoritative. */

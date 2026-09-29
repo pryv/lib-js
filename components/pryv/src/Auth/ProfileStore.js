@@ -23,8 +23,26 @@ module.exports = {
   remove,
   markUnavailable,
   profileOf,
-  fromAccepted
+  fromAccepted,
+  carriesToken
 };
+
+const utils = require('../utils');
+
+/**
+ * Whether an apiEndpoint carries a token. A stored sign-in without one
+ * cannot call the API (3.13.0 saved such sign-ins after a redirect return,
+ * the credential hand-off not being redeemed).
+ * @param {string} apiEndpoint
+ * @returns {boolean}
+ */
+function carriesToken (apiEndpoint) {
+  try {
+    return Boolean(utils.extractTokenAndAPIEndpoint(apiEndpoint).token);
+  } catch (e) {
+    return false;
+  }
+}
 
 /**
  * Parse stored authorization data (any version) into

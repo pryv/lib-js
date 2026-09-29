@@ -139,6 +139,71 @@ describe('[LBRH] LoginButton redirect return with credential hand-off', function
     expect(authController._authFlowKey).to.equal('flowkey2');
   });
 
+  it('[LBH4] end to end: real button + controller store a usable sign-in, keep the legacy listener shape, sign-out clears the cache', async () => {
+    setPage('http://localhost/app?prYvpoll=https%3A%2F%2Freg.test.local%2Faccess%2Fflowkey4&prYvkey=flowkey4&prYvstatus=ACCEPTED');
+    stub(() => ({ secret: { username: 'alice', token: 'tok-789', apiEndpoint: 'https://alice.test.local/' } }));
+    const serviceInfo = { access: 'https://reg.test.local/access/', api: 'https://{username}.test.local/', name: 'Test' };
+    const service = {
+      infoSync: () => serviceInfo,
+      assets: async () => ({
+        loginButtonLoadCSS: async () => {},
+        loginButtonGetMessages: async () => ({ LOADING: 'Loading...' })
+      })
+    };
+    const external = [];
+    const loginBtn = new LoginButton({
+      onStateChange: (s) => external.push(s),
+      authRequest: { requestingAppId: 'lbh4-app', requestedPermissions: [], returnURL: 'self#' }
+    }, service);
+    await loginBtn.init();
+
+    expect(loginBtn.auth.state.status).to.equal('ACCEPTED');
+    expect(loginBtn.auth.state.apiEndpoint).to.equal('https://tok-789@alice.test.local/');
+    // redirect apps receive the legacy shape: credentials included, no `key`
+    const authorized = external.filter((s) => s.status === 'ACCEPTED');
+    expect(authorized).to.have.length(1);
+    expect(authorized[0].apiEndpoint).to.equal('https://tok-789@alice.test.local/');
+    expect(authorized[0].key).to.equal(undefined);
+    // the cookie holds a usable sign-in
+    expect(loginBtn.getAuthorizationData().apiEndpoint).to.equal('https://tok-789@alice.test.local/');
+    expect(global.window.location.href).to.equal('http://localhost/app');
+    expect(handoff.cacheGet('flowkey4').token).to.equal('tok-789');
+
+    await loginBtn.auth.signOut();
+    expect(handoff.cacheGet('flowkey4')).to.equal(null);
+    const stored = loginBtn.getAuthorizationData();
+    expect(stored == null || stored.deleted === true).to.equal(true);
+  });
+
+  it('[LBH6] the button never stores a sign-in without a token', async () => {
+    setPage('http://localhost/app');
+    const service = {
+      infoSync: () => ({ access: 'https://reg.test.local/access/', name: 'Test' }),
+      assets: async () => ({ loginButtonLoadCSS: async () => {}, loginButtonGetMessages: async () => ({ LOADING: 'Loading...' }) })
+    };
+    const loginBtn = new LoginButton({ authRequest: { requestingAppId: 'lbh6-app', requestedPermissions: [] } }, service);
+    await loginBtn.init();
+    await loginBtn.onStateChange({ status: 'ACCEPTED', username: 'bob', apiEndpoint: 'https://bob.test.local/' });
+    expect(loginBtn.getAuthorizationData()).to.equal(undefined);
+    await loginBtn.onStateChange({ status: 'ACCEPTED', username: 'bob', apiEndpoint: 'https://tok@bob.test.local/' });
+    expect(loginBtn.getAuthorizationData().apiEndpoint).to.equal('https://tok@bob.test.local/');
+    await loginBtn.deleteAuthorizationData();
+  });
+
+  it('[LBH5] a refused request returns to the sign-in button; an unknown key is an ERROR', async () => {
+    const authController = { serviceInfo: { access: 'https://reg.test.local/access/' } };
+    setPage('http://localhost/app?prYvpoll=https%3A%2F%2Freg.test.local%2Faccess%2Fflowkey5');
+    utils.fetchGet = async () => ({ response: { status: 403 }, body: { status: 'REFUSED', reasonID: 'REFUSED_BY_USER' } });
+    await LoginButton.prototype.finishAuthProcessAfterRedirection.call({}, authController);
+    expect(authController.state.status).to.equal('INITIALIZED');
+
+    setPage('http://localhost/app?prYvpoll=https%3A%2F%2Freg.test.local%2Faccess%2Fflowkey6');
+    utils.fetchGet = async () => ({ response: { status: 400 }, body: { error: { id: 'unknown-access-key' } } });
+    await LoginButton.prototype.finishAuthProcessAfterRedirection.call({}, authController);
+    expect(authController.state.status).to.equal('ERROR');
+    expect(authController.state.error).to.eql({ id: 'unknown-access-key' });
+  });
+
   it('[LBH3] a failed redemption ends in ERROR, never a token-less AUTHORIZED', async () => {
     setPage('http://localhost/app?prYvpoll=https%3A%2F%2Freg.test.local%2Faccess%2Fflowkey3');
     stub(() => { throw new Error('shared-secret-unavailable'); });

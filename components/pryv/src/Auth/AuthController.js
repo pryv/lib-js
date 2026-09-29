@@ -599,35 +599,33 @@ async function checkAutoLogin (authController) {
     return;
   }
 
-  const storedCredentials = await loginButton.getAuthorizationData();
+  let storedCredentials = await loginButton.getAuthorizationData();
   if (storedCredentials == null) return;
+  // Forget the stored sign-ins that carry no token (3.13.0 saved some after a
+  // redirect return): they would sign in to a session the API refuses, or
+  // stay listed as available accounts.
+  const stored = ProfileStore.read(storedCredentials);
+  const tokenless = stored.profiles.filter((p) => !ProfileStore.carriesToken(p.apiEndpoint));
+  if (tokenless.length > 0) {
+    authController._saveProfiles(tokenless.reduce((s, p) => ProfileStore.remove(s, p.username), stored));
+    storedCredentials = await loginButton.getAuthorizationData();
+    if (storedCredentials == null) return;
+  }
   if (typeof storedCredentials.authUrl === 'string') authController._authUrl = storedCredentials.authUrl;
   if (Array.isArray(storedCredentials.profiles)) {
     // Several remembered accounts: sign in to the active one, if any
     const store = ProfileStore.read(storedCredentials);
-    if (store.active == null || !carriesToken(store.active.apiEndpoint)) return;
+    if (store.active == null || !ProfileStore.carriesToken(store.active.apiEndpoint)) return;
     const state = { status: AuthStates.AUTHORIZED, username: store.active.username, apiEndpoint: store.active.apiEndpoint, profile: store.active };
     if (store.authUrl != null) state.authUrl = store.authUrl;
     authController.state = state;
     return;
   }
-  if (typeof storedCredentials.apiEndpoint === 'string' && !carriesToken(storedCredentials.apiEndpoint)) return;
+  // a button that cannot rewrite its storage still must not sign in to it
+  if (typeof storedCredentials.apiEndpoint === 'string' && !ProfileStore.carriesToken(storedCredentials.apiEndpoint)) return;
   const state = Object.assign({}, { status: AuthStates.AUTHORIZED }, storedCredentials);
   if (typeof state.username === 'string' && typeof state.apiEndpoint === 'string') state.profile = ProfileStore.profileOf(state);
   authController.state = state;
-}
-
-/**
- * A stored sign-in without a token cannot call the API. 3.13.0 saved such
- * sign-ins after a redirect return (the credential hand-off was not
- * redeemed): skip them rather than sign in to a session the API refuses.
- */
-function carriesToken (apiEndpoint) {
-  try {
-    return Boolean(utils.extractTokenAndAPIEndpoint(apiEndpoint).token);
-  } catch (e) {
-    return false;
-  }
 }
 
 /** A stored profile refreshed with what its access says about itself. */

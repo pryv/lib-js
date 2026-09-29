@@ -12,12 +12,21 @@
   popup path only: returning from a redirect ended in `AUTHORIZED` with a
   token-less `apiEndpoint`, which was also saved in the sign-in cookie, so every
   later page load signed back into a session the API refused. The redirect return
-  now redeems the hand-off exactly like the popup path (under the flow's poll key,
-  so a sign-out clears the cached credential) and ends in `ERROR` ("Credential
-  hand-off failed") instead of a token-less `AUTHORIZED` when it cannot. A
-  token-less sign-in already saved in the cookie by 3.13.0 is no longer used for
-  autologin: the button shows the sign-in again instead of a session the API
-  refuses.
+  now redeems the hand-off like the popup path (under the flow's poll key, so a
+  sign-out clears the cached credential) and ends in `ERROR` ("Credential
+  hand-off failed") instead of a token-less `AUTHORIZED` when it cannot. The
+  button never stores a sign-in without a token, and token-less sign-ins already
+  saved by 3.13.0 are forgotten on the next page load (the button shows the
+  sign-in again instead of a session the API refuses). A refused request now
+  returns to the sign-in button, and an unknown or expired key shows an error,
+  on the redirect return as on the popup path.
+  ⚑ **The `AUTHORIZED` state your `onStateChange` receives differs by path, as
+  before:** the popup path gives `{ status, id, key }` (use `connectFromKey`),
+  the redirect return gives the legacy state with `username` and a
+  token-bearing `apiEndpoint` and no `key`. Since `'auto#'` (the default) now
+  redirects on phones and tablets (below), an app on default settings sees both
+  shapes depending on the device: handle both, e.g.
+  `state.key ? connectFromKey(state.key, url) : new Connection(state.apiEndpoint)`.
 - **`returnURL: 'auto#'` (the default) redirects on phones and tablets as
   documented** ([open-pryv.io#142](https://github.com/pryv/open-pryv.io/issues/142)).
   `getReturnURL` never read the browser's `navigator`, so every device got the

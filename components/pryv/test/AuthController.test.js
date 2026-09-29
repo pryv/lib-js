@@ -262,6 +262,36 @@ describe('[ACNX] AuthController', function () {
       }
     });
 
+    it('[ACAU] autologin forgets the stored sign-ins without a token and keeps the usable ones', async function () {
+      let saved = {
+        username: 'u',
+        apiEndpoint: 'https://t@u.example.com/',
+        profiles: [
+          { username: 'u', apiEndpoint: 'https://t@u.example.com/' },
+          { username: 'stale', apiEndpoint: 'https://stale.example.com/' }
+        ]
+      };
+      let deleted = 0;
+      const button = {
+        getAuthorizationData: () => saved,
+        saveAuthorizationData: (d) => { saved = d; },
+        deleteAuthorizationData: () => { deleted++; saved = null; },
+        onStateChange: async () => {},
+        onClick: () => {}
+      };
+      const auth = new AuthController({ authRequest: { requestingAppId: 'test-app', requestedPermissions: [] } }, service, button);
+      await auth.init();
+      expect(auth.state.status).to.equal(AuthStates.AUTHORIZED);
+      expect(saved.profiles.map((p) => p.username)).to.deep.equal(['u']);
+
+      // only token-less sign-ins stored: all forgotten, not signed in
+      saved = { username: 'stale', apiEndpoint: 'https://stale.example.com/' };
+      const auth2 = new AuthController({ authRequest: { requestingAppId: 'test-app', requestedPermissions: [] } }, service, button);
+      await auth2.init();
+      expect(auth2.state.status).to.equal(AuthStates.INITIALIZED);
+      expect(deleted).to.equal(1);
+    });
+
     it('[ACUE] a button with showMenu gets the click instead of SIGNOUT, unless it declines', async function () {
       for (const [answer, expectSignout] of [[true, false], [undefined, false], [false, true]]) {
         const states = [];
