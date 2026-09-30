@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## 3.14.2 - 2026-09-30
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
+3.14.2; `@pryv/cmc` unchanged (3.17.0). 3.14.0 and 3.14.1 were not published on
+their own: 3.14.2 is the first published version carrying their changes (below).
+
 ### Fixed
 
 - **`connectFromKey(key)` and `pollAccessRequest(key)` reach the core holding the
