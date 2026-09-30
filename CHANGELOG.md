@@ -20,6 +20,22 @@
 3.14.2; `@pryv/cmc` unchanged (3.17.0). 3.14.0 and 3.14.1 were not published on
 their own: 3.14.2 is the first published version carrying their changes (below).
 
+### Security
+
+- **`Connection.apiOne()` errors no longer carry the call's params in their
+  message.** The message embedded the params as JSON, so a failed call leaked
+  what it was sent (a password to `auth.login` or a managed-account creation, a
+  token, personal data) into error text, which apps log or show on screen. The
+  message now names the method and the server's error id and message
+  (`Error for api method: "<method>" >> <id>: <message>`), or says which expected
+  key is missing, without dumping the result either. The full server error (or
+  result) is unchanged on the error's `innerObject`. Code that parsed the old
+  message text should read `innerObject` instead. `@pryv/delegation` errors,
+  which reused that message (a managed-account creation carries a password),
+  are clean with it. The two `api()` errors for an answer that breaks the batch
+  protocol no longer print the answer either (its results can hold tokens); they
+  are now `PryvError`s with the answer on `innerObject`.
+
 ### Fixed
 
 - **Typings: `authRequest.authUrl` is declared** ([lib-js#71](https://github.com/pryv/lib-js/issues/71)).

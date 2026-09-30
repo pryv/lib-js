@@ -116,7 +116,10 @@ class Connection {
    * @param {Object|Array} [params={}] - The params associated with this method
    * @param {string} [expectedKey] - If given, returns the value of this key or throws an error if not present
    * @returns {Promise<Object>} Promise resolving to the API result or the value of expectedKey
-   * @throws {Error} If .error is present in the response or expectedKey is missing
+   * @throws {Error} If .error is present in the response or expectedKey is missing.
+   *   The message names the method and the server's error id and message; the full
+   *   error (or result) is on `innerObject`. The call's params are never in the message:
+   *   they can carry passwords and tokens, and error messages end up in logs and on screen.
    */
   async apiOne (method, params = {}, expectedKey) {
     const result = await this.api([{ method, params }]);
@@ -125,11 +128,18 @@ class Connection {
       result[0].error ||
       (expectedKey != null && result[0][expectedKey] == null)
     ) {
-      const innerObject = result[0]?.error || result;
+      const error = result[0]?.error;
+      const innerObject = error || result;
+      let reason;
+      if (error) {
+        reason = [error.id, error.message].filter((v) => v != null && v !== '').join(': ') || 'error answer';
+      } else if (result[0] == null) {
+        reason = 'no result';
+      } else {
+        reason = `"${expectedKey}" missing in result`;
+      }
       throw new PryvError(
-        `Error for api method: "${method}" with params: ${JSON.stringify(
-          params
-        )} >> Result: ${JSON.stringify(innerObject)}"`,
+        `Error for api method: "${method}" >> ${reason}`,
         innerObject
       );
     }
@@ -197,17 +207,13 @@ class Connection {
         });
       }
       const resRequest = await callHandler(thisBatch);
-      // result checks
+      // result checks: the answer rides on `innerObject`, never in the message
+      // (results can hold tokens, e.g. from accesses.*)
       if (!resRequest || !Array.isArray(resRequest.results)) {
-        throw new Error(
-          'API call result is not an Array: ' + JSON.stringify(resRequest)
-        );
+        throw new PryvError('API call result is not an Array', resRequest);
       }
       if (resRequest.results.length !== thisBatch.length) {
-        throw new Error(
-          'API call result Array does not match request: ' +
-            JSON.stringify(resRequest)
-        );
+        throw new PryvError('API call result Array does not match request', resRequest);
       }
 
       // eventually call handleResult
