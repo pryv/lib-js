@@ -132,7 +132,7 @@ class Connection {
       const innerObject = error || result;
       let reason;
       if (error) {
-        reason = `${error.id}: ${error.message}`;
+        reason = [error.id, error.message].filter((v) => v != null && v !== '').join(': ') || 'error answer';
       } else if (result[0] == null) {
         reason = 'no result';
       } else {
@@ -207,17 +207,13 @@ class Connection {
         });
       }
       const resRequest = await callHandler(thisBatch);
-      // result checks
+      // result checks: the answer rides on `innerObject`, never in the message
+      // (results can hold tokens, e.g. from accesses.*)
       if (!resRequest || !Array.isArray(resRequest.results)) {
-        throw new Error(
-          'API call result is not an Array: ' + JSON.stringify(resRequest)
-        );
+        throw new PryvError('API call result is not an Array', resRequest);
       }
       if (resRequest.results.length !== thisBatch.length) {
-        throw new Error(
-          'API call result Array does not match request: ' +
-            JSON.stringify(resRequest)
-        );
+        throw new PryvError('API call result Array does not match request', resRequest);
       }
 
       // eventually call handleResult

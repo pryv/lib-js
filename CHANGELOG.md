@@ -30,7 +30,11 @@ their own: 3.14.2 is the first published version carrying their changes (below).
   (`Error for api method: "<method>" >> <id>: <message>`), or says which expected
   key is missing, without dumping the result either. The full server error (or
   result) is unchanged on the error's `innerObject`. Code that parsed the old
-  message text should read `innerObject` instead.
+  message text should read `innerObject` instead. `@pryv/delegation` errors,
+  which reused that message (a managed-account creation carries a password),
+  are clean with it. The two `api()` errors for an answer that breaks the batch
+  protocol no longer print the answer either (its results can hold tokens); they
+  are now `PryvError`s with the answer on `innerObject`.
 
 ### Fixed
 

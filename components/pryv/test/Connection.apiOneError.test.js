@@ -47,6 +47,7 @@ describe('[CAEX] apiOne() error message', function () {
     const result = [{ access: { token: SECRET } }];
     const conn = connWithResult(result);
     const e = await caught(conn.apiOne('accesses.create', { name: 'x', token: SECRET }, 'accessX'));
+    expect(e).to.be.instanceOf(pryv.PryvError);
     expect(e.message).to.include('"accesses.create"');
     expect(e.message).to.include('"accessX" missing in result');
     expect(e.message).to.not.include(SECRET);
@@ -56,7 +57,49 @@ describe('[CAEX] apiOne() error message', function () {
   it('[CAEC] no result at all', async () => {
     const conn = connWithResult([]);
     const e = await caught(conn.apiOne('events.get', { token: SECRET }));
+    expect(e).to.be.instanceOf(pryv.PryvError);
+    expect(e.message).to.include('"events.get"');
     expect(e.message).to.include('no result');
     expect(e.message).to.not.include(SECRET);
+  });
+
+  it('[CAED] an error answer without id or message', async () => {
+    const serverError = {};
+    const conn = connWithResult([{ error: serverError }]);
+    const e = await caught(conn.apiOne('events.get', { token: SECRET }));
+    expect(e.message).to.include('"events.get"');
+    expect(e.message).to.include('error answer');
+    expect(e.message).to.not.include('undefined');
+    expect(e.innerObject).to.equal(serverError);
+  });
+});
+
+/**
+ * [CAEY] A batch answer that breaks the protocol: the answer rides on
+ * `innerObject`, never in the message (results can hold tokens).
+ */
+describe('[CAEY] api() protocol-violation errors', function () {
+  function connWithAnswer (answer) {
+    const conn = new pryv.Connection('https://sometoken@alice.example.test/');
+    conn.post = async () => answer;
+    return conn;
+  }
+
+  it('[CAEE] an answer without results', async () => {
+    const answer = { error: { id: 'x', message: 'y', data: { token: SECRET } } };
+    const e = await caught(connWithAnswer(answer).api([{ method: 'events.get', params: {} }]));
+    expect(e).to.be.instanceOf(pryv.PryvError);
+    expect(e.message).to.include('not an Array');
+    expect(e.message).to.not.include(SECRET);
+    expect(e.innerObject).to.equal(answer);
+  });
+
+  it('[CAEF] results that do not match the calls', async () => {
+    const answer = { results: [{ access: { token: SECRET } }, {}] };
+    const e = await caught(connWithAnswer(answer).api([{ method: 'accesses.create', params: {} }]));
+    expect(e).to.be.instanceOf(pryv.PryvError);
+    expect(e.message).to.include('does not match');
+    expect(e.message).to.not.include(SECRET);
+    expect(e.innerObject).to.equal(answer);
   });
 });
