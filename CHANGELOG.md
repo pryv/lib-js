@@ -4,6 +4,25 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`connectFromKey(key)` and `pollAccessRequest(key)` reach the core holding the
+  auth request on a multi-core platform.** A pending auth request lives on the
+  core that created it, and the server answers with a poll URL on that core, but
+  polling by key built `access + key`, which may reach another core and answer
+  `unknown-access-key`. Polling by key now uses the poll URL the server issued
+  when this process started the request (`startAccessRequest`, the sign-in button,
+  or its redirect return), and falls back to `access + key` only for a key it never
+  saw. Passing the full poll URL keeps working as before and stays the most robust
+  choice across pages.
+- **Sign-in button: an account switch by redirection that is refused or fails
+  stays on the account already signed in**, as the popup path does, instead of
+  dropping to the sign-in button or an error while the cookie still held that
+  account. The state is left as it is (no second `AUTHORIZED`), and the outcome
+  is logged in the console, on this path and on the popup path's switch. A stray
+  sign-in link opened on a signed-in page also keeps the account (it is still
+  ignored, and logged).
+
 ## 3.14.1 - 2026-09-29
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`

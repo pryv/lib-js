@@ -7,6 +7,7 @@ const AuthStates = require('./AuthStates');
 const Messages = require('./LoginMessages');
 const ProfileStore = require('./ProfileStore');
 const handoff = require('../lib/handoff');
+const pollUrls = require('../lib/pollUrls');
 
 /**
  * Controller for authentication flow
@@ -414,6 +415,8 @@ class AuthController {
     // state can be handed `{ key, serviceInfo? }` (the polling response
     // itself doesn't echo `key` back).
     this._authFlowKey = this.state?.key;
+    // an app's later connectFromKey(key) then polls the core holding the request
+    pollUrls.remember(this.state?.key, this.state?.poll);
     // Kept to locate the account app when the service does not name it.
     if (this.state?.authUrl) this._authUrl = this.state.authUrl;
 
@@ -480,6 +483,7 @@ class AuthController {
             const previous = this._switchPrevious;
             // @ts-ignore - this is bound via .call()
             this._switchPrevious = null;
+            if (previous != null) console.warn('pryv: account switch did not complete (credential hand-off failed); keeping the previous account');
             this.state = previous ?? { status: AuthStates.ERROR, message: 'Credential hand-off failed', error: e };
             return;
           }
@@ -498,6 +502,8 @@ class AuthController {
           pollResponse.profile = ProfileStore.fromAccepted(pollResponse);
         } else if (previous != null) {
           // an account switch that did not complete: stay on the previous account
+          console.warn('pryv: account switch did not complete (' +
+            (pollResponse?.error?.id ?? pollResponse?.message ?? pollResponse?.status) + '); keeping the previous account');
           this.state = previous;
           return;
         }

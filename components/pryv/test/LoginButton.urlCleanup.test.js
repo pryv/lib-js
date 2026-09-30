@@ -7,6 +7,7 @@
 const LoginButton = require('../src/Browser/LoginButton');
 const SharedSecrets = require('../src/SharedSecrets');
 const handoff = require('../src/lib/handoff');
+const pollUrls = require('../src/lib/pollUrls');
 const utils = require('../src/utils');
 
 // Node only (JSDOM): these tests drive finishAuthProcessAfterRedirection
@@ -109,6 +110,8 @@ function redirectReturnFixture () {
   beforeEach(() => {
     f.fetchCalls.length = 0;
     f.retrieveCalls.length = 0;
+    // the poll-URL map is process-wide: other files may have filled it
+    pollUrls.clear();
   });
 
   afterEach(() => {
@@ -316,6 +319,8 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     const authController = { serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expectRefused(authController);
+    // nothing from the page URL reaches the poll-URL map either
+    expect(pollUrls.lookup('x')).to.equal(null);
   });
 
   it('[LBRB3] a return for another key is refused and keeps the pending flow', async () => {
@@ -326,6 +331,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expectRefused(authController);
     expect(storedFlow().key).to.equal('k1');
+    expect(pollUrls.lookup('k2')).to.equal(null);
   });
 
   it('[LBRB4] the stored (core) poll URL is fetched, never the one in the URL nor access + key; the flow is consumed', async () => {
@@ -398,6 +404,43 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     expect(stored.username).to.equal('alice');
     expect(stored.profiles.map((p) => p.username)).to.deep.equal(['alice', 'bob']);
     await loginBtn.deleteAuthorizationData();
+  });
+
+  it('[LBRBD] a switch return that is refused, fails or was never started keeps the account already signed in', async () => {
+    const cases = [
+      ['refused', 'http://localhost/app?prYvkey=k1', true, { status: 'REFUSED' }, { status: 403 }],
+      ['unknown key', 'http://localhost/app?prYvkey=k1', true, { error: { id: 'unknown-access-key' } }, { status: 400 }],
+      ['stray link', 'http://localhost/app?prYvkey=other', false, ACCEPTED, { status: 200 }]
+    ];
+    for (const [label, page, seeded, body, response] of cases) {
+      f.setPage(page);
+      f.fetchCalls.length = 0;
+      const external = [];
+      const loginBtn = new LoginButton({ onStateChange: (s) => external.push(s.status), authRequest: { requestingAppId: 'lbrbd-app', requestedPermissions: [], returnURL: 'self#' } },
+        fakeService(Object.assign({ name: 'Test' }, SERVICE_INFO)));
+      loginBtn._cookieKey = 'pryv-libjs-lbrbd-app';
+      loginBtn.saveAuthorizationData({ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/', profiles: [{ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/' }] });
+      if (seeded) seedFlow('k1', CORE_POLL, 'pryv-libjs-lbrbd-app');
+      f.poll(body, response);
+      await loginBtn.init();
+      expect(loginBtn.auth.state.status, label).to.equal('ACCEPTED');
+      expect(loginBtn.auth.state.username, label).to.equal('bob');
+      expect(loginBtn.getAuthorizationData().username, label).to.equal('bob');
+      expect(f.fetchCalls.length, label).to.equal(seeded ? 1 : 0);
+      // the stored sign-in only: no second AUTHORIZED for the failed return
+      expect(external.filter((s) => s === 'ACCEPTED'), label).to.have.length(1);
+      expect(global.window.location.href, label).to.equal('http://localhost/app');
+      if (!seeded) expect(pollUrls.lookup('other'), label).to.equal(null);
+      await loginBtn.deleteAuthorizationData();
+    }
+  });
+
+  it('[LBRBE] a redirect return remembers the poll URL for an app calling connectFromKey(key)', async () => {
+    f.setPage('http://localhost/app?prYvkey=k-rem');
+    seedFlow('k-rem', 'https://core-b.mc.example.com/reg/access/k-rem');
+    f.poll(ACCEPTED);
+    await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, { serviceInfo: SERVICE_INFO });
+    expect(pollUrls.lookup('k-rem')).to.equal('https://core-b.mc.example.com/reg/access/k-rem');
   });
 
   it('[LBRBB] a click on the button in ERROR starts over instead of doing nothing', async () => {
