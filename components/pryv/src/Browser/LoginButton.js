@@ -8,6 +8,7 @@ const AuthController = require('../Auth/AuthController');
 const ProfileStore = require('../Auth/ProfileStore');
 const Messages = require('../Auth/LoginMessages');
 const handoff = require('../lib/handoff');
+const pollUrls = require('../lib/pollUrls');
 const utils = require('../utils');
 
 /* global location */
@@ -229,6 +230,13 @@ class LoginButton {
     const url = window.location.href;
     const key = retrieveKey(url);
     if (key !== null) {
+      // The account the page is already signed in to (from the stored
+      // sign-in), if any: a return that does not end in a new sign-in (an
+      // account switch refused or failed, a stray link) keeps it, as the
+      // popup path does for a switch.
+      const previous = authController.state?.status === AuthStates.AUTHORIZED
+        ? Object.assign({}, authController.state)
+        : null;
       // Only finish the auth request this page started (kept across the
       // redirect by onStateChange), and poll the URL the server gave for
       // it: a link carrying another key or poll URL must not sign the page
@@ -236,7 +244,7 @@ class LoginButton {
       const flow = readAuthFlow(this._cookieKey);
       if (flow == null || flow.key !== key || typeof flow.poll !== 'string') {
         console.warn('pryv: ignoring a sign-in return for a request this page did not start');
-        authController.state = {
+        authController.state = previous ?? {
           status: AuthStates.ERROR,
           message: 'Sign-in return does not match a sign-in started on this page',
           error: { id: 'unexpected-auth-return' }
@@ -246,6 +254,8 @@ class LoginButton {
       }
       clearAuthFlow(this._cookieKey);
       const pollUrl = flow.poll;
+      // an app's connectFromKey(key) on this page then polls the same core
+      pollUrls.remember(key, pollUrl);
       if (typeof flow.authUrl === 'string') authController._authUrl = flow.authUrl;
       // the flow of this sign-in: a sign-out clears its cached credential
       authController._authFlowKey = key;
@@ -282,7 +292,12 @@ class LoginButton {
           body = { status: AuthStates.ERROR, message: 'Credential hand-off failed', error: e };
         }
       }
-      if (body?.status === AuthStates.AUTHORIZED && typeof body.username === 'string') body.profile = ProfileStore.fromAccepted(body);
+      if (body?.status === AuthStates.AUTHORIZED && typeof body.username === 'string') {
+        body.profile = ProfileStore.fromAccepted(body);
+      } else if (previous != null) {
+        // refused or failed: stay on the account already signed in
+        body = previous;
+      }
       authController.state = body;
       cleanUrl();
     } else if (utils.cleanURLFromPrYvParams(url) !== url) {

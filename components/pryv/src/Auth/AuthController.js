@@ -7,6 +7,7 @@ const AuthStates = require('./AuthStates');
 const Messages = require('./LoginMessages');
 const ProfileStore = require('./ProfileStore');
 const handoff = require('../lib/handoff');
+const pollUrls = require('../lib/pollUrls');
 
 /**
  * Controller for authentication flow
@@ -414,6 +415,8 @@ class AuthController {
     // state can be handed `{ key, serviceInfo? }` (the polling response
     // itself doesn't echo `key` back).
     this._authFlowKey = this.state?.key;
+    // an app's later connectFromKey(key) then polls the core holding the request
+    pollUrls.remember(this.state?.key, this.state?.poll);
     // Kept to locate the account app when the service does not name it.
     if (this.state?.authUrl) this._authUrl = this.state.authUrl;
 

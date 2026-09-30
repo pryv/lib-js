@@ -6,6 +6,7 @@ const utils = require('./utils.js');
 const PryvError = require('./lib/PryvError.js');
 const MfaRequiredError = require('./lib/MfaRequiredError.js');
 const handoff = require('./lib/handoff.js');
+const pollUrls = require('./lib/pollUrls.js');
 // Connection is required at the end of this file to allow circular requires.
 const Assets = require('./ServiceAssets.js');
 
@@ -528,15 +529,21 @@ class Service {
     // all-or-nothing, which a caller may want to know before showing the
     // approve link.
     if (body.consent != null) envelope.consent = body.consent;
+    // polling by key (pollAccessRequest, connectFromKey) then reaches the
+    // core that holds the request
+    pollUrls.remember(envelope.key, envelope.poll);
     return envelope;
   }
 
   /**
    * Poll an in-progress access request once. Accepts either:
-   *   - a `key` returned by `startAccessRequest` (poll URL is built from
+   *   - a `key` returned by `startAccessRequest` (polls the poll URL the
+   *     server issued for it when this process started the request, else
    *     `serviceInfo.access + key`)
    *   - a full poll URL (use as-is — recommended, since the server-issued
-   *     URL is canonical and may include a different subdomain).
+   *     URL is canonical and may point at a specific core: on a multi-core
+   *     platform `access + key` can reach a core that does not know the
+   *     request).
    *
    * Returns the raw body. Inspect `body.status` to drive the flow:
    *   - `'NEED_SIGNIN'` → user has not interacted yet; keep polling.
@@ -555,8 +562,14 @@ class Service {
     }
     let pollUrl = keyOrPollUrl;
     if (!/^https?:\/\//.test(keyOrPollUrl)) {
-      const serviceInfo = await this.info();
-      pollUrl = serviceInfo.access + keyOrPollUrl;
+      // the core-specific URL the server issued, when this process started
+      // the request; `access + key` may reach another core on a multi-core
+      // platform
+      pollUrl = pollUrls.lookup(keyOrPollUrl);
+      if (pollUrl == null) {
+        const serviceInfo = await this.info();
+        pollUrl = serviceInfo.access + keyOrPollUrl;
+      }
     }
     const { response, body } = await utils.fetchGet(pollUrl);
     // 403 with status=REFUSED is the canonical "user declined" terminal
@@ -577,7 +590,9 @@ class Service {
    * `key` returned by the auth-flow (not the underlying token /
    * apiEndpoint), and uses this method to build a working `Connection`.
    *
-   * The implementation polls `<access>/<key>` once; the call MUST be
+   * The implementation polls the request once (at the server-issued poll
+   * URL when this process started it, else `<access>/<key>`, which may
+   * miss the request on a multi-core platform); the call MUST be
    * made while the access request is still readable in the ACCEPTED
    * state. Servers keep a decided request only for a short retention
    * window after it is first polled (default 2 minutes, operator setting
