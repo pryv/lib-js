@@ -483,6 +483,7 @@ class AuthController {
             const previous = this._switchPrevious;
             // @ts-ignore - this is bound via .call()
             this._switchPrevious = null;
+            if (previous != null) console.warn('pryv: account switch did not complete (credential hand-off failed); keeping the previous account');
             this.state = previous ?? { status: AuthStates.ERROR, message: 'Credential hand-off failed', error: e };
             return;
           }
@@ -501,6 +502,8 @@ class AuthController {
           pollResponse.profile = ProfileStore.fromAccepted(pollResponse);
         } else if (previous != null) {
           // an account switch that did not complete: stay on the previous account
+          console.warn('pryv: account switch did not complete (' +
+            (pollResponse?.error?.id ?? pollResponse?.message ?? pollResponse?.status) + '); keeping the previous account');
           this.state = previous;
           return;
         }

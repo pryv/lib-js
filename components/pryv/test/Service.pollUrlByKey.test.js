@@ -56,15 +56,25 @@ describe('[PUKX] polling an auth request by key', function () {
     realFetch = null;
   });
 
-  it('[PUK1] remembers valid entries only and keeps a bounded number', function () {
-    pollUrls.remember('puk1-a', 'https://core-a.example.com/reg/access/puk1-a');
-    pollUrls.remember('puk1-b', 'javascript:alert(1)');
-    pollUrls.remember(null, 'https://core-a.example.com/reg/access/x');
-    expect(pollUrls.lookup('puk1-a')).to.equal('https://core-a.example.com/reg/access/puk1-a');
-    expect(pollUrls.lookup('puk1-b')).to.equal(null);
-    for (let i = 0; i < pollUrls.MAX_ENTRIES; i++) pollUrls.remember('puk1-fill-' + i, 'https://c.example.com/' + i);
-    expect(pollUrls.lookup('puk1-a')).to.equal(null); // oldest dropped
-    expect(pollUrls.lookup('puk1-fill-' + (pollUrls.MAX_ENTRIES - 1))).to.equal('https://c.example.com/' + (pollUrls.MAX_ENTRIES - 1));
+  it('[PUK1] remembers valid entries only, keeps a bounded number and expires them', function () {
+    const realNow = Date.now;
+    pollUrls.clear();
+    try {
+      pollUrls.remember('puk1-a', 'https://core-a.example.com/reg/access/puk1-a');
+      pollUrls.remember('puk1-b', 'javascript:alert(1)');
+      pollUrls.remember(null, 'https://core-a.example.com/reg/access/x');
+      expect(pollUrls.lookup('puk1-a')).to.equal('https://core-a.example.com/reg/access/puk1-a');
+      expect(pollUrls.lookup('puk1-b')).to.equal(null);
+      for (let i = 0; i < pollUrls.MAX_ENTRIES; i++) pollUrls.remember('puk1-fill-' + i, 'https://c.example.com/' + i);
+      expect(pollUrls.lookup('puk1-a')).to.equal(null); // oldest dropped
+      expect(pollUrls.lookup('puk1-fill-' + (pollUrls.MAX_ENTRIES - 1))).to.equal('https://c.example.com/' + (pollUrls.MAX_ENTRIES - 1));
+      const later = realNow() + pollUrls.TTL_MS + 1000;
+      Date.now = () => later;
+      expect(pollUrls.lookup('puk1-fill-' + (pollUrls.MAX_ENTRIES - 1))).to.equal(null); // expired
+    } finally {
+      Date.now = realNow;
+      pollUrls.clear();
+    }
   });
 
   it('[PUK2] pollAccessRequest(key) and connectFromKey(key) poll the core URL the server issued', async function () {

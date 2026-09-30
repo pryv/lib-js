@@ -84,7 +84,7 @@ describe('[ARQX] Service access-request init', function () {
       expect(state.status).to.equal('NEED_SIGNIN');
     });
 
-    it('[APRC] accepts a bare key (no scheme) and builds the URL', async function () {
+    it('[APRC] accepts a bare key (no scheme) and polls the request', async function () {
       this.timeout(15000);
       const env = await service.startAccessRequest({
         requestingAppId: 'jslib-test',

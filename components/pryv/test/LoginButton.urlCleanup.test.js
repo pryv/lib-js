@@ -110,6 +110,8 @@ function redirectReturnFixture () {
   beforeEach(() => {
     f.fetchCalls.length = 0;
     f.retrieveCalls.length = 0;
+    // the poll-URL map is process-wide: other files may have filled it
+    pollUrls.clear();
   });
 
   afterEach(() => {
@@ -317,6 +319,8 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     const authController = { serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expectRefused(authController);
+    // nothing from the page URL reaches the poll-URL map either
+    expect(pollUrls.lookup('x')).to.equal(null);
   });
 
   it('[LBRB3] a return for another key is refused and keeps the pending flow', async () => {
@@ -327,6 +331,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expectRefused(authController);
     expect(storedFlow().key).to.equal('k1');
+    expect(pollUrls.lookup('k2')).to.equal(null);
   });
 
   it('[LBRB4] the stored (core) poll URL is fetched, never the one in the URL nor access + key; the flow is consumed', async () => {
@@ -410,7 +415,8 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     for (const [label, page, seeded, body, response] of cases) {
       f.setPage(page);
       f.fetchCalls.length = 0;
-      const loginBtn = new LoginButton({ authRequest: { requestingAppId: 'lbrbd-app', requestedPermissions: [], returnURL: 'self#' } },
+      const external = [];
+      const loginBtn = new LoginButton({ onStateChange: (s) => external.push(s.status), authRequest: { requestingAppId: 'lbrbd-app', requestedPermissions: [], returnURL: 'self#' } },
         fakeService(Object.assign({ name: 'Test' }, SERVICE_INFO)));
       loginBtn._cookieKey = 'pryv-libjs-lbrbd-app';
       loginBtn.saveAuthorizationData({ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/', profiles: [{ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/' }] });
@@ -421,6 +427,10 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
       expect(loginBtn.auth.state.username, label).to.equal('bob');
       expect(loginBtn.getAuthorizationData().username, label).to.equal('bob');
       expect(f.fetchCalls.length, label).to.equal(seeded ? 1 : 0);
+      // the stored sign-in only: no second AUTHORIZED for the failed return
+      expect(external.filter((s) => s === 'ACCEPTED'), label).to.have.length(1);
+      expect(global.window.location.href, label).to.equal('http://localhost/app');
+      if (!seeded) expect(pollUrls.lookup('other'), label).to.equal(null);
       await loginBtn.deleteAuthorizationData();
     }
   });

@@ -892,10 +892,17 @@ declare module 'pryv' {
       /** Echoed only by a core that understood `authRequest.consent`. */
       consent?: AuthRequestConsentForm;
     }>;
+    /**
+     * Poll an access request once, by its full poll URL (recommended) or its
+     * `key`. A key started in this process polls the poll URL the server issued
+     * for it (the core holding the request); an unknown key polls
+     * `access + key`, which may miss the request on a multi-core platform.
+     */
     pollAccessRequest(keyOrPollUrl: string): Promise<any>;
     /**
      * Resolve an auth-flow polling `key` (from {@link Service.startAccessRequest})
-     * into a working {@link Connection}. Polls the access request once; throws a
+     * into a working {@link Connection}. Polls the access request once (as
+     * {@link Service.pollAccessRequest} does with a key); throws a
      * {@link PryvError} unless the access is `ACCEPTED`.
      */
     connectFromKey(key: string): Promise<Connection>;

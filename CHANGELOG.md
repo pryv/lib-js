@@ -18,8 +18,10 @@
 - **Sign-in button: an account switch by redirection that is refused or fails
   stays on the account already signed in**, as the popup path does, instead of
   dropping to the sign-in button or an error while the cookie still held that
-  account. A stray sign-in link opened on a signed-in page also keeps the account
-  (it is still ignored, and still logged in the console).
+  account. The state is left as it is (no second `AUTHORIZED`), and the outcome
+  is logged in the console, on this path and on the popup path's switch. A stray
+  sign-in link opened on a signed-in page also keeps the account (it is still
+  ignored, and logged).
 
 ## 3.14.1 - 2026-09-29
 
