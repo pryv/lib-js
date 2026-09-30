@@ -22,6 +22,11 @@ their own: 3.14.2 is the first published version carrying their changes (below).
 
 ### Fixed
 
+- **Typings: `authRequest.authUrl` is declared** ([lib-js#71](https://github.com/pryv/lib-js/issues/71)).
+  The access request forwards it to the platform, which honours it when it matches
+  `access:trustedAuthUrls` (an app's own auth page, with query parameters such as a
+  `username` hint or `backUrl` / `backLabel`); TypeScript callers no longer need a cast.
+  The `returnURL` half of that issue shipped in 3.14.0 (below).
 - **`connectFromKey(key)` and `pollAccessRequest(key)` reach the core holding the
   auth request on a multi-core platform.** A pending auth request lives on the
   core that created it, and the server answers with a poll URL on that core, but

@@ -1133,6 +1133,14 @@ declare module 'pryv' {
        * or `&`.
        */
       returnURL?: string | false;
+      /**
+       * Your own auth page for this request (query parameters allowed, e.g. a
+       * `username` hint or `backUrl` / `backLabel`). The platform honours it
+       * only when it matches one of its `access:trustedAuthUrls` entries and
+       * refuses the request otherwise; unset, the platform's default auth page
+       * is used.
+       */
+      authUrl?: string;
       referer?: string;
       clientData?: KeyValue;
       deviceName?: string;

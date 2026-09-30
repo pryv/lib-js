@@ -29,6 +29,8 @@ module.exports = {
  * @param {string | false} [settings.authRequest.returnURL] 'auto#' (default, also when unset or false):
  *   popup on desktop, redirect on a phone or tablet; 'self#': always redirect back to this page;
  *   a URL: always redirect back to that URL. Must end with '#', '?' or '&'.
+ * @param {string} [settings.authRequest.authUrl] Your own auth page for this request; honoured only
+ *   when it matches the platform's `access:trustedAuthUrls`
  * @param {string} [settings.authRequest.referer] To track registration source
  * @param {string} settings.spanButtonID set and <span> id in DOM to insert default login button or null for custom
  * @param {Function} settings.onStateChange
