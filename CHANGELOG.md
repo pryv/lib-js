@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+## @pryv/cmc 3.17.1 - 2026-09-30
+
+`@pryv/cmc` 3.17.1 only (documentation); published together with the other packages at
+3.14.2.
+
+### Changed
+
+- **`@pryv/cmc` docs: the example `authUrl` points at `https://account.pryv.me`**, the
+  reference account app on its own origin (README and the `acceptInvite` JSDoc).
+
 ## 3.14.2 - 2026-09-30
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
