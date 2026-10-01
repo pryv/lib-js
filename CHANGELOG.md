@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`authRequest.cmcInvites`** (types `AuthRequestCmcInvite`, `AuthCmcInvite`,
+  `AuthCmcInviteOutcome`): cross-account messaging invites the user answers in the same sign-in
+  (open-pryv.io 2.0.0-rc.32 or later). `service.startAccessRequest` returns the core's echo
+  (`cmcInvites`) like `consent`, the detection signal; the NEED_SIGNIN and ACCEPTED states are
+  typed with the invites and the auth page's outcomes (one per invite, a hint).
+- **`@pryv/delegation`: `detachDelegate(username, { keepAccessIds })`** passes the consent grants
+  the account owner keeps (open-pryv.io 2.0.0-rc.31 or later); an empty list sends nothing.
+
 ## @pryv/cmc 3.17.1 - 2026-09-30
 
 `@pryv/cmc` 3.17.1 only (documentation); published together with the other packages at

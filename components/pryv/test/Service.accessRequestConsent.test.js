@@ -108,4 +108,20 @@ describe('[ARQC] auth-request consent sidecar', function () {
     expect(envOld.key).to.equal('k2');
     expect(envOld).to.not.have.property('consent');
   });
+
+  it('[LCI3] posts cmcInvites verbatim and returns the echo a core sends, nothing when it does not', async function () {
+    const invites = [{ capabilityUrl: 'https://cap@doctor.test.local/', mandatory: true }];
+    const echo = [{ capabilityUrl: 'https://cap@doctor.test.local/', mandatory: true, for: 'self' }];
+    stubFetch({ key: 'k3', authUrl: 'https://auth/', poll: 'https://poll/k3', poll_rate_ms: 1000, cmcInvites: echo });
+    const service = new pryv.Service('https://reg.test.local/service/info');
+    const env = await service.startAccessRequest({ ...REQUEST, cmcInvites: invites });
+    expect(posted[0].cmcInvites).to.deep.equal(invites);
+    expect(env.cmcInvites).to.deep.equal(echo);
+    if (realFetch) { global.fetch = realFetch; realFetch = null; }
+
+    stubFetch({ key: 'k4', authUrl: 'https://auth/', poll: 'https://poll/k4', poll_rate_ms: 1000 });
+    const older = new pryv.Service('https://reg.test.local/service/info');
+    const envOld = await older.startAccessRequest({ ...REQUEST, cmcInvites: invites });
+    expect(envOld).to.not.have.property('cmcInvites');
+  });
 });

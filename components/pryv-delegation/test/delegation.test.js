@@ -168,6 +168,15 @@ describe('[DELM] @pryv/delegation method → endpoint mapping', function () {
       expect(conn.calls[0].method).to.equal('delegations.detachDelegate');
       expect(conn.calls[0].params).to.deep.equal({ username: 'bob' });
     });
+
+    it('[LCI2] detachDelegate passes keepAccessIds through, and sends none for an empty list', async function () {
+      const conn = makeStubConnection({ handlers: { 'delegations.detachDelegate': function () { return {}; } } });
+      const d = Delegation.fromConnection(conn);
+      await d.detachDelegate('bob', { keepAccessIds: ['g1', 'g2'] });
+      expect(conn.calls[0].params).to.deep.equal({ username: 'bob', keepAccessIds: ['g1', 'g2'] });
+      await d.detachDelegate('bob', { keepAccessIds: [] });
+      expect(conn.calls[1].params).to.deep.equal({ username: 'bob' });
+    });
   });
 
   describe('[DELMA] A-side (delegate)', function () {
