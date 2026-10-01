@@ -317,7 +317,7 @@ describe('[ACNX] AuthController', function () {
   });
 
   describe('[ASRX] stopAuthRequest', function () {
-    it('[ACSA] sets error state with message', async function () {
+    it('[ASRA] sets error state with message', async function () {
       const auth = new AuthController({
         authRequest: {
           requestingAppId: 'test-app',

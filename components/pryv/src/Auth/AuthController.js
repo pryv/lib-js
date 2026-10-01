@@ -275,7 +275,7 @@ class AuthController {
       if (!ACCESS_GONE_ERRORS.includes(info?.error?.id)) {
         // any other answer (server error, rate limit) says nothing about the access
         this.state = previous ?? { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
-        throw new Error('Cannot check the access of ' + target.username + ': ' + JSON.stringify(info?.error));
+        throw new PryvError('Cannot check the access of ' + target.username + ': ' + (info?.error?.id ?? 'unexpected answer'), info?.error);
       }
       // revoked or expired (a detach revokes the accesses granted through it)
       this._saveProfiles(ProfileStore.markUnavailable(this._readProfiles(), target.username));

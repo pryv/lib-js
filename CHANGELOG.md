@@ -40,7 +40,9 @@ their own: 3.14.2 is the first published version carrying their changes (below).
   started by the sign-in button now fails with a `PryvError` carrying the
   server's message, `id` and `status` (the answer on `response.body`) instead of
   an `Error` whose message held the whole answer, which echoes the request's
-  permissions and data.
+  permissions and data. The button's check of a stored account's access and
+  `@pryv/monitor`'s stream refresh no longer print the server's answer either
+  (it rides on `innerObject`).
 
 ### Fixed
 
