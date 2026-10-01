@@ -205,9 +205,8 @@ class Service {
     }
 
     if (!body || !body.token) {
-      throw new PryvError(
-        'Invalid login response: ' + JSON.stringify(body)
-      );
+      // The answer rides on `innerObject`, never in the message (it may hold secrets).
+      throw new PryvError('Invalid login response: no token', body);
     }
     return new Connection(
       Service.buildAPIEndpoint(await this.info(), username, body.token),
@@ -256,9 +255,7 @@ class Service {
     });
     if (!response.ok) throw PryvError.fromApiResponse(response, body);
     if (!body || !body.token) {
-      throw new PryvError(
-        'mfa.verify did not return a token: ' + JSON.stringify(body)
-      );
+      throw new PryvError('mfa.verify did not return a token', body);
     }
     return new Connection(
       Service.buildAPIEndpoint(await this.info(), userId, body.token),
@@ -514,9 +511,7 @@ class Service {
     );
     if (!response.ok) throw PryvError.fromApiResponse(response, body);
     if (!body || !body.key || !body.poll) {
-      throw new PryvError(
-        'Invalid access-request response: ' + JSON.stringify(body)
-      );
+      throw new PryvError('Invalid access-request response: no key or poll', body);
     }
     const envelope = {
       key: body.key,

@@ -8,6 +8,7 @@ const Messages = require('./LoginMessages');
 const ProfileStore = require('./ProfileStore');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
+const PryvError = require('../lib/PryvError');
 
 /**
  * Controller for authentication flow
@@ -274,7 +275,7 @@ class AuthController {
       if (!ACCESS_GONE_ERRORS.includes(info?.error?.id)) {
         // any other answer (server error, rate limit) says nothing about the access
         this.state = previous ?? { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
-        throw new Error('Cannot check the access of ' + target.username + ': ' + JSON.stringify(info?.error));
+        throw new PryvError('Cannot check the access of ' + target.username + ': ' + (info?.error?.id ?? 'unexpected answer'), info?.error);
       }
       // revoked or expired (a detach revokes the accesses granted through it)
       this._saveProfiles(ProfileStore.markUnavailable(this._readProfiles(), target.username));
@@ -432,7 +433,9 @@ class AuthController {
           Object.assign({}, this.settings.authRequest, overrides)
         );
         if (!response.ok) {
-          throw new Error('Access request failed: ' + JSON.stringify(body));
+          // The server's message, id and status; the body stays on `response`,
+          // never in the message (it echoes the request's permissions and data).
+          throw PryvError.fromApiResponse(response, body);
         }
         return body;
       } catch (e) {
