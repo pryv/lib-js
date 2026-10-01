@@ -13,14 +13,14 @@ describe('[ARQX] Service access-request init', function () {
     service = new pryv.Service(testData.serviceInfoUrl);
   });
 
-  describe('[ASTX] Service.startAccessRequest', function () {
-    it('[ASTA] rejects when requestingAppId is missing', async function () {
+  describe('[SARX] Service.startAccessRequest', function () {
+    it('[SARA] rejects when requestingAppId is missing', async function () {
       let caught;
       try { await service.startAccessRequest({}); } catch (e) { caught = e; }
       expect(caught).to.be.instanceOf(pryv.PryvError);
     });
 
-    it('[ASTB] returns { key, authUrl, poll, pollRateMs }', async function () {
+    it('[SARB] returns { key, authUrl, poll, pollRateMs }', async function () {
       this.timeout(15000);
       const env = await service.startAccessRequest({
         requestingAppId: 'jslib-test',

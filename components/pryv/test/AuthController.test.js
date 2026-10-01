@@ -7,6 +7,7 @@
 const AuthController = require('../src/Auth/AuthController');
 const AuthStates = require('../src/Auth/AuthStates');
 const Service = require('../src/Service');
+const PryvError = require('../src/lib/PryvError');
 
 describe('[ACNX] AuthController', function () {
   this.timeout(15000);
@@ -315,7 +316,7 @@ describe('[ACNX] AuthController', function () {
     });
   });
 
-  describe('[ACSX] stopAuthRequest', function () {
+  describe('[ASRX] stopAuthRequest', function () {
     it('[ACSA] sets error state with message', async function () {
       const auth = new AuthController({
         authRequest: {
@@ -332,8 +333,8 @@ describe('[ACNX] AuthController', function () {
     });
   });
 
-  describe('[ACRX] returnURL', function () {
-    it('[ACRA] throws on invalid returnURL trailer', function () {
+  describe('[ARUX] returnURL', function () {
+    it('[ARUA] throws on invalid returnURL trailer', function () {
       const auth = new AuthController({
         authRequest: {
           requestingAppId: 'test-app',
@@ -344,7 +345,7 @@ describe('[ACNX] AuthController', function () {
       expect(() => auth.getReturnURL('http://example.com')).to.throw('Last character');
     });
 
-    it('[ACRB] handles null/undefined returnURL', function () {
+    it('[ARUB] handles null/undefined returnURL', function () {
       const auth = new AuthController({
         authRequest: {
           requestingAppId: 'test-app',
@@ -541,6 +542,42 @@ describe('[ACNX] AuthController', function () {
       await auth.startAuthRequest();
       expect(auth.state.status).to.equal(AuthStates.ERROR);
       expect(auth.state.token).to.equal(undefined);
+    });
+  });
+
+  describe('[ACQX] a refused access request', function () {
+    let realFetch;
+
+    afterEach(function () {
+      if (realFetch) global.fetch = realFetch;
+      realFetch = null;
+    });
+
+    it('[ACQ1] the error carries the server message, id and status; the answer stays out of the message', async function () {
+      const SECRET = 'S3CRET-stream-id';
+      const body = { error: { id: 'invalid-parameters-format', message: 'The parameters are not valid.', data: { requestedPermissions: [{ streamId: SECRET }] } } };
+      realFetch = global.fetch;
+      global.fetch = async function () {
+        return { ok: false, status: 400, json: async () => body };
+      };
+      const auth = new AuthController({
+        authRequest: { requestingAppId: 'test-app', requestedPermissions: [{ streamId: SECRET, level: 'read' }] }
+      }, service);
+      auth.serviceInfo = { access: 'https://reg.test.local/access', register: 'https://reg.test.local/' };
+      let error = null;
+      try {
+        await auth.startAuthRequest();
+      } catch (e) {
+        error = e;
+      }
+      expect(error).to.be.instanceOf(PryvError);
+      expect(error.message).to.equal('The parameters are not valid.');
+      expect(error.message).to.not.include(SECRET);
+      expect(error.id).to.equal('invalid-parameters-format');
+      expect(error.status).to.equal(400);
+      expect(error.response.body).to.deep.equal(body);
+      expect(auth.state.status).to.equal(AuthStates.ERROR);
+      expect(auth.state.error).to.equal(error);
     });
   });
 });

@@ -8,6 +8,7 @@ const Messages = require('./LoginMessages');
 const ProfileStore = require('./ProfileStore');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
+const PryvError = require('../lib/PryvError');
 
 /**
  * Controller for authentication flow
@@ -432,7 +433,9 @@ class AuthController {
           Object.assign({}, this.settings.authRequest, overrides)
         );
         if (!response.ok) {
-          throw new Error('Access request failed: ' + JSON.stringify(body));
+          // The server's message, id and status; the body stays on `response`,
+          // never in the message (it echoes the request's permissions and data).
+          throw PryvError.fromApiResponse(response, body);
         }
         return body;
       } catch (e) {

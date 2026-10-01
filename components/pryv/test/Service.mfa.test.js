@@ -65,8 +65,8 @@ describe('[MFLX] Service MFA', function () {
     });
   });
 
-  describe('[MERX] MfaRequiredError', function () {
-    it('[MERA] is exported on the package root and extends PryvError', function () {
+  describe('[MFEX] MfaRequiredError', function () {
+    it('[MFEA] is exported on the package root and extends PryvError', function () {
       expect(pryv.MfaRequiredError).to.be.a('function');
       const err = new pryv.MfaRequiredError(
         'tok-abc',
@@ -81,7 +81,7 @@ describe('[MFLX] Service MFA', function () {
       expect(err.name).to.equal('MfaRequiredError');
     });
 
-    it('[MERB] picks up id/message from API error body when provided', function () {
+    it('[MFEB] picks up id/message from API error body when provided', function () {
       const err = new pryv.MfaRequiredError(
         'tok-xyz',
         { status: 401 },
@@ -91,7 +91,7 @@ describe('[MFLX] Service MFA', function () {
       expect(err.message).to.equal('custom msg');
     });
 
-    it('[MERC] surfaces the MFA method from the API body when present', function () {
+    it('[MFEC] surfaces the MFA method from the API body when present', function () {
       const totp = new pryv.MfaRequiredError(
         'tok-1',
         { status: 200 },

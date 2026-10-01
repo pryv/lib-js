@@ -34,7 +34,13 @@ their own: 3.14.2 is the first published version carrying their changes (below).
   which reused that message (a managed-account creation carries a password),
   are clean with it. The two `api()` errors for an answer that breaks the batch
   protocol no longer print the answer either (its results can hold tokens); they
-  are now `PryvError`s with the answer on `innerObject`.
+  are now `PryvError`s with the answer on `innerObject`. Likewise `Service.login`,
+  `Service.mfaVerify` and `Service.startAccessRequest` no longer print a malformed
+  answer in their error (it rides on `innerObject`), and a refused access request
+  started by the sign-in button now fails with a `PryvError` carrying the
+  server's message, `id` and `status` (the answer on `response.body`) instead of
+  an `Error` whose message held the whole answer, which echoes the request's
+  permissions and data.
 
 ### Fixed
 
