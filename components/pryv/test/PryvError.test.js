@@ -71,4 +71,14 @@ describe('[PERX] PryvError', function () {
     expect(error.status).to.equal(502);
     expect(error.response).to.deep.equal({ body: undefined, status: 502 });
   });
+
+  it('[PERJ] innerObject and response are readable but not enumerable (not printed with the error)', function () {
+    const error = new PryvError('Outer', { id: 'invalid-access-token', secret: 'tok' });
+    error.response = { body: { secret: 'tok' }, status: 401 };
+    expect(error.innerObject.id).to.equal('invalid-access-token');
+    expect(error.response.status).to.equal(401);
+    expect(Object.keys(error)).to.not.include('innerObject');
+    expect(Object.keys(error)).to.not.include('response');
+    expect(require('util').inspect(error)).to.not.include('tok');
+  });
 });

@@ -14,6 +14,13 @@
 - **`@pryv/delegation`: `detachDelegate(username, { keepAccessIds })`** passes the consent grants
   the account owner keeps (open-pryv.io 2.0.0-rc.31 or later); an empty list sends nothing.
 
+### Changed
+
+- **`PryvError.innerObject` and `PryvError.response` are no longer enumerable.** They stay
+  readable and writable, but `console.log(err)` / `util.inspect(err)` no longer print the raw
+  platform answer they hold, and a spread (`{ ...err }`) or `Object.keys(err)` no longer includes
+  them: read them by name.
+
 ## @pryv/cmc 3.17.1 - 2026-09-30
 
 `@pryv/cmc` 3.17.1 only (documentation); published together with the other packages at

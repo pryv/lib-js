@@ -35,6 +35,10 @@ class PryvError extends Error {
     this.status = undefined;
     /** @type {{ body: any, status: number }|undefined} Raw response */
     this.response = undefined;
+    // `innerObject` and `response` hold raw platform answers: still readable and
+    // writable, but not enumerable, so `console.log(err)` does not print them.
+    Object.defineProperty(this, 'innerObject', { enumerable: false });
+    Object.defineProperty(this, 'response', { enumerable: false });
 
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, PryvError);
