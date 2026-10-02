@@ -41,6 +41,8 @@ class MfaRequiredError extends PryvError {
     this.id = (apiErr && apiErr.id) || 'mfa-required';
     this.status = response && response.status;
     this.response = { body, status: response && response.status };
+    // Read by name, but not printed with the error (like `innerObject`).
+    Object.defineProperty(this, 'mfaToken', { enumerable: false });
 
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, MfaRequiredError);

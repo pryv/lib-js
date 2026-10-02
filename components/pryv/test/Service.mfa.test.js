@@ -115,5 +115,18 @@ describe('[MFLX] Service MFA', function () {
       );
       expect(err.method).to.equal(undefined);
     });
+
+    it('[MFEE] mfaToken and the raw response are readable but not printed with the error', function () {
+      const err = new pryv.MfaRequiredError(
+        'tok-secret-4',
+        { status: 200 },
+        { mfaToken: 'tok-secret-4' }
+      );
+      expect(err.mfaToken).to.equal('tok-secret-4');
+      expect(err.response.body.mfaToken).to.equal('tok-secret-4');
+      expect(Object.keys(err)).to.not.include('mfaToken');
+      expect(Object.keys(err)).to.not.include('response');
+      expect(require('util').inspect(err)).to.not.include('tok-secret-4');
+    });
   });
 });
