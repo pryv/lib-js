@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## 3.15.0 - 2026-10-02
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
+3.15.0; `@pryv/cmc` unchanged (3.17.1).
+
 ### Added
 
 - **`authRequest.cmcInvites`** (types `AuthRequestCmcInvite`, `AuthCmcInvite`,
@@ -19,7 +24,7 @@
 - **`PryvError.innerObject` and `PryvError.response` are no longer enumerable.** They stay
   readable and writable, but `console.log(err)` / `util.inspect(err)` no longer print the raw
   platform answer they hold, and a spread (`{ ...err }`) or `Object.keys(err)` no longer includes
-  them: read them by name.
+  them: read them by name. The same holds for **`MfaRequiredError.mfaToken`**.
 
 ## @pryv/cmc 3.17.1 - 2026-09-30
 
