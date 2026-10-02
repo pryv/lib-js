@@ -243,11 +243,23 @@ class Delegation {
    * — surface it distinctly so the UI can explain the account owner must log
    * in directly (not through a delegated session) to remove a delegate.
    *
+   * The account owner may keep consent grants the delegate gave (core
+   * 2.0.0-rc.31 or later): `opts.keepAccessIds` lists them; every other
+   * consent grant of the relationship is withdrawn. Each id must be such a
+   * grant, else `delegation-invalid-keep-list` and nothing is changed. An
+   * older core ignores the list and withdraws them all.
+   *
    * @param {string} delegateUsername  the delegate to detach.
+   * @param {Object} [opts]
+   * @param {string[]} [opts.keepAccessIds]  consent grants the owner keeps.
    * @returns {Promise<void>}
    */
-  async detachDelegate (delegateUsername) {
-    await this._apiOne('delegations.detachDelegate', { username: delegateUsername });
+  async detachDelegate (delegateUsername, opts) {
+    const params = { username: delegateUsername };
+    if (opts != null && Array.isArray(opts.keepAccessIds) && opts.keepAccessIds.length > 0) {
+      params.keepAccessIds = opts.keepAccessIds.slice();
+    }
+    await this._apiOne('delegations.detachDelegate', params);
   }
 
   // ---- A side (the delegate) --------------------------------------------

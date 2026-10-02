@@ -891,6 +891,8 @@ declare module 'pryv' {
       pollRateMs: number;
       /** Echoed only by a core that understood `authRequest.consent`. */
       consent?: AuthRequestConsentForm;
+      /** Echoed only by a core that understood `authRequest.cmcInvites`. */
+      cmcInvites?: AuthCmcInvite[];
     }>;
     /**
      * Poll an access request once, by its full poll URL (recommended) or its
@@ -982,6 +984,35 @@ declare module 'pryv' {
     >;
   };
 
+  /**
+   * A cross-account messaging invite the user is asked to answer in the same
+   * authorisation request (`authRequest.cmcInvites`): the capability URL the
+   * app received, whether declining it refuses the whole request, and for
+   * which account it is accepted (`'target'`: the account the access is
+   * granted for, when the user acts for an account it manages).
+   */
+  export type AuthRequestCmcInvite = {
+    capabilityUrl: string;
+    mandatory?: boolean;
+    for?: 'self' | 'target';
+  };
+
+  /** An invite as the core echoes it back, with its defaults filled in. */
+  export type AuthCmcInvite = {
+    capabilityUrl: string;
+    mandatory: boolean;
+    for: 'self' | 'target';
+  };
+
+  /**
+   * What the auth page did with one invite, in the ACCEPTED body (one per
+   * invite, in order). A hint: the requester learns the truth from its inbox.
+   */
+  export type AuthCmcInviteOutcome =
+    | { acceptEventId: string; dataGrantAccessId?: string; acceptedFor?: 'self' }
+    | { declined: true }
+    | { reason: string };
+
   export type States =
     | 'ERROR'
     | 'LOADING'
@@ -1025,6 +1056,8 @@ declare module 'pryv' {
         defaultName: string;
       }>;
       consent?: AuthRequestConsentForm;
+      /** Present only when the request carried `cmcInvites` the core understood. */
+      cmcInvites?: AuthCmcInvite[];
       requestingAppId: string;
       returnURL?: string | null;
       serviceInfo?: ServiceInfo;
@@ -1055,6 +1088,8 @@ declare module 'pryv' {
       profile?: AuthProfile;
       /** One-time credential hand-off key (shared-secret delivery), in place of `token`. */
       handoff?: { type: 'shared-secret'; key: string };
+      /** What the auth page did with each invite of the request (a hint). */
+      cmcInvites?: AuthCmcInviteOutcome[];
     };
     SIGNOUT: {};
     SWITCHING: {
@@ -1089,6 +1124,7 @@ declare module 'pryv' {
     requestingAppId: string;
     requestedPermissions: AuthRequestedPermission[];
     consent?: AuthRequestConsentForm;
+    cmcInvites?: AuthCmcInvite[];
     lang?: string;
     returnURL?: string;
     clientData?: KeyValue;
@@ -1125,6 +1161,13 @@ declare module 'pryv' {
       languageCode?: string;
       requestedPermissions: AuthRequestedPermission[];
       consent?: AuthRequestConsent;
+      /**
+       * Cross-account messaging invites the user answers in the same
+       * sign-in (1 to 8). The ACCEPTED state carries one outcome per invite;
+       * a declined mandatory invite ends the request REFUSED with
+       * `reasonId: 'REFUSED_MANDATORY_CONSENT'`. An older core ignores the field.
+       */
+      cmcInvites?: AuthRequestCmcInvite[];
       /**
        * Where the sign-in happens: `'auto#'` (default, also when unset or
        * `false`) opens a popup on desktop and redirects on a phone or tablet;

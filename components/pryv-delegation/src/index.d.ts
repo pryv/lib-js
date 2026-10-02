@@ -137,7 +137,8 @@ declare module '@pryv/delegation' {
     requestAttach(delegateUsername: string): Promise<DelegationRecord>;
     cancelInvite(delegateUsername: string): Promise<void>;
     listDelegates(): Promise<DelegateRecord[]>;
-    detachDelegate(delegateUsername: string): Promise<void>;
+    /** `opts.keepAccessIds`: consent grants the delegate gave that the owner keeps (core 2.0.0-rc.31+). */
+    detachDelegate(delegateUsername: string, opts?: { keepAccessIds?: string[] }): Promise<void>;
 
     // A side (the delegate)
     acceptAttach(controlledUsername: string): Promise<DelegationRecord>;

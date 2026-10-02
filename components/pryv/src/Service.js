@@ -524,6 +524,8 @@ class Service {
     // all-or-nothing, which a caller may want to know before showing the
     // approve link.
     if (body.consent != null) envelope.consent = body.consent;
+    // Same for consent invites: echoed only by a core that understood them.
+    if (body.cmcInvites != null) envelope.cmcInvites = body.cmcInvites;
     // polling by key (pollAccessRequest, connectFromKey) then reaches the
     // core that holds the request
     pollUrls.remember(envelope.key, envelope.poll);

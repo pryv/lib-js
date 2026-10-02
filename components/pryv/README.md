@@ -131,6 +131,13 @@ Here is an implementation of the [Pryv.io authentication process](https://api.pr
           optIn: ['location']      // offered UNticked; the user opts in
           // a permission in neither list is optional and shown pre-selected
         },
+        // optional (core 2.0.0-rc.32+): cross-account messaging invites the
+        // user answers in the same sign-in (1 to 8). The ACCEPTED state then
+        // carries `cmcInvites`, one outcome per invite ({ acceptEventId, ... },
+        // { declined: true } or { reason }), a hint: the requester learns the
+        // truth from its own inbox. Declining a mandatory one refuses the sign-in
+        // (REFUSED, reasonId 'REFUSED_MANDATORY_CONSENT'). Ignored by older cores.
+        // cmcInvites: [{ capabilityUrl: invite.capabilityUrl, mandatory: true }],
         clientData: {
           'app-web-auth:description': {
             'type': 'note/txt', 'content': 'This is a consent message.'

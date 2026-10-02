@@ -103,6 +103,8 @@ const created = await delegation.createAccount({
 
 ## Detach requires a genuine login on B
 
+When the delegate accepted cross-account consents for the account, the owner may keep some of them: `detachDelegate('parent-b', { keepAccessIds: ['<grant id>'] })` (core 2.0.0-rc.31 or later; each id must be a consent grant given through this relationship, else `delegation-invalid-keep-list` and nothing changes). The others are withdrawn and their requesters told.
+
 `detachDelegate` and `cancelInvite` remove a delegation relationship, so they require the account owner to be **genuinely logged in** to the controlled account — a delegate PAT or a control token is rejected. A delegated session therefore cannot walk away with, or tear down, the relationship on its own.
 
 The rejection surfaces as a typed [`DelegationError`](#typed-errors) with `id === delegationErrorIds.GENUINE_LOGIN_REQUIRED`. Surface it distinctly in your UI:
