@@ -47,9 +47,11 @@ lint *params:
 lint-fix *params:
     eslint . --fix {{params}}
 
-# Run TypeScript type checking (no emit)
+# Run TypeScript type checking (no emit): the JS sources against the declarations,
+# then the published declaration files themselves (strict, no skipLibCheck), as an app compiles them
 typecheck:
     npx tsc --noEmit -p tsconfig.json
+    npx tsc -p tsconfig.declarations.json
 
 # Run tests on the given component ('all' for all components) with optional extra parameters.
 # Positional-arguments + "$@" so params reach mocha verbatim: an unquoted {{params}}

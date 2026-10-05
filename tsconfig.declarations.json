@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "lib": ["ES2022", "DOM"],
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": false,
+    "esModuleInterop": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "pryv": ["./components/pryv/src"],
+      "@pryv/socket.io": ["./components/pryv-socket.io/src"],
+      "@pryv/monitor": ["./components/pryv-monitor/src"],
+      "@pryv/cmc": ["./components/pryv-cmc/src"],
+      "@pryv/delegation": ["./components/pryv-delegation/src"]
+    }
+  },
+  "files": [
+    "components/pryv/src/index.d.ts",
+    "components/pryv-socket.io/src/index.d.ts",
+    "components/pryv-monitor/src/index.d.ts",
+    "components/pryv-cmc/src/index.d.ts",
+    "components/pryv-delegation/src/index.d.ts"
+  ]
+}

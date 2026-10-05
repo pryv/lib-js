@@ -37,6 +37,7 @@ class Socket extends UpdateMethod {
       if (keys.includes('monStreams')) onStreams();
     });
     const scope = this.monitor.eventsGetScope || {};
+    /** @type {Record<string, unknown>} */
     const eventsQuery = {};
     for (const f of ['streams', 'types', 'content', 'clientData']) {
       if (scope[f] != null) eventsQuery[f] = scope[f];
@@ -68,7 +69,8 @@ class Socket extends UpdateMethod {
       // (i.e. SocketIO emitted 'error' after reconnect_failed), drop our
       // reference so a future Changes.READY can rebuild instead of
       // short-circuiting on the cached, dead handle.
-      if (this.socket && !this.socket._io) {
+      // `_io` is the SocketIO instance's internal transport handle (not typed)
+      if (this.socket && !(/** @type {any} */ (this.socket))._io) {
         this.socket = null;
       }
     });

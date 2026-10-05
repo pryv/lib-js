@@ -50,6 +50,13 @@
   `token` and `apiEndpoint` still stay inside the library.
 - **Typings: the `REFUSED` state declares `reasonId`**, as the platform sends it, instead of
   `reasonID` (never emitted).
+- **Typings compile without `skipLibCheck`.** `@pryv/socket.io` declared a second `Connection`
+  class in `pryv` (error "Duplicate identifier 'Connection'" in an app that checks declaration
+  files, the TypeScript default); it is now an interface merged into the class, with
+  `connection.socket` typed as before. `@pryv/monitor`: the default export returned
+  `typeof pryv.Monitor`, which does not exist (now `typeof Monitor`), and the `Monitor`
+  constructor named an undeclared `APIEndpoint` type (now `string`). `just typecheck` now also
+  checks the published declaration files, strict and without `skipLibCheck`.
 - **A sign-in button click no longer leaves an unhandled promise rejection** when the access
   request fails (the failure was already shown as the `ERROR` state) or when, from `ERROR`, the
   re-initialization fails: that failure is now shown as the `ERROR` state too (message

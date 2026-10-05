@@ -1,4 +1,4 @@
-import pryv, { Service, Connection, Auth, Browser, utils } from 'pryv';
+import pryv, { Service, Connection, Auth, Browser, utils, Monitor } from 'pryv';
 import { EventEmitter } from 'events';
 
 /**
@@ -34,7 +34,7 @@ export type PryvLibrary = {
  * await mon.start();
  * ```
  */
-export default function extendPryvMonitor(pryvLib: PryvLibrary): typeof pryv.Monitor;
+export default function extendPryvMonitor(pryvLib: PryvLibrary): typeof Monitor;
 
 declare module 'pryv' {
 
@@ -70,7 +70,7 @@ declare module 'pryv' {
    * Monitor changes on a Pryv.io account.
    */
   export class Monitor extends EventEmitter {
-    constructor(apiEndpointOrConnection: APIEndpoint | Connection, eventsGetScope?: MonitorScope);
+    constructor(apiEndpointOrConnection: string | Connection, eventsGetScope?: MonitorScope);
 
     /** The connection used by this monitor */
     readonly connection: Connection;
