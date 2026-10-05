@@ -61,7 +61,9 @@
   request fails (the failure was already shown as the `ERROR` state) or when, from `ERROR`, the
   re-initialization fails: that failure is now shown as the `ERROR` state too (message
   `'Initializing'`) instead of leaving the button on `LOADING`. `handleClick()` still rejects in
-  the second case, for a caller that awaits it.
+  the second case, for a caller that awaits it. A failure that no state shows is logged
+  (`console.warn`) instead. `handleClick()` on `REFUSED` (from a listener, before the reset to
+  `INITIALIZED`) starts a new request, as on `INITIALIZED`, instead of logging "Unhandled action".
 - **Typings: the `ACCEPTED` state declares `apiEndpoint` and `username` optional**, as an
   `onStateChange` listener receives it: after a popup sign-in the state carries `key` (use
   `connectFromKey(key, serviceInfoUrl)`) and neither field; they are present only when the account

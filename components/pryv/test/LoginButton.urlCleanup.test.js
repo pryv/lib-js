@@ -293,6 +293,26 @@ describe('[LBRH] LoginButton redirect return with credential hand-off', function
     expect(global.window.location.href).to.equal('http://localhost/app');
   });
 
+  it('[LBH8] a listener that starts over on a refused redirect return is not overridden by the reset', async () => {
+    f.setPage('http://localhost/app?pryvKey=flowkey8');
+    seedFlow('flowkey8', 'https://reg.test.local/access/flowkey8', 'pryv-libjs-lbh8-app');
+    f.poll({ status: 'REFUSED', reasonId: 'REFUSED_BY_USER' }, { status: 403 });
+    const external = [];
+    let loginBtn = null;
+    loginBtn = new LoginButton({
+      onStateChange: (s) => {
+        external.push(s.status);
+        if (s.status === 'REFUSED') loginBtn.auth.stopAuthRequest('stopped by the app');
+      },
+      authRequest: { requestingAppId: 'lbh8-app', requestedPermissions: [], returnURL: 'self#' }
+    }, fakeService({ access: 'https://reg.test.local/access/', name: 'Test' }));
+    await loginBtn.init();
+
+    expect(loginBtn.auth.state.status).to.equal('ERROR');
+    expect(loginBtn.auth.state.message).to.equal('stopped by the app');
+    expect(external.slice(-2)).to.deep.equal(['REFUSED', 'ERROR']);
+  });
+
   it('[LBH3] a failed redemption ends in ERROR, never a token-less AUTHORIZED', async () => {
     f.setPage('http://localhost/app?prYvpoll=https%3A%2F%2Freg.test.local%2Faccess%2Fflowkey3');
     seedFlow('flowkey3', 'https://reg.test.local/access/flowkey3');

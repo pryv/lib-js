@@ -9,6 +9,7 @@ const ProfileStore = require('./ProfileStore');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
 const PryvError = require('../lib/PryvError');
+const { refusedState } = require('./pollOutcome');
 
 /**
  * Controller for authentication flow
@@ -143,10 +144,14 @@ class AuthController {
       }
       this.state = { status: AuthStates.SIGNOUT };
     } else if (isInitialized.call(this)) {
-      // Not awaited (the click returns at once). A failed request is already
-      // the state (ERROR, or the previous account), so the rejection is
-      // handled here rather than left unhandled.
-      this.startAuthRequest().catch(() => {});
+      // Not awaited (the click returns at once), so the rejection is handled
+      // here. A failed request is already the state (ERROR, or the previous
+      // account); any other failure is logged rather than lost.
+      this.startAuthRequest().catch((e) => {
+        if (this.state?.status !== AuthStates.ERROR && this.state?.status !== AuthStates.AUTHORIZED) {
+          console.warn('pryv: sign-in request failed', e);
+        }
+      });
     } else if (this.state.status === AuthStates.SWITCHING) {
       // a switch is running; its outcome arrives as a state change
     } else if (this.state.status === AuthStates.ERROR) {
@@ -171,7 +176,9 @@ class AuthController {
       return this.state.status === AuthStates.AUTHORIZED;
     }
     function isInitialized () {
-      return this.state.status === AuthStates.INITIALIZED;
+      // REFUSED is followed by INITIALIZED in the same dispatch: a click
+      // from a listener in between is a click on the reset button
+      return this.state.status === AuthStates.INITIALIZED || this.state.status === AuthStates.REFUSED;
     }
     function isNeedSignIn () {
       return this.state.status === AuthStates.NEED_SIGNIN;
@@ -617,18 +624,6 @@ function filterForExternalListener (state) {
   if (state.cmcInvites != null) out.cmcInvites = state.cmcInvites;
   if (state.delegation != null) out.delegation = state.delegation;
   return out;
-}
-
-/**
- * The REFUSED state for a refused auth request: the core's `reasonId`
- * (e.g. `REFUSED_BY_USER`, `REFUSED_MANDATORY_CONSENT`) and `message`, with
- * the service info. Nothing else of the answer is kept.
- * @param {Object} body - the poll answer (`status: 'REFUSED'`)
- * @param {Object} [serviceInfo]
- * @returns {Object}
- */
-function refusedState (body, serviceInfo) {
-  return { status: AuthStates.REFUSED, reasonId: body?.reasonId, message: body?.message, serviceInfo };
 }
 
 /**

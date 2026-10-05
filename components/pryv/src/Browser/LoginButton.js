@@ -6,6 +6,7 @@ const Cookies = require('./CookieUtils');
 const AuthStates = require('../Auth/AuthStates');
 const AuthController = require('../Auth/AuthController');
 const ProfileStore = require('../Auth/ProfileStore');
+const { refusedState, unreadableAnswerState } = require('../Auth/pollOutcome');
 const Messages = require('../Auth/LoginMessages');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
@@ -279,7 +280,7 @@ class LoginButton {
         // Refused on the auth page (403): tell the listeners why, then back
         // to the sign-in button (as the popup path).
         const flowId = authController._authFlowId;
-        authController.state = { status: AuthStates.REFUSED, reasonId: body.reasonId, message: body.message, serviceInfo: authController.serviceInfo };
+        authController.state = refusedState(body, authController.serviceInfo);
         // unless a listener started over (new request, sign-out, re-initialization)
         if (authController._authFlowId === flowId) {
           authController.state = { status: AuthStates.INITIALIZED, serviceInfo: authController.serviceInfo };
@@ -289,7 +290,7 @@ class LoginButton {
       }
       if (body?.status == null) {
         // unknown or expired key, or no answer the button can show
-        body = { status: AuthStates.ERROR, message: 'Cannot fetch result', error: body?.error ?? body };
+        body = unreadableAnswerState(body);
       }
       // Shared-secret delivery: the ACCEPTED body carries a one-time
       // `handoff` key, not the token. Redeem it exactly as the polling path

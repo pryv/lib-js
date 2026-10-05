@@ -194,9 +194,21 @@ describe('[APLX] AuthController popup poll outcome', function () {
     expect(seen).to.deep.equal(['INITIALIZED', 'ERROR']);
   });
 
-  it('[APL9] a click on ERROR whose re-initialization fails shows ERROR; the sign-in button leaves no unhandled rejection', async () => {
-    const LoginButton = require('../src/Browser/LoginButton');
-    const failure = new Error('storage unavailable');
+  /** Runs `fn` with `console[method]` captured; returns the captured calls. */
+  async function captured (method, fn) {
+    const original = console[method];
+    const calls = [];
+    console[method] = (...args) => calls.push(args);
+    try {
+      await fn();
+    } finally {
+      console[method] = original;
+    }
+    return calls;
+  }
+
+  /** A controller on ERROR whose re-initialization fails with `failure`. */
+  function failingReinit (failure) {
     const loginButton = {
       onStateChange () {},
       getAuthorizationData () { throw failure; }
@@ -205,32 +217,92 @@ describe('[APLX] AuthController popup poll outcome', function () {
       authRequest: { requestingAppId: 'apl-app', requestedPermissions: [], credentialHandoff: 'inline' }
     }, { infoSync: () => SERVICE_INFO, assets: async () => ({}) }, loginButton);
     auth.state = { status: AuthStates.ERROR, message: 'Requesting access' };
+    return auth;
+  }
 
+  it('[APL9] a click on ERROR whose re-initialization fails shows ERROR and rejects for an awaiting caller', async () => {
+    const failure = new Error('storage unavailable');
+    const auth = failingReinit(failure);
     let rejected = null;
     await auth.handleClick().catch((e) => { rejected = e; });
     expect(rejected).to.equal(failure);
     expect(auth.state.status).to.equal(AuthStates.ERROR);
     expect(auth.state.message).to.equal('Initializing');
     expect(auth.state.error).to.equal(failure);
+  });
 
-    // the button's click handler awaits nobody: the rejection must not escape
-    const warn = console.warn;
-    const warned = [];
-    console.warn = (...args) => warned.push(args);
+  it('[APL10] the sign-in button click leaves no unhandled rejection and no warning when the failure is shown as ERROR', async () => {
+    const LoginButton = require('../src/Browser/LoginButton');
+    const auth = failingReinit(new Error('storage unavailable'));
     let unhandled;
-    try {
+    const warned = await captured('warn', async () => {
       unhandled = await unhandledDuring(() => LoginButton.prototype.onClick.call({ auth }));
-      expect(warned).to.deep.equal([]); // already shown as ERROR
-      // any other failure is logged
-      const other = { state: { status: AuthStates.INITIALIZED }, handleClick: async () => { throw failure; } };
-      const unhandledOther = await unhandledDuring(() => LoginButton.prototype.onClick.call({ auth: other }));
-      expect(unhandledOther).to.deep.equal([]);
-      expect(warned).to.have.lengthOf(1);
-      expect(warned[0][1]).to.equal(failure);
-    } finally {
-      console.warn = warn;
-    }
+    });
     expect(unhandled).to.deep.equal([]);
+    expect(warned).to.deep.equal([]);
+    expect(auth.state.status).to.equal(AuthStates.ERROR);
+  });
+
+  it('[APL11] the sign-in button click logs any other failure instead of leaving it unhandled', async () => {
+    const LoginButton = require('../src/Browser/LoginButton');
+    const failure = new Error('unexpected');
+    const auth = { state: { status: AuthStates.INITIALIZED }, handleClick: async () => { throw failure; } };
+    let unhandled;
+    const warned = await captured('warn', async () => {
+      unhandled = await unhandledDuring(() => LoginButton.prototype.onClick.call({ auth }));
+    });
+    expect(unhandled).to.deep.equal([]);
+    expect(warned).to.have.lengthOf(1);
+    expect(warned[0][1]).to.equal(failure);
+  });
+
+  it('[APL12] a click whose request fails unexpectedly (state neither ERROR nor the previous account) is logged', async () => {
+    const failure = new Error('unexpected');
+    const outcomes = [
+      { set: null, warns: 1 }, // still INITIALIZED: nothing shows it
+      { set: { status: AuthStates.ERROR, message: 'Requesting access' }, warns: 0 },
+      { set: { status: AuthStates.AUTHORIZED, username: 'bob', apiEndpoint: 'https://tb@bob.test.local/' }, warns: 0 }
+    ];
+    for (const outcome of outcomes) {
+      const auth = makeAuth(() => {});
+      auth.startAuthRequest = async () => {
+        if (outcome.set != null) auth.state = outcome.set;
+        throw failure;
+      };
+      let unhandled;
+      const warned = await captured('warn', async () => {
+        unhandled = await unhandledDuring(() => auth.handleClick());
+      });
+      expect(unhandled).to.deep.equal([]);
+      expect(warned.length, 'warnings with ' + (outcome.set?.status ?? 'INITIALIZED')).to.equal(outcome.warns);
+      if (outcome.warns > 0) expect(warned[0][1]).to.equal(failure);
+    }
+  });
+
+  it('[APL13] a click from a listener on REFUSED starts a new request (no "Unhandled action", no reset over it)', async () => {
+    pollStatus = 403;
+    pollBody = { status: 'REFUSED', reasonId: 'REFUSED_BY_USER' };
+    const seen = [];
+    let auth = null;
+    let clicked = false;
+    auth = makeAuth((s) => {
+      seen.push(s.status);
+      if (s.status === 'REFUSED' && !clicked) {
+        clicked = true;
+        // the new request is accepted
+        pollStatus = 200;
+        pollBody = { status: 'ACCEPTED', username: 'alice', token: 'tok', apiEndpoint: 'https://tok@alice.test.local/' };
+        auth.handleClick();
+      }
+    });
+    const logged = await captured('log', async () => {
+      await auth.startAuthRequest();
+      for (let i = 0; i < 50 && auth.state.status !== AuthStates.AUTHORIZED; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+    });
+    expect(logged.filter((args) => String(args[0]).includes('Unhandled action'))).to.deep.equal([]);
+    expect(seen).to.deep.equal(['INITIALIZED', 'NEED_SIGNIN', 'REFUSED', 'NEED_SIGNIN', 'ACCEPTED']);
   });
 
   it('[APL6] ACCEPTED without invites nor delegation stays { status, id, key }', async () => {
