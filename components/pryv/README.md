@@ -607,14 +607,15 @@ getAuthorizationData () {
 The [authentication process](https://api.pryv.com/reference/#authenticate-your-app) implementation on the frontend can go through the following states:
 
 1. `LOADING`: while the visual assets are loading
-2. `INITIALIZED`: visuals assets are loaded, or when [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Refused**
+2. `INITIALIZED`: visuals assets are loaded, or right after `REFUSED` (the button is back to its sign-in state)
 3. `NEED_SIGNIN`: from the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
 4. `AUTHORIZED`: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
-5. `SIGNOUT`: with the account menu, when the user confirms "Log out", just before the client-side authorization credentials are deleted. With `menu: false`, on the click itself, before the "Log out?" question: if the user cancels, the controller re-initializes from the stored credentials (`LOADING` then `AUTHORIZED`)
-6. `SWITCHING`: an account switch started (`{ from, to }`, `to` is `null` when the account is chosen in the sign-in popup); followed by `AUTHORIZED` for the new account, or for the previous one when the switch sign-in is refused. Listeners that ignore it see the usual `NEED_SIGNIN` then `AUTHORIZED` sequence
-7. `ERROR`: see message for more information
+5. `REFUSED`: when [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Refused**; carries the auth page's `reasonId` (e.g. `'REFUSED_BY_USER'`, or `'REFUSED_MANDATORY_CONSENT'` when a mandatory consent was declined), its `message` and `serviceInfo`, and is followed by `INITIALIZED`. A refused account switch returns to the previous account instead (see `SWITCHING`)
+6. `SIGNOUT`: with the account menu, when the user confirms "Log out", just before the client-side authorization credentials are deleted. With `menu: false`, on the click itself, before the "Log out?" question: if the user cancels, the controller re-initializes from the stored credentials (`LOADING` then `AUTHORIZED`)
+7. `SWITCHING`: an account switch started (`{ from, to }`, `to` is `null` when the account is chosen in the sign-in popup); followed by `AUTHORIZED` for the new account, or for the previous one when the switch sign-in is refused. Listeners that ignore it see the usual `NEED_SIGNIN` then `AUTHORIZED` sequence
+8. `ERROR`: see message for more information
 
-You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request). `LOADING`, `INITIALIZED` and `SIGNOUT` only have `status`. The `ERROR` state carries a `message` property, and an `error` (with an `id` such as `'unexpected-auth-return'` when available); a click on the button in `ERROR` starts over.
+You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request), except that an `AUTHORIZED` reached through the popup hands the app `{ status, id, key, serviceInfo?, cmcInvites?, delegation? }` (credentials through `connectFromKey(key)`). `LOADING`, `INITIALIZED` and `SIGNOUT` only have `status`. The `ERROR` state carries a `message` property, and an `error` (with an `id` such as `'unexpected-auth-return'` when available); a click on the button in `ERROR` starts over.
 
 ```js
 async onStateChange (state) {

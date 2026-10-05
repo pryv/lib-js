@@ -26,7 +26,8 @@ class AuthController {
     validateSettings.call(this, settings);
 
     this.stateChangeListeners = [];
-    // External `onStateChange` callers only see `{ status, id, key, serviceInfo? }`
+    // External `onStateChange` callers only see
+    // `{ status, id, key, serviceInfo?, cmcInvites?, delegation? }`
     // on AUTHORIZED — credentials (`username`, `token`, `apiEndpoint`) stay
     // inside the lib. Internal listeners (e.g. LoginButton, for cookie
     // autologin) get the full unfiltered state.
@@ -509,16 +510,23 @@ class AuthController {
             (pollResponse?.error?.id ?? pollResponse?.message ?? pollResponse?.status) + '); keeping the previous account');
           this.state = previous;
           return;
+        } else if (pollResponse.status === AuthStates.REFUSED) {
+          // Refused on the auth page (403): tell the listeners why, then
+          // return to the sign-in button.
+          this.state = refusedState(pollResponse, this.serviceInfo);
+          // a listener started over (new request, sign-out, re-initialization)
+          // @ts-ignore - this is bound via .call()
+          if (this._authFlowId !== flowId) return;
+          this.state = { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
+          return;
         }
         this.state = pollResponse;
       }
 
       async function pollAccess (pollUrl) {
         try {
-          const { response, body } = await utils.fetchGet(pollUrl);
-          if (response.status === 403 && body?.status === 'REFUSED') {
-            return { status: AuthStates.INITIALIZED };
-          }
+          // a REFUSED answer (403) is handled by the caller like any other body
+          const { body } = await utils.fetchGet(pollUrl);
           return body;
         } catch (e) {
           return { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
@@ -559,7 +567,8 @@ class AuthController {
 
 /**
  * Narrow the state passed to *external* `onStateChange` callers so the
- * calling app sees only `{ status, id, key, serviceInfo? }` on the
+ * calling app sees only `{ status, id, key, serviceInfo?, cmcInvites?,
+ * delegation? }` on the
  * terminal AUTHORIZED state reached through the auth-flow polling path.
  * `username` / `token` / `apiEndpoint` are kept inside the lib; the
  * calling app uses `pryv.connectFromKey(key, serviceInfoUrl)` to obtain
@@ -569,6 +578,10 @@ class AuthController {
  * `LoginButton.getAuthorizationData()`) passes through unchanged so
  * existing pages that build a `Connection` directly from the restored
  * state on page load keep working.
+ *
+ * `cmcInvites` (the auth page's outcome for each invite: event and access
+ * ids, or why not) and `delegation` (a display hint) carry no credential
+ * and are kept when present.
  *
  * Non-AUTHORIZED states pass through unchanged so error messages /
  * loading flags / etc. still reach the listener.
@@ -586,7 +599,21 @@ function filterForExternalListener (state) {
   }
   const out = { status: state.status, id: state.id, key: state.key };
   if (state.serviceInfo != null) out.serviceInfo = state.serviceInfo;
+  if (state.cmcInvites != null) out.cmcInvites = state.cmcInvites;
+  if (state.delegation != null) out.delegation = state.delegation;
   return out;
+}
+
+/**
+ * The REFUSED state for a refused auth request: the core's `reasonId`
+ * (e.g. `REFUSED_BY_USER`, `REFUSED_MANDATORY_CONSENT`) and `message`, with
+ * the service info. Nothing else of the answer is kept.
+ * @param {Object} body - the poll answer (`status: 'REFUSED'`)
+ * @param {Object} [serviceInfo]
+ * @returns {Object}
+ */
+function refusedState (body, serviceInfo) {
+  return { status: AuthStates.REFUSED, reasonId: body?.reasonId, message: body?.message, serviceInfo };
 }
 
 /**

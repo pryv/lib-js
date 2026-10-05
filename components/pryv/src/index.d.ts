@@ -1097,8 +1097,16 @@ declare module 'pryv' {
       /** null: the account is chosen in the sign-in popup */
       to: string | null;
     };
+    /**
+     * The auth request was refused on the auth page; followed by
+     * INITIALIZED (the sign-in button resets).
+     */
     REFUSED: {
-      reasonID?: string;
+      /**
+       * Why, as set by the auth page, e.g. `'REFUSED_BY_USER'`,
+       * `'REFUSED_MANDATORY_CONSENT'` or `'MANDATORY_CONSENT_FAILED'`.
+       */
+      reasonId?: string;
       message?: string;
       serviceInfo?: ServiceInfo;
     };

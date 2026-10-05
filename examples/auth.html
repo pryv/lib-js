@@ -40,6 +40,10 @@
           case pryv.Auth.AuthStates.AUTHORIZED:
             console.log('User is authorized and can access his personal data');
             break;
+          case pryv.Auth.AuthStates.REFUSED:
+            // followed by INITIALIZED (the button is back to its sign-in state)
+            console.log('Sign-in refused:', state.reasonId, state.message);
+            break;
           case pryv.Auth.AuthStates.SIGNOUT:
             console.log('User just logged off, please delete all the session related data');
             break;

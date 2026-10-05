@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **A refused sign-in now emits the `REFUSED` state** (issue #72), with the auth page's `reasonId`
+  and `message` and the `serviceInfo`, on both the popup and the redirect paths. An app can tell
+  "the person cancelled" (`REFUSED_BY_USER`) from "declined a mandatory consent"
+  (`REFUSED_MANDATORY_CONSENT`) or "the consent could not be recorded"
+  (`MANDATORY_CONSENT_FAILED`). `REFUSED` is followed by `INITIALIZED`, so the sign-in button
+  resets as before and a listener that only waits for `INITIALIZED` is unaffected. A refused
+  account switch still returns to the previous account without `REFUSED`.
+- **The `ACCEPTED` state of a popup sign-in keeps `cmcInvites` and `delegation`** (issue #72):
+  the narrowed state handed to `onStateChange` dropped them, so an app saw the invite outcomes
+  on a phone (redirect) but not on desktop (popup). Neither carries a credential; `username`,
+  `token` and `apiEndpoint` still stay inside the library.
+- **Typings: the `REFUSED` state declares `reasonId`**, as the platform sends it, instead of
+  `reasonID` (never emitted).
+
 ## 3.15.0 - 2026-10-02
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
