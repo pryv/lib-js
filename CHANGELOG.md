@@ -11,8 +11,9 @@
   account itself. It requires `actAs: 'allow'` or a username; a core refuses it with
   `actAs: 'deny'` or without `actAs`. `service.startAccessRequest` returns the core's echo
   (`actAsManagedOnly: true`), the detection signal, and the NEED_SIGNIN state is typed with it.
-  The sign-in button leaves the field out of a switch back to the signed-in account (that request
-  sends `actAs: 'deny'`). The auth page enforces it, not the core. Needs an open-pryv.io release
+  The sign-in button leaves the field out of any request it sends with `actAs: 'deny'` (a switch
+  back to the signed-in account sends it, and so does an app that configures `actAs: 'deny'`);
+  `service.startAccessRequest` sends what it is given. The auth page enforces it, not the core. Needs an open-pryv.io release
   that supports it: an older core drops the field (no echo) and the auth page then behaves per
   `actAs` alone.
 - **`cmcInvites[].accessName`** (types only, open-pryv.io issue #147): an invite of an
@@ -42,8 +43,9 @@
   "the person cancelled" (`REFUSED_BY_USER`) from "declined a mandatory consent"
   (`REFUSED_MANDATORY_CONSENT`) or "the consent could not be recorded"
   (`MANDATORY_CONSENT_FAILED`). `REFUSED` is followed by `INITIALIZED`, so the sign-in button
-  resets as before and a listener that only waits for `INITIALIZED` is unaffected. A refused
-  account switch still returns to the previous account without `REFUSED`.
+  resets as before and a listener that only waits for `INITIALIZED` is unaffected. A custom
+  `loginButton` implementation receives `REFUSED` too and may ignore it (`INITIALIZED` follows).
+  A refused account switch still returns to the previous account without `REFUSED`.
 - **The `ACCEPTED` state of a popup sign-in keeps `cmcInvites` and `delegation`** (issue #72):
   the narrowed state handed to `onStateChange` dropped them, so an app saw the invite outcomes
   on a phone (redirect) but not on desktop (popup). Neither carries a credential; `username`,
@@ -78,7 +80,9 @@
   comes from stored credentials or from the return of a sign-in by redirection. TypeScript apps
   reading them now get `string | undefined` and may need a check.
 - **`@pryv/cmc` typings: `RelationshipRecord.features` is `{ chat, systemMessaging }`**, as
-  `listAcceptedRelationships` returns it, instead of `{ chat, system }`. The README example of
+  `listAcceptedRelationships` returns it, instead of `{ chat, system }`, and
+  `RelationshipRecord.counterparty` includes the `{ apiEndpoint }` form it returns for an accept
+  event written before `content.from` existed. The README example of
   `listAcceptedRelationships` passes `scopeStreamId` (it showed an `appCode` option the function
   does not have).
 

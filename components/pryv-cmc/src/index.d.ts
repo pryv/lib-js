@@ -204,7 +204,12 @@ declare module '@pryv/cmc' {
 
   export type RelationshipRecord = {
     acceptEventId: string;
-    counterparty: { username: string; host: string; displayName?: string } | null;
+    /**
+     * The other side (`content.from`). An accept event written before `from`
+     * existed gives `{ apiEndpoint }` (`content.acceptedBy`) instead; null
+     * when neither is there.
+     */
+    counterparty: { username: string; host: string; displayName?: string } | { apiEndpoint: string } | null;
     dataGrantAccessId: string | null;
     backChannelAccessId?: string | null;
     appCode: string | null;
@@ -230,7 +235,7 @@ declare module '@pryv/cmc' {
      * `'revoke-cmc'` (a revoke written on this account), `'peer-revoke'`
      * (the counterparty revoked), `'delegation-detach'` (a delegation detach).
      */
-    by: 'accesses.delete' | 'revoke-cmc' | 'peer-revoke' | 'delegation-detach' | string;
+    by: 'accesses.delete' | 'revoke-cmc' | 'peer-revoke' | 'delegation-detach' | (string & {});
     /** The data grant that was deleted. */
     accessId?: string;
     /** The revoke event, for `'revoke-cmc'` and `'peer-revoke'`. */

@@ -1238,8 +1238,9 @@ declare module 'pryv' {
        * `true`: the access must be granted for an account the user manages
        * through account delegation, never for the signed-in account itself.
        * Requires `actAs: 'allow'` or a username (a core refuses it with
-       * `actAs: 'deny'` or without `actAs`); the sign-in button leaves it out
-       * of a switch back to the signed-in account, which sends `actAs: 'deny'`.
+       * `actAs: 'deny'` or without `actAs`). The sign-in button leaves it out
+       * of any request it sends with `actAs: 'deny'` (a switch back to the
+       * signed-in account sends it); `Service.startAccessRequest` sends it as given.
        * Enforced by the auth page, not the core. An older core drops the
        * field and does not echo it (see `Service.startAccessRequest`).
        */
