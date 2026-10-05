@@ -51,7 +51,11 @@ class LoginButton {
   }
 
   onClick () {
-    this.auth.handleClick();
+    // A click handler has no caller to reject to: a failure is shown as the
+    // ERROR state; anything else is logged rather than left unhandled.
+    Promise.resolve(this.auth.handleClick()).catch((e) => {
+      if (this.auth.state?.status !== AuthStates.ERROR) console.warn('pryv: sign-in button click failed', e);
+    });
   }
 
   async onStateChange (state) {

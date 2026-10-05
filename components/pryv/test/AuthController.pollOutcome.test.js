@@ -163,6 +163,76 @@ describe('[APLX] AuthController popup poll outcome', function () {
     expect(auth.settings.authRequest.actAsManagedOnly).to.equal(true);
   });
 
+  /** Runs `fn`, then collects the promise rejections nobody handled. */
+  async function unhandledDuring (fn) {
+    const saved = process.listeners('unhandledRejection');
+    process.removeAllListeners('unhandledRejection');
+    const seen = [];
+    const onUnhandled = (reason) => seen.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      await fn();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally {
+      process.removeListener('unhandledRejection', onUnhandled);
+      saved.forEach((l) => process.on('unhandledRejection', l));
+    }
+    return seen;
+  }
+
+  it('[APL8] a click whose access request fails shows ERROR and leaves no unhandled rejection', async () => {
+    utils.fetchPost = async () => ({
+      response: { ok: false, status: 500 },
+      body: { error: { id: 'unexpected-error', message: 'boom' } }
+    });
+    const seen = [];
+    const auth = makeAuth((s) => seen.push(s.status));
+    const unhandled = await unhandledDuring(() => auth.handleClick());
+    expect(unhandled).to.deep.equal([]);
+    expect(auth.state.status).to.equal(AuthStates.ERROR);
+    expect(auth.state.message).to.equal('Requesting access');
+    expect(seen).to.deep.equal(['INITIALIZED', 'ERROR']);
+  });
+
+  it('[APL9] a click on ERROR whose re-initialization fails shows ERROR; the sign-in button leaves no unhandled rejection', async () => {
+    const LoginButton = require('../src/Browser/LoginButton');
+    const failure = new Error('storage unavailable');
+    const loginButton = {
+      onStateChange () {},
+      getAuthorizationData () { throw failure; }
+    };
+    const auth = new AuthController({
+      authRequest: { requestingAppId: 'apl-app', requestedPermissions: [], credentialHandoff: 'inline' }
+    }, { infoSync: () => SERVICE_INFO, assets: async () => ({}) }, loginButton);
+    auth.state = { status: AuthStates.ERROR, message: 'Requesting access' };
+
+    let rejected = null;
+    await auth.handleClick().catch((e) => { rejected = e; });
+    expect(rejected).to.equal(failure);
+    expect(auth.state.status).to.equal(AuthStates.ERROR);
+    expect(auth.state.message).to.equal('Initializing');
+    expect(auth.state.error).to.equal(failure);
+
+    // the button's click handler awaits nobody: the rejection must not escape
+    const warn = console.warn;
+    const warned = [];
+    console.warn = (...args) => warned.push(args);
+    let unhandled;
+    try {
+      unhandled = await unhandledDuring(() => LoginButton.prototype.onClick.call({ auth }));
+      expect(warned).to.deep.equal([]); // already shown as ERROR
+      // any other failure is logged
+      const other = { state: { status: AuthStates.INITIALIZED }, handleClick: async () => { throw failure; } };
+      const unhandledOther = await unhandledDuring(() => LoginButton.prototype.onClick.call({ auth: other }));
+      expect(unhandledOther).to.deep.equal([]);
+      expect(warned).to.have.lengthOf(1);
+      expect(warned[0][1]).to.equal(failure);
+    } finally {
+      console.warn = warn;
+    }
+    expect(unhandled).to.deep.equal([]);
+  });
+
   it('[APL6] ACCEPTED without invites nor delegation stays { status, id, key }', async () => {
     pollStatus = 200;
     pollBody = { status: 'ACCEPTED', username: 'alice', token: 'tok', apiEndpoint: 'https://tok@alice.test.local/' };

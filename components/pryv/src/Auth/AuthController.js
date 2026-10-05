@@ -143,12 +143,23 @@ class AuthController {
       }
       this.state = { status: AuthStates.SIGNOUT };
     } else if (isInitialized.call(this)) {
-      this.startAuthRequest();
+      // Not awaited (the click returns at once). A failed request is already
+      // the state (ERROR, or the previous account), so the rejection is
+      // handled here rather than left unhandled.
+      this.startAuthRequest().catch(() => {});
     } else if (this.state.status === AuthStates.SWITCHING) {
       // a switch is running; its outcome arrives as a state change
     } else if (this.state.status === AuthStates.ERROR) {
       // start over (stored sign-in or the sign-in button) rather than stay inert
-      await this.init();
+      try {
+        await this.init();
+      } catch (e) {
+        // failed before reaching a usable state: show it, as a failed request does
+        if (this.state.status === AuthStates.LOADING) {
+          this.state = { status: AuthStates.ERROR, message: 'Initializing', error: e };
+        }
+        throw e;
+      }
     } else if (isNeedSignIn.call(this)) {
       // reopen popup (HACK for now: set to private property to avoid self-assignment)
       this.state = this._state;

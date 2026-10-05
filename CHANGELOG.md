@@ -50,6 +50,11 @@
   `token` and `apiEndpoint` still stay inside the library.
 - **Typings: the `REFUSED` state declares `reasonId`**, as the platform sends it, instead of
   `reasonID` (never emitted).
+- **A sign-in button click no longer leaves an unhandled promise rejection** when the access
+  request fails (the failure was already shown as the `ERROR` state) or when, from `ERROR`, the
+  re-initialization fails: that failure is now shown as the `ERROR` state too (message
+  `'Initializing'`) instead of leaving the button on `LOADING`. `handleClick()` still rejects in
+  the second case, for a caller that awaits it.
 - **`@pryv/cmc` typings: `RelationshipRecord.features` is `{ chat, systemMessaging }`**, as
   `listAcceptedRelationships` returns it, instead of `{ chat, system }`. The README example of
   `listAcceptedRelationships` passes `scopeStreamId` (it showed an `appCode` option the function
