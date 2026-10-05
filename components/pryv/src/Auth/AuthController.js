@@ -427,11 +427,15 @@ class AuthController {
     /** @this {AuthController} */
     async function postAccess () {
       try {
+        // @ts-ignore - this is bound via .call()
+        const request = Object.assign({}, this.settings.authRequest, overrides);
+        // A core refuses `actAsManagedOnly` with `actAs: 'deny'`, which a
+        // switch back to the signed-in account sends.
+        if (request.actAs === 'deny') delete request.actAsManagedOnly;
         const { response, body } = await utils.fetchPost(
           // @ts-ignore - this is bound via .call()
           this.serviceInfo.access,
-          // @ts-ignore - this is bound via .call()
-          Object.assign({}, this.settings.authRequest, overrides)
+          request
         );
         if (!response.ok) {
           // The server's message, id and status; the body stays on `response`,

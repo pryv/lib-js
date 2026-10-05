@@ -125,6 +125,44 @@ describe('[APLX] AuthController popup poll outcome', function () {
     expect(auth.state.token).to.equal('tok-kim');
   });
 
+  it('[APL7] a switch back to the signed-in account sends no actAsManagedOnly (it sends actAs: \'deny\')', async () => {
+    pollStatus = 403;
+    pollBody = { status: 'REFUSED', reasonId: 'REFUSED_BY_USER' };
+    const posted = [];
+    utils.fetchPost = async (url, body) => {
+      posted.push(body);
+      return {
+        response: { ok: true, status: 201 },
+        body: { status: 'NEED_SIGNIN', key: 'plk1', poll: POLL, poll_rate_ms: 5, authUrl: 'https://ui.test.local/auth?key=plk1' }
+      };
+    };
+    const auth = new AuthController({
+      onStateChange: () => {},
+      authRequest: { requestingAppId: 'apl-app', requestedPermissions: [], credentialHandoff: 'inline', actAs: 'allow', actAsManagedOnly: true }
+    }, { infoSync: () => SERVICE_INFO });
+    auth.serviceInfo = SERVICE_INFO;
+    auth.state = { status: AuthStates.AUTHORIZED, username: 'kim', apiEndpoint: 'https://tk@kim.test.local/', profile: { username: 'kim', actingAs: { username: 'kim', delegate: 'alice' } } };
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      await auth.switchTo(null);
+      // the other requests keep it: one more account, or a managed account by name
+      await auth.addAccount();
+      await auth.startAuthRequest({ actAs: 'kim' });
+    } finally {
+      console.warn = warn;
+    }
+    expect(posted).to.have.lengthOf(3);
+    expect(posted[0].actAs).to.equal('deny');
+    expect(posted[0]).to.not.have.property('actAsManagedOnly');
+    expect(posted[1].actAs).to.equal('allow');
+    expect(posted[1].actAsManagedOnly).to.equal(true);
+    expect(posted[2].actAs).to.equal('kim');
+    expect(posted[2].actAsManagedOnly).to.equal(true);
+    // the app's settings are left untouched
+    expect(auth.settings.authRequest.actAsManagedOnly).to.equal(true);
+  });
+
   it('[APL6] ACCEPTED without invites nor delegation stays { status, id, key }', async () => {
     pollStatus = 200;
     pollBody = { status: 'ACCEPTED', username: 'alice', token: 'tok', apiEndpoint: 'https://tok@alice.test.local/' };

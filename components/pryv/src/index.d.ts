@@ -893,6 +893,11 @@ declare module 'pryv' {
       consent?: AuthRequestConsentForm;
       /** Echoed only by a core that understood `authRequest.cmcInvites`. */
       cmcInvites?: AuthCmcInvite[];
+      /**
+       * Echoed (`true`) only by a core that understood
+       * `authRequest.actAsManagedOnly`; absent otherwise.
+       */
+      actAsManagedOnly?: true;
     }>;
     /**
      * Poll an access request once, by its full poll URL (recommended) or its
@@ -995,6 +1000,13 @@ declare module 'pryv' {
     capabilityUrl: string;
     mandatory?: boolean;
     for?: 'self' | 'target';
+    /**
+     * Name of the data grant the user mints when accepting the invite (1 to
+     * 256 characters); unset, the grant takes the platform's default name.
+     * Requires a core that supports it: an older core refuses the whole
+     * request with `400 invalid-parameters`.
+     */
+    accessName?: string;
   };
 
   /** An invite as the core echoes it back, with its defaults filled in. */
@@ -1002,6 +1014,8 @@ declare module 'pryv' {
     capabilityUrl: string;
     mandatory: boolean;
     for: 'self' | 'target';
+    /** Present only when the invite was sent with an `accessName`. */
+    accessName?: string;
   };
 
   /**
@@ -1058,6 +1072,8 @@ declare module 'pryv' {
       consent?: AuthRequestConsentForm;
       /** Present only when the request carried `cmcInvites` the core understood. */
       cmcInvites?: AuthCmcInvite[];
+      /** Present only when the request carried `actAsManagedOnly: true` and the core understood it. */
+      actAsManagedOnly?: true;
       requestingAppId: string;
       returnURL?: string | null;
       serviceInfo?: ServiceInfo;
@@ -1133,6 +1149,7 @@ declare module 'pryv' {
     requestedPermissions: AuthRequestedPermission[];
     consent?: AuthRequestConsentForm;
     cmcInvites?: AuthCmcInvite[];
+    actAsManagedOnly?: true;
     lang?: string;
     returnURL?: string;
     clientData?: KeyValue;
@@ -1210,6 +1227,16 @@ declare module 'pryv' {
        * 'deny', or the username to preselect.
        */
       actAs?: 'allow' | 'deny' | string;
+      /**
+       * `true`: the access must be granted for an account the user manages
+       * through account delegation, never for the signed-in account itself.
+       * Requires `actAs: 'allow'` or a username (a core refuses it with
+       * `actAs: 'deny'` or without `actAs`); the sign-in button leaves it out
+       * of a switch back to the signed-in account, which sends `actAs: 'deny'`.
+       * Enforced by the auth page, not the core. An older core drops the
+       * field and does not echo it (see `Service.startAccessRequest`).
+       */
+      actAsManagedOnly?: boolean;
     };
   };
 
