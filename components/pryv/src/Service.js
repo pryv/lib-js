@@ -493,9 +493,12 @@ class Service {
    * @param {Object} [authRequest.clientData]
    * @param {string} [authRequest.deviceName]
    * @param {number} [authRequest.expireAfter]
-   * @returns {Promise<{ key: string, authUrl: string, poll: string, pollRateMs: number, consent?: Object }>}
-   *   `consent` is echoed back only by a core that understood the
-   *   annotations, which is how you detect support.
+   * @param {boolean} [authRequest.actAsManagedOnly] - true: the access must
+   *   be granted for an account the user manages; requires `actAs: 'allow'`
+   *   or a username.
+   * @returns {Promise<{ key: string, authUrl: string, poll: string, pollRateMs: number, consent?: Object, cmcInvites?: Array<Object>, actAsManagedOnly?: true }>}
+   *   `consent`, `cmcInvites` and `actAsManagedOnly` are echoed back only by
+   *   a core that understood them, which is how you detect support.
    * @throws {PryvError} on non-2xx
    */
   async startAccessRequest (authRequest) {
@@ -526,6 +529,9 @@ class Service {
     if (body.consent != null) envelope.consent = body.consent;
     // Same for consent invites: echoed only by a core that understood them.
     if (body.cmcInvites != null) envelope.cmcInvites = body.cmcInvites;
+    // Echoed only by a core that understood `actAsManagedOnly`: an older core
+    // drops the field, and the auth page then behaves per `actAs` alone.
+    if (body.actAsManagedOnly === true) envelope.actAsManagedOnly = true;
     // polling by key (pollAccessRequest, connectFromKey) then reaches the
     // core that holds the request
     pollUrls.remember(envelope.key, envelope.poll);

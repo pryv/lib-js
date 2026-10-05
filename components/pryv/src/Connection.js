@@ -411,7 +411,7 @@ class Connection {
   /**
    * Create an event with attached file
    * NODE.jS ONLY
-   * @param {Event} event
+   * @param {PryvEvent} event
    * @param {string} filePath
    */
   async createEventWithFile (event, filePath) {
@@ -458,7 +458,7 @@ class Connection {
   /**
    * Create an event with attached formData
    * !! BROWSER ONLY
-   * @param {Event} event
+   * @param {PryvEvent} event
    * @param {FormData} formData https://developer.mozilla.org/en-US/docs/Web/API/FormData/FormData
    */
   async createEventWithFormData (event, formData) {

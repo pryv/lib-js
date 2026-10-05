@@ -124,4 +124,30 @@ describe('[ARQC] auth-request consent sidecar', function () {
     const envOld = await older.startAccessRequest({ ...REQUEST, cmcInvites: invites });
     expect(envOld).to.not.have.property('cmcInvites');
   });
+
+  it('[SARM1] posts actAsManagedOnly and invite accessName verbatim; returns the actAsManagedOnly echo only when a core sends true', async function () {
+    const invites = [{ capabilityUrl: 'https://cap@doctor.test.local/', accessName: 'Dr Who data' }];
+    const request = { ...REQUEST, actAs: 'allow', actAsManagedOnly: true, cmcInvites: invites };
+    stubFetch({ key: 'k5', authUrl: 'https://auth/', poll: 'https://poll/k5', poll_rate_ms: 1000, actAsManagedOnly: true });
+    const service = new pryv.Service('https://reg.test.local/service/info');
+    const env = await service.startAccessRequest(request);
+    expect(posted[0].actAsManagedOnly).to.equal(true);
+    expect(posted[0].actAs).to.equal('allow');
+    expect(posted[0].cmcInvites).to.deep.equal(invites);
+    expect(env.actAsManagedOnly).to.equal(true);
+    if (realFetch) { global.fetch = realFetch; realFetch = null; }
+
+    // An older core drops the field: no echo, the signal an app reads.
+    stubFetch({ key: 'k6', authUrl: 'https://auth/', poll: 'https://poll/k6', poll_rate_ms: 1000 });
+    const older = new pryv.Service('https://reg.test.local/service/info');
+    const envOld = await older.startAccessRequest(request);
+    expect(envOld).to.not.have.property('actAsManagedOnly');
+    if (realFetch) { global.fetch = realFetch; realFetch = null; }
+
+    // Only `true` counts as the echo.
+    stubFetch({ key: 'k7', authUrl: 'https://auth/', poll: 'https://poll/k7', poll_rate_ms: 1000, actAsManagedOnly: 'true' });
+    const odd = new pryv.Service('https://reg.test.local/service/info');
+    const envOdd = await odd.startAccessRequest(request);
+    expect(envOdd).to.not.have.property('actAsManagedOnly');
+  });
 });

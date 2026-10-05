@@ -125,13 +125,15 @@ declare module 'pryv' {
     }>;
   }
 
-  export class Connection {
+  // An interface, not a class: it merges into the `Connection` class of
+  // `pryv` (a second class declaration is a duplicate identifier).
+  export interface Connection {
     /**
      * Lazily created Socket.IO helper bound to this connection.
      *
      * Call `await connection.socket.open()` before using it.
      */
-    get socket(): SocketIO;
+    readonly socket: SocketIO;
   }
 }
 

@@ -9,6 +9,7 @@ const ProfileStore = require('./ProfileStore');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
 const PryvError = require('../lib/PryvError');
+const { refusedState, unreadableAnswerState } = require('./pollOutcome');
 
 /**
  * Controller for authentication flow
@@ -26,7 +27,8 @@ class AuthController {
     validateSettings.call(this, settings);
 
     this.stateChangeListeners = [];
-    // External `onStateChange` callers only see `{ status, id, key, serviceInfo? }`
+    // External `onStateChange` callers only see
+    // `{ status, id, key, serviceInfo?, cmcInvites?, delegation? }`
     // on AUTHORIZED — credentials (`username`, `token`, `apiEndpoint`) stay
     // inside the lib. Internal listeners (e.g. LoginButton, for cookie
     // autologin) get the full unfiltered state.
@@ -142,12 +144,35 @@ class AuthController {
       }
       this.state = { status: AuthStates.SIGNOUT };
     } else if (isInitialized.call(this)) {
-      this.startAuthRequest();
+      // Not awaited (the click returns at once), so the rejection is handled
+      // here. A failed request is already the state (ERROR, or the previous
+      // account). A failure in the first poll round leaves NEED_SIGNIN: it
+      // becomes ERROR, as in the later rounds (a click-started request is
+      // never an account switch). Any other failure is logged rather than lost.
+      const started = this.startAuthRequest();
+      // startAuthRequest begins a new flow synchronously: this is its id
+      const flowId = this._authFlowId;
+      started.catch((e) => {
+        const status = this.state?.status;
+        if (status === AuthStates.NEED_SIGNIN && this._authFlowId === flowId) {
+          this.state = { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
+        } else if (status !== AuthStates.ERROR && status !== AuthStates.AUTHORIZED) {
+          console.warn('pryv: sign-in request failed', e);
+        }
+      });
     } else if (this.state.status === AuthStates.SWITCHING) {
       // a switch is running; its outcome arrives as a state change
     } else if (this.state.status === AuthStates.ERROR) {
       // start over (stored sign-in or the sign-in button) rather than stay inert
-      await this.init();
+      try {
+        await this.init();
+      } catch (e) {
+        // failed before reaching a usable state: show it, as a failed request does
+        if (this.state.status === AuthStates.LOADING) {
+          this.state = { status: AuthStates.ERROR, message: 'Initializing', error: e };
+        }
+        throw e;
+      }
     } else if (isNeedSignIn.call(this)) {
       // reopen popup (HACK for now: set to private property to avoid self-assignment)
       this.state = this._state;
@@ -159,7 +184,9 @@ class AuthController {
       return this.state.status === AuthStates.AUTHORIZED;
     }
     function isInitialized () {
-      return this.state.status === AuthStates.INITIALIZED;
+      // REFUSED is followed by INITIALIZED in the same dispatch: a click
+      // from a listener in between is a click on the reset button
+      return this.state.status === AuthStates.INITIALIZED || this.state.status === AuthStates.REFUSED;
     }
     function isNeedSignIn () {
       return this.state.status === AuthStates.NEED_SIGNIN;
@@ -426,11 +453,15 @@ class AuthController {
     /** @this {AuthController} */
     async function postAccess () {
       try {
+        // @ts-ignore - this is bound via .call()
+        const request = Object.assign({}, this.settings.authRequest, overrides);
+        // A core refuses `actAsManagedOnly` with `actAs: 'deny'`, which a
+        // switch back to the signed-in account sends.
+        if (request.actAs === 'deny') delete request.actAsManagedOnly;
         const { response, body } = await utils.fetchPost(
           // @ts-ignore - this is bound via .call()
           this.serviceInfo.access,
-          // @ts-ignore - this is bound via .call()
-          Object.assign({}, this.settings.authRequest, overrides)
+          request
         );
         if (!response.ok) {
           // The server's message, id and status; the body stays on `response`,
@@ -464,8 +495,17 @@ class AuthController {
       if (this._authFlowId !== flowId) return;
 
       if (pollResponse.status === AuthStates.NEED_SIGNIN) {
-        // @ts-ignore - this is bound via .call()
-        setTimeout(await doPolling.bind(this), this.state?.poll_rate_ms);
+        // A later round has no caller to reject to: its failure becomes the
+        // state, as a poll that cannot reach the server does.
+        setTimeout(() => {
+          doPolling.call(this).catch((e) => {
+            if (this._authFlowId !== flowId) return;
+            const previous = this._switchPrevious;
+            this._switchPrevious = null;
+            if (previous != null) console.warn('pryv: account switch did not complete (polling failed); keeping the previous account');
+            this.state = previous ?? { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
+          });
+        }, this.state?.poll_rate_ms);
       } else {
         // Shared-secret delivery: the ACCEPTED body carries a one-time
         // `handoff` key, not the token. Redeem it once here (caching under the
@@ -509,16 +549,26 @@ class AuthController {
             (pollResponse?.error?.id ?? pollResponse?.message ?? pollResponse?.status) + '); keeping the previous account');
           this.state = previous;
           return;
+        } else if (pollResponse.status === AuthStates.REFUSED) {
+          // Refused on the auth page (403): tell the listeners why, then
+          // return to the sign-in button.
+          this.state = refusedState(pollResponse, this.serviceInfo);
+          // a listener started over (new request, sign-out, re-initialization)
+          // @ts-ignore - this is bound via .call()
+          if (this._authFlowId !== flowId) return;
+          this.state = { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
+          return;
         }
         this.state = pollResponse;
       }
 
       async function pollAccess (pollUrl) {
         try {
-          const { response, body } = await utils.fetchGet(pollUrl);
-          if (response.status === 403 && body?.status === 'REFUSED') {
-            return { status: AuthStates.INITIALIZED };
-          }
+          // a REFUSED answer (403) is handled by the caller like any other body
+          const { body } = await utils.fetchGet(pollUrl);
+          // unknown or expired key, a server error body, no body: ERROR, as
+          // the redirect path (never a state without a status)
+          if (body?.status == null) return unreadableAnswerState(body);
           return body;
         } catch (e) {
           return { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
@@ -559,7 +609,8 @@ class AuthController {
 
 /**
  * Narrow the state passed to *external* `onStateChange` callers so the
- * calling app sees only `{ status, id, key, serviceInfo? }` on the
+ * calling app sees only `{ status, id, key, serviceInfo?, cmcInvites?,
+ * delegation? }` on the
  * terminal AUTHORIZED state reached through the auth-flow polling path.
  * `username` / `token` / `apiEndpoint` are kept inside the lib; the
  * calling app uses `pryv.connectFromKey(key, serviceInfoUrl)` to obtain
@@ -569,6 +620,10 @@ class AuthController {
  * `LoginButton.getAuthorizationData()`) passes through unchanged so
  * existing pages that build a `Connection` directly from the restored
  * state on page load keep working.
+ *
+ * `cmcInvites` (the auth page's outcome for each invite: event and access
+ * ids, or why not) and `delegation` (a display hint) carry no credential
+ * and are kept when present.
  *
  * Non-AUTHORIZED states pass through unchanged so error messages /
  * loading flags / etc. still reach the listener.
@@ -586,6 +641,8 @@ function filterForExternalListener (state) {
   }
   const out = { status: state.status, id: state.id, key: state.key };
   if (state.serviceInfo != null) out.serviceInfo = state.serviceInfo;
+  if (state.cmcInvites != null) out.cmcInvites = state.cmcInvites;
+  if (state.delegation != null) out.delegation = state.delegation;
   return out;
 }
 

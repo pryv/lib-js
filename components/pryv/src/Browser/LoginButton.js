@@ -6,6 +6,7 @@ const Cookies = require('./CookieUtils');
 const AuthStates = require('../Auth/AuthStates');
 const AuthController = require('../Auth/AuthController');
 const ProfileStore = require('../Auth/ProfileStore');
+const { refusedState, unreadableAnswerState } = require('../Auth/pollOutcome');
 const Messages = require('../Auth/LoginMessages');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
@@ -51,7 +52,11 @@ class LoginButton {
   }
 
   onClick () {
-    this.auth.handleClick();
+    // A click handler has no caller to reject to: a failure is shown as the
+    // ERROR state; anything else is logged rather than left unhandled.
+    Promise.resolve(this.auth.handleClick()).catch((e) => {
+      if (this.auth.state?.status !== AuthStates.ERROR) console.warn('pryv: sign-in button click failed', e);
+    });
   }
 
   async onStateChange (state) {
@@ -106,6 +111,9 @@ class LoginButton {
       }
       case AuthStates.ERROR:
         this.text = getErrorMessage(this, state.message);
+        break;
+      case AuthStates.REFUSED:
+        // followed by INITIALIZED, which resets the button
         break;
       default:
         console.log('WARNING Unhandled state for Login: ' + state.status);
@@ -258,9 +266,9 @@ class LoginButton {
       pollUrls.remember(key, pollUrl);
       // the flow of this sign-in: a sign-out clears its cached credential
       authController._authFlowKey = key;
-      let response, body;
+      let body;
       try {
-        ({ response, body } = await utils.fetchGet(pollUrl));
+        ({ body } = await utils.fetchGet(pollUrl));
       } catch (e) {
         body = {
           status: AuthStates.ERROR,
@@ -268,12 +276,21 @@ class LoginButton {
           error: e
         };
       }
-      if (response?.status === 403 && body?.status === 'REFUSED') {
-        // refused on the auth page: back to the sign-in button (as the popup path)
-        body = { status: AuthStates.INITIALIZED, serviceInfo: authController.serviceInfo };
-      } else if (body?.status == null) {
+      if (body?.status === AuthStates.REFUSED && !signedIn) {
+        // Refused on the auth page (403): tell the listeners why, then back
+        // to the sign-in button (as the popup path).
+        const flowId = authController._authFlowId;
+        authController.state = refusedState(body, authController.serviceInfo);
+        // unless a listener started over (new request, sign-out, re-initialization)
+        if (authController._authFlowId === flowId) {
+          authController.state = { status: AuthStates.INITIALIZED, serviceInfo: authController.serviceInfo };
+        }
+        cleanUrl();
+        return;
+      }
+      if (body?.status == null) {
         // unknown or expired key, or no answer the button can show
-        body = { status: AuthStates.ERROR, message: 'Cannot fetch result', error: body?.error ?? body };
+        body = unreadableAnswerState(body);
       }
       // Shared-secret delivery: the ACCEPTED body carries a one-time
       // `handoff` key, not the token. Redeem it exactly as the polling path

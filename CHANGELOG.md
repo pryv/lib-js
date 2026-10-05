@@ -4,6 +4,90 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`authRequest.actAsManagedOnly`** (open-pryv.io issue #148): `true` asks that the access be
+  granted for an account the user manages through account delegation, never for the signed-in
+  account itself. It requires `actAs: 'allow'` or a username; a core refuses it with
+  `actAs: 'deny'` or without `actAs`. `service.startAccessRequest` returns the core's echo
+  (`actAsManagedOnly: true`), the detection signal, and the NEED_SIGNIN state is typed with it.
+  The sign-in button leaves the field out of any request it sends with `actAs: 'deny'` (a switch
+  back to the signed-in account sends it, and so does an app that configures `actAs: 'deny'`);
+  `service.startAccessRequest` sends what it is given. The auth page enforces it, not the core. Needs an open-pryv.io release
+  that supports it: an older core drops the field (no echo) and the auth page then behaves per
+  `actAs` alone.
+- **`cmcInvites[].accessName`** (types only, open-pryv.io issue #147): an invite of an
+  authorisation request may name the data grant the user mints when accepting it (1 to 256
+  characters), echoed with the invite. Needs an open-pryv.io release that supports it: an older
+  core refuses the whole request with `400 invalid-parameters`.
+- **`@pryv/cmc`: `listAcceptedRelationships` records carry `withdrawal`** (open-pryv.io issue
+  #146): `{ at, by, accessId?, revokeEventId?, relId? }` as the server stamps it on the accept
+  event when the relationship ends, `null` while it is active. New option `includeWithdrawn`
+  (default `false`). Typings: `RelationshipWithdrawal`.
+
+### Changed
+
+- **`@pryv/cmc`: `listAcceptedRelationships` no longer lists ended relationships by default**
+  (behaviour change, open-pryv.io issue #146). An accept event whose `content.withdrawal` is set
+  (the data grant was deleted, a revoke by either side, a delegation detach) is left out; pass
+  `includeWithdrawn: true` to list it. This needs a core that records withdrawals on every
+  teardown path (an open-pryv.io release with issue #146 fixed; earlier cores stamp only a
+  delegation detach), so on an older core ended relationships still look active. The filter is
+  applied after reading: `limit` still counts withdrawn events. Accept events are not filtered on
+  `status` (an accept whose delivery failed is still listed, as before).
+
+### Fixed
+
+- **A refused sign-in now emits the `REFUSED` state** (issue #72), with the auth page's `reasonId`
+  and `message` and the `serviceInfo`, on both the popup and the redirect paths. An app can tell
+  "the person cancelled" (`REFUSED_BY_USER`) from "declined a mandatory consent"
+  (`REFUSED_MANDATORY_CONSENT`) or "the consent could not be recorded"
+  (`MANDATORY_CONSENT_FAILED`). `REFUSED` is followed by `INITIALIZED`, so the sign-in button
+  resets as before and a listener that only waits for `INITIALIZED` is unaffected. A custom
+  `loginButton` implementation receives `REFUSED` too and may ignore it (`INITIALIZED` follows).
+  A refused account switch still returns to the previous account without `REFUSED`.
+- **The `ACCEPTED` state of a popup sign-in keeps `cmcInvites` and `delegation`** (issue #72):
+  the narrowed state handed to `onStateChange` dropped them, so an app saw the invite outcomes
+  on a phone (redirect) but not on desktop (popup). Neither carries a credential; `username`,
+  `token` and `apiEndpoint` still stay inside the library.
+- **Typings: the `REFUSED` state declares `reasonId`**, as the platform sends it, instead of
+  `reasonID` (never emitted).
+- **Typings compile without `skipLibCheck`.** `@pryv/socket.io` declared a second `Connection`
+  class in `pryv` (error "Duplicate identifier 'Connection'" in an app that checks declaration
+  files, the TypeScript default); it is now an interface merged into the class, with
+  `connection.socket` typed as before. `@pryv/monitor`: the default export returned
+  `typeof pryv.Monitor`, which does not exist (now `typeof Monitor`), and the `Monitor`
+  constructor named an undeclared `APIEndpoint` type (now `string`). `just typecheck` now also
+  checks the published declaration files, strict and without `skipLibCheck`.
+- **A sign-in button click no longer leaves an unhandled promise rejection** when the access
+  request fails (the failure was already shown as the `ERROR` state) or when, from `ERROR`, the
+  re-initialization fails: that failure is now shown as the `ERROR` state too (message
+  `'Initializing'`) instead of leaving the button on `LOADING`. `handleClick()` still rejects in
+  the second case, for a caller that awaits it. A failure that no state shows is logged
+  (`console.warn`) instead. `handleClick()` on `REFUSED` (from a listener, before the reset to
+  `INITIALIZED`) starts a new request, as on `INITIALIZED`, instead of logging "Unhandled action".
+- **A failure in a later round of the sign-in poll now ends in the `ERROR` state** (message
+  `'Error while polling for auth request'`, or the previous account for an account switch)
+  instead of an unhandled promise rejection with the button left on `NEED_SIGNIN`. The same holds
+  for the first round of a request started by a sign-in button click; called directly,
+  `startAuthRequest()` still rejects on a first-round failure.
+- **A popup sign-in poll answer without a `status`** (an unknown or expired key, a server error
+  body, no body) now ends in the `ERROR` state (message `'Cannot fetch result'`, `error` the
+  answer's `error`), as the redirect path already did. It was handed to the listeners as a state
+  with no status (or, with no body, ended in an unhandled rejection), and the button stayed on
+  its sign-in label.
+- **Typings: the `ACCEPTED` state declares `apiEndpoint` and `username` optional**, as an
+  `onStateChange` listener receives it: after a popup sign-in the state carries `key` (use
+  `connectFromKey(key, serviceInfoUrl)`) and neither field; they are present only when the account
+  comes from stored credentials or from the return of a sign-in by redirection. TypeScript apps
+  reading them now get `string | undefined` and may need a check.
+- **`@pryv/cmc` typings: `RelationshipRecord.features` is `{ chat, systemMessaging }`**, as
+  `listAcceptedRelationships` returns it, instead of `{ chat, system }`, and
+  `RelationshipRecord.counterparty` includes the `{ apiEndpoint }` form it returns for an accept
+  event written before `content.from` existed. The README example of
+  `listAcceptedRelationships` passes `scopeStreamId` (it showed an `appCode` option the function
+  does not have).
+
 ## 3.15.0 - 2026-10-02
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`

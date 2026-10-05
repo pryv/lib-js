@@ -72,7 +72,7 @@ Conventions:
 
 - **Dual environment.** Everything in `components/pryv/src` must work in Node *and* browsers; environment forks go through `utils.isBrowser()`. Don't import Node built-ins at module top level outside guarded paths.
 - **ES5 bundle is a target.** `dist/pryv.js` is transpiled for older browsers; avoid syntax/idioms that break the webpack+babel pipeline without checking `just build`.
-- **Auth-flow state shape (since 3.5.0).** On a fresh auth flow, the `AUTHORIZED` state delivers `{status, id, key, serviceInfo?}` — credentials are obtained via `pryv.connectFromKey(state.key, serviceInfoUrl)`, not read off the state. Cookie-autologin still carries `apiEndpoint`/`username` for backward compatibility. Don't "simplify" this back.
+- **Auth-flow state shape (since 3.5.0).** On a fresh auth flow, the `AUTHORIZED` state delivers `{status, id, key, serviceInfo?, cmcInvites?, delegation?}` (the last two carry no credential) — credentials are obtained via `pryv.connectFromKey(state.key, serviceInfoUrl)`, not read off the state. Cookie-autologin still carries `apiEndpoint`/`username` for backward compatibility. Don't "simplify" this back.
 - **Composite access ids.** After `accesses.update`, ids take the `{base}:{serial}` form; `Connection#updateAccess()` throws `StaleAccessIdError` on 409 — preserve that behavior.
 - **`dist/` is a branch checkout**, not build output to commit on `master`. Never `git add dist/` from the master tree; use `just publish-browser`.
 
