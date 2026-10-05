@@ -67,6 +67,11 @@
 - **A failure in a later round of the sign-in poll now ends in the `ERROR` state** (message
   `'Error while polling for auth request'`, or the previous account for an account switch)
   instead of an unhandled promise rejection with the button left on `NEED_SIGNIN`.
+- **A popup sign-in poll answer without a `status`** (an unknown or expired key, a server error
+  body, no body) now ends in the `ERROR` state (message `'Cannot fetch result'`, `error` the
+  answer's `error`), as the redirect path already did. It was handed to the listeners as a state
+  with no status (or, with no body, ended in an unhandled rejection), and the button stayed on
+  its sign-in label.
 - **Typings: the `ACCEPTED` state declares `apiEndpoint` and `username` optional**, as an
   `onStateChange` listener receives it: after a popup sign-in the state carries `key` (use
   `connectFromKey(key, serviceInfoUrl)`) and neither field; they are present only when the account

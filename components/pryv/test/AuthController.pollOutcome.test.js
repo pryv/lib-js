@@ -338,6 +338,19 @@ describe('[APLX] AuthController popup poll outcome', function () {
     expect(seen).to.deep.equal(['INITIALIZED', 'NEED_SIGNIN', 'ERROR']);
   });
 
+  it('[APL15] a poll answer without a status (unknown key, error body, no body) ends in ERROR \'Cannot fetch result\'', async () => {
+    for (const [status, body] of [[404, { error: { id: 'unknown-access-key', message: 'Unknown key' } }], [502, null]]) {
+      pollStatus = status;
+      pollBody = body;
+      const seen = [];
+      const auth = makeAuth((s) => seen.push(s.status));
+      await auth.startAuthRequest();
+      expect(seen, 'states for HTTP ' + status).to.deep.equal(['INITIALIZED', 'NEED_SIGNIN', 'ERROR']);
+      expect(auth.state.message).to.equal('Cannot fetch result');
+      expect(auth.state.error).to.deep.equal(body?.error ?? null);
+    }
+  });
+
   it('[APL6] ACCEPTED without invites nor delegation stays { status, id, key }', async () => {
     pollStatus = 200;
     pollBody = { status: 'ACCEPTED', username: 'alice', token: 'tok', apiEndpoint: 'https://tok@alice.test.local/' };

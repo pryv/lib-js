@@ -9,7 +9,7 @@ const ProfileStore = require('./ProfileStore');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
 const PryvError = require('../lib/PryvError');
-const { refusedState } = require('./pollOutcome');
+const { refusedState, unreadableAnswerState } = require('./pollOutcome');
 
 /**
  * Controller for authentication flow
@@ -562,6 +562,9 @@ class AuthController {
         try {
           // a REFUSED answer (403) is handled by the caller like any other body
           const { body } = await utils.fetchGet(pollUrl);
+          // unknown or expired key, a server error body, no body: ERROR, as
+          // the redirect path (never a state without a status)
+          if (body?.status == null) return unreadableAnswerState(body);
           return body;
         } catch (e) {
           return { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
