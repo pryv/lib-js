@@ -19,6 +19,7 @@
     }
   },
   "files": [
+    "components/pryv/src/globals.d.ts",
     "components/pryv/src/index.d.ts",
     "components/pryv-socket.io/src/index.d.ts",
     "components/pryv-monitor/src/index.d.ts",

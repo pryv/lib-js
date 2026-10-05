@@ -11,10 +11,8 @@ declare global {
   type TokenAndEndpoint = PryvModule.TokenAndAPIEndpoint;
 
   // Core classes (for JSDoc @param {Connection} etc.)
-  interface Connection extends PryvModule.Connection {
-    socket?: any;
-    _chunkedBatchCall?: any;
-  }
+  // `socket` comes from the @pryv/socket.io augmentation of `Connection`
+  type Connection = PryvModule.Connection;
   type Service = PryvModule.Service;
   type ServiceInfo = PryvModule.ServiceInfo;
   type ServiceAssets = PryvModule.ServiceAssets;
@@ -32,7 +30,8 @@ declare global {
   type AccessInfo = PryvModule.AccessInfo & { error?: PryvModule.Error };
   type HFSeriesAddResult = PryvModule.HFSeriesAddResult;
   type APICall = PryvModule.APICall;
-  type Event = PryvModule.Event;
+  // not `Event`: that name is the DOM event (lib.dom)
+  type PryvEvent = PryvModule.Event;
   type Stream = PryvModule.Stream;
 
   // Method call type for socket.io

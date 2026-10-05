@@ -130,7 +130,7 @@ class SocketIO extends EventEmitter {
   /**
    * Identical to Connection.api() but using Socket.IO transport
    * @param {Array<MethodCall>} arrayOfAPICalls - Array of Method Calls
-   * @param {Function} [progress] - Return percentage of progress (0 - 100)
+   * @param {(percentage: number) => void} [progress] - Return percentage of progress (0 - 100)
    * @returns {Promise<Array>} Promise to Array of results matching each method call in order
    */
   async api (arrayOfAPICalls, progress) {
