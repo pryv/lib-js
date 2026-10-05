@@ -1080,8 +1080,15 @@ declare module 'pryv' {
     };
     ACCEPTED: {
       serviceInfo?: ServiceInfo;
-      apiEndpoint: string;
-      username: string;
+      /**
+       * Present only when the account comes from stored credentials or from
+       * the return of a sign-in by redirection (the states without `key`).
+       * The state an `onStateChange` listener receives after a popup sign-in
+       * carries `key` instead: use `connectFromKey(key, serviceInfoUrl)`.
+       */
+      apiEndpoint?: string;
+      /** Present only when `apiEndpoint` is (see above). */
+      username?: string;
       /** Present on inline delivery; absent when a one-time `handoff` key is used. */
       token?: string;
       /**

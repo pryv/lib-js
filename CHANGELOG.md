@@ -55,6 +55,11 @@
   re-initialization fails: that failure is now shown as the `ERROR` state too (message
   `'Initializing'`) instead of leaving the button on `LOADING`. `handleClick()` still rejects in
   the second case, for a caller that awaits it.
+- **Typings: the `ACCEPTED` state declares `apiEndpoint` and `username` optional**, as an
+  `onStateChange` listener receives it: after a popup sign-in the state carries `key` (use
+  `connectFromKey(key, serviceInfoUrl)`) and neither field; they are present only when the account
+  comes from stored credentials or from the return of a sign-in by redirection. TypeScript apps
+  reading them now get `string | undefined` and may need a check.
 - **`@pryv/cmc` typings: `RelationshipRecord.features` is `{ chat, systemMessaging }`**, as
   `listAcceptedRelationships` returns it, instead of `{ chat, system }`. The README example of
   `listAcceptedRelationships` passes `scopeStreamId` (it showed an `appCode` option the function
