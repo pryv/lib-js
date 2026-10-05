@@ -4,6 +4,37 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`authRequest.actAsManagedOnly`** (open-pryv.io issue #148): `true` asks that the access be
+  granted for an account the user manages through account delegation, never for the signed-in
+  account itself. It requires `actAs: 'allow'` or a username; a core refuses it with
+  `actAs: 'deny'` or without `actAs`. `service.startAccessRequest` returns the core's echo
+  (`actAsManagedOnly: true`), the detection signal, and the NEED_SIGNIN state is typed with it.
+  The sign-in button leaves the field out of a switch back to the signed-in account (that request
+  sends `actAs: 'deny'`). The auth page enforces it, not the core. Needs an open-pryv.io release
+  that supports it: an older core drops the field (no echo) and the auth page then behaves per
+  `actAs` alone.
+- **`cmcInvites[].accessName`** (types only, open-pryv.io issue #147): an invite of an
+  authorisation request may name the data grant the user mints when accepting it (1 to 256
+  characters), echoed with the invite. Needs an open-pryv.io release that supports it: an older
+  core refuses the whole request with `400 invalid-parameters`.
+- **`@pryv/cmc`: `listAcceptedRelationships` records carry `withdrawal`** (open-pryv.io issue
+  #146): `{ at, by, accessId?, revokeEventId?, relId? }` as the server stamps it on the accept
+  event when the relationship ends, `null` while it is active. New option `includeWithdrawn`
+  (default `false`). Typings: `RelationshipWithdrawal`.
+
+### Changed
+
+- **`@pryv/cmc`: `listAcceptedRelationships` no longer lists ended relationships by default**
+  (behaviour change, open-pryv.io issue #146). An accept event whose `content.withdrawal` is set
+  (the data grant was deleted, a revoke by either side, a delegation detach) is left out; pass
+  `includeWithdrawn: true` to list it. This needs a core that records withdrawals on every
+  teardown path (an open-pryv.io release with issue #146 fixed; earlier cores stamp only a
+  delegation detach), so on an older core ended relationships still look active. The filter is
+  applied after reading: `limit` still counts withdrawn events. Accept events are not filtered on
+  `status` (an accept whose delivery failed is still listed, as before).
+
 ### Fixed
 
 - **A refused sign-in now emits the `REFUSED` state** (issue #72), with the auth page's `reasonId`
@@ -19,6 +50,10 @@
   `token` and `apiEndpoint` still stay inside the library.
 - **Typings: the `REFUSED` state declares `reasonId`**, as the platform sends it, instead of
   `reasonID` (never emitted).
+- **`@pryv/cmc` typings: `RelationshipRecord.features` is `{ chat, systemMessaging }`**, as
+  `listAcceptedRelationships` returns it, instead of `{ chat, system }`. The README example of
+  `listAcceptedRelationships` passes `scopeStreamId` (it showed an `appCode` option the function
+  does not have).
 
 ## 3.15.0 - 2026-10-02
 
