@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## 3.16.0 - 2026-10-05
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
+3.16.0; `@pryv/cmc` 3.18.0. The `actAsManagedOnly` and `cmcInvites[].accessName` fields and the
+recorded consent withdrawals need open-pryv.io 2.0.0-rc.36 or later.
+
 ### Added
 
 - **`authRequest.actAsManagedOnly`** (open-pryv.io issue #148): `true` asks that the access be
