@@ -223,8 +223,13 @@ await cmc.revokeAcceptance(conn, {
   reason: { en: 'opting out' }
 });
 
-const relationships = await cmc.listAcceptedRelationships(conn, { appCode: 'my-app' });
+const relationships = await cmc.listAcceptedRelationships(conn, { scopeStreamId: cmc.appScope('my-app') });
 // relationships = RelationshipRecord[]
+// Active relationships only: an accept event whose `content.withdrawal` is set
+// (the relationship ended: data grant deleted, revoked by either side, delegation
+// detached) is left out. Pass `includeWithdrawn: true` to list those too, each with
+// `withdrawal = { at, by, accessId?, revokeEventId?, relId? }` (null while active).
+// Needs a core that records withdrawals; an older core leaves ended ones looking active.
 
 // Respond to a scope-update request from the provider. The id is the
 // request's id on YOUR account (the provider gets it as remoteScopeRequestEventId).

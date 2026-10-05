@@ -210,7 +210,33 @@ declare module '@pryv/cmc' {
     appCode: string | null;
     scopeStreamId: string;
     acceptedAt: number | null;
-    features: { chat: boolean; system: boolean };
+    features: { chat: boolean; systemMessaging: boolean };
+    /**
+     * Set by the server when the relationship has ended; null while it is
+     * active. Listed only with `includeWithdrawn: true`.
+     */
+    withdrawal: RelationshipWithdrawal | null;
+  };
+
+  /**
+   * How a relationship ended, as the server records it on the accept event
+   * (`content.withdrawal`). Written by the server only, never overwritten.
+   */
+  export type RelationshipWithdrawal = {
+    /** Seconds since the epoch. */
+    at: number;
+    /**
+     * What ended it: `'accesses.delete'` (the data grant was deleted),
+     * `'revoke-cmc'` (a revoke written on this account), `'peer-revoke'`
+     * (the counterparty revoked), `'delegation-detach'` (a delegation detach).
+     */
+    by: 'accesses.delete' | 'revoke-cmc' | 'peer-revoke' | 'delegation-detach' | string;
+    /** The data grant that was deleted. */
+    accessId?: string;
+    /** The revoke event, for `'revoke-cmc'` and `'peer-revoke'`. */
+    revokeEventId?: string;
+    /** The delegation relationship, for `'delegation-detach'`. */
+    relId?: string;
   };
 
   // --- Level-1: provider side ---
@@ -352,7 +378,14 @@ declare module '@pryv/cmc' {
 
   export function listAcceptedRelationships(conn: any, params?: {
     scopeStreamId?: string;
+    /** Most accept events read, withdrawn ones included (default 1000). */
     limit?: number;
+    /**
+     * Default false: relationships that have ended (`withdrawal` set) are
+     * left out. Needs a core that records withdrawals; on an older one,
+     * ended relationships still look active.
+     */
+    includeWithdrawn?: boolean;
   }): Promise<RelationshipRecord[]>;
 
   // --- Level-1: cross-direction ---

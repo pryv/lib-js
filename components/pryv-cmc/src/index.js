@@ -1120,10 +1120,17 @@ async function revokeAcceptance (conn, params) {
  * List accepted relationships from the accepter side. Reads
  * `consent/accept-cmc` triggers under the given scope.
  *
+ * A relationship that has ended carries `content.withdrawal` on its accept
+ * event (stamped by the server, whatever ended it: deleting the data grant,
+ * a revoke by either side, a delegation detach). Those are left out unless
+ * `params.includeWithdrawn` is true. A core that does not record withdrawals
+ * leaves ended relationships looking active.
+ *
  * @param {Object} conn
  * @param {Object} [params]
  * @param {string} [params.scopeStreamId=':_cmc:apps']  - root or sub-scope to search recursively
- * @param {number} [params.limit=1000]
+ * @param {number} [params.limit=1000] - most accept events read (withdrawn ones included)
+ * @param {boolean} [params.includeWithdrawn=false] - also list ended relationships
  * @returns {Promise<Array>}
  */
 async function listAcceptedRelationships (conn, params) {
@@ -1138,7 +1145,12 @@ async function listAcceptedRelationships (conn, params) {
     types: [ET_ACCEPT],
     limit
   }, 'events');
-  return events.map(function (event) {
+  const listed = params.includeWithdrawn === true
+    ? events
+    : events.filter(function (event) {
+      return event?.content?.withdrawal == null;
+    });
+  return listed.map(function (event) {
     const c = (event && event.content) || {};
     return {
       acceptEventId: event.id,
@@ -1153,7 +1165,9 @@ async function listAcceptedRelationships (conn, params) {
       // the contract fix and is no longer reachable for events written
       // by pryv-cmc >= 1.1.1; we leave the field-omission default at
       // true to honour the documented contract.
-      features: c.features || { chat: true, systemMessaging: true }
+      features: c.features || { chat: true, systemMessaging: true },
+      // Set when the relationship has ended (see above); null while active.
+      withdrawal: c.withdrawal || null
     };
   });
 }

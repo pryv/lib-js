@@ -1104,6 +1104,50 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
   });
 
+  describe('[CMCL1NW] listAcceptedRelationships and ended relationships (content.withdrawal)', function () {
+    const WITHDRAWAL = { at: 1759600000, by: 'accesses.delete', accessId: 'dg-2' };
+    const DETACHED = { at: 1759600100, by: 'delegation-detach', relId: 'rel-1' };
+    function stubWithEnded () {
+      return makeStubConnection({
+        handlers: {
+          'events.get': function () {
+            return {
+              events: [
+                { id: 'acc-active', streamIds: [':_cmc:apps:my-app'], content: { from: { username: 'a', host: 'pryv.me' }, dataGrantAccessId: 'dg-1' } },
+                { id: 'acc-ended', streamIds: [':_cmc:apps:my-app'], content: { from: { username: 'b', host: 'pryv.me' }, dataGrantAccessId: 'dg-2', withdrawal: WITHDRAWAL } },
+                { id: 'acc-detached', streamIds: [':_cmc:apps:my-app'], content: { from: { username: 'c', host: 'pryv.me' }, dataGrantAccessId: 'dg-3', withdrawal: DETACHED } },
+                { id: 'acc-no-content', streamIds: [':_cmc:apps:my-app'] }
+              ]
+            };
+          }
+        }
+      });
+    }
+
+    it('[CMCL1NW1] leaves out accept events carrying a withdrawal by default', async function () {
+      const conn = stubWithEnded();
+      const r = await cmc.listAcceptedRelationships(conn);
+      expect(r.map((x) => x.acceptEventId)).to.deep.equal(['acc-active', 'acc-no-content']);
+      expect(r[0].withdrawal).to.equal(null);
+      // the filter is local: the query is unchanged
+      expect(conn.calls[0].params).to.deep.equal({ streams: [':_cmc:apps'], types: ['consent/accept-cmc'], limit: 1000 });
+    });
+
+    it('[CMCL1NW2] includeWithdrawn: true lists them with the withdrawal record', async function () {
+      const r = await cmc.listAcceptedRelationships(stubWithEnded(), { includeWithdrawn: true });
+      expect(r.map((x) => x.acceptEventId)).to.deep.equal(['acc-active', 'acc-ended', 'acc-detached', 'acc-no-content']);
+      expect(r[0].withdrawal).to.equal(null);
+      expect(r[1].withdrawal).to.deep.equal(WITHDRAWAL);
+      expect(r[2].withdrawal).to.deep.equal(DETACHED);
+      expect(r[3].withdrawal).to.equal(null);
+    });
+
+    it('[CMCL1NW3] includeWithdrawn: false behaves as the default', async function () {
+      const r = await cmc.listAcceptedRelationships(stubWithEnded(), { includeWithdrawn: false });
+      expect(r.map((x) => x.acceptEventId)).to.deep.equal(['acc-active', 'acc-no-content']);
+    });
+  });
+
   describe('[CMCL1Z] observation scopes', function () {
     it('[CMCL1ZA] inbox returns :_cmc:inbox stream scope', function () {
       expect(cmc.scopes.inbox()).to.deep.equal({ streams: [':_cmc:inbox'] });
