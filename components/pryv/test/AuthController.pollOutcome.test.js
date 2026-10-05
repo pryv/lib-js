@@ -305,6 +305,39 @@ describe('[APLX] AuthController popup poll outcome', function () {
     expect(seen).to.deep.equal(['INITIALIZED', 'NEED_SIGNIN', 'REFUSED', 'NEED_SIGNIN', 'ACCEPTED']);
   });
 
+  it('[APL14] a later poll round that fails ends in ERROR, not in an unhandled rejection', async () => {
+    const handoff = require('../src/lib/handoff');
+    const failure = new Error('unexpected');
+    const isHandoffBody = handoff.isHandoffBody;
+    let polls = 0;
+    utils.fetchGet = async () => {
+      polls++;
+      return polls === 1
+        ? { response: { ok: true, status: 201 }, body: { status: 'NEED_SIGNIN' } }
+        : { response: { ok: true, status: 200 }, body: { status: 'ACCEPTED', username: 'alice', apiEndpoint: 'https://tok@alice.test.local/' } };
+    };
+    handoff.isHandoffBody = () => { throw failure; };
+    const seen = [];
+    const auth = makeAuth((s) => seen.push(s.status));
+    let unhandled;
+    try {
+      unhandled = await unhandledDuring(async () => {
+        await auth.startAuthRequest();
+        for (let i = 0; i < 50 && auth.state.status === AuthStates.NEED_SIGNIN; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        }
+      });
+    } finally {
+      handoff.isHandoffBody = isHandoffBody;
+    }
+    expect(polls).to.equal(2);
+    expect(unhandled).to.deep.equal([]);
+    expect(auth.state.status).to.equal(AuthStates.ERROR);
+    expect(auth.state.message).to.equal('Error while polling for auth request');
+    expect(auth.state.error).to.equal(failure);
+    expect(seen).to.deep.equal(['INITIALIZED', 'NEED_SIGNIN', 'ERROR']);
+  });
+
   it('[APL6] ACCEPTED without invites nor delegation stays { status, id, key }', async () => {
     pollStatus = 200;
     pollBody = { status: 'ACCEPTED', username: 'alice', token: 'tok', apiEndpoint: 'https://tok@alice.test.local/' };

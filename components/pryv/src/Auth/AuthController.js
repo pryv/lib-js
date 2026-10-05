@@ -487,8 +487,21 @@ class AuthController {
       if (this._authFlowId !== flowId) return;
 
       if (pollResponse.status === AuthStates.NEED_SIGNIN) {
+        // A later round has no caller to reject to: its failure becomes the
+        // state, as a poll that cannot reach the server does.
+        setTimeout(() => {
+          doPolling.call(this).catch((e) => {
+            // @ts-ignore - this is bound via .call()
+            if (this._authFlowId !== flowId) return;
+            // @ts-ignore - this is bound via .call()
+            const previous = this._switchPrevious;
+            // @ts-ignore - this is bound via .call()
+            this._switchPrevious = null;
+            if (previous != null) console.warn('pryv: account switch did not complete (polling failed); keeping the previous account');
+            this.state = previous ?? { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
+          });
         // @ts-ignore - this is bound via .call()
-        setTimeout(await doPolling.bind(this), this.state?.poll_rate_ms);
+        }, this.state?.poll_rate_ms);
       } else {
         // Shared-secret delivery: the ACCEPTED body carries a one-time
         // `handoff` key, not the token. Redeem it once here (caching under the

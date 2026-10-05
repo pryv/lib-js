@@ -64,6 +64,9 @@
   the second case, for a caller that awaits it. A failure that no state shows is logged
   (`console.warn`) instead. `handleClick()` on `REFUSED` (from a listener, before the reset to
   `INITIALIZED`) starts a new request, as on `INITIALIZED`, instead of logging "Unhandled action".
+- **A failure in a later round of the sign-in poll now ends in the `ERROR` state** (message
+  `'Error while polling for auth request'`, or the previous account for an account switch)
+  instead of an unhandled promise rejection with the button left on `NEED_SIGNIN`.
 - **Typings: the `ACCEPTED` state declares `apiEndpoint` and `username` optional**, as an
   `onStateChange` listener receives it: after a popup sign-in the state carries `key` (use
   `connectFromKey(key, serviceInfoUrl)`) and neither field; they are present only when the account
