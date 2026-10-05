@@ -68,7 +68,9 @@
   `INITIALIZED`) starts a new request, as on `INITIALIZED`, instead of logging "Unhandled action".
 - **A failure in a later round of the sign-in poll now ends in the `ERROR` state** (message
   `'Error while polling for auth request'`, or the previous account for an account switch)
-  instead of an unhandled promise rejection with the button left on `NEED_SIGNIN`.
+  instead of an unhandled promise rejection with the button left on `NEED_SIGNIN`. The same holds
+  for the first round of a request started by a sign-in button click; called directly,
+  `startAuthRequest()` still rejects on a first-round failure.
 - **A popup sign-in poll answer without a `status`** (an unknown or expired key, a server error
   body, no body) now ends in the `ERROR` state (message `'Cannot fetch result'`, `error` the
   answer's `error`), as the redirect path already did. It was handed to the listeners as a state

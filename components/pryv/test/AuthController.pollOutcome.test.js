@@ -258,25 +258,65 @@ describe('[APLX] AuthController popup poll outcome', function () {
 
   it('[APL12] a click whose request fails unexpectedly (state neither ERROR nor the previous account) is logged', async () => {
     const failure = new Error('unexpected');
+    const NEED_SIGNIN = { status: AuthStates.NEED_SIGNIN, key: 'k', poll: POLL, poll_rate_ms: 5 };
     const outcomes = [
-      { set: null, warns: 1 }, // still INITIALIZED: nothing shows it
-      { set: { status: AuthStates.ERROR, message: 'Requesting access' }, warns: 0 },
-      { set: { status: AuthStates.AUTHORIZED, username: 'bob', apiEndpoint: 'https://tb@bob.test.local/' }, warns: 0 }
+      { set: null, warns: 1, ends: AuthStates.INITIALIZED }, // nothing shows it
+      { set: { status: AuthStates.ERROR, message: 'Requesting access' }, warns: 0, ends: AuthStates.ERROR },
+      { set: { status: AuthStates.AUTHORIZED, username: 'bob', apiEndpoint: 'https://tb@bob.test.local/' }, warns: 0, ends: AuthStates.AUTHORIZED },
+      // the request failed while polling: shown as ERROR
+      { set: NEED_SIGNIN, warns: 0, ends: AuthStates.ERROR },
+      // a newer request is the one waiting for the sign-in: left alone
+      { set: NEED_SIGNIN, newer: true, warns: 1, ends: AuthStates.NEED_SIGNIN }
     ];
     for (const outcome of outcomes) {
       const auth = makeAuth(() => {});
       auth.startAuthRequest = async () => {
-        if (outcome.set != null) auth.state = outcome.set;
+        await null; // the click has read the flow id by now
+        if (outcome.newer) auth._authFlowId++;
+        if (outcome.set != null) auth.state = { ...outcome.set };
         throw failure;
       };
       let unhandled;
+      const label = (outcome.set?.status ?? 'INITIALIZED') + (outcome.newer ? ' (newer)' : '');
       const warned = await captured('warn', async () => {
         unhandled = await unhandledDuring(() => auth.handleClick());
       });
       expect(unhandled).to.deep.equal([]);
-      expect(warned.length, 'warnings with ' + (outcome.set?.status ?? 'INITIALIZED')).to.equal(outcome.warns);
+      expect(warned.length, 'warnings with ' + label).to.equal(outcome.warns);
       if (outcome.warns > 0) expect(warned[0][1]).to.equal(failure);
+      expect(auth.state.status, 'state with ' + label).to.equal(outcome.ends);
+      if (outcome.ends === AuthStates.ERROR && outcome.set === NEED_SIGNIN) {
+        expect(auth.state.message).to.equal('Error while polling for auth request');
+        expect(auth.state.error).to.equal(failure);
+      }
     }
+  });
+
+  it('[APL16] a click whose first poll round fails ends in ERROR, as the later rounds do', async () => {
+    const handoff = require('../src/lib/handoff');
+    const failure = new Error('unexpected');
+    const isHandoffBody = handoff.isHandoffBody;
+    pollStatus = 200;
+    pollBody = { status: 'ACCEPTED', username: 'alice', apiEndpoint: 'https://tok@alice.test.local/' };
+    // AuthController calls handoff.isHandoffBody on the module object at call
+    // time, so replacing the property makes the round throw after the answer.
+    handoff.isHandoffBody = () => { throw failure; };
+    const seen = [];
+    const auth = makeAuth((s) => seen.push(s.status));
+    let unhandled;
+    let warned;
+    try {
+      warned = await captured('warn', async () => {
+        unhandled = await unhandledDuring(() => auth.handleClick());
+      });
+    } finally {
+      handoff.isHandoffBody = isHandoffBody;
+    }
+    expect(unhandled).to.deep.equal([]);
+    expect(warned).to.deep.equal([]);
+    expect(seen).to.deep.equal(['INITIALIZED', 'NEED_SIGNIN', 'ERROR']);
+    expect(auth.state.message).to.equal('Error while polling for auth request');
+    expect(auth.state.error).to.equal(failure);
   });
 
   it('[APL13] a click from a listener on REFUSED starts a new request (no "Unhandled action", no reset over it)', async () => {
@@ -316,6 +356,8 @@ describe('[APLX] AuthController popup poll outcome', function () {
         ? { response: { ok: true, status: 201 }, body: { status: 'NEED_SIGNIN' } }
         : { response: { ok: true, status: 200 }, body: { status: 'ACCEPTED', username: 'alice', apiEndpoint: 'https://tok@alice.test.local/' } };
     };
+    // AuthController calls handoff.isHandoffBody on the module object at call
+    // time, so replacing the property makes the second round throw after the answer.
     handoff.isHandoffBody = () => { throw failure; };
     const seen = [];
     const auth = makeAuth((s) => seen.push(s.status));

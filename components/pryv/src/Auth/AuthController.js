@@ -146,9 +146,17 @@ class AuthController {
     } else if (isInitialized.call(this)) {
       // Not awaited (the click returns at once), so the rejection is handled
       // here. A failed request is already the state (ERROR, or the previous
-      // account); any other failure is logged rather than lost.
-      this.startAuthRequest().catch((e) => {
-        if (this.state?.status !== AuthStates.ERROR && this.state?.status !== AuthStates.AUTHORIZED) {
+      // account). A failure in the first poll round leaves NEED_SIGNIN: it
+      // becomes ERROR, as in the later rounds (a click-started request is
+      // never an account switch). Any other failure is logged rather than lost.
+      const started = this.startAuthRequest();
+      // startAuthRequest begins a new flow synchronously: this is its id
+      const flowId = this._authFlowId;
+      started.catch((e) => {
+        const status = this.state?.status;
+        if (status === AuthStates.NEED_SIGNIN && this._authFlowId === flowId) {
+          this.state = { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
+        } else if (status !== AuthStates.ERROR && status !== AuthStates.AUTHORIZED) {
           console.warn('pryv: sign-in request failed', e);
         }
       });
@@ -491,16 +499,12 @@ class AuthController {
         // state, as a poll that cannot reach the server does.
         setTimeout(() => {
           doPolling.call(this).catch((e) => {
-            // @ts-ignore - this is bound via .call()
             if (this._authFlowId !== flowId) return;
-            // @ts-ignore - this is bound via .call()
             const previous = this._switchPrevious;
-            // @ts-ignore - this is bound via .call()
             this._switchPrevious = null;
             if (previous != null) console.warn('pryv: account switch did not complete (polling failed); keeping the previous account');
             this.state = previous ?? { status: AuthStates.ERROR, message: 'Error while polling for auth request', error: e };
           });
-        // @ts-ignore - this is bound via .call()
         }, this.state?.poll_rate_ms);
       } else {
         // Shared-secret delivery: the ACCEPTED body carries a one-time
