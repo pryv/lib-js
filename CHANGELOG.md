@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## 3.19.0 - 2026-10-06
+
+`@pryv/cmc` 3.19.0 only (the other packages are unchanged at 3.16.0).
+
 ### Added
 
 - **`@pryv/cmc` `errorIds.SELF_ACCEPT_FORBIDDEN`** (`'cmc-self-accept-forbidden'`, open-pryv.io
