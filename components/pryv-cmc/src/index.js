@@ -268,6 +268,8 @@ const errorIds = Object.freeze({
   HANDLER_OFFER_READ_FAILED: 'cmc-handler-offer-read-failed',
   // Counterparty resolution
   HANDLER_COUNTERPARTY_UNKNOWN: 'cmc-handler-counterparty-unknown',
+  // The accepting account made the offer itself (open-pryv.io 2.0.0-rc.38+).
+  SELF_ACCEPT_FORBIDDEN: 'cmc-self-accept-forbidden',
   // Access mint
   HANDLER_DATA_GRANT_CREATE_FAILED: 'cmc-handler-data-grant-create-failed',
   HANDLER_DATA_GRANT_NO_APIENDPOINT: 'cmc-handler-data-grant-no-apiendpoint',

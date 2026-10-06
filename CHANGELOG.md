@@ -4,6 +4,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`@pryv/cmc` `errorIds.SELF_ACCEPT_FORBIDDEN`** (`'cmc-self-accept-forbidden'`, open-pryv.io
+  issue #150): `acceptInvite` throws a `CmcError` with this id when the accepting account made the
+  offer itself (open-pryv.io 2.0.0-rc.38 or later refuses it).
+
+### Documentation
+
+- **`@pryv/cmc` README, features negotiation:** a relationship's `features` are resolved by the
+  server from the offer (open-pryv.io 2.0.0-rc.38 or later); a relationship without chat has no
+  chat stream.
+
 ## 3.16.0 - 2026-10-05
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption`
