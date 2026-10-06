@@ -95,7 +95,7 @@ Lifecycle / handler / chat-routing examples: `cmc.errorIds.CAPABILITY_INVALID` (
 | `CAPABILITY_TTL_OUT_OF_RANGE` | `'cmc-capability-ttl-out-of-range'` | `createInvite({ expiresAt })` resolves outside the bounds for the mode: `[60s, 30d]` single-use; at least 60s, no upper bound, open-link. Omit `expiresAt` to use the 7-day default. |
 | `CAPABILITY_NO_EXPIRY_NOT_ALLOWED` | `'cmc-capability-no-expiry-not-allowed'` | `createInvite({ expiresAt: null })` without `mode: 'open-link'`. Thrown client-side before anything is written; the server refuses it too. |
 | `HANDLER_MISSING_CAPABILITY_ID` | `'cmc-handler-missing-capability-id'` | Plugin handler couldn't find `content.capabilityId` on the trigger event. |
-| `CHAT_DISABLED` | `'cmc-chat-disabled'` | `sendChat` against a relationship whose negotiated `features.chat: false`. Default-permit on omission. |
+| `CHAT_DISABLED` | `'cmc-chat-disabled'` | `sendChat` against a relationship whose negotiated `features.chat: false` and which still has a chat stream (accepted before open-pryv.io 2.0.0-rc.38; later ones have no chat stream, see Features negotiation). Default-permit on omission. |
 | `SYSTEM_MESSAGING_DISABLED` | `'cmc-system-messaging-disabled'` | `sendSystemAlert` / ack against `features.systemMessaging: false`. Scope-request / scope-update remain permitted regardless. |
 | `CLIENTDATA_CMC_FORBIDDEN` | `'cmc-clientdata-cmc-forbidden'` | `accesses.create` / `accesses.update` rejected user-supplied `clientData.cmc.*` (the namespace is plugin-owned). |
 | `RESERVED_STREAM_UNDELETABLE` | `'cmc-reserved-stream-undeletable'` | `streams.delete` rejected on a plugin-managed `:_cmc:*` parent (incl. personal-token deletes). |
@@ -118,8 +118,10 @@ Against a core that predates these rules: `null` is minted with the 7-day defaul
 `cmc.createInvite({ features: { chat, systemMessaging } })` opts the relationship in or out of each cross-account channel.
 
 - **Both default to `true`** when the key is omitted (matches the offer-side default).
-- Setting either to `false` is **binding on both sides at send time** — the recipient's plugin records the negotiation on the counterparty access's `clientData.cmc.features.*`, and subsequent `sendChat` / `sendSystemAlert` against the access reject with `cmc-chat-disabled` / `cmc-system-messaging-disabled` until a new invite negotiates it back on.
-- `cmc.scopes.{inbox, chats, collectors}` and `cmc.revokeRelationship` are unaffected — those are protocol surfaces, not message channels.
+- **The server resolves them from the offer** (open-pryv.io 2.0.0-rc.38 and later): the accept may only narrow them, never turn on a feature the offer turned off. The resolved pair is stamped on the accept event, on both relationship accesses (`clientData.cmc.features`) and on the requester's inbox mirror. Read `features` there, not the existence of a chat stream, to decide whether to offer chat.
+- **A relationship without chat has no chat channel**: no `chats:<counterparty-slug>` stream and no chat permission on either side (the `chats` parent stays). `sendChat` on it fails with `unknown-referenced-resource` (the chat stream does not exist), and a counterparty writing a `message/chat-cmc` directly is refused with HTTP 403, `data.id: 'cmc-chat-disabled'`.
+- **Relationships accepted before that release** keep their chat stream; on them `sendChat` / `sendSystemAlert` reject with `cmc-chat-disabled` / `cmc-system-messaging-disabled` when the recorded value is `false`, and the server refuses a direct write the same way. A new invite is needed to turn a feature back on.
+- `cmc.scopes.{inbox, chats, collectors}` and `cmc.revokeRelationship` are unaffected: those are protocol surfaces, not message channels.
 
 #### `pryv.utils.decomposeAPIEndpoint`
 
