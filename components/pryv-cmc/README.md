@@ -97,6 +97,7 @@ Lifecycle / handler / chat-routing examples: `cmc.errorIds.CAPABILITY_INVALID` (
 | `HANDLER_MISSING_CAPABILITY_ID` | `'cmc-handler-missing-capability-id'` | Plugin handler couldn't find `content.capabilityId` on the trigger event. |
 | `CHAT_DISABLED` | `'cmc-chat-disabled'` | `sendChat` against a relationship whose negotiated `features.chat: false` and which still has a chat stream (accepted before open-pryv.io 2.0.0-rc.38; later ones have no chat stream, see Features negotiation). Default-permit on omission. |
 | `SYSTEM_MESSAGING_DISABLED` | `'cmc-system-messaging-disabled'` | `sendSystemAlert` / ack against `features.systemMessaging: false`. Scope-request / scope-update remain permitted regardless. |
+| `SELF_ACCEPT_FORBIDDEN` | `'cmc-self-accept-forbidden'` | `acceptInvite` with the account that made the offer (an open link opened while signed in as the requester). Refused by open-pryv.io 2.0.0-rc.38 and later before anything is provisioned. |
 | `CLIENTDATA_CMC_FORBIDDEN` | `'cmc-clientdata-cmc-forbidden'` | `accesses.create` / `accesses.update` rejected user-supplied `clientData.cmc.*` (the namespace is plugin-owned). |
 | `RESERVED_STREAM_UNDELETABLE` | `'cmc-reserved-stream-undeletable'` | `streams.delete` rejected on a plugin-managed `:_cmc:*` parent (incl. personal-token deletes). |
 | `COUNTERPARTY_IDENTITY_MISSING` | `'cmc-counterparty-identity-missing'` | Peer-side `content.from` stamping hook rejected — the counterparty access lacks `{username,host}` (ops-level, shouldn't happen under normal flow). |

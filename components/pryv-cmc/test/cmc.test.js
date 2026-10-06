@@ -134,6 +134,7 @@ describe('[CMCX] @pryv/cmc Level-0 helpers', function () {
       expect(cmc.errorIds.CAPABILITY_INVALIDATED).to.equal('cmc-capability-invalidated');
       expect(cmc.errorIds.CAPABILITY_ALREADY_ACCEPTED_BY_YOU).to.equal('cmc-capability-already-accepted-by-you');
       expect(cmc.errorIds.HANDLER_DELIVERY_FAILED).to.equal('cmc-handler-delivery-failed');
+      expect(cmc.errorIds.SELF_ACCEPT_FORBIDDEN).to.equal('cmc-self-accept-forbidden');
       expect(cmc.errorIds.CHAT_NO_REMOTE_APIENDPOINT).to.equal('cmc-chat-no-remote-apiendpoint');
     });
 

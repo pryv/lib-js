@@ -115,6 +115,7 @@ declare module '@pryv/cmc' {
     readonly HANDLER_THREW: 'cmc-handler-threw';
     readonly HANDLER_OFFER_READ_FAILED: 'cmc-handler-offer-read-failed';
     readonly HANDLER_COUNTERPARTY_UNKNOWN: 'cmc-handler-counterparty-unknown';
+    readonly SELF_ACCEPT_FORBIDDEN: 'cmc-self-accept-forbidden';
     readonly HANDLER_DATA_GRANT_CREATE_FAILED: 'cmc-handler-data-grant-create-failed';
     readonly HANDLER_DATA_GRANT_NO_APIENDPOINT: 'cmc-handler-data-grant-no-apiendpoint';
     readonly HANDLER_BUILD_DATA_GRANT_FAILED: 'cmc-handler-build-data-grant-failed';
