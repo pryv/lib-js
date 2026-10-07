@@ -1190,8 +1190,9 @@ declare module 'pryv' {
     maxProfiles?: number;
     /**
      * Path of the cookies that keep the sign-in (default `'/'`, the whole
-     * site). Set a sub-path such as `'/staging/'` when two deployments with
-     * the same app id share a host and must not share the sign-in.
+     * site). Two deployments with the same app id on one host stay apart
+     * only when each has its own sub-path (`'/prod/'`, `'/staging/'`): a
+     * cookie for `/` is sent to every path.
      */
     cookiePath?: string;
     authRequest: {
@@ -1456,7 +1457,7 @@ declare module 'pryv' {
   /**
    * Options of `pryv.Browser.CookieUtils`. Defaults: the whole site
    * (`path: '/'`), this exact host (no `domain`), `sameSite: 'Strict'`,
-   * `secure` on https pages.
+   * `secure` on https pages. Browsers refuse `sameSite: 'None'` without `secure`.
    */
   export type CookieOptions = {
     path?: string;

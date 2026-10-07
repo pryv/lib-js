@@ -43,12 +43,7 @@ describe('[COKX] CookieUtils', function () {
     CookieUtils.set(testKey, { data: 'test' });
     expect(CookieUtils.get(testKey)).to.exist;
     CookieUtils.del(testKey);
-    // After deletion, the cookie is set to { deleted: true } with expiration in the past
-    // The cookie may still exist but with deleted flag
-    const afterDel = CookieUtils.get(testKey);
-    if (afterDel) {
-      expect(afterDel.deleted).to.be.true;
-    }
+    expect(CookieUtils.get(testKey)).to.be.undefined;
   });
 
   it('[COKD] set() with custom expiration', async function () {
@@ -106,7 +101,7 @@ describe('[COKX] CookieUtils', function () {
 
     it('[COKG] set() on a deep route leaves one site-wide, host-only copy', function () {
       openPage('http://localhost/patients/42');
-      // what versions before 3.17 wrote: Domain cookie for the page's own path
+      // what versions up to 3.16 wrote: Domain cookie for the page's own path
       for (const path of ['/', '/patients', '/patients/', '/patients/42']) {
         document.cookie = legacy({ v: path }, ';domain=.localhost;path=' + path);
       }
@@ -147,6 +142,30 @@ describe('[COKX] CookieUtils', function () {
       openPage('http://localhost/');
       document.cookie = KEY + '=not-json;path=/';
       expect(CookieUtils.get(KEY)).to.equal(undefined);
+    });
+
+    // jsdom stores a Domain cookie and a host-only one of the same path as one
+    // cookie, browsers keep both: watch the writes, not the jar.
+    it('[COKK] set() and del() expire the Domain copies older versions wrote, on every path of the page', function () {
+      openPage('http://localhost/patients/42');
+      const writes = [];
+      let proto = Object.getPrototypeOf(document);
+      while (!Object.prototype.hasOwnProperty.call(proto, 'cookie')) proto = Object.getPrototypeOf(proto);
+      const native = Object.getOwnPropertyDescriptor(proto, 'cookie');
+      Object.defineProperty(document, 'cookie', {
+        configurable: true,
+        get: () => native.get.call(document),
+        set: (value) => { writes.push(value); native.set.call(document, value); }
+      });
+      const expiredDomainCopy = (path) => writes.some((w) =>
+        w.startsWith(KEY + '=;') && w.includes('max-age=0') && w.includes(';domain=.localhost;path=' + path + ';'));
+      const pagePaths = ['/', '/patients', '/patients/', '/patients/42', '/patients/42/'];
+
+      CookieUtils.set(KEY, { v: 1 });
+      expect(pagePaths.filter((p) => !expiredDomainCopy(p))).to.deep.equal([]);
+      writes.length = 0;
+      CookieUtils.del(KEY);
+      expect(pagePaths.filter((p) => !expiredDomainCopy(p))).to.deep.equal([]);
     });
   });
 });

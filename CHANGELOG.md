@@ -19,8 +19,9 @@
     instead of throwing on a value it cannot read.
   - `CookieUtils.set()` and `del()` remove the copies older versions left on the current page's
     path and its parents; `del()` removes the site-wide copy from any page.
-  - New `authSettings.cookiePath` (default `'/'`) scopes the sign-in to a sub-path, for example two
-    deployments of the same app id on one host. `CookieUtils.set(key, value, expireInDays,
+  - New `authSettings.cookiePath` (default `'/'`) scopes the sign-in to a sub-path. Two
+    deployments of the same app id on one host stay apart only when each has its own sub-path
+    (a cookie for `/` is sent to every path). `CookieUtils.set(key, value, expireInDays,
     options)` and `CookieUtils.del(key, options)` take `{ path, secure, sameSite, domain }`.
   - Apps that call `CookieUtils` directly get the new defaults; pass `{ path }` to keep a cookie
     scoped to a path.

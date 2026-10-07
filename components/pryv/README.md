@@ -723,9 +723,9 @@ Controller API: `auth.switchTo(username)` (`null`: the user's own account), `aut
 
 The default button's cookies (`pryv-libjs-<appId>` and `pryv-libjs-<appId>-profiles`) are written for the whole site (`path=/`), for the exact host (no `Domain`, so subdomains do not receive them), with `SameSite=Strict` and, on https pages, `Secure`. The app can therefore be opened on any of its routes, and "Log out" signs out on all of them.
 
-- `authSettings.cookiePath` (default `'/'`) scopes them to a sub-path, for example `'/staging/'` when two deployments with the same app id share a host and must not share the sign-in.
-- `pryv.Browser.CookieUtils` uses the same defaults; `set(key, value, expireInDays, { path, secure, sameSite, domain })` and `del(key, { path, domain })` override them. `get(key)` returns `undefined` for a value it cannot read.
-- Versions before 3.17 wrote the cookies for the path of the page they ran on, and for every subdomain. `set()` and `del()` remove those copies on the current page's path and its parents. A copy left on another route by an older version is removed the next time the app runs on that route; until then, a log out performed elsewhere does not reach it.
+- `authSettings.cookiePath` (default `'/'`) scopes them to a sub-path. To keep two deployments with the same app id on one host from sharing the sign-in, give **each** its own sub-path (`'/prod/'` and `'/staging/'`): a cookie written for `/` is sent to every path, is the one read there, and is removed by the other deployment's next sign-in or log out.
+- `pryv.Browser.CookieUtils` uses the same defaults; `set(key, value, expireInDays, { path, secure, sameSite, domain })` and `del(key, { path, domain })` override them (browsers refuse `sameSite: 'None'` without `secure`). `get(key)` returns `undefined` for a value it cannot read.
+- Versions up to 3.16 wrote the cookies for the path of the page they ran on, and for every subdomain. `set()` and `del()` remove those copies on the current page's path and its parents. A copy left on another route by an older version is removed the next time the app runs on that route; until then, a log out performed elsewhere does not reach it.
 
 ##### Custom button usage
 

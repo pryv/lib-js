@@ -27,6 +27,7 @@ class LoginButton {
     this.authSettings = authSettings;
     this.service = service;
     this.serviceInfo = service.infoSync();
+    this._cookieOptions = cookieOptions(authSettings);
   }
 
   /**
@@ -43,7 +44,6 @@ class LoginButton {
     }
     // set cookie key for authorization data
     this._cookieKey = 'pryv-libjs-' + this.authSettings.authRequest.requestingAppId;
-    this._cookieOptions = cookieOptions(this.authSettings);
 
     // initialize controller
     this.auth = new AuthController(this.authSettings, this.service, this);
@@ -441,7 +441,7 @@ function withoutQuery (url) {
  * of the same app id on one host).
  */
 function cookieOptions (settings) {
-  const path = settings.cookiePath;
+  const path = settings?.cookiePath;
   if (path == null) return { path: '/' };
   if (typeof path !== 'string' || !path.startsWith('/')) {
     throw new Error('authSettings.cookiePath must be a path starting with "/", got: ' + JSON.stringify(path));

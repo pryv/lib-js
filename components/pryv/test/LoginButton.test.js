@@ -176,8 +176,7 @@ describe('[LBTX] LoginButton', function () {
       await btn.deleteAuthorizationData();
       expect(paths(KEY)).to.deep.equal([]);
 
-      const bad = new LoginButton(settings({ cookiePath: 'staging' }), service);
-      await expect(bad.init()).to.be.rejectedWith('authSettings.cookiePath');
+      expect(() => new LoginButton(settings({ cookiePath: 'staging' }), service)).to.throw('authSettings.cookiePath');
     });
   });
 

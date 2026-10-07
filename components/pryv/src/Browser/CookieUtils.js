@@ -27,7 +27,7 @@ const EXPIRED = ';expires=Thu, 01 Jan 1970 00:00:00 GMT;max-age=0';
 
 /**
   * Set a local cookie. Copies of the same cookie left on the current page's
-  * path or its parents (versions before 3.17 wrote the cookie for the page's
+  * path or its parents (versions up to 3.16 wrote the cookie for the page's
   * own path and for every subdomain) are removed, so only one copy remains.
   * @memberof pryv.Browser.CookieUtils
   * @template T
@@ -110,7 +110,7 @@ function removeCopies (name, opts, keepPath) {
     if (opts.domain != null && opts.domain !== legacyDomain) {
       document.cookie = name + '=' + EXPIRED + attributes(opts, path, opts.domain);
     }
-    if (path !== keepPath) document.cookie = name + '=' + EXPIRED + attributes(opts, path, null);
+    if (path !== keepPath || opts.domain != null) document.cookie = name + '=' + EXPIRED + attributes(opts, path, null);
   }
 }
 
