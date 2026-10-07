@@ -105,6 +105,82 @@ describe('[LBTX] LoginButton', function () {
     });
   });
 
+  // The app opened on several paths of one host, sharing one cookie jar
+  // (jsdom only: the browser test page cannot open other paths).
+  describe('[LBKX] sign-in cookies on a deep route', function () {
+    const KEY = 'pryv-libjs-test-app-paths';
+    const ACCOUNT = { username: 'kim-doe', apiEndpoint: 'https://tok1@kim-doe.example.com/' };
+    const settings = (extra) => Object.assign({
+      spanButtonID: 'loginButton',
+      authRequest: { requestingAppId: 'test-app-paths', requestedPermissions: [] }
+    }, extra);
+    let saved;
+    let jar;
+
+    before(function () {
+      if (!cleanupDom) this.skip();
+      saved = { document: global.document, window: global.window, location: global.location };
+      jar = null;
+    });
+    after(() => {
+      if (saved == null) return;
+      Object.assign(global, saved);
+    });
+
+    function openPage (url) {
+      const page = new JSDOM('<!DOCTYPE html><body><span id="loginButton"></span></body>', jar != null ? { url, cookieJar: jar } : { url });
+      jar = page.cookieJar;
+      global.document = page.window.document;
+      global.window = page.window;
+      global.location = page.window.location;
+    }
+    // every live copy for this host, whatever its path (expired ones are dropped)
+    const paths = (name) => jar.getCookiesSync(window.location.href, { allPaths: true }).filter((c) => c.key === name).map((c) => c.path);
+
+    it('[LBKA] signed in at "/", the app stays signed in on a deep route reload, and "Log out" there signs out everywhere', async function () {
+      openPage('http://localhost/');
+      const first = new LoginButton(settings(), service);
+      await first.init();
+      first.saveAuthorizationData(Object.assign({ profiles: [ACCOUNT] }, ACCOUNT));
+
+      // opened directly on a deep route: the automatic sign-in saves the cookies again
+      openPage('http://localhost/patients');
+      const deep = new LoginButton(settings(), service);
+      await deep.init();
+      expect(deep.auth.state.status).to.equal(AuthStates.AUTHORIZED);
+      expect(paths(KEY)).to.deep.equal(['/']);
+      expect(paths(KEY + '-profiles')).to.deep.equal(['/']);
+
+      // reload of the deep route
+      openPage('http://localhost/patients');
+      const reloaded = new LoginButton(settings(), service);
+      await reloaded.init();
+      expect(reloaded.auth.state.status).to.equal(AuthStates.AUTHORIZED);
+      expect(reloaded.getAuthorizationData().username).to.equal(ACCOUNT.username);
+
+      await reloaded.auth.signOut({ all: true });
+      openPage('http://localhost/');
+      const home = new LoginButton(settings(), service);
+      await home.init();
+      expect(home.auth.state.status).to.not.equal(AuthStates.AUTHORIZED);
+      expect(paths(KEY)).to.deep.equal([]);
+      expect(paths(KEY + '-profiles')).to.deep.equal([]);
+    });
+
+    it('[LBKB] authSettings.cookiePath scopes the cookies, and must be a path', async function () {
+      openPage('http://localhost/staging/app');
+      const btn = new LoginButton(settings({ cookiePath: '/staging/' }), service);
+      await btn.init();
+      btn.saveAuthorizationData(Object.assign({ profiles: [ACCOUNT] }, ACCOUNT));
+      expect(paths(KEY)).to.deep.equal(['/staging/']);
+      await btn.deleteAuthorizationData();
+      expect(paths(KEY)).to.deep.equal([]);
+
+      const bad = new LoginButton(settings({ cookiePath: 'staging' }), service);
+      await expect(bad.init()).to.be.rejectedWith('authSettings.cookiePath');
+    });
+  });
+
   describe('[LBOX] onClick', function () {
     it('[LBOA] onClick calls auth.handleClick', async function () {
       const settings = {
