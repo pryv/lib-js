@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## 3.17.0 - 2026-10-07
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` 3.17.0
+(`@pryv/cmc` unchanged at 3.19.0). Apps that sign in with the button or `setupAuth` need no change.
+
 ### Fixed
 
 - **`pryv` sign-in cookies are written for the whole site (`path=/`), for the exact host, and with
