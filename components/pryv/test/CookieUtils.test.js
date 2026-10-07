@@ -43,12 +43,7 @@ describe('[COKX] CookieUtils', function () {
     CookieUtils.set(testKey, { data: 'test' });
     expect(CookieUtils.get(testKey)).to.exist;
     CookieUtils.del(testKey);
-    // After deletion, the cookie is set to { deleted: true } with expiration in the past
-    // The cookie may still exist but with deleted flag
-    const afterDel = CookieUtils.get(testKey);
-    if (afterDel) {
-      expect(afterDel.deleted).to.be.true;
-    }
+    expect(CookieUtils.get(testKey)).to.be.undefined;
   });
 
   it('[COKD] set() with custom expiration', async function () {
@@ -65,5 +60,112 @@ describe('[COKX] CookieUtils', function () {
     CookieUtils.set(testKey, testValue);
     const retrieved = CookieUtils.get(testKey);
     expect(retrieved).to.deep.equal(testValue);
+  });
+
+  // Pages on several paths of one host, sharing one cookie jar (jsdom only:
+  // the browser test page cannot open other paths).
+  describe('[COKY] paths, and copies left by older versions', function () {
+    const KEY = 'pryv-libjs-path-test';
+    const legacy = (value, attrs) => KEY + '=' + encodeURIComponent(JSON.stringify(value)) + attrs;
+    let saved;
+    let jar;
+
+    before(function () {
+      if (typeof JSDOM === 'undefined') this.skip();
+      saved = { document: global.document, window: global.window };
+    });
+    beforeEach(() => { jar = null; });
+    after(() => {
+      if (saved == null) return;
+      global.document = saved.document;
+      global.window = saved.window;
+    });
+
+    /** Open `url` in a page that shares the cookie jar of the previous ones. */
+    function openPage (url) {
+      const dom = new JSDOM('<!DOCTYPE html>', jar != null ? { url, cookieJar: jar } : { url });
+      jar = dom.cookieJar;
+      global.document = dom.window.document;
+      global.window = dom.window;
+    }
+    // every live copy for this host, whatever its path (expired ones are dropped)
+    const copies = () => jar.getCookiesSync(window.location.href, { allPaths: true }).filter((c) => c.key === KEY);
+
+    it('[COKF] get() reads the site-wide copy when a deeper copy is also sent', function () {
+      openPage('http://localhost/patients');
+      document.cookie = legacy({ v: 'site' }, ';path=/');
+      document.cookie = legacy({ v: 'deep' }, ';path=/patients');
+      expect(document.cookie.split(KEY + '=').length).to.equal(3); // both are sent, deeper first
+      expect(CookieUtils.get(KEY)).to.deep.equal({ v: 'site' });
+    });
+
+    it('[COKG] set() on a deep route leaves one site-wide, host-only copy', function () {
+      openPage('http://localhost/patients/42');
+      // what versions up to 3.16 wrote: Domain cookie for the page's own path
+      for (const path of ['/', '/patients', '/patients/', '/patients/42']) {
+        document.cookie = legacy({ v: path }, ';domain=.localhost;path=' + path);
+      }
+      CookieUtils.set(KEY, { v: 'new' });
+      const left = copies();
+      expect(left.map((c) => c.path)).to.deep.equal(['/']);
+      expect(left[0].hostOnly).to.equal(true);
+      expect(CookieUtils.get(KEY)).to.deep.equal({ v: 'new' });
+    });
+
+    it('[COKH] del() on a deep route removes the site-wide copy (log out from any page)', function () {
+      openPage('http://localhost/');
+      CookieUtils.set(KEY, { v: 'signed-in' });
+      document.cookie = legacy({ v: 'old' }, ';domain=.localhost;path=/');
+      openPage('http://localhost/patients/42');
+      document.cookie = legacy({ v: 'old-deep' }, ';domain=.localhost;path=/patients');
+      CookieUtils.del(KEY);
+      expect(CookieUtils.get(KEY)).to.equal(undefined);
+      openPage('http://localhost/');
+      expect(CookieUtils.get(KEY)).to.equal(undefined);
+      expect(copies()).to.deep.equal([]);
+    });
+
+    it('[COKI] attributes: host-only, SameSite=Strict, Secure on https, path option', function () {
+      openPage('https://app.example.test/x/y');
+      CookieUtils.set(KEY, 1);
+      let [c] = copies();
+      expect([c.path, c.hostOnly, c.secure, c.sameSite]).to.deep.equal(['/', true, true, 'strict']);
+      openPage('http://localhost/app/page');
+      CookieUtils.set(KEY, 2, 1, { path: '/app/' });
+      [c] = copies();
+      expect([c.path, c.secure === true]).to.deep.equal(['/app/', false]);
+      CookieUtils.del(KEY, { path: '/app/' });
+      expect(copies()).to.deep.equal([]);
+    });
+
+    it('[COKJ] get() returns undefined for an unreadable value instead of throwing', function () {
+      openPage('http://localhost/');
+      document.cookie = KEY + '=not-json;path=/';
+      expect(CookieUtils.get(KEY)).to.equal(undefined);
+    });
+
+    // jsdom stores a Domain cookie and a host-only one of the same path as one
+    // cookie, browsers keep both: watch the writes, not the jar.
+    it('[COKK] set() and del() expire the Domain copies older versions wrote, on every path of the page', function () {
+      openPage('http://localhost/patients/42');
+      const writes = [];
+      let proto = Object.getPrototypeOf(document);
+      while (!Object.prototype.hasOwnProperty.call(proto, 'cookie')) proto = Object.getPrototypeOf(proto);
+      const native = Object.getOwnPropertyDescriptor(proto, 'cookie');
+      Object.defineProperty(document, 'cookie', {
+        configurable: true,
+        get: () => native.get.call(document),
+        set: (value) => { writes.push(value); native.set.call(document, value); }
+      });
+      const expiredDomainCopy = (path) => writes.some((w) =>
+        w.startsWith(KEY + '=;') && w.includes('max-age=0') && w.includes(';domain=.localhost;path=' + path + ';'));
+      const pagePaths = ['/', '/patients', '/patients/', '/patients/42', '/patients/42/'];
+
+      CookieUtils.set(KEY, { v: 1 });
+      expect(pagePaths.filter((p) => !expiredDomainCopy(p))).to.deep.equal([]);
+      writes.length = 0;
+      CookieUtils.del(KEY);
+      expect(pagePaths.filter((p) => !expiredDomainCopy(p))).to.deep.equal([]);
+    });
   });
 });

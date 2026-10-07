@@ -1188,6 +1188,13 @@ declare module 'pryv' {
     accountUrl?: string;
     /** Most accounts remembered for this app (default 5); the least recently used is forgotten first. */
     maxProfiles?: number;
+    /**
+     * Path of the cookies that keep the sign-in (default `'/'`, the whole
+     * site). Two deployments with the same app id on one host stay apart
+     * only when each has its own sub-path (`'/prod/'`, `'/staging/'`): a
+     * cookie for `/` is sent to every path.
+     */
+    cookiePath?: string;
     authRequest: {
       requestingAppId: string;
       languageCode?: string;
@@ -1447,13 +1454,28 @@ declare module 'pryv' {
 
   export type getServiceInfoFromURL = (url: string) => string;
 
+  /**
+   * Options of `pryv.Browser.CookieUtils`. Defaults: the whole site
+   * (`path: '/'`), this exact host (no `domain`), `sameSite: 'Strict'`,
+   * `secure` on https pages. Browsers refuse `sameSite: 'None'` without `secure`.
+   */
+  export type CookieOptions = {
+    path?: string;
+    secure?: boolean;
+    sameSite?: 'Strict' | 'Lax' | 'None';
+    domain?: string;
+  };
+
+  export type CookieUtils = {
+    set<T = unknown>(cookieKey: string, value: T, expireInDays?: number, options?: CookieOptions): void;
+    /** The copy with the shortest path when several are sent; undefined when absent or unreadable. */
+    get<T = unknown>(cookieKey: string): T | undefined;
+    del(cookieKey: string, options?: CookieOptions): void;
+  };
+
   export const Browser: {
     LoginButton: typeof LoginButton;
-    CookieUtils: {
-      set<T = unknown>(cookieKey: string, value: T, expireInDays?: number): void;
-      get<T = unknown>(cookieKey: string): T | undefined;
-      del(cookieKey: string): void;
-    };
+    CookieUtils: CookieUtils;
     AuthStates: AuthStates;
     setupAuth: SetupAuth;
     serviceInfoFromUrl: getServiceInfoFromURL;
@@ -1504,11 +1526,7 @@ declare module 'pryv' {
     };
     Browser: {
       LoginButton: typeof LoginButton;
-      CookieUtils: {
-        set<T = unknown>(cookieKey: string, value: T, expireInDays?: number): void;
-        get<T = unknown>(cookieKey: string): T | undefined;
-        del(cookieKey: string): void;
-      };
+      CookieUtils: CookieUtils;
       AuthStates: AuthStates;
       setupAuth: SetupAuth;
       serviceInfoFromUrl: getServiceInfoFromURL;

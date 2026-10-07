@@ -4,6 +4,28 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pryv` sign-in cookies are written for the whole site (`path=/`), for the exact host, and with
+  `Secure` on https (issue #74).** They were written for the path of the page on which the sign-in,
+  or the automatic sign-in on page load, happened. An app served on several paths (a single-page app
+  whose server answers deep links, a page opened as `/app/` and as `/app/index.html`) then held
+  several copies of `pryv-libjs-<appId>` and `pryv-libjs-<appId>-profiles`: `CookieUtils.get()`
+  returned nothing and the next load started signed out, and "Log out" on a deep route removed only
+  that route's copy, so the user was signed in again on the next load. The cookies also carried a
+  `Domain` attribute, which sent them, and the access token they hold, to every subdomain of the
+  app's host.
+  - `CookieUtils.get()` reads the site-wide copy when several are sent, and returns `undefined`
+    instead of throwing on a value it cannot read.
+  - `CookieUtils.set()` and `del()` remove the copies older versions left on the current page's
+    path and its parents; `del()` removes the site-wide copy from any page.
+  - New `authSettings.cookiePath` (default `'/'`) scopes the sign-in to a sub-path. Two
+    deployments of the same app id on one host stay apart only when each has its own sub-path
+    (a cookie for `/` is sent to every path). `CookieUtils.set(key, value, expireInDays,
+    options)` and `CookieUtils.del(key, options)` take `{ path, secure, sameSite, domain }`.
+  - Apps that call `CookieUtils` directly get the new defaults; pass `{ path }` to keep a cookie
+    scoped to a path.
+
 ## 3.19.0 - 2026-10-06
 
 `@pryv/cmc` 3.19.0 only (the other packages are unchanged at 3.16.0).

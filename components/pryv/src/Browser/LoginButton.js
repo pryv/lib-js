@@ -27,6 +27,7 @@ class LoginButton {
     this.authSettings = authSettings;
     this.service = service;
     this.serviceInfo = service.infoSync();
+    this._cookieOptions = cookieOptions(authSettings);
   }
 
   /**
@@ -195,16 +196,17 @@ class LoginButton {
    * remembered accounts as a signed-in one.
    */
   saveAuthorizationData (authData) {
+    const options = this._cookieOptions;
     if (authData == null) {
-      Cookies.del(this._cookieKey);
-      Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX);
+      Cookies.del(this._cookieKey, options);
+      Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX, options);
       return;
     }
     const { profiles, ...active } = authData;
     if (typeof active.username === 'string' && typeof active.apiEndpoint === 'string') {
-      Cookies.set(this._cookieKey, active);
+      Cookies.set(this._cookieKey, active, undefined, options);
     } else {
-      Cookies.del(this._cookieKey);
+      Cookies.del(this._cookieKey, options);
     }
     if (Array.isArray(profiles)) {
       const remembered = Object.assign({ profiles: profiles.slice() }, active.authUrl != null ? { authUrl: active.authUrl } : {});
@@ -214,15 +216,15 @@ class LoginButton {
              encodeURIComponent(JSON.stringify(remembered)).length > PROFILES_COOKIE_MAX_LENGTH) {
         remembered.profiles.pop();
       }
-      Cookies.set(this._cookieKey + PROFILES_COOKIE_SUFFIX, remembered);
+      Cookies.set(this._cookieKey + PROFILES_COOKIE_SUFFIX, remembered, undefined, options);
     } else {
-      Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX);
+      Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX, options);
     }
   }
 
   async deleteAuthorizationData () {
-    Cookies.del(this._cookieKey);
-    Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX);
+    Cookies.del(this._cookieKey, this._cookieOptions);
+    Cookies.del(this._cookieKey + PROFILES_COOKIE_SUFFIX, this._cookieOptions);
   }
 
   /**
@@ -431,6 +433,20 @@ function withoutQuery (url) {
   } catch (e) {
     return undefined;
   }
+}
+
+/**
+ * Cookie options of the stored sign-in: the whole site by default;
+ * `settings.cookiePath` scopes it to a sub-path (for example two deployments
+ * of the same app id on one host).
+ */
+function cookieOptions (settings) {
+  const path = settings?.cookiePath;
+  if (path == null) return { path: '/' };
+  if (typeof path !== 'string' || !path.startsWith('/')) {
+    throw new Error('authSettings.cookiePath must be a path starting with "/", got: ' + JSON.stringify(path));
+  }
+  return { path };
 }
 
 /**
