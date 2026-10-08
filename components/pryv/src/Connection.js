@@ -189,9 +189,11 @@ class Connection {
 
     const res = [];
     let percent = 0;
+    // `cursor < length`: an empty list, or one that is an exact multiple of
+    // chunkSize, must not post a trailing empty batch.
     for (
       let cursor = 0;
-      arrayOfAPICalls.length >= cursor;
+      cursor < arrayOfAPICalls.length;
       cursor += this.options.chunkSize
     ) {
       const thisBatch = [];

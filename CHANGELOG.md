@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pryv` `Connection.api()` no longer posts a trailing empty batch.** When the number of calls
+  was an exact multiple of `options.chunkSize` (or zero), one extra empty `POST /` went to the
+  server and the progress callback reported 100 twice (or `NaN` for an empty list). `api([])` now
+  resolves with `[]` without a request.
+
 ## 3.17.0 - 2026-10-07
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` 3.17.0
