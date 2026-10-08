@@ -9,7 +9,9 @@
 - **`pryv` `Connection.api()` no longer posts a trailing empty batch.** When the number of calls
   was an exact multiple of `options.chunkSize` (or zero), one extra empty `POST /` went to the
   server and the progress callback reported 100 twice (or `NaN` for an empty list). `api([])` now
-  resolves with `[]` without a request.
+  resolves with `[]` without a request. The same applies to `connection.socket.api()`
+  (`@pryv/socket.io`), which shares the batching. A `chunkSize` that is not a positive integer
+  is now refused with an error; it used to loop forever.
 
 ## 3.17.0 - 2026-10-07
 

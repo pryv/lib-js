@@ -43,6 +43,21 @@ describe('[CBCX] api() chunking', function () {
     expect(progress).to.deep.equal([]);
   });
 
+  it('[CBCD] a chunkSize that cannot advance is refused instead of looping forever', async () => {
+    for (const bad of [0, -1, 1.5, undefined]) {
+      const { conn, posted } = stubbedConnection(bad);
+      let error = null;
+      try {
+        await conn.api(calls(1));
+      } catch (e) {
+        error = e;
+      }
+      expect(error, 'chunkSize ' + bad).to.be.instanceOf(Error);
+      expect(error.message).to.include('chunkSize');
+      expect(posted).to.deep.equal([]);
+    }
+  });
+
   it('[CBCC] a partial last chunk is posted', async () => {
     const { conn, posted } = stubbedConnection(2);
     const res = await conn.api(calls(3));
