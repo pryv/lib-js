@@ -296,6 +296,13 @@ await cmc.requestAccept({
 });
 ```
 
+> **The platform may restrict redirect mode.** Since app-web-user-account 0.18.0, an operator can set a
+> `returnPolicy` deciding which `returnUrl` origins `/cmc-accept` and `/cmc-scope-update` go back to by
+> themselves; for another origin the page may show a "Return to {host}" link the user clicks (same
+> result in the query), or only the outcome. Without a policy every http(s) `returnUrl` is followed.
+> If you use redirect mode on such a platform, ask the operator to list your app's origin, or use popup
+> mode, which the policy does not affect.
+
 Scope-update hand-off (same shape, different page):
 
 ```js
