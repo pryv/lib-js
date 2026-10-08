@@ -186,17 +186,24 @@ class Connection {
     if (!Array.isArray(arrayOfAPICalls)) {
       throw new Error('Connection.api() takes an array as input');
     }
+    const chunkSize = this.options.chunkSize;
+    if (!Number.isInteger(chunkSize) || chunkSize < 1) {
+      // A zero, negative or fractional chunk size would never advance the loop.
+      throw new Error('Connection options.chunkSize must be a positive integer, got: ' + chunkSize);
+    }
 
     const res = [];
     let percent = 0;
+    // `cursor < length`: an empty list, or one that is an exact multiple of
+    // chunkSize, must not post a trailing empty batch.
     for (
       let cursor = 0;
-      arrayOfAPICalls.length >= cursor;
-      cursor += this.options.chunkSize
+      cursor < arrayOfAPICalls.length;
+      cursor += chunkSize
     ) {
       const thisBatch = [];
       const cursorMax = Math.min(
-        cursor + this.options.chunkSize,
+        cursor + chunkSize,
         arrayOfAPICalls.length
       );
       // copy only method and params into a back call to be exuted
