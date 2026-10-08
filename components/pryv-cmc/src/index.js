@@ -325,7 +325,27 @@ const errorIds = Object.freeze({
   SCOPE_UPDATE_OUTCOME_UNKNOWN: 'cmc-scope-update-outcome-unknown',
   // Client-side: the scope request was written but not delivered within the
   // wait. `err.cause.scopeRequestEventId` names the trigger to keep watching.
-  SCOPE_REQUEST_DELIVERY_PENDING: 'cmc-scope-request-delivery-pending'
+  SCOPE_REQUEST_DELIVERY_PENDING: 'cmc-scope-request-delivery-pending',
+  // Further server reasons (offer and grant checks, revocation, the
+  // personal-token gate on triggers, protected protocol writes).
+  ACCEPT_REQUIRES_PERSONAL_TOKEN: 'cmc-accept-requires-personal-token',
+  CAPABILITY_OFFER_TOO_LARGE: 'cmc-capability-offer-too-large',
+  GRANTED_PERMISSIONS_NOT_SUBSET: 'cmc-granted-permissions-not-subset',
+  HANDLER_DATA_GRANT_NAME_CONFLICT: 'cmc-handler-data-grant-name-conflict',
+  HANDLER_DELEGATION_ENDED: 'cmc-handler-delegation-ended',
+  INSUFFICIENT_PERMISSIONS: 'cmc-insufficient-permissions',
+  MANDATORY_PERMISSION_REFUSED: 'cmc-mandatory-permission-refused',
+  OFFER_INVALID_ACCESS_TYPE: 'cmc-offer-invalid-access-type',
+  OFFER_INVALID_PERMISSIONS: 'cmc-offer-invalid-permissions',
+  // An app or shared access wrote a protocol record outside the plugin's own
+  // paths (answered 403 `forbidden` with this `data.id`).
+  PROTECTED_EVENT_WRITE: 'cmc-protected-event-write',
+  REVOKE_DELETE_FAILED: 'cmc-revoke-delete-failed',
+  REVOKE_DELIVERY_FAILED: 'cmc-revoke-delivery-failed',
+  REVOKE_FORBIDDEN: 'cmc-revoke-forbidden',
+  REVOKE_NO_PEER_ENDPOINT: 'cmc-revoke-no-peer-endpoint',
+  SCOPE_UPDATE_TARGET_STREAM_MISMATCH: 'cmc-scope-update-target-stream-mismatch',
+  USER_CHOICE_NOT_ALLOWED: 'cmc-consent-user-choice-not-allowed'
 });
 
 // --- Level-1 protocol functions ---

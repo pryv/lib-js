@@ -154,6 +154,15 @@ describe('[CMCX] @pryv/cmc Level-0 helpers', function () {
       expect(cmc.errorIds.COUNTERPARTY_IDENTITY_MISSING).to.equal('cmc-counterparty-identity-missing');
       expect(cmc.errorIds.HANDLER_MISSING_CAPABILITY_ID).to.equal('cmc-handler-missing-capability-id');
     });
+
+    it('[CMCXED] mirrors the offer, grant, revocation and protected-write reasons', function () {
+      expect(cmc.errorIds.PROTECTED_EVENT_WRITE).to.equal('cmc-protected-event-write');
+      expect(cmc.errorIds.ACCEPT_REQUIRES_PERSONAL_TOKEN).to.equal('cmc-accept-requires-personal-token');
+      expect(cmc.errorIds.GRANTED_PERMISSIONS_NOT_SUBSET).to.equal('cmc-granted-permissions-not-subset');
+      expect(cmc.errorIds.REVOKE_FORBIDDEN).to.equal('cmc-revoke-forbidden');
+      expect(cmc.errorIds.USER_CHOICE_NOT_ALLOWED).to.equal('cmc-consent-user-choice-not-allowed');
+      expect(cmc.errorIds.SCOPE_UPDATE_TARGET_STREAM_MISMATCH).to.equal('cmc-scope-update-target-stream-mismatch');
+    });
   });
 });
 

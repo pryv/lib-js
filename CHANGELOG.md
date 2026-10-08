@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`@pryv/cmc` `errorIds`** now mirror every reason the server's cmc plugin emits: 16 ids were
+  missing (among them `PROTECTED_EVENT_WRITE` `'cmc-protected-event-write'`, answered by
+  open-pryv.io 2.0.0-rc.43 or later when an app or shared access writes a protocol record outside
+  the plugin's paths, `ACCEPT_REQUIRES_PERSONAL_TOKEN`, `GRANTED_PERMISSIONS_NOT_SUBSET`, the
+  `REVOKE_*` reasons and `USER_CHOICE_NOT_ALLOWED`). The type declarations also gain the 6 ids the
+  JavaScript catalogue already had (`CHAT_DISABLED`, `SYSTEM_MESSAGING_DISABLED`,
+  `CLIENTDATA_CMC_FORBIDDEN`, `RESERVED_STREAM_UNDELETABLE`, `COUNTERPARTY_IDENTITY_MISSING`,
+  `HANDLER_MISSING_CAPABILITY_ID`).
+
 ### Fixed
 
 - **`pryv` `Connection.api()` no longer posts a trailing empty batch.** When the number of calls

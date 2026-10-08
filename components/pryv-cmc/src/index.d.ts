@@ -139,6 +139,28 @@ declare module '@pryv/cmc' {
     readonly SCOPE_UPDATE_NOT_APPLIED: 'cmc-scope-update-not-applied';
     readonly SCOPE_UPDATE_OUTCOME_UNKNOWN: 'cmc-scope-update-outcome-unknown';
     readonly SCOPE_REQUEST_DELIVERY_PENDING: 'cmc-scope-request-delivery-pending';
+    readonly HANDLER_MISSING_CAPABILITY_ID: 'cmc-handler-missing-capability-id';
+    readonly CHAT_DISABLED: 'cmc-chat-disabled';
+    readonly SYSTEM_MESSAGING_DISABLED: 'cmc-system-messaging-disabled';
+    readonly CLIENTDATA_CMC_FORBIDDEN: 'cmc-clientdata-cmc-forbidden';
+    readonly RESERVED_STREAM_UNDELETABLE: 'cmc-reserved-stream-undeletable';
+    readonly COUNTERPARTY_IDENTITY_MISSING: 'cmc-counterparty-identity-missing';
+    readonly ACCEPT_REQUIRES_PERSONAL_TOKEN: 'cmc-accept-requires-personal-token';
+    readonly CAPABILITY_OFFER_TOO_LARGE: 'cmc-capability-offer-too-large';
+    readonly GRANTED_PERMISSIONS_NOT_SUBSET: 'cmc-granted-permissions-not-subset';
+    readonly HANDLER_DATA_GRANT_NAME_CONFLICT: 'cmc-handler-data-grant-name-conflict';
+    readonly HANDLER_DELEGATION_ENDED: 'cmc-handler-delegation-ended';
+    readonly INSUFFICIENT_PERMISSIONS: 'cmc-insufficient-permissions';
+    readonly MANDATORY_PERMISSION_REFUSED: 'cmc-mandatory-permission-refused';
+    readonly OFFER_INVALID_ACCESS_TYPE: 'cmc-offer-invalid-access-type';
+    readonly OFFER_INVALID_PERMISSIONS: 'cmc-offer-invalid-permissions';
+    readonly PROTECTED_EVENT_WRITE: 'cmc-protected-event-write';
+    readonly REVOKE_DELETE_FAILED: 'cmc-revoke-delete-failed';
+    readonly REVOKE_DELIVERY_FAILED: 'cmc-revoke-delivery-failed';
+    readonly REVOKE_FORBIDDEN: 'cmc-revoke-forbidden';
+    readonly REVOKE_NO_PEER_ENDPOINT: 'cmc-revoke-no-peer-endpoint';
+    readonly SCOPE_UPDATE_TARGET_STREAM_MISMATCH: 'cmc-scope-update-target-stream-mismatch';
+    readonly USER_CHOICE_NOT_ALLOWED: 'cmc-consent-user-choice-not-allowed';
   };
 
   /** Typed CMC failure surfaced by Level-1 functions. */
