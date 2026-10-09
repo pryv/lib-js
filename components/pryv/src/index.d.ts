@@ -60,8 +60,8 @@ declare module 'pryv' {
   export type Permission = {
     streamId: Identifier;
     level: PermissionLevel;
-    feature?: 'selfRevoke';
-    setting?: 'forbidden';
+    feature?: 'selfRevoke' | 'secretSharing' | 'webhooks';
+    setting?: 'forbidden' | 'allowed';
   };
 
   export type Access = {

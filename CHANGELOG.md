@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Types: `Permission.feature` lists `selfRevoke`, `secretSharing` and `webhooks` (open-pryv.io
+  2.0.0-rc.45 adds the `webhooks` feature permission), and `Permission.setting` accepts `allowed`
+  next to `forbidden`.
+
 ## 3.17.1 - 2026-10-09
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` 3.17.1
