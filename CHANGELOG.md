@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## 3.17.1 - 2026-10-09
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` 3.17.1
+(the fix below is in `pryv` and `@pryv/socket.io`; the others follow the version line) and
+`@pryv/cmc` 3.20.0 (its error-id catalogue below).
+
 ### Added
 
 - **`@pryv/cmc` `errorIds`** now mirror every reason the server's cmc plugin emits: 16 ids were
