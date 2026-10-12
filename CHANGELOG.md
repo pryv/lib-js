@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## 3.17.2 - 2026-10-12
+
+`pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` 3.17.2 (the
+fix is in `pryv`; the others follow the version line); `@pryv/cmc` unchanged (3.20.0).
+
 ### Fixed
 
 - `Connection.getEventsStreamed` waits for an async `forEachEvent` callback (one returning a
