@@ -366,12 +366,25 @@ class Connection {
    * Streamed get Event.
    * @see https://api.pryv.com/reference/#get-events
    * @param {Object} queryParams See `events.get` parameters
-   * @param {Function} forEachEvent Function taking one event as parameter. Will be called for each event
+   * @param {Function} forEachEvent Function taking one event as parameter. Will be called for each event.
+   *   May be async: the returned promise resolves once every callback's promise has settled, and rejects if one rejects.
    * @returns {Promise<Object>} Promise to result.body transformed with `eventsCount: {count}` replacing `events: [...]`
    */
   async getEventsStreamed (queryParams, forEachEvent) {
-    const myParser = jsonParser(forEachEvent, queryParams.includeDeletions);
+    // An async callback (e.g. one that decrypts each event) returns a promise:
+    // wait for all of them, so every event is handled when this resolves, and
+    // reject if one of them fails.
+    const pending = [];
+    const onEvent = (event) => {
+      const result = forEachEvent(event);
+      if (result != null && typeof result.then === 'function') {
+        result.catch(() => {}); // reported by Promise.all below, not as an unhandled rejection
+        pending.push(result);
+      }
+    };
+    const myParser = jsonParser(onEvent, queryParams.includeDeletions);
     const res = await libGetEventStreamed(this, queryParams, myParser);
+    await Promise.all(pending);
     const now = getTimestamp();
     this._handleMeta(res.body, now);
     return res.body;

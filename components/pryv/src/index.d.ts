@@ -658,7 +658,8 @@ declare module 'pryv' {
   export type APICallResultHandler<K extends keyof APICallMethods> = (
     result: APICallResult<K>, apicall: APICall<K>
   ) => Promise<any>;
-  export type StreamedEventsHandler = (event: Event) => void;
+  /** May be async: `getEventsStreamed` waits for the returned promises before resolving. */
+  export type StreamedEventsHandler = (event: Event) => void | Promise<unknown>;
 
   export type StreamedEventsResult = {
     eventsCount?: number;

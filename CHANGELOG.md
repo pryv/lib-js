@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `Connection.getEventsStreamed` waits for an async `forEachEvent` callback (one returning a
+  promise, such as `@pryv/encryption`'s `EventsCipher.wrapForEachEvent`): it resolves once every
+  callback has settled and rejects if one rejects. Before, it resolved while decryptions were still
+  pending, so events could be missing from what the caller had collected, and a failing callback
+  surfaced as an unhandled rejection. `StreamedEventsHandler` may return a promise.
+
 ### Changed
 
 - Types: `Permission.feature` lists `selfRevoke`, `secretSharing` and `webhooks` (open-pryv.io

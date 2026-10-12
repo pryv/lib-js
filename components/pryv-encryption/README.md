@@ -59,6 +59,7 @@ const decrypted = await cipher.decryptEvent(encrypted);
 // Batch, and streaming (forEachEvent) helpers:
 const all = await cipher.decryptEvents(events);
 const onEvent = cipher.wrapForEachEvent((event) => { /* receives decrypted events */ });
+await conn.getEventsStreamed({ streams: ['journal'] }, onEvent); // resolves once every event is decrypted
 
 // Recover the stored (encrypted) form of a decrypted event, e.g. before an update:
 const stored = cipher.stripDecrypted(decrypted); // === encrypted
