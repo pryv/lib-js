@@ -663,7 +663,7 @@ declare module 'pryv' {
 
   export type StreamedEventsResult = {
     eventsCount?: number;
-    eventsDeletionsCount?: number;
+    eventDeletionsCount?: number;
     meta: ApiMeta;
   };
 

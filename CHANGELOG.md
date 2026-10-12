@@ -11,6 +11,8 @@
   callback has settled and rejects if one rejects. Before, it resolved while decryptions were still
   pending, so events could be missing from what the caller had collected, and a failing callback
   surfaced as an unhandled rejection. `StreamedEventsHandler` may return a promise.
+- Types: `StreamedEventsResult.eventDeletionsCount` (was misspelt `eventsDeletionsCount`; the
+  runtime key is unchanged).
 
 ### Changed
 

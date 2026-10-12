@@ -56,6 +56,35 @@ describe('[CSTA] Connection.getEventsStreamed with async callbacks', function ()
     expect(error.message).to.equal('cannot decrypt e2');
   });
 
+  it('[CST4] event deletions also wait for the async callback', async function () {
+    serve({ events, eventDeletions: [{ id: 'd1', deleted: 5 }], meta: { serverTime: 1 } });
+    const conn = new pryv.Connection('https://TOKEN@user.example.com/');
+    const seen = [];
+    const res = await conn.getEventsStreamed({ streams: ['s'], includeDeletions: true }, async (item) => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      seen.push(item.id);
+    });
+    expect(seen.sort()).to.deep.equal(['d1', 'e1', 'e2', 'e3']);
+    expect(res.eventsCount).to.equal(3);
+    expect(res.eventDeletionsCount).to.equal(1);
+  });
+
+  it('[CST5] every callback has settled before the rejection, and a bare thenable is awaited', async function () {
+    serve({ events, meta: { serverTime: 1 } });
+    const conn = new pryv.Connection('https://TOKEN@user.example.com/');
+    const done = [];
+    let error = null;
+    try {
+      await conn.getEventsStreamed({ streams: ['s'] }, (event) => {
+        if (event.id === 'e1') return Promise.reject(new Error('first'));
+        // a thenable without catch/finally
+        return { then (resolve) { setTimeout(() => { done.push(event.id); resolve(); }, 20); } };
+      });
+    } catch (e) { error = e; }
+    expect(error && error.message).to.equal('first');
+    expect(done.sort()).to.deep.equal(['e2', 'e3']);
+  });
+
   it('[CST3] a synchronous callback behaves as before', async function () {
     serve({ events, meta: { serverTime: 1 } });
     const conn = new pryv.Connection('https://TOKEN@user.example.com/');

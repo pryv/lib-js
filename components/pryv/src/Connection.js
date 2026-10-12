@@ -372,20 +372,26 @@ class Connection {
    */
   async getEventsStreamed (queryParams, forEachEvent) {
     // An async callback (e.g. one that decrypts each event) returns a promise:
-    // wait for all of them, so every event is handled when this resolves, and
-    // reject if one of them fails.
-    const pending = [];
+    // wait until all of them have settled, so every event is handled when this
+    // resolves, then reject with the first failure if any. Only a counter is
+    // kept, not the promises, so a long stream does not retain them.
+    let inFlight = 0;
+    let firstError = null;
+    let onIdle = null;
     const onEvent = (event) => {
       const result = forEachEvent(event);
       if (result != null && typeof result.then === 'function') {
-        result.catch(() => {}); // reported by Promise.all below, not as an unhandled rejection
-        pending.push(result);
+        inFlight++;
+        Promise.resolve(result)
+          .catch((err) => { if (firstError == null) firstError = err; })
+          .finally(() => { if (--inFlight === 0 && onIdle != null) onIdle(); });
       }
     };
     const myParser = jsonParser(onEvent, queryParams.includeDeletions);
     const res = await libGetEventStreamed(this, queryParams, myParser);
-    await Promise.all(pending);
     const now = getTimestamp();
+    if (inFlight > 0) await new Promise((resolve) => { onIdle = resolve; });
+    if (firstError != null) throw firstError;
     this._handleMeta(res.body, now);
     return res.body;
   }

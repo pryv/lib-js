@@ -294,7 +294,7 @@ try {
 
 When `events.get` will provide a large result set, it is recommended to use a method that streams the result instead of the batch API call.
 
-`pryv.Connection.getEventsStreamed()` parses the response JSON as soon as data is available and calls the `forEachEvent` callback for each event object.
+`pryv.Connection.getEventsStreamed()` parses the response JSON as soon as data is available and calls the `forEachEvent` callback for each event object. The callback may be async (return a promise): the call then resolves once every callback has settled, and rejects with the first failure.
 
 The callback is meant to store the events data, as the function does not return the API call result, which could overflow memory in case of JSON deserialization of a very large data set. Instead, the function returns an events count and possibly event deletions count as well as the [common metadata](https://api.pryv.com/reference/#common-metadata).
 

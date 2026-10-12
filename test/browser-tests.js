@@ -18,6 +18,7 @@ global.testData = require('./test-data');
 describe('pryv', function () {
   require('pryv/test/utils.test.js');
   require('pryv/test/Connection.test.js');
+  require('pryv/test/Connection.streamedAsync.test.js');
   require('pryv/test/Service.test.js');
   require('pryv/test/ServiceAssets.test.js');
   require('pryv/test/Browser.test.js');
