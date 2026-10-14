@@ -342,6 +342,13 @@ const errorIds = Object.freeze({
   MANDATORY_PERMISSION_REFUSED: 'cmc-mandatory-permission-refused',
   OFFER_INVALID_ACCESS_TYPE: 'cmc-offer-invalid-access-type',
   OFFER_INVALID_PERMISSIONS: 'cmc-offer-invalid-permissions',
+  // An offer asks a stream the server manages on the accepter's account (the
+  // inbox, the internal subtree, a chats / collectors leaf). Not the same id as
+  // OFFER_INVALID_PERMISSIONS (entries that are not valid permissions at all).
+  OFFER_PERMISSIONS_INVALID: 'cmc-offer-permissions-invalid',
+  // `consent/invalidate-link-cmc` written on a stream that does not hold the
+  // invite it names (or the invite cannot be found).
+  INVALIDATE_LINK_SCOPE_MISMATCH: 'cmc-invalidate-link-scope-mismatch',
   // An app or shared access wrote a protocol record outside the plugin's own
   // paths (answered 403 `forbidden` with this `data.id`).
   PROTECTED_EVENT_WRITE: 'cmc-protected-event-write',

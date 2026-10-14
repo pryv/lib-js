@@ -10,7 +10,7 @@ import {
   ET_MEMBER_ACCESS, ET_MEMBER_REVOKE
 } from '@pryv/cmc';
 import type {
-  MemberAccess, MemberRecord, MembershipRequest, SweepRecord, CmcErrorId, SweepStatus, MembershipApprovedBy
+  MemberAccess, MemberRecord, MembershipRequest, SweepRecord, CmcErrorId, SweepStatus, SweepReason, MembershipApprovedBy
 } from '@pryv/cmc';
 
 declare const conn: unknown;
@@ -83,7 +83,9 @@ export async function offers (): Promise<void> {
 }
 
 export const types: [typeof ET_MEMBER_ACCESS, typeof ET_MEMBER_REVOKE] = ['consent/member-access-cmc', 'consent/member-revoke-cmc'];
-export const ids: CmcErrorId[] = ['cmc-member-access-in-flight', 'cmc-member-access-unsupported', 'cmc-member-access-token-missing', 'cmc-membership-offer-expected'];
+export const ids: CmcErrorId[] = ['cmc-member-access-in-flight', 'cmc-member-access-unsupported', 'cmc-member-access-token-missing', 'cmc-membership-offer-expected', 'cmc-offer-permissions-invalid', 'cmc-invalidate-link-scope-mismatch'];
+export const newIds: Array<typeof errorIds.OFFER_PERMISSIONS_INVALID | typeof errorIds.INVALIDATE_LINK_SCOPE_MISMATCH> = [errorIds.OFFER_PERMISSIONS_INVALID, errorIds.INVALIDATE_LINK_SCOPE_MISMATCH];
+export const reasons: SweepReason[] = ['revoke', 'accesses.delete', 'expired', 'narrowed', 'detach', 'account-deleted', 'vanished'];
 
 export const statuses: SweepStatus[] = ['pending', 'delivered', 'completed', 'failed'];
 export function sweepDone (s: SweepRecord): boolean {

@@ -39,6 +39,13 @@
   - Types: `MembershipRequest`, `MemberAccess`, `MemberRecord`, `MembershipApprovedBy`
     (`{ delegate: { username, hostSlug? }, relId }`), `SweepRecord`, `SweepReason`, `SweepStatus`
     (`'pending' | 'delivered' | 'completed' | 'failed'`).
+  - `SweepReason` includes `'vanished'`: the membership access was found gone by the server's
+    periodic check while accesses minted for the member remained.
+- **`@pryv/cmc` `errorIds`: `OFFER_PERMISSIONS_INVALID`** (`'cmc-offer-permissions-invalid'`, an
+  offer asks a stream the server manages on the accepter's account: the inbox, the internal
+  subtree, a chats / collectors leaf; distinct from `OFFER_INVALID_PERMISSIONS`) **and
+  `INVALIDATE_LINK_SCOPE_MISMATCH`** (`'cmc-invalidate-link-scope-mismatch'`,
+  `consent/invalidate-link-cmc` written on a stream that does not hold the invite it names).
 - **`@pryv/cmc` `readOffer()` returns `accessType`** (`'shared'` or `'app'`: an `'app'` grant is
   delegable, which a consent screen should say), **`membership`** and **`allowUserChoice`** (always
   true for a membership offer). The typings already declared `allowUserChoice`; the value was not

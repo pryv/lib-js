@@ -2180,6 +2180,13 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       expect(cmc.errorIds.MEMBER_ACCESS_TOKEN_MISSING).to.equal('cmc-member-access-token-missing');
       expect(cmc.errorIds.MEMBERSHIP_OFFER_EXPECTED).to.equal('cmc-membership-offer-expected');
     });
+
+    it('[CMCMC3] mirrors the offer-stream and invalidate-link scope ids of the server catalogue', function () {
+      expect(cmc.errorIds.OFFER_PERMISSIONS_INVALID).to.equal('cmc-offer-permissions-invalid');
+      expect(cmc.errorIds.INVALIDATE_LINK_SCOPE_MISMATCH).to.equal('cmc-invalidate-link-scope-mismatch');
+      // distinct from the lexicon check
+      expect(cmc.errorIds.OFFER_INVALID_PERMISSIONS).to.equal('cmc-offer-invalid-permissions');
+    });
   });
 
   describe('[CMCMO] offers: createInvite, readOffer, acceptInvite', function () {
@@ -2722,6 +2729,17 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       const all = await cmc.listSweeps(conn);
       expect(all.items[1]).to.include({ sweepEventId: 'sweep-2', status: 'pending', member: null });
       expect(all.items[1].residuals).to.deep.equal([]);
+    });
+
+    it('[CMCMS3] getSweepStatus passes the vanished reason through', async function () {
+      const vanished = Object.assign({}, SWEEP, {
+        id: 'sweep-3',
+        content: Object.assign({}, SWEEP.content, { reason: 'vanished', status: 'completed', failure: null, residuals: [] })
+      });
+      const conn = makeStubConnection({ handlers: { 'events.getOne': { event: vanished } } });
+      const s = await cmc.getSweepStatus(conn, 'sweep-3');
+      expect(s.reason).to.equal('vanished');
+      expect(s.status).to.equal('completed');
     });
   });
 });

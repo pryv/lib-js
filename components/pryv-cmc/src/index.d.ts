@@ -119,7 +119,9 @@ declare module '@pryv/cmc' {
     | 'cmc-member-channel-not-supported'
     | 'cmc-member-access-unsupported'
     | 'cmc-member-access-token-missing'
-    | 'cmc-membership-offer-expected';
+    | 'cmc-membership-offer-expected'
+    | 'cmc-offer-permissions-invalid'
+    | 'cmc-invalidate-link-scope-mismatch';
 
   export const errorIds: {
     readonly CAPABILITY_INVALID: 'cmc-capability-invalid';
@@ -177,6 +179,10 @@ declare module '@pryv/cmc' {
     readonly MANDATORY_PERMISSION_REFUSED: 'cmc-mandatory-permission-refused';
     readonly OFFER_INVALID_ACCESS_TYPE: 'cmc-offer-invalid-access-type';
     readonly OFFER_INVALID_PERMISSIONS: 'cmc-offer-invalid-permissions';
+    /** An offer asks a stream the server manages on the accepter's account (inbox, internal subtree, chats / collectors leaf). */
+    readonly OFFER_PERMISSIONS_INVALID: 'cmc-offer-permissions-invalid';
+    /** `consent/invalidate-link-cmc` written on a stream that does not hold the invite it names. */
+    readonly INVALIDATE_LINK_SCOPE_MISMATCH: 'cmc-invalidate-link-scope-mismatch';
     readonly PROTECTED_EVENT_WRITE: 'cmc-protected-event-write';
     readonly REVOKE_DELETE_FAILED: 'cmc-revoke-delete-failed';
     readonly REVOKE_DELIVERY_FAILED: 'cmc-revoke-delivery-failed';
@@ -674,7 +680,8 @@ declare module '@pryv/cmc' {
     reason?: Record<string, string>;
   }): Promise<{ revokeEventId: string }>;
 
-  export type SweepReason = 'revoke' | 'accesses.delete' | 'expired' | 'narrowed' | 'detach' | 'account-deleted';
+  /** `'vanished'`: the membership access was found gone by the server's periodic check while accesses minted for the member remained. */
+  export type SweepReason = 'revoke' | 'accesses.delete' | 'expired' | 'narrowed' | 'detach' | 'account-deleted' | 'vanished';
 
   /** `'pending'` when the record does not say. */
   export type SweepStatus = 'pending' | 'delivered' | 'completed' | 'failed';
