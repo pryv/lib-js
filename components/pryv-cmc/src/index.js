@@ -343,9 +343,10 @@ const errorIds = Object.freeze({
   OFFER_INVALID_ACCESS_TYPE: 'cmc-offer-invalid-access-type',
   OFFER_INVALID_PERMISSIONS: 'cmc-offer-invalid-permissions',
   // An offer asks a stream the server manages on the accepter's account (the
-  // inbox, the internal subtree, a chats / collectors leaf). Not the same id as
+  // inbox, the internal subtree, a chats / collectors leaf, the `:_cmc:apps`
+  // root), reported on the accept trigger. Not the same id as
   // OFFER_INVALID_PERMISSIONS (entries that are not valid permissions at all).
-  OFFER_PERMISSIONS_INVALID: 'cmc-offer-permissions-invalid',
+  OFFER_STREAM_NOT_OFFERABLE: 'cmc-offer-stream-not-offerable',
   // `consent/invalidate-link-cmc` written on a stream that does not hold the
   // invite it names (or the invite cannot be found).
   INVALIDATE_LINK_SCOPE_MISMATCH: 'cmc-invalidate-link-scope-mismatch',
@@ -561,12 +562,18 @@ async function listInvites (conn, params) {
  * event is readable. Tokens held for them are dead: drop cached endpoints
  * rather than calling `accesses.delete` yourself.
  *
+ * `revokedAt` is when the withdrawing side issued the revoke (seconds; null
+ * against an older peer). A notice re-sent late can land after the parties
+ * accepted again: the server then records it but tears nothing down when it
+ * names an earlier accept than the current one, and keeps accesses created
+ * after `revokedAt`, so `revokedAccessIds` is the list to act on.
+ *
  * @param {Object} event - the `consent/revoke-cmc` event as received
  * @returns {{
  *   eventId: ?string, from: ?Object, reason: ?Object, side: ?string,
  *   localAccessId: ?string, revokedAccessIds: string[], scopeStreamId: ?string,
  *   inviteEventId: ?string, offerEventId: ?string, acceptEventId: ?string,
- *   peerAccessId: ?string, time: ?number
+ *   peerAccessId: ?string, revokedAt: ?number, time: ?number
  * }}
  */
 function revocationFromEvent (event) {
@@ -592,6 +599,7 @@ function revocationFromEvent (event) {
     offerEventId: c.offerEventId || null,
     acceptEventId: c.acceptEventId || null,
     peerAccessId: c.accessId || null,
+    revokedAt: (typeof c.revokedAt === 'number' && Number.isFinite(c.revokedAt)) ? c.revokedAt : null,
     time: (event && event.time) || null
   };
 }
@@ -1686,7 +1694,12 @@ async function waitForMembership (conn, opts) {
  * Throws `CmcError`: `err.id` is the server's refusal (`error.data.id`) or the
  * reason recorded on the trigger. `isMemberAccessRetryable(err)` is true for
  * `cmc-member-access-in-flight` and `cmc-member-access-peer-unreachable`: ask
- * again shortly. Against a core that does not support member access the id is
+ * again shortly. On a refusal at write, the server's `error.data` stays on
+ * `err.cause.innerObject.data`: `cmc-member-access-relationship-not-found` with
+ * `data.reason === 'offer-not-found'` means the group's invite to that patient
+ * was deleted (invite the patient again), `'handshake-incomplete'` that the
+ * relationship is not established yet. Against a core that does not support
+ * member access the id is
  * `cmc-member-access-unsupported` (client-side); when the core created the
  * access but the answer arrived without the token it is
  * `cmc-member-access-token-missing` (client-side): ask again.
@@ -1946,6 +1959,8 @@ function sweepRecordFromEvent (event) {
     records: Array.isArray(c.records) ? c.records : [],
     outcome: Array.isArray(c.outcome) ? c.outcome : [],
     residuals: Array.isArray(c.residuals) ? c.residuals : [],
+    // `narrowed` by the deletion of a team stream: the stream(s) deleted.
+    uncovered: Array.isArray(c.uncovered) ? c.uncovered.filter((s) => typeof s === 'string') : [],
     scopeStreamId: (event.streamIds && event.streamIds[0]) || event.streamId || null,
     time: event.time != null ? event.time : null
   };

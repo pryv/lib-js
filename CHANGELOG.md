@@ -41,11 +41,22 @@
     (`'pending' | 'delivered' | 'completed' | 'failed'`).
   - `SweepReason` includes `'vanished'`: the membership access was found gone by the server's
     periodic check while accesses minted for the member remained.
-- **`@pryv/cmc` `errorIds`: `OFFER_PERMISSIONS_INVALID`** (`'cmc-offer-permissions-invalid'`, an
-  offer asks a stream the server manages on the accepter's account: the inbox, the internal
-  subtree, a chats / collectors leaf; distinct from `OFFER_INVALID_PERMISSIONS`) **and
-  `INVALIDATE_LINK_SCOPE_MISMATCH`** (`'cmc-invalidate-link-scope-mismatch'`,
-  `consent/invalidate-link-cmc` written on a stream that does not hold the invite it names).
+  - `SweepRecord.uncovered` (`string[]`, empty unless set): on a `'narrowed'` sweep caused by the
+    deletion of a team stream, the stream(s) deleted.
+  - A `requestMemberAccess` refusal keeps the server's `error.data` on
+    `err.cause.innerObject.data`: `cmc-member-access-relationship-not-found` with
+    `data.reason: 'offer-not-found'` means the group's invite to that patient was deleted (invite
+    the patient again).
+- **`@pryv/cmc` `errorIds`: `OFFER_STREAM_NOT_OFFERABLE`** (`'cmc-offer-stream-not-offerable'`,
+  reported on the accept trigger: an offer asks a stream the server manages on the accepter's
+  account: the inbox, the internal subtree, a chats / collectors leaf, the `:_cmc:apps` root;
+  distinct from `OFFER_INVALID_PERMISSIONS`) **and `INVALIDATE_LINK_SCOPE_MISMATCH`**
+  (`'cmc-invalidate-link-scope-mismatch'`, `consent/invalidate-link-cmc` written on a stream that
+  does not hold the invite it names).
+- **`@pryv/cmc` `revocationFromEvent()` returns `revokedAt`**: when the withdrawing side issued the
+  revoke (seconds; `null` from a peer that does not stamp it). A notice re-sent late that names an
+  earlier accept than the current relationship's tears nothing down on the receiving server, and
+  accesses created after `revokedAt` are kept: `revokedAccessIds` stays the list to act on.
 - **`@pryv/cmc` `readOffer()` returns `accessType`** (`'shared'` or `'app'`: an `'app'` grant is
   delegable, which a consent screen should say), **`membership`** and **`allowUserChoice`** (always
   true for a membership offer). The typings already declared `allowUserChoice`; the value was not

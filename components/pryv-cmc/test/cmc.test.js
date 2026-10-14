@@ -2111,6 +2111,17 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       // And the filter refuses rather than throwing on it.
       expect(cmc.revocationMatches(r, { from: { username: 'bob', host: 'pryv.me' } })).to.equal(false);
     });
+
+    it('[CMCXRL] surfaces revokedAt when the sender stamped it, null otherwise', function () {
+      const stamped = cmc.revocationFromEvent({
+        content: { ...ACCEPTER_ARRIVAL.content, revokedAt: 1789000000.5 }
+      });
+      expect(stamped.revokedAt).to.equal(1789000000.5);
+      expect(cmc.revocationFromEvent(ACCEPTER_ARRIVAL).revokedAt).to.equal(null);
+      expect(cmc.revocationFromEvent(LEGACY_ARRIVAL).revokedAt).to.equal(null);
+      expect(cmc.revocationFromEvent({ content: { revokedAt: 'yesterday' } }).revokedAt).to.equal(null);
+      expect(cmc.revocationFromEvent({}).revokedAt).to.equal(null);
+    });
   });
 });
 
@@ -2182,10 +2193,13 @@ describe('[CMCM] @pryv/cmc group membership', function () {
     });
 
     it('[CMCMC3] mirrors the offer-stream and invalidate-link scope ids of the server catalogue', function () {
-      expect(cmc.errorIds.OFFER_PERMISSIONS_INVALID).to.equal('cmc-offer-permissions-invalid');
+      expect(cmc.errorIds.OFFER_STREAM_NOT_OFFERABLE).to.equal('cmc-offer-stream-not-offerable');
       expect(cmc.errorIds.INVALIDATE_LINK_SCOPE_MISMATCH).to.equal('cmc-invalidate-link-scope-mismatch');
       // distinct from the lexicon check
       expect(cmc.errorIds.OFFER_INVALID_PERMISSIONS).to.equal('cmc-offer-invalid-permissions');
+      // the server never shipped this id: not mirrored
+      expect(cmc.errorIds).to.not.have.property('OFFER_PERMISSIONS_INVALID');
+      expect(Object.values(cmc.errorIds)).to.not.include('cmc-offer-permissions-invalid');
     });
   });
 
@@ -2429,6 +2443,19 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       expect(err.id).to.equal('cmc-member-access-in-flight');
       expect(err.cause.innerObject.data.id).to.equal('cmc-member-access-in-flight');
       expect(cmc.isMemberAccessRetryable(err)).to.equal(true);
+    });
+
+    it('[CMCMA9] relationship-not-found keeps the server detail (offer-not-found: invite the patient again) on the cause', async function () {
+      const refused = apiError('invalid-operation', 'cmc-member-access-relationship-not-found');
+      refused.innerObject.data.reason = 'offer-not-found';
+      refused.innerObject.data.relationshipAccessId = 'rel-1';
+      const conn = makeStubConnection({ handlers: { 'events.create': function () { return { error: refused }; } } });
+      let err;
+      try { await cmc.requestMemberAccess(conn, { counterparty: PATIENT, streamId: TEAM }); } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal(cmc.errorIds.MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND);
+      expect(err.cause.innerObject.data.reason).to.equal('offer-not-found');
+      expect(cmc.isMemberAccessRetryable(err)).to.equal(false);
     });
 
     it('[CMCMA4] a non-CMC API error is rethrown as is', async function () {
@@ -2729,6 +2756,22 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       const all = await cmc.listSweeps(conn);
       expect(all.items[1]).to.include({ sweepEventId: 'sweep-2', status: 'pending', member: null });
       expect(all.items[1].residuals).to.deep.equal([]);
+      expect(all.items[1].uncovered).to.deep.equal([]);
+    });
+
+    it('[CMCMS4] getSweepStatus maps uncovered on a sweep narrowed by a team stream deletion', async function () {
+      const narrowed = Object.assign({}, SWEEP, {
+        id: 'sweep-4',
+        streamIds: [':_cmc:apps:practice'],
+        content: Object.assign({}, SWEEP.content, {
+          reason: 'narrowed', status: 'completed', failure: null, residuals: [], uncovered: [TEAM, 42]
+        })
+      });
+      const conn = makeStubConnection({ handlers: { 'events.getOne': { event: narrowed } } });
+      const s = await cmc.getSweepStatus(conn, 'sweep-4');
+      expect(s.reason).to.equal('narrowed');
+      // non-string entries dropped
+      expect(s.uncovered).to.deep.equal([TEAM]);
     });
 
     it('[CMCMS3] getSweepStatus passes the vanished reason through', async function () {

@@ -120,7 +120,7 @@ declare module '@pryv/cmc' {
     | 'cmc-member-access-unsupported'
     | 'cmc-member-access-token-missing'
     | 'cmc-membership-offer-expected'
-    | 'cmc-offer-permissions-invalid'
+    | 'cmc-offer-stream-not-offerable'
     | 'cmc-invalidate-link-scope-mismatch';
 
   export const errorIds: {
@@ -179,8 +179,8 @@ declare module '@pryv/cmc' {
     readonly MANDATORY_PERMISSION_REFUSED: 'cmc-mandatory-permission-refused';
     readonly OFFER_INVALID_ACCESS_TYPE: 'cmc-offer-invalid-access-type';
     readonly OFFER_INVALID_PERMISSIONS: 'cmc-offer-invalid-permissions';
-    /** An offer asks a stream the server manages on the accepter's account (inbox, internal subtree, chats / collectors leaf). */
-    readonly OFFER_PERMISSIONS_INVALID: 'cmc-offer-permissions-invalid';
+    /** An offer asks a stream the server manages on the accepter's account (inbox, internal subtree, chats / collectors leaf, `:_cmc:apps` root); reported on the accept trigger. */
+    readonly OFFER_STREAM_NOT_OFFERABLE: 'cmc-offer-stream-not-offerable';
     /** `consent/invalidate-link-cmc` written on a stream that does not hold the invite it names. */
     readonly INVALIDATE_LINK_SCOPE_MISMATCH: 'cmc-invalidate-link-scope-mismatch';
     readonly PROTECTED_EVENT_WRITE: 'cmc-protected-event-write';
@@ -697,6 +697,8 @@ declare module '@pryv/cmc' {
     records: Array<{ relationshipAccessId: string; counterparty: CmcActor; childAccessId: string; expires: number }>;
     outcome: Array<{ childAccessId: string; result: 'deleted' | 'absent' | 'residual'; reason?: string }>;
     residuals: Array<{ counterparty: CmcActor; childAccessId: string; expires: number; reason: string }>;
+    /** On a `'narrowed'` sweep caused by the deletion of a team stream: the stream(s) deleted (empty otherwise). */
+    uncovered: string[];
     scopeStreamId: string | null;
     time: number | null;
   };
@@ -810,6 +812,8 @@ declare module '@pryv/cmc' {
     acceptEventId: string | null;
     /** The withdrawing side's access id on THEIR account. Not a local handle. */
     peerAccessId: string | null;
+    /** When the withdrawing side issued the revoke (seconds); null against an older peer. */
+    revokedAt: number | null;
     time: number | null;
   };
 

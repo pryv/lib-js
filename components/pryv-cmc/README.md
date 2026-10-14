@@ -102,7 +102,7 @@ Lifecycle / handler / chat-routing examples: `cmc.errorIds.CAPABILITY_INVALID` (
 | `RESERVED_STREAM_UNDELETABLE` | `'cmc-reserved-stream-undeletable'` | `streams.delete` rejected on a plugin-managed `:_cmc:*` parent (incl. personal-token deletes). |
 | `COUNTERPARTY_IDENTITY_MISSING` | `'cmc-counterparty-identity-missing'` | Peer-side `content.from` stamping hook rejected — the counterparty access lacks `{username,host}` (ops-level, shouldn't happen under normal flow). |
 
-**Added in `@pryv/cmc@3.21.0`** for [group membership](#group-accounts-membership): refused when the trigger is written (`error.data.id`) `MEMBER_ACCESS_NOT_MEMBER`, `MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND`, `MEMBER_ACCESS_SCOPE_OUTSIDE_MEMBERSHIP`, `MEMBER_ACCESS_PERMISSIONS_NOT_SUBSET`, `MEMBER_ACCESS_EXPIRY_OUT_OF_RANGE`, `MEMBER_ACCESS_RATE_LIMITED`, `MEMBER_ACCESS_IN_FLIGHT`, `MEMBERSHIP_PERMISSIONS_INVALID`, `MEMBER_STAMP_INVALID`; recorded on the trigger (`failure.reason`) `MEMBER_ACCESS_GRANT_NOT_DELEGABLE`, `MEMBER_ACCESS_PEER_REJECTED`, `MEMBER_ACCESS_PEER_UNREACHABLE`, `MEMBER_ACCESS_MEMBERSHIP_GONE`, `MEMBER_ACCESS_NOT_RETRYABLE`, `MEMBER_REVOKE_RESIDUAL`, `MEMBER_CHANNEL_NOT_SUPPORTED`. Three are produced by this package only, never by a server: `MEMBER_ACCESS_UNSUPPORTED` (`'cmc-member-access-unsupported'`, the group's core answered without an access), `MEMBER_ACCESS_TOKEN_MISSING` (`'cmc-member-access-token-missing'`, the access was created but the answer arrived without its token) and `MEMBERSHIP_OFFER_EXPECTED` (`'cmc-membership-offer-expected'`, `acceptMembership` given an ordinary offer). Also added: `OFFER_PERMISSIONS_INVALID` (`'cmc-offer-permissions-invalid'`, an offer asks a stream the server manages on the accepter's account: the inbox, the internal subtree, a chats / collectors leaf; not the same id as `OFFER_INVALID_PERMISSIONS`) and `INVALIDATE_LINK_SCOPE_MISMATCH` (`'cmc-invalidate-link-scope-mismatch'`, `consent/invalidate-link-cmc` written on a stream that does not hold the invite it names).
+**Added in `@pryv/cmc@3.21.0`** for [group membership](#group-accounts-membership): refused when the trigger is written (`error.data.id`) `MEMBER_ACCESS_NOT_MEMBER`, `MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND`, `MEMBER_ACCESS_SCOPE_OUTSIDE_MEMBERSHIP`, `MEMBER_ACCESS_PERMISSIONS_NOT_SUBSET`, `MEMBER_ACCESS_EXPIRY_OUT_OF_RANGE`, `MEMBER_ACCESS_RATE_LIMITED`, `MEMBER_ACCESS_IN_FLIGHT`, `MEMBERSHIP_PERMISSIONS_INVALID`, `MEMBER_STAMP_INVALID`; recorded on the trigger (`failure.reason`) `MEMBER_ACCESS_GRANT_NOT_DELEGABLE`, `MEMBER_ACCESS_PEER_REJECTED`, `MEMBER_ACCESS_PEER_UNREACHABLE`, `MEMBER_ACCESS_MEMBERSHIP_GONE`, `MEMBER_ACCESS_NOT_RETRYABLE`, `MEMBER_REVOKE_RESIDUAL`, `MEMBER_CHANNEL_NOT_SUPPORTED`. Three are produced by this package only, never by a server: `MEMBER_ACCESS_UNSUPPORTED` (`'cmc-member-access-unsupported'`, the group's core answered without an access), `MEMBER_ACCESS_TOKEN_MISSING` (`'cmc-member-access-token-missing'`, the access was created but the answer arrived without its token) and `MEMBERSHIP_OFFER_EXPECTED` (`'cmc-membership-offer-expected'`, `acceptMembership` given an ordinary offer). Also added: `OFFER_STREAM_NOT_OFFERABLE` (`'cmc-offer-stream-not-offerable'`, on the accept trigger: an offer asks a stream the server manages on the accepter's account: the inbox, the internal subtree, a chats / collectors leaf, the `:_cmc:apps` root; refused at write too, as `cmc-invalid-event-content`; not the same id as `OFFER_INVALID_PERMISSIONS`) and `INVALIDATE_LINK_SCOPE_MISMATCH` (`'cmc-invalidate-link-scope-mismatch'`, `consent/invalidate-link-cmc` written on a stream that does not hold the invite it names).
 
 The full list lives in [`src/index.js`](src/index.js) (and the typed mirror in [`src/index.d.ts`](src/index.d.ts)).
 
@@ -407,6 +407,7 @@ const rev = cmc.revocationFromEvent(event);
 // rev.inviteEventId / offerEventId / acceptEventId / scopeStreamId
 // rev.revokedAccessIds  local accesses the server already deleted
 // rev.peerAccessId  their id, surfaced but not a local handle
+// rev.revokedAt     when the withdrawing side issued it (seconds; null from an older peer)
 
 // Match on the PER-RELATIONSHIP handle you stored when the accept arrived:
 if (cmc.revocationMatches(rev, { accessId: relationship.backChannelAccessId })) {
@@ -416,7 +417,11 @@ if (cmc.revocationMatches(rev, { accessId: relationship.backChannelAccessId })) 
 
 The accesses in `revokedAccessIds` are deleted by the server before the event is
 readable, so there is nothing to `accesses.delete` yourself: drop the cached
-endpoints instead.
+endpoints instead. A notice the sender's server re-sent late can arrive after
+the two parties accepted again: the receiving server records it but tears
+nothing down when it names an earlier accept than the current one, and keeps
+accesses created after `revokedAt`. Act on `revokedAccessIds`, not on the
+arrival alone.
 
 **Match on the narrowest handle you have.** `revocationMatches` lets the most
 specific identifier the two sides share decide, and does not fall through past
@@ -497,6 +502,9 @@ try {
 } catch (err) {
   if (cmc.isMemberAccessRetryable(err)) { /* in flight or patient core unreachable: ask again shortly */ }
   // err.id: cmc.errorIds.MEMBER_ACCESS_* (see the catalogue above)
+  // A refusal at write keeps the server's error.data on err.cause.innerObject.data:
+  // MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND with data.reason === 'offer-not-found'
+  // means the group's invite to that patient was deleted: invite the patient again.
 }
 
 // 5. Leave the group: the group's core deletes the accesses it created for you.
@@ -556,10 +564,13 @@ await cmc.revokeMembership(admin, {
 const { items } = await cmc.listSweeps(admin, { membershipAccessId: members[0].membershipAccessId });
 const sweep = await cmc.getSweepStatus(admin, items[0].sweepEventId);
 // sweep = { status, reason, outcome: [{ childAccessId, result: 'deleted' | 'absent' | 'residual' }],
-//           residuals: [{ counterparty, childAccessId, expires, reason }], ... }
+//           residuals: [{ counterparty, childAccessId, expires, reason }], uncovered, ... }
 // reason: 'revoke' | 'accesses.delete' | 'expired' | 'narrowed' | 'detach' |
 //         'account-deleted' | 'vanished' (the membership access was found gone
 //         by the server's periodic check while accesses minted for it remained)
+// uncovered: on a 'narrowed' sweep caused by deleting a team stream, the
+//         stream(s) deleted (the record is then on the deleted stream's parent);
+//         [] otherwise
 ```
 
 A membership approved with a delegate's token ends when that delegation is
