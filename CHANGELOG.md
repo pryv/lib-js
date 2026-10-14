@@ -14,13 +14,16 @@
   needed. Needs cores that support group membership.
   - Member side: `requestMembership(conn, { group, scopeStreamIds, appCode, displayName })` writes
     a membership request (`request.membership: true`, `contribute` on team streams of the group's
-    account) and returns its `capabilityUrl` to show as a QR code or link to an administrator;
+    account, `features` `{ chat: false, systemMessaging: true }` by default: a membership never
+    has chat) and returns its `capabilityUrl` to show as a QR code or link to an administrator;
     `waitForMembership(conn, { group })` returns the membership endpoint once that group accepted
-    (an acceptance from anyone else is ignored); `requestMemberAccess(membershipConn, { counterparty,
+    (an acceptance from anyone else is ignored, and an arrival carrying the server's `membership`
+    marker must have it true); `requestMemberAccess(membershipConn, { counterparty,
     scopeStreamId, permissions?, expireAfter? })` returns an access on a patient's account from the
     synchronous answer (`{ apiEndpoint, accessId, name, expires, attribution }`, the token is
     returned once and never stored); `isMemberAccessRetryable(err)`; `leaveMembership(conn,
-    { inviteEventId })`.
+    { inviteEventId })` (before the request is accepted it throws `cmc-capability-invalid`: the
+    request simply expires).
   - Administrator side (personal or delegate token): `acceptMembership(conn, capabilityUrl,
     { scopeStreamId, grantedScopes? })`, `declineMembership`, `listMembers(conn)` (identity only,
     never the member's endpoint), `revokeMembership(conn, { membershipAccessId, scopeStreamId })`,
@@ -29,21 +32,28 @@
     (`consent/member-revoke-cmc`).
   - `errorIds`: the 16 membership reasons the server emits (`MEMBER_ACCESS_*`,
     `MEMBERSHIP_PERMISSIONS_INVALID`, `MEMBER_STAMP_INVALID`, `MEMBER_REVOKE_RESIDUAL`,
-    `MEMBER_CHANNEL_NOT_SUPPORTED`) and two produced by this package only:
-    `MEMBER_ACCESS_UNSUPPORTED` (the group's core answered without an access) and
-    `MEMBERSHIP_OFFER_EXPECTED` (`acceptMembership` given an ordinary offer).
+    `MEMBER_CHANNEL_NOT_SUPPORTED`) and three produced by this package only:
+    `MEMBER_ACCESS_UNSUPPORTED` (the group's core answered without an access),
+    `MEMBER_ACCESS_TOKEN_MISSING` (the access was created but the answer arrived without its
+    token: ask again) and `MEMBERSHIP_OFFER_EXPECTED` (`acceptMembership` given an ordinary offer).
+  - Types: `MembershipRequest`, `MemberAccess`, `MemberRecord`, `MembershipApprovedBy`
+    (`{ delegate: { username, hostSlug? }, relId }`), `SweepRecord`, `SweepReason`, `SweepStatus`
+    (`'pending' | 'delivered' | 'completed' | 'failed'`).
 - **`@pryv/cmc` `readOffer()` returns `accessType`** (`'shared'` or `'app'`: an `'app'` grant is
   delegable, which a consent screen should say), **`membership`** and **`allowUserChoice`** (always
   true for a membership offer). The typings already declared `allowUserChoice`; the value was not
   returned.
 - **`@pryv/cmc` `acceptInvite()` takes `grantedPermissions`** to grant a subset of an offer that
   allows it.
-- Types: `createInvite` declares `accessType`.
+- Types: `createInvite` declares `accessType`. `readOffer()`'s `allowUserChoice` is now always
+  present (`boolean`, was optional): a hand-built value of that type (a test mock) must set it.
 
 ### Fixed
 
 - **`@pryv/cmc` `createInvite()` sends `allowUserChoice`.** The option was declared in the typings
   but dropped, so every invite was all or nothing.
+- **`@pryv/cmc` typings: `proposeScopeUpdate` no longer declares `allowUserChoice`.** It was never
+  sent and the server does not read it on a scope request, which is answered as a whole.
 
 ## 3.17.2 - 2026-10-12
 

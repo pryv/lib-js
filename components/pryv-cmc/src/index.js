@@ -392,6 +392,9 @@ const errorIds = Object.freeze({
   // Client-side: the group's core answered without a member access and
   // without a failure, so it does not support member access.
   MEMBER_ACCESS_UNSUPPORTED: 'cmc-member-access-unsupported',
+  // Client-side: the group's core created the access (the trigger records it)
+  // but the answer reached the client without the token: ask again.
+  MEMBER_ACCESS_TOKEN_MISSING: 'cmc-member-access-token-missing',
   // Client-side: `acceptMembership` was given an ordinary offer.
   MEMBERSHIP_OFFER_EXPECTED: 'cmc-membership-offer-expected'
 });
@@ -1124,6 +1127,14 @@ async function waitForAccept (conn, opts) {
   if (!opts.fromUsername && !opts.appCode) {
     throw new Error('waitForAccept: provide at least one of opts.fromUsername / opts.appCode to identify the arrival');
   }
+  return pollInboxAccept(conn, opts, null);
+}
+
+/**
+ * Poll `:_cmc:inbox` for the most recent accept arrival matching `opts`
+ * and, when given, `extraMatch(content)`.
+ */
+async function pollInboxAccept (conn, opts, extraMatch) {
   const timeoutMs = opts.timeoutMs || 15000;
   const intervalMs = opts.intervalMs || 300;
   const deadline = Date.now() + timeoutMs;
@@ -1140,6 +1151,7 @@ async function waitForAccept (conn, opts) {
       if (opts.fromUsername != null && (c.from == null || c.from.username !== opts.fromUsername)) continue;
       if (opts.fromHost != null && (c.from == null || c.from.host !== opts.fromHost)) continue;
       if (opts.appCode != null && c.requesterAppCode !== opts.appCode) continue;
+      if (extraMatch != null && !extraMatch(c)) continue;
       return {
         acceptInboxEventId: ev.id,
         grantedAccessApiEndpoint: (c.grantedAccess && c.grantedAccess.apiEndpoint) || null,
@@ -1568,7 +1580,9 @@ function cmcIdFromApiError (err) {
  * @param {Object} [params.title]
  * @param {Object} [params.description]
  * @param {Object} [params.consent]
- * @param {{chat?:boolean, systemMessaging?:boolean}} [params.features]
+ * @param {{chat?:boolean, systemMessaging?:boolean}} [params.features] - default
+ *   `{ chat: false, systemMessaging: true }`. A membership never has chat: the
+ *   server treats `chat` as false whatever is sent. Alerts to the member stay.
  * @param {number} [params.expiresAt]      - Unix seconds; default 7 days
  * @param {Object} [params.requesterMeta]
  * @returns {Promise<{inviteEventId:string, capabilityUrl:string, mode:string, expiresAt:number|null, group:{username:string, host:string}}>}
@@ -1601,7 +1615,7 @@ async function requestMembership (conn, params) {
     title: params.title,
     description: params.description,
     consent: params.consent,
-    features: params.features,
+    features: Object.assign({ chat: false, systemMessaging: true }, params.features || {}),
     expiresAt: params.expiresAt,
     requesterMeta: params.requesterMeta
   }, { membership: true, allowUserChoice: true }, 'requestMembership');
@@ -1613,7 +1627,8 @@ async function requestMembership (conn, params) {
  * Member side: wait for the group's acceptance of a membership request and
  * return the membership endpoint (an access on the group's account). Only an
  * acceptance from `opts.group` counts: anyone holding the link could accept
- * it, and only the expected group makes it a membership.
+ * it, and only the expected group makes it a membership. When the arrival
+ * carries the server's `membership` marker, it must be true.
  *
  * The administrator approves by hand: pass a long `timeoutMs`, call again
  * after a `cmc-capability-timeout`, or watch `:_cmc:inbox` with a Monitor.
@@ -1630,13 +1645,18 @@ async function requestMembership (conn, params) {
 async function waitForMembership (conn, opts) {
   opts = opts || {};
   assertIdentity('waitForMembership', 'opts.group', opts.group);
-  const arrived = await waitForAccept(conn, {
+  const arrived = await pollInboxAccept(conn, {
     fromUsername: opts.group.username,
     fromHost: opts.group.host,
     appCode: opts.appCode,
     sinceTime: opts.sinceTime,
     timeoutMs: opts.timeoutMs,
     intervalMs: opts.intervalMs
+  }, function (content) {
+    // When the arrival carries the `membership` marker, it must be true; an
+    // arrival without the field (a core that does not stamp it) is matched on
+    // the group and appCode alone, as before.
+    return !('membership' in content) || content.membership === true;
   });
   return {
     acceptInboxEventId: arrived.acceptInboxEventId,
@@ -1660,7 +1680,9 @@ async function waitForMembership (conn, opts) {
  * reason recorded on the trigger. `isMemberAccessRetryable(err)` is true for
  * `cmc-member-access-in-flight` and `cmc-member-access-peer-unreachable`: ask
  * again shortly. Against a core that does not support member access the id is
- * `cmc-member-access-unsupported` (client-side).
+ * `cmc-member-access-unsupported` (client-side); when the core created the
+ * access but the answer arrived without the token it is
+ * `cmc-member-access-token-missing` (client-side): ask again.
  *
  * @param {Object} conn                    membership connection (the member's access on the group's account)
  * @param {Object} params
@@ -1714,6 +1736,12 @@ async function requestMemberAccess (conn, params) {
     const reason = (c.failure && c.failure.reason) || errorIds.HANDLER_THREW;
     throw new CmcError('CMC member access failed: ' + reason, reason, c.failure);
   }
+  if (c.memberAccess != null) {
+    // The trigger records the access, so the core supports member access:
+    // the token was lost on the way (a proxy or wrapper dropping the field).
+    throw new CmcError('CMC member access: the access was created but the answer carried no token; ask again',
+      errorIds.MEMBER_ACCESS_TOKEN_MISSING, { triggerEventId: event ? event.id : null, accessId: c.memberAccess.accessId || null });
+  }
   throw new CmcError('CMC member access: the group\'s core answered without an access (it does not support member access)',
     errorIds.MEMBER_ACCESS_UNSUPPORTED, { triggerEventId: event ? event.id : null, status: c.status });
 }
@@ -1757,6 +1785,12 @@ async function leaveMembership (conn, params) {
       scopeStreamId: params.scopeStreamId || invite.scopeStreamId,
       reason: params.reason
     });
+  }
+  if (invite.status !== 'accepted') {
+    // Nothing to leave: an unaccepted single-use request simply expires.
+    throw new CmcError('leaveMembership: the request is not accepted (status ' + invite.status + ')' +
+      (invite.expiresAt != null ? '; it expires at ' + invite.expiresAt : '') + ', so there is no membership to leave',
+    errorIds.CAPABILITY_INVALID, { inviteEventId: params.inviteEventId, status: invite.status, expiresAt: invite.expiresAt });
   }
   return revokeRelationship(conn, params);
 }

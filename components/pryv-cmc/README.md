@@ -84,7 +84,7 @@ cmc.parseCollectorStreamId(...);                          // → { ... } same sh
 
 #### Error id catalogue
 
-`cmc.errorIds` mirrors the server-side `CmcErrorIds` catalogue (31 stable kebab-case strings as of `@pryv/cmc@1.1.0`). Match on these constants when observing `trigger.content.failure.reason` or `error.data.id` from a failed `events.create` / `accesses.create` instead of parsing English `error.message`.
+`cmc.errorIds` mirrors the server-side `CmcErrorIds` catalogue (see the table and the 3.21.0 addendum below). Match on these constants when observing `trigger.content.failure.reason` or `error.data.id` from a failed `events.create` / `accesses.create` instead of parsing English `error.message`.
 
 Lifecycle / handler / chat-routing examples: `cmc.errorIds.CAPABILITY_INVALID` (`'cmc-capability-invalid'`), `cmc.errorIds.CAPABILITY_CONSUMED`, `cmc.errorIds.CAPABILITY_INVALIDATED`, `cmc.errorIds.CAPABILITY_ALREADY_ACCEPTED_BY_YOU`, `cmc.errorIds.HANDLER_DELIVERY_FAILED`, `cmc.errorIds.CHAT_NO_REMOTE_APIENDPOINT`, etc.
 
@@ -102,7 +102,7 @@ Lifecycle / handler / chat-routing examples: `cmc.errorIds.CAPABILITY_INVALID` (
 | `RESERVED_STREAM_UNDELETABLE` | `'cmc-reserved-stream-undeletable'` | `streams.delete` rejected on a plugin-managed `:_cmc:*` parent (incl. personal-token deletes). |
 | `COUNTERPARTY_IDENTITY_MISSING` | `'cmc-counterparty-identity-missing'` | Peer-side `content.from` stamping hook rejected — the counterparty access lacks `{username,host}` (ops-level, shouldn't happen under normal flow). |
 
-**Added in `@pryv/cmc@3.21.0`** for [group membership](#group-accounts-membership): refused when the trigger is written (`error.data.id`) `MEMBER_ACCESS_NOT_MEMBER`, `MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND`, `MEMBER_ACCESS_SCOPE_OUTSIDE_MEMBERSHIP`, `MEMBER_ACCESS_PERMISSIONS_NOT_SUBSET`, `MEMBER_ACCESS_EXPIRY_OUT_OF_RANGE`, `MEMBER_ACCESS_RATE_LIMITED`, `MEMBER_ACCESS_IN_FLIGHT`, `MEMBERSHIP_PERMISSIONS_INVALID`, `MEMBER_STAMP_INVALID`; recorded on the trigger (`failure.reason`) `MEMBER_ACCESS_GRANT_NOT_DELEGABLE`, `MEMBER_ACCESS_PEER_REJECTED`, `MEMBER_ACCESS_PEER_UNREACHABLE`, `MEMBER_ACCESS_MEMBERSHIP_GONE`, `MEMBER_ACCESS_NOT_RETRYABLE`, `MEMBER_REVOKE_RESIDUAL`, `MEMBER_CHANNEL_NOT_SUPPORTED`. Two are produced by this package only, never by a server: `MEMBER_ACCESS_UNSUPPORTED` (`'cmc-member-access-unsupported'`, the group's core answered without an access) and `MEMBERSHIP_OFFER_EXPECTED` (`'cmc-membership-offer-expected'`, `acceptMembership` given an ordinary offer).
+**Added in `@pryv/cmc@3.21.0`** for [group membership](#group-accounts-membership): refused when the trigger is written (`error.data.id`) `MEMBER_ACCESS_NOT_MEMBER`, `MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND`, `MEMBER_ACCESS_SCOPE_OUTSIDE_MEMBERSHIP`, `MEMBER_ACCESS_PERMISSIONS_NOT_SUBSET`, `MEMBER_ACCESS_EXPIRY_OUT_OF_RANGE`, `MEMBER_ACCESS_RATE_LIMITED`, `MEMBER_ACCESS_IN_FLIGHT`, `MEMBERSHIP_PERMISSIONS_INVALID`, `MEMBER_STAMP_INVALID`; recorded on the trigger (`failure.reason`) `MEMBER_ACCESS_GRANT_NOT_DELEGABLE`, `MEMBER_ACCESS_PEER_REJECTED`, `MEMBER_ACCESS_PEER_UNREACHABLE`, `MEMBER_ACCESS_MEMBERSHIP_GONE`, `MEMBER_ACCESS_NOT_RETRYABLE`, `MEMBER_REVOKE_RESIDUAL`, `MEMBER_CHANNEL_NOT_SUPPORTED`. Three are produced by this package only, never by a server: `MEMBER_ACCESS_UNSUPPORTED` (`'cmc-member-access-unsupported'`, the group's core answered without an access), `MEMBER_ACCESS_TOKEN_MISSING` (`'cmc-member-access-token-missing'`, the access was created but the answer arrived without its token) and `MEMBERSHIP_OFFER_EXPECTED` (`'cmc-membership-offer-expected'`, `acceptMembership` given an ordinary offer).
 
 The full list lives in [`src/index.js`](src/index.js) (and the typed mirror in [`src/index.d.ts`](src/index.d.ts)).
 
@@ -473,6 +473,7 @@ const request = await cmc.requestMembership(member, {
 const joined = await cmc.waitForMembership(member, { group, appCode: 'practice', timeoutMs: 10 * 60 * 1000 });
 const membership = new pryv.Connection(joined.membershipApiEndpoint);   // your access on the group's account
 // Only an acceptance from `group` counts; anyone else accepting the link is ignored.
+// When the arrival carries the server's `membership` marker, it must be true.
 
 // 3. Invite a patient on the group's behalf. The grant must be delegable.
 const invite = await cmc.createInvite(membership, {
@@ -500,20 +501,29 @@ try {
 
 // 5. Leave the group: the group's core deletes the accesses it created for you.
 await cmc.leaveMembership(member, { inviteEventId: request.inviteEventId });
+// Before the administrator accepted there is nothing to leave: this throws
+// cmc-capability-invalid, and the unaccepted request simply expires.
 ```
 
 `requestMemberAccess` is answered synchronously: the group's core creates the
 access on the patient's account through the patient's grant and returns it in
 the same response. The `apiEndpoint` carries a token; the server never stores
 it, so do not log it, and ask again when it expires (asking again for the same
-patient with the same permissions returns the same access while it is valid). `attribution` is
-`'name-only'` when the patient's core predates the member stamp: the access
-name still names the member. Against a group core without member access the
-call throws `cmc-member-access-unsupported`.
+patient with the same permissions returns the same access while it is valid).
+`attribution` is `'name-only'` when the patient's core predates the member
+stamp: the access name still names the member. Against a group core without
+member access the call throws `cmc-member-access-unsupported`; when the core
+created the access but the answer arrived without its token (a proxy dropping
+the field) it throws `cmc-member-access-token-missing`: ask again.
 
 `requestMembership` checks before writing that every stream is a team stream
 (`:_cmc:apps:<app>[:<path>]`, chats and collectors excluded), and throws
 `cmc-membership-permissions-invalid` otherwise, as the server does.
+
+A membership never has chat: `requestMembership` sends `features` as
+`{ chat: false, systemMessaging: true }` by default, and the server treats
+`chat` as false on a membership offer whatever is sent, so no chat channel is
+created on either side. The group can still send system alerts to the member.
 
 **Administrator side** (the group's personal token, or a delegate's)
 

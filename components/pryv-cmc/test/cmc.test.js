@@ -2177,6 +2177,7 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       }
       // client-side only
       expect(cmc.errorIds.MEMBER_ACCESS_UNSUPPORTED).to.equal('cmc-member-access-unsupported');
+      expect(cmc.errorIds.MEMBER_ACCESS_TOKEN_MISSING).to.equal('cmc-member-access-token-missing');
       expect(cmc.errorIds.MEMBERSHIP_OFFER_EXPECTED).to.equal('cmc-membership-offer-expected');
     });
   });
@@ -2260,6 +2261,8 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       expect(call.params.content.request.membership).to.equal(true);
       expect(call.params.content.request.allowUserChoice).to.equal(true);
       expect(call.params.content.request).to.not.have.property('accessType');
+      // A membership has no chat; alerts to the member stay.
+      expect(call.params.content.request.features).to.deep.equal({ chat: false, systemMessaging: true });
       expect(call.params.content.request.permissions).to.deep.equal([
         { streamId: TEAM, level: 'contribute' },
         { streamId: ':_cmc:apps:practice:team-b', level: 'contribute' }
@@ -2271,6 +2274,16 @@ describe('[CMCM] @pryv/cmc group membership', function () {
         expiresAt: 1800000000,
         group: GROUP
       });
+    });
+
+    it('[CMCMR6] caller features are merged over the membership default', async function () {
+      const conn = makeStubConnection({
+        handlers: { 'events.create': function (params) { return { event: { id: 'mreq-2', content: params.content } }; } }
+      });
+      await cmc.requestMembership(conn, {
+        group: GROUP, scopeStreamIds: [TEAM], appCode: 'practice', displayName: 'X', features: { systemMessaging: false }
+      });
+      expect(conn.calls[0].params.content.request.features).to.deep.equal({ chat: false, systemMessaging: false });
     });
 
     it('[CMCMR2] refuses anything but team streams before writing', async function () {
@@ -2322,6 +2335,25 @@ describe('[CMCM] @pryv/cmc group membership', function () {
         features: { chat: true }
       });
       expect(conn.calls[0].params.streams).to.deep.equal([':_cmc:inbox']);
+    });
+
+    it('[CMCMR7] waitForMembership requires the membership marker when the arrival carries one', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.get': function () {
+            return {
+              events: [
+                // newest first: an ordinary relationship with the same group
+                { id: 'ordinary', content: { from: GROUP, requesterAppCode: 'practice', membership: false, grantedAccess: { apiEndpoint: 'https://o@practice.pryv.me/' } } },
+                { id: 'member', content: { from: GROUP, requesterAppCode: 'practice', membership: true, grantedAccess: { apiEndpoint: 'https://m@practice.pryv.me/' } } }
+              ]
+            };
+          }
+        }
+      });
+      const r = await cmc.waitForMembership(conn, { group: GROUP, appCode: 'practice', timeoutMs: 500, intervalMs: 10 });
+      expect(r.acceptInboxEventId).to.equal('member');
+      expect(r.membershipApiEndpoint).to.equal('https://m@practice.pryv.me/');
     });
 
     it('[CMCMR5] waitForMembership requires the group identity', async function () {
@@ -2433,6 +2465,21 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       expect(err.cause).to.deep.equal({ triggerEventId: 'mint-old', status: undefined });
     });
 
+    it('[CMCMA8] the trigger records an access but the answer has no token: cmc-member-access-token-missing', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.create': function () {
+            return { event: { id: 'mint-lost', content: { status: 'completed', memberAccess: { accessId: 'child-9', name: 'n', expires: 1, attribution: 'stamped' } } } };
+          }
+        }
+      });
+      let err;
+      try { await cmc.requestMemberAccess(conn, { counterparty: PATIENT, streamId: TEAM }); } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal('cmc-member-access-token-missing');
+      expect(err.cause).to.deep.equal({ triggerEventId: 'mint-lost', accessId: 'child-9' });
+    });
+
     it('[CMCMA7] requires the patient identity and a stream', async function () {
       const conn = makeStubConnection({ handlers: {} });
       for (const params of [{ streamId: TEAM }, { counterparty: PATIENT }, { counterparty: { username: 'p' }, streamId: TEAM }]) {
@@ -2457,6 +2504,21 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       expect(create.params.type).to.equal('consent/revoke-cmc');
       expect(create.params.streamIds).to.deep.equal([':_cmc:apps:practice']);
       expect(create.params.content).to.deep.equal({ accessId: 'bc-1', reason: { en: 'moving on' } });
+    });
+
+    it('[CMCML3] before acceptance: a clear CmcError, nothing written', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.getOne': { event: { id: 'mreq-3', streamIds: [':_cmc:apps:practice'], content: { status: 'pending', capabilityExpiresAt: 1800000000 } } }
+        }
+      });
+      let err;
+      try { await cmc.leaveMembership(conn, { inviteEventId: 'mreq-3' }); } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal('cmc-capability-invalid');
+      expect(err.message).to.match(/not accepted/);
+      expect(err.cause).to.include({ inviteEventId: 'mreq-3', expiresAt: 1800000000 });
+      expect(conn.calls.map(c => c.method)).to.deep.equal(['events.getOne']);
     });
 
     it('[CMCML2] takes an access id directly', async function () {

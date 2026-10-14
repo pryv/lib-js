@@ -9,7 +9,9 @@ import {
   getSweepStatus, listSweeps, readOffer, createInvite, acceptInvite, errorIds, CmcError,
   ET_MEMBER_ACCESS, ET_MEMBER_REVOKE
 } from '@pryv/cmc';
-import type { MemberAccess, MemberRecord, MembershipRequest, SweepRecord, CmcErrorId } from '@pryv/cmc';
+import type {
+  MemberAccess, MemberRecord, MembershipRequest, SweepRecord, CmcErrorId, SweepStatus, MembershipApprovedBy
+} from '@pryv/cmc';
 
 declare const conn: unknown;
 const group = { username: 'practice', host: 'pryv.me' };
@@ -81,4 +83,16 @@ export async function offers (): Promise<void> {
 }
 
 export const types: [typeof ET_MEMBER_ACCESS, typeof ET_MEMBER_REVOKE] = ['consent/member-access-cmc', 'consent/member-revoke-cmc'];
-export const ids: CmcErrorId[] = ['cmc-member-access-in-flight', 'cmc-member-access-unsupported', 'cmc-membership-offer-expected'];
+export const ids: CmcErrorId[] = ['cmc-member-access-in-flight', 'cmc-member-access-unsupported', 'cmc-member-access-token-missing', 'cmc-membership-offer-expected'];
+
+export const statuses: SweepStatus[] = ['pending', 'delivered', 'completed', 'failed'];
+export function sweepDone (s: SweepRecord): boolean {
+  const status: SweepStatus = s.status;
+  return status === 'completed' || status === 'failed';
+}
+
+export const byDelegate: MembershipApprovedBy = { delegate: { username: 'admin', hostSlug: 'pryv-me' }, relId: 'rel-1' };
+export const byDelegateNoHost: MembershipApprovedBy = { delegate: { username: 'admin' }, relId: 'rel-2' };
+export function approver (m: MemberRecord): string | null {
+  return m.approvedBy === null ? null : m.approvedBy.delegate.username + ' (' + m.approvedBy.relId + ')';
+}

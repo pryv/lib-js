@@ -118,6 +118,7 @@ declare module '@pryv/cmc' {
     | 'cmc-member-revoke-residual'
     | 'cmc-member-channel-not-supported'
     | 'cmc-member-access-unsupported'
+    | 'cmc-member-access-token-missing'
     | 'cmc-membership-offer-expected';
 
   export const errorIds: {
@@ -203,6 +204,8 @@ declare module '@pryv/cmc' {
     readonly MEMBER_CHANNEL_NOT_SUPPORTED: 'cmc-member-channel-not-supported';
     /** Client-side: the group's core answered without a member access and without a failure. */
     readonly MEMBER_ACCESS_UNSUPPORTED: 'cmc-member-access-unsupported';
+    /** Client-side: the core created the access but the answer arrived without the token; ask again. */
+    readonly MEMBER_ACCESS_TOKEN_MISSING: 'cmc-member-access-token-missing';
     /** Client-side: `acceptMembership` was given an ordinary offer. */
     readonly MEMBERSHIP_OFFER_EXPECTED: 'cmc-membership-offer-expected';
   };
@@ -375,8 +378,6 @@ declare module '@pryv/cmc' {
   export function proposeScopeUpdate(conn: any, params: {
     collectorStreamId: string;
     newPermissions: OfferedPermission[];
-    /** See `createInvite.allowUserChoice`. */
-    allowUserChoice?: boolean;
     message?: Record<string, string>;
     expires?: number;
     waitForDelivery?: boolean;
@@ -560,6 +561,10 @@ declare module '@pryv/cmc' {
     title?: Record<string, string>;
     description?: Record<string, string>;
     consent?: Record<string, string>;
+    /**
+     * Default `{ chat: false, systemMessaging: true }`. A membership never has chat:
+     * the server treats `chat` as false whatever is sent.
+     */
     features?: { chat?: boolean; systemMessaging?: boolean };
     expiresAt?: number;
     requesterMeta?: { displayName?: string; appId?: string; appUrl?: string };
@@ -637,6 +642,13 @@ declare module '@pryv/cmc' {
     reason?: Record<string, string>;
   }): Promise<{ refuseEventId: string }>;
 
+  /** Recorded on a membership a delegate of the group account accepted. */
+  export type MembershipApprovedBy = {
+    delegate: { username: string; hostSlug?: string };
+    /** The delegation relationship. */
+    relId: string;
+  };
+
   export type MemberRecord = {
     membershipAccessId: string;
     member: { username: string | null; host: string | null };
@@ -647,8 +659,8 @@ declare module '@pryv/cmc' {
     scopes: Permission[];
     /** Team streams the member asked for. */
     requestedScopes: string[];
-    /** The delegation that approved it when a delegate accepted; null for the owner. */
-    approvedBy: Record<string, unknown> | null;
+    /** The delegate that approved it; null when the owner did. */
+    approvedBy: MembershipApprovedBy | null;
     acceptEventId: string | null;
     created: number | null;
     expires: number | null;
@@ -664,13 +676,16 @@ declare module '@pryv/cmc' {
 
   export type SweepReason = 'revoke' | 'accesses.delete' | 'expired' | 'narrowed' | 'detach' | 'account-deleted';
 
+  /** `'pending'` when the record does not say. */
+  export type SweepStatus = 'pending' | 'delivered' | 'completed' | 'failed';
+
   /** An offboarding sweep (`consent/member-revoke-cmc`), written by the server. */
   export type SweepRecord = {
     sweepEventId: string;
     member: CmcActor | null;
     membershipAccessId: string | null;
     reason: SweepReason | (string & {}) | null;
-    status: string;
+    status: SweepStatus;
     failure: { reason: string; detail?: any } | null;
     records: Array<{ relationshipAccessId: string; counterparty: CmcActor; childAccessId: string; expires: number }>;
     outcome: Array<{ childAccessId: string; result: 'deleted' | 'absent' | 'residual'; reason?: string }>;
