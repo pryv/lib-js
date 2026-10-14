@@ -2122,6 +2122,31 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       expect(cmc.revocationFromEvent({ content: { revokedAt: 'yesterday' } }).revokedAt).to.equal(null);
       expect(cmc.revocationFromEvent({}).revokedAt).to.equal(null);
     });
+
+    it('[CMCXRM] a superseded arrival is surfaced and matches no relationship', function () {
+      // A late notice the receiving server dropped because the relationship was
+      // re-established since: the server enriches it with the CURRENT local
+      // handles, so without the guard it would match the live relationship and
+      // an app acting on the match would drop endpoints that still work.
+      const superseded = cmc.revocationFromEvent({
+        ...REQUESTER_ARRIVAL,
+        content: { ...REQUESTER_ARRIVAL.content, revokedAccessIds: [], superseded: 'relationship-re-established' }
+      });
+      expect(superseded.superseded).to.equal('relationship-re-established');
+      expect(cmc.revocationMatches(superseded, { accessId: 'bc-local' })).to.equal(false);
+      expect(cmc.revocationMatches(superseded, { inviteEventId: 'invite-1' })).to.equal(false);
+      expect(cmc.revocationMatches(superseded, { scopeStreamId: ':_cmc:apps:my-app:study-a' })).to.equal(false);
+      // A raw event passed by mistake is ignored the same way.
+      expect(cmc.revocationMatches({
+        content: { superseded: 'relationship-re-established' }, localAccessId: 'bc-local'
+      }, { accessId: 'bc-local' })).to.equal(false);
+      // Absent, empty or non-string: not superseded, and the match is unchanged.
+      expect(cmc.revocationFromEvent(REQUESTER_ARRIVAL).superseded).to.equal(null);
+      expect(cmc.revocationFromEvent(LEGACY_ARRIVAL).superseded).to.equal(null);
+      expect(cmc.revocationFromEvent({ content: { superseded: '' } }).superseded).to.equal(null);
+      expect(cmc.revocationFromEvent({ content: { superseded: true } }).superseded).to.equal(null);
+      expect(cmc.revocationMatches(cmc.revocationFromEvent(REQUESTER_ARRIVAL), { accessId: 'bc-local' })).to.equal(true);
+    });
   });
 });
 

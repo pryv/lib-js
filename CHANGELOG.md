@@ -57,6 +57,11 @@
   revoke (seconds; `null` from a peer that does not stamp it). A notice re-sent late that names an
   earlier accept than the current relationship's tears nothing down on the receiving server, and
   accesses created after `revokedAt` are kept: `revokedAccessIds` stays the list to act on.
+- **`@pryv/cmc` `revocationFromEvent()` returns `superseded`** (`'relationship-re-established'`
+  or `null`): the receiving server dropped a late notice because the relationship was
+  re-established since and nothing was torn down. Such an arrival is informational: keep your
+  endpoints. `revocationMatches()` returns false for a superseded record, so an app acting on a
+  match no longer drops endpoints that still work. Type: `CmcRevocationRecord.superseded`.
 - **`@pryv/cmc` `readOffer()` returns `accessType`** (`'shared'` or `'app'`: an `'app'` grant is
   delegable, which a consent screen should say), **`membership`** and **`allowUserChoice`** (always
   true for a membership offer). The typings already declared `allowUserChoice`; the value was not

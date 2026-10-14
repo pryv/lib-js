@@ -814,6 +814,14 @@ declare module '@pryv/cmc' {
     peerAccessId: string | null;
     /** When the withdrawing side issued the revoke (seconds); null against an older peer. */
     revokedAt: number | null;
+    /**
+     * Set (`'relationship-re-established'`) when the receiving server dropped
+     * this late notice because the relationship was re-established since:
+     * nothing was torn down. Ignore the arrival and keep your endpoints;
+     * `revocationMatches` returns false for it. Null when the notice was acted
+     * upon, and against an older server.
+     */
+    superseded: 'relationship-re-established' | (string & {}) | null;
     time: number | null;
   };
 
@@ -832,6 +840,9 @@ declare module '@pryv/cmc' {
    *
    * `from` is a filter, not a match: a mismatch returns false before any tier,
    * and agreement alone never proves a match.
+   *
+   * A superseded record (`record.superseded` set) returns false for every
+   * relationship: the notice ended nothing.
    */
   export function revocationMatches(
     record: CmcRevocationRecord,

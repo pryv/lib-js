@@ -99,6 +99,10 @@ export function deletedTeams (s: SweepRecord): string[] {
 export function issuedAt (r: CmcRevocationRecord): number | null {
   return r.revokedAt;
 }
+export function isInformational (r: CmcRevocationRecord): boolean {
+  const s: string | null = r.superseded;
+  return s === 'relationship-re-established';
+}
 
 export const byDelegate: MembershipApprovedBy = { delegate: { username: 'admin', hostSlug: 'pryv-me' }, relId: 'rel-1' };
 export const byDelegateNoHost: MembershipApprovedBy = { delegate: { username: 'admin' }, relId: 'rel-2' };

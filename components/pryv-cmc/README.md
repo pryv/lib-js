@@ -408,6 +408,9 @@ const rev = cmc.revocationFromEvent(event);
 // rev.revokedAccessIds  local accesses the server already deleted
 // rev.peerAccessId  their id, surfaced but not a local handle
 // rev.revokedAt     when the withdrawing side issued it (seconds; null from an older peer)
+// rev.superseded    'relationship-re-established' when the notice was dropped as stale, else null
+
+if (rev.superseded != null) return;   // informational: keep your endpoints
 
 // Match on the PER-RELATIONSHIP handle you stored when the accept arrived:
 if (cmc.revocationMatches(rev, { accessId: relationship.backChannelAccessId })) {
@@ -419,9 +422,12 @@ The accesses in `revokedAccessIds` are deleted by the server before the event is
 readable, so there is nothing to `accesses.delete` yourself: drop the cached
 endpoints instead. A notice the sender's server re-sent late can arrive after
 the two parties accepted again: the receiving server records it but tears
-nothing down when it names an earlier accept than the current one, and keeps
-accesses created after `revokedAt`. Act on `revokedAccessIds`, not on the
-arrival alone.
+nothing down when it names an earlier accept than the current one, marks the
+arrival `content.superseded: 'relationship-re-established'` (surfaced as
+`rev.superseded`), and keeps accesses created after `revokedAt`. Ignore a
+superseded arrival: keep the endpoints you hold and do not present the
+relationship as withdrawn (`revocationMatches` returns false for it). Otherwise
+act on `revokedAccessIds`, not on the arrival alone.
 
 **Match on the narrowest handle you have.** `revocationMatches` lets the most
 specific identifier the two sides share decide, and does not fall through past

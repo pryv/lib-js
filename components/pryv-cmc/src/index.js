@@ -568,12 +568,18 @@ async function listInvites (conn, params) {
  * names an earlier accept than the current one, and keeps accesses created
  * after `revokedAt`, so `revokedAccessIds` is the list to act on.
  *
+ * `superseded` is set (`'relationship-re-established'`) when the receiving
+ * server dropped the notice as stale: the relationship was re-established
+ * since, nothing was torn down, and the arrival is informational only. Ignore
+ * it and keep the endpoints you hold; `revocationMatches` answers false for it.
+ * Null on a notice that was acted upon, and against an older server.
+ *
  * @param {Object} event - the `consent/revoke-cmc` event as received
  * @returns {{
  *   eventId: ?string, from: ?Object, reason: ?Object, side: ?string,
  *   localAccessId: ?string, revokedAccessIds: string[], scopeStreamId: ?string,
  *   inviteEventId: ?string, offerEventId: ?string, acceptEventId: ?string,
- *   peerAccessId: ?string, revokedAt: ?number, time: ?number
+ *   peerAccessId: ?string, revokedAt: ?number, superseded: ?string, time: ?number
  * }}
  */
 function revocationFromEvent (event) {
@@ -600,6 +606,7 @@ function revocationFromEvent (event) {
     acceptEventId: c.acceptEventId || null,
     peerAccessId: c.accessId || null,
     revokedAt: (typeof c.revokedAt === 'number' && Number.isFinite(c.revokedAt)) ? c.revokedAt : null,
+    superseded: (typeof c.superseded === 'string' && c.superseded !== '') ? c.superseded : null,
     time: (event && event.time) || null
   };
 }
@@ -631,6 +638,10 @@ function revocationFromEvent (event) {
  *
  * A `relationship` sharing no identifier with the record returns false.
  *
+ * A superseded record (`record.superseded` set: the receiving server dropped a
+ * late notice because the relationship was re-established since) returns false
+ * for every relationship: it ends nothing, so there is nothing to act on.
+ *
  * @param {Object} record - from `revocationFromEvent`
  * @param {Object} relationship - any subset of `{accessId, acceptEventId,
  *   offerEventId, inviteEventId, scopeStreamId}`, plus an optional
@@ -639,6 +650,10 @@ function revocationFromEvent (event) {
  */
 function revocationMatches (record, relationship) {
   if (record == null || relationship == null) return false;
+  // A stale notice the receiving server dropped ends nothing. Also read from
+  // `content` so a raw event passed in by mistake is ignored the same way.
+  const superseded = record.superseded != null ? record.superseded : record.content?.superseded;
+  if (typeof superseded === 'string' && superseded !== '') return false;
   const r = relationship;
 
   // Filter first: a different peer is never this relationship, whatever ids
