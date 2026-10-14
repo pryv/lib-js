@@ -45,6 +45,11 @@ const ET_SYSTEM_ALERT = 'notification/alert-cmc';
 const ET_SYSTEM_ACK = 'notification/ack-cmc';
 const ET_SYSTEM_SCOPE_REQUEST = ET_SCOPE_REQUEST;
 const ET_SYSTEM_SCOPE_UPDATE = ET_SCOPE_UPDATE;
+// Group membership: a member asks the group's core for an access on a
+// patient's account (written by the member), and the record of an
+// offboarding sweep (written by the server only).
+const ET_MEMBER_ACCESS = 'consent/member-access-cmc';
+const ET_MEMBER_REVOKE = 'consent/member-revoke-cmc';
 
 const EVENT_TYPES_LIFECYCLE = [ET_REQUEST, ET_ACCEPT, ET_REFUSE, ET_REVOKE];
 const EVENT_TYPES_CHAT = [ET_CHAT];
@@ -345,7 +350,50 @@ const errorIds = Object.freeze({
   REVOKE_FORBIDDEN: 'cmc-revoke-forbidden',
   REVOKE_NO_PEER_ENDPOINT: 'cmc-revoke-no-peer-endpoint',
   SCOPE_UPDATE_TARGET_STREAM_MISMATCH: 'cmc-scope-update-target-stream-mismatch',
-  USER_CHOICE_NOT_ALLOWED: 'cmc-consent-user-choice-not-allowed'
+  USER_CHOICE_NOT_ALLOWED: 'cmc-consent-user-choice-not-allowed',
+  // Group membership, refused when the trigger is written (`error.data.id`).
+  // The writing access is neither a membership access nor the group's
+  // personal token.
+  MEMBER_ACCESS_NOT_MEMBER: 'cmc-member-access-not-member',
+  // No relationship with that patient under the trigger's stream.
+  MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND: 'cmc-member-access-relationship-not-found',
+  // `scopeStreamId` is neither the trigger's stream nor under it.
+  MEMBER_ACCESS_SCOPE_OUTSIDE_MEMBERSHIP: 'cmc-member-access-scope-outside-membership',
+  // Permissions wider than the patient's offer (or than the patient's grant,
+  // reported by the patient's core).
+  MEMBER_ACCESS_PERMISSIONS_NOT_SUBSET: 'cmc-member-access-permissions-not-subset',
+  // `expireAfter` outside the core's bounds (60 s to 7 days by default).
+  MEMBER_ACCESS_EXPIRY_OUT_OF_RANGE: 'cmc-member-access-expiry-out-of-range',
+  // Too many requests from this membership in the last minute.
+  MEMBER_ACCESS_RATE_LIMITED: 'cmc-member-access-rate-limited',
+  // A request for the same patient is still running: ask again shortly.
+  MEMBER_ACCESS_IN_FLIGHT: 'cmc-member-access-in-flight',
+  // A membership offer asked for more than team streams at `read` or
+  // `contribute` (also thrown by `requestMembership` before writing).
+  MEMBERSHIP_PERMISSIONS_INVALID: 'cmc-membership-permissions-invalid',
+  // The patient's core refused the member stamp on the child access.
+  MEMBER_STAMP_INVALID: 'cmc-member-stamp-invalid',
+  // Group membership, recorded on the trigger (`content.failure.reason`).
+  // The patient's grant is not delegable (offered without `accessType: 'app'`).
+  MEMBER_ACCESS_GRANT_NOT_DELEGABLE: 'cmc-member-access-grant-not-delegable',
+  // The patient's core refused the access (`failure.detail` holds
+  // `{ peerErrorId, httpStatus }` only).
+  MEMBER_ACCESS_PEER_REJECTED: 'cmc-member-access-peer-rejected',
+  // The patient's core could not be reached: ask again later.
+  MEMBER_ACCESS_PEER_UNREACHABLE: 'cmc-member-access-peer-unreachable',
+  // The membership ended while the access was being created.
+  MEMBER_ACCESS_MEMBERSHIP_GONE: 'cmc-member-access-membership-gone',
+  // A member access is never created by the retry queue.
+  MEMBER_ACCESS_NOT_RETRYABLE: 'cmc-member-access-not-retryable',
+  // An offboarding sweep could not delete every access it minted.
+  MEMBER_REVOKE_RESIDUAL: 'cmc-member-revoke-residual',
+  // Chat and alerts from a member to the group are not supported.
+  MEMBER_CHANNEL_NOT_SUPPORTED: 'cmc-member-channel-not-supported',
+  // Client-side: the group's core answered without a member access and
+  // without a failure, so it does not support member access.
+  MEMBER_ACCESS_UNSUPPORTED: 'cmc-member-access-unsupported',
+  // Client-side: `acceptMembership` was given an ordinary offer.
+  MEMBERSHIP_OFFER_EXPECTED: 'cmc-membership-offer-expected'
 });
 
 // --- Level-1 protocol functions ---
@@ -398,14 +446,24 @@ class CmcError extends Error {
  *   `app` to make the grant delegable — the approved requester can then
  *   `accesses.create` scoped, individually-named sub-accesses (permissions ⊆
  *   the grant) for least-privilege re-delegation with per-actor audit.
+ * @param {boolean} [params.allowUserChoice=false] - true lets the accepter
+ *   grant a subset of the permissions (except `mandatory` entries).
  * @param {string|null} [params.to=null]
  * @param {Object} [params.requesterMeta]
  * @returns {Promise<{inviteEventId:string, capabilityUrl:string, mode:string, expiresAt:number|null}>}
  */
 async function createInvite (conn, params) {
   if (params == null) throw new Error('createInvite: params required');
+  return writeOffer(conn, params, null, 'createInvite');
+}
+
+/**
+ * Write a `consent/request-cmc` offer. `extraRequest` is merged into
+ * `content.request` (the membership flag).
+ */
+async function writeOffer (conn, params, extraRequest, fnName) {
   if (params.expiresAt === null && (params.mode || 'single-use') !== 'open-link') {
-    throw new CmcError('createInvite: expiresAt: null (no expiry) requires mode "open-link"',
+    throw new CmcError(fnName + ': expiresAt: null (no expiry) requires mode "open-link"',
       errorIds.CAPABILITY_NO_EXPIRY_NOT_ALLOWED);
   }
   const requesterMeta = Object.assign(
@@ -421,6 +479,8 @@ async function createInvite (conn, params) {
   if (params.features) request.features = params.features;
   if (params.expiresAt !== undefined) request.expiresAt = params.expiresAt;
   if (params.accessType) request.accessType = params.accessType;
+  if (typeof params.allowUserChoice === 'boolean') request.allowUserChoice = params.allowUserChoice;
+  if (extraRequest != null) Object.assign(request, extraRequest);
   const content = {
     to: params.to === undefined ? null : params.to,
     capabilityRequested: true,
@@ -846,7 +906,7 @@ async function proposeScopeUpdate (conn, params) {
  * @param {string} capabilityUrl
  * @param {Object} [opts]
  * @param {Object} [opts.pryv]   - explicit pryv module (otherwise resolved via require('pryv'))
- * @returns {Promise<{requester:{username:string|null,host:string,displayName?:string}, consent:Object|undefined, requestedPermissions:Array, mode:string, features:Object}>}
+ * @returns {Promise<{requester:{username:string|null,host:string,displayName?:string}, consent:Object|undefined, requestedPermissions:Array, allowUserChoice:boolean, accessType:'shared'|'app', membership:boolean, mode:string, features:Object}>}
  */
 async function readOffer (capabilityUrl, opts) {
   const pryv = (opts && opts.pryv) || require('pryv');
@@ -892,10 +952,18 @@ async function readOffer (capabilityUrl, opts) {
   } catch (_e) {
     // Best-effort identity; offer content still returned.
   }
+  const membership = request.membership === true;
   return {
     requester: requesterIdentity,
     consent: request.consent,
     requestedPermissions: request.permissions || [],
+    // The server treats a membership offer as allowing a subset whatever it says.
+    allowUserChoice: membership || request.allowUserChoice === true,
+    // 'app': the grant is delegable (the requester may create sub-accesses
+    // from it); consent screens should say so.
+    accessType: request.accessType === 'app' ? 'app' : 'shared',
+    // true: the requester asks to join the accepter's group.
+    membership,
     mode: (content.capability && content.capability.mode) || 'single-use',
     features: request.features || {}
   };
@@ -930,6 +998,9 @@ async function readOffer (capabilityUrl, opts) {
  * @param {string} opts.scopeStreamId       - REQUIRED. Own :_cmc:apps:<app>[:...] stream where the accept trigger lands. Must NOT be :_cmc:inbox (which routes through the peer-delivered path).
  * @param {{chat?:boolean,systemMessaging?:boolean}} [opts.extra]
  * @param {string} [opts.accessName]
+ * @param {Array<{streamId:string, level:string}>} [opts.grantedPermissions] - grant only
+ *   this subset of the offer (the offer must allow user choice; `mandatory` entries
+ *   cannot be left out). Omit to grant the whole offer.
  * @param {boolean} [opts.waitForCompletion=true]
  * @param {number}  [opts.completionTimeoutMs=10000]
  * @param {number}  [opts.completionPollIntervalMs=200]
@@ -937,27 +1008,42 @@ async function readOffer (capabilityUrl, opts) {
  */
 async function acceptInvite (conn, capabilityUrl, opts) {
   opts = opts || {};
-  if (!opts.scopeStreamId) {
-    throw new Error('acceptInvite: opts.scopeStreamId is required ' +
-      '(an :_cmc:apps:<app>[:...] stream on YOUR account where the accept ' +
-      'trigger lands — not :_cmc:inbox, which routes through the peer-delivered path)');
-  }
-  const scopeStreamId = opts.scopeStreamId;
+  requireAcceptScope(opts, 'acceptInvite');
   // Read the offer FIRST to capture counterparty identity (single-use
   // capabilities flip to 'consumed' on the first accept, so a second
   // read after submit would fail).
+  let offer = null;
+  try {
+    offer = await readOffer(capabilityUrl, opts);
+  } catch (_e) {
+    // Best-effort; if offer read fails the accept can still proceed.
+  }
+  return acceptOffer(conn, capabilityUrl, opts, offer);
+}
+
+function requireAcceptScope (opts, fnName) {
+  if (!opts.scopeStreamId) {
+    throw new Error(fnName + ': opts.scopeStreamId is required ' +
+      '(an :_cmc:apps:<app>[:...] stream on YOUR account where the accept ' +
+      'trigger lands — not :_cmc:inbox, which routes through the peer-delivered path)');
+  }
+}
+
+/**
+ * Write the accept trigger for an offer already read (or null when the
+ * read failed), then wait for completion unless told not to.
+ */
+async function acceptOffer (conn, capabilityUrl, opts, offer) {
+  const scopeStreamId = opts.scopeStreamId;
   let counterparty = { username: null, host: null, displayName: undefined };
   let offerFeatures = null;
-  try {
-    const offer = await readOffer(capabilityUrl, opts);
+  if (offer != null) {
     counterparty = {
       username: offer.requester && offer.requester.username,
       host: offer.requester && offer.requester.host,
       displayName: offer.requester && offer.requester.displayName
     };
     offerFeatures = offer.features || null;
-  } catch (_e) {
-    // Best-effort; if offer read fails the accept can still proceed.
   }
   // Persist the negotiated features into the accept trigger so the
   // plugin's handleAccept can stamp them onto the data-grant access's
@@ -971,6 +1057,7 @@ async function acceptInvite (conn, capabilityUrl, opts) {
   const content = { capabilityUrl, features: resolvedFeatures };
   if (opts.extra) content.extra = opts.extra;
   if (opts.accessName) content.accessName = opts.accessName;
+  if (opts.grantedPermissions != null) content.grantedPermissions = opts.grantedPermissions;
   const event = await conn.apiOne('events.create', {
     streamIds: [scopeStreamId],
     type: ET_ACCEPT,
@@ -1416,6 +1503,454 @@ async function resolveScopeRequestStream (conn, scopeRequestEventId) {
   return (ev.streamIds && ev.streamIds[0]) || ev.streamId;
 }
 
+// --- Group membership ---
+//
+// A group (a practice, a research team) is an ordinary Pryv account. A member
+// is another account holding a membership: a CMC relationship in which the
+// member is the requester and the group the accepter, so the grant minted on
+// the group's account IS the member's access to it (`role: 'member'`).
+// Members invite patients from the group's account (`createInvite` with
+// `accessType: 'app'` on a team stream), then ask the group's core for a
+// short-lived access on a patient's account (`requestMemberAccess`); the
+// group's core creates it through the patient's grant and returns it once.
+
+/** Mirror of the server's rule: a `:_cmc:apps:*` stream outside chats/collectors. */
+function isUserCreatableStreamId (streamId) {
+  return typeof streamId === 'string' &&
+    streamId.startsWith(NS_APPS + ':') &&
+    !isAppNestedPluginStream(streamId);
+}
+
+function assertIdentity (fnName, label, value) {
+  if (value == null || typeof value.username !== 'string' || value.username.length === 0 ||
+      typeof value.host !== 'string' || value.host.length === 0) {
+    throw new Error(fnName + ': ' + label + ' must be { username, host } with non-empty strings');
+  }
+}
+
+/**
+ * The `cmc-*` id of an API error answered by the server (`error.data.id`),
+ * or null when the error is not a CMC refusal.
+ */
+function cmcIdFromApiError (err) {
+  if (err == null) return null;
+  const inner = err.innerObject;
+  const candidates = [
+    inner && inner.data && inner.data.id,
+    inner && inner.id,
+    err.data && err.data.id
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.startsWith('cmc-')) return c;
+  }
+  return null;
+}
+
+/**
+ * Member side: ask to join a group. Writes a `consent/request-cmc` offer on
+ * the member's own account with `request.membership: true`, asking for
+ * `contribute` on the group's team streams. Hand the returned `capabilityUrl`
+ * to a group administrator (QR code or link): they open it with
+ * `acceptMembership`. Nothing is delivered to the group automatically.
+ *
+ * The server refuses a membership offer asking for anything but
+ * `:_cmc:apps:<app>[:<path>]` streams (chats and collectors excluded) at
+ * `read` or `contribute`; this helper checks the same rule before writing and
+ * throws `cmc-membership-permissions-invalid`.
+ *
+ * @param {Object} conn                    member's connection
+ * @param {Object} params
+ * @param {{username:string, host:string}} params.group - the group account
+ * @param {string[]} params.scopeStreamIds - team streams on the GROUP's account
+ * @param {string} params.appCode
+ * @param {string} params.displayName      - how the member is shown to the administrator
+ * @param {string} [params.scopeStreamId]  - stream on the MEMBER's account where the offer is written (default `:_cmc:apps:<appCode>`)
+ * @param {Object} [params.title]
+ * @param {Object} [params.description]
+ * @param {Object} [params.consent]
+ * @param {{chat?:boolean, systemMessaging?:boolean}} [params.features]
+ * @param {number} [params.expiresAt]      - Unix seconds; default 7 days
+ * @param {Object} [params.requesterMeta]
+ * @returns {Promise<{inviteEventId:string, capabilityUrl:string, mode:string, expiresAt:number|null, group:{username:string, host:string}}>}
+ */
+async function requestMembership (conn, params) {
+  if (params == null) throw new Error('requestMembership: params required');
+  assertIdentity('requestMembership', 'params.group', params.group);
+  for (const key of ['appCode', 'displayName']) {
+    if (typeof params[key] !== 'string' || params[key].length === 0) {
+      throw new Error('requestMembership: params.' + key + ' must be a non-empty string');
+    }
+  }
+  const ids = params.scopeStreamIds;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw new CmcError('requestMembership: params.scopeStreamIds must list at least one team stream',
+      errorIds.MEMBERSHIP_PERMISSIONS_INVALID);
+  }
+  for (const id of ids) {
+    if (!isUserCreatableStreamId(id)) {
+      throw new CmcError('requestMembership: ' + JSON.stringify(id) +
+        ' is not a team stream (:_cmc:apps:<app>[:<path>], chats and collectors excluded)',
+      errorIds.MEMBERSHIP_PERMISSIONS_INVALID);
+    }
+  }
+  const invite = await writeOffer(conn, {
+    appCode: params.appCode,
+    scopeStreamId: params.scopeStreamId || appScope(params.appCode),
+    displayName: params.displayName,
+    requestedPermissions: ids.map(function (streamId) { return { streamId, level: 'contribute' }; }),
+    title: params.title,
+    description: params.description,
+    consent: params.consent,
+    features: params.features,
+    expiresAt: params.expiresAt,
+    requesterMeta: params.requesterMeta
+  }, { membership: true, allowUserChoice: true }, 'requestMembership');
+  invite.group = { username: params.group.username, host: params.group.host };
+  return invite;
+}
+
+/**
+ * Member side: wait for the group's acceptance of a membership request and
+ * return the membership endpoint (an access on the group's account). Only an
+ * acceptance from `opts.group` counts: anyone holding the link could accept
+ * it, and only the expected group makes it a membership.
+ *
+ * The administrator approves by hand: pass a long `timeoutMs`, call again
+ * after a `cmc-capability-timeout`, or watch `:_cmc:inbox` with a Monitor.
+ *
+ * @param {Object} conn                    member's connection (needs read on `:_cmc:inbox`)
+ * @param {Object} opts
+ * @param {{username:string, host:string}} opts.group
+ * @param {string} [opts.appCode]          - the appCode given to requestMembership
+ * @param {number} [opts.sinceTime]
+ * @param {number} [opts.timeoutMs=15000]
+ * @param {number} [opts.intervalMs=300]
+ * @returns {Promise<{acceptInboxEventId:string, membershipApiEndpoint:string|null, group:{username:string, host:string}|null, features:Object}>}
+ */
+async function waitForMembership (conn, opts) {
+  opts = opts || {};
+  assertIdentity('waitForMembership', 'opts.group', opts.group);
+  const arrived = await waitForAccept(conn, {
+    fromUsername: opts.group.username,
+    fromHost: opts.group.host,
+    appCode: opts.appCode,
+    sinceTime: opts.sinceTime,
+    timeoutMs: opts.timeoutMs,
+    intervalMs: opts.intervalMs
+  });
+  return {
+    acceptInboxEventId: arrived.acceptInboxEventId,
+    membershipApiEndpoint: arrived.grantedAccessApiEndpoint,
+    group: arrived.counterparty,
+    features: arrived.features
+  };
+}
+
+/**
+ * Member side: get an access on a patient's account. Writes a
+ * `consent/member-access-cmc` trigger on the group's account through the
+ * membership connection; the group's core creates a `shared` access on the
+ * patient's account through the patient's grant (which must be delegable:
+ * invite patients with `accessType: 'app'`) and answers it in the same
+ * response. The access is named after the member and expires (24 h by
+ * default). Its `apiEndpoint` carries a token: returned once, never stored by
+ * the server. Do not log it.
+ *
+ * Throws `CmcError`: `err.id` is the server's refusal (`error.data.id`) or the
+ * reason recorded on the trigger. `isMemberAccessRetryable(err)` is true for
+ * `cmc-member-access-in-flight` and `cmc-member-access-peer-unreachable`: ask
+ * again shortly. Against a core that does not support member access the id is
+ * `cmc-member-access-unsupported` (client-side).
+ *
+ * @param {Object} conn                    membership connection (the member's access on the group's account)
+ * @param {Object} params
+ * @param {{username:string, host:string}} params.counterparty - the patient
+ * @param {string} [params.streamId]       - team stream the trigger is written on (default `params.scopeStreamId`)
+ * @param {string} [params.scopeStreamId]  - the patient relationship's scope; must be `streamId` or under it (default: `streamId`)
+ * @param {Array<{streamId:string, level:string}>} [params.permissions] - default: the offer's streams at `read`
+ * @param {number} [params.expireAfter]    - seconds; the core bounds it (60 s to 7 days by default)
+ * @returns {Promise<{triggerEventId:string|null, apiEndpoint:string, accessId:string, name:string, expires:number, attribution:'stamped'|'name-only'}>}
+ */
+async function requestMemberAccess (conn, params) {
+  if (params == null) throw new Error('requestMemberAccess: params required');
+  assertIdentity('requestMemberAccess', 'params.counterparty', params.counterparty);
+  const streamId = params.streamId || params.scopeStreamId;
+  if (typeof streamId !== 'string' || streamId.length === 0) {
+    throw new Error('requestMemberAccess: params.streamId (a team stream your membership can contribute to) or params.scopeStreamId required');
+  }
+  const content = {
+    counterparty: { username: params.counterparty.username, host: params.counterparty.host }
+  };
+  if (params.scopeStreamId != null) content.scopeStreamId = params.scopeStreamId;
+  if (params.permissions != null) content.permissions = params.permissions;
+  if (params.expireAfter != null) content.expireAfter = params.expireAfter;
+  let result;
+  try {
+    // No result key: the answer carries `memberAccess` beside `event`.
+    result = await conn.apiOne('events.create', {
+      streamIds: [streamId],
+      type: ET_MEMBER_ACCESS,
+      content
+    });
+  } catch (err) {
+    const id = cmcIdFromApiError(err);
+    if (id != null) throw new CmcError('CMC member access refused: ' + id, id, err);
+    throw err;
+  }
+  const event = (result && result.event) || null;
+  const memberAccess = result && result.memberAccess;
+  if (memberAccess != null && typeof memberAccess.apiEndpoint === 'string') {
+    return {
+      triggerEventId: event ? event.id : null,
+      apiEndpoint: memberAccess.apiEndpoint,
+      accessId: memberAccess.accessId,
+      name: memberAccess.name,
+      expires: memberAccess.expires,
+      attribution: memberAccess.attribution
+    };
+  }
+  const c = (event && event.content) || {};
+  if (c.status === 'failed') {
+    const reason = (c.failure && c.failure.reason) || errorIds.HANDLER_THREW;
+    throw new CmcError('CMC member access failed: ' + reason, reason, c.failure);
+  }
+  throw new CmcError('CMC member access: the group\'s core answered without an access (it does not support member access)',
+    errorIds.MEMBER_ACCESS_UNSUPPORTED, { triggerEventId: event ? event.id : null, status: c.status });
+}
+
+/**
+ * True when a `requestMemberAccess` failure is worth asking again shortly:
+ * another request for the same patient was running, or the patient's core
+ * could not be reached.
+ *
+ * @param {*} err
+ * @returns {boolean}
+ */
+function isMemberAccessRetryable (err) {
+  return err != null && (err.id === errorIds.MEMBER_ACCESS_IN_FLIGHT ||
+    err.id === errorIds.MEMBER_ACCESS_PEER_UNREACHABLE);
+}
+
+/**
+ * Member side: leave a group. Revokes the membership from the member's
+ * account; the group's core then deletes the accesses it created for this
+ * member on patients' accounts.
+ *
+ * @param {Object} conn                    member's connection
+ * @param {Object} params
+ * @param {string} [params.inviteEventId]  - from requestMembership
+ * @param {string} [params.accessId]       - the member's back-channel access, instead of inviteEventId
+ * @param {string} [params.scopeStreamId]  - stream the revoke is written on (default: the request's stream)
+ * @param {Object} [params.reason]
+ * @returns {Promise<void>}
+ */
+async function leaveMembership (conn, params) {
+  if (params == null) throw new Error('leaveMembership: params required');
+  if (params.accessId) return revokeRelationship(conn, params);
+  if (!params.inviteEventId) {
+    throw new Error('leaveMembership: provide inviteEventId (from requestMembership) or accessId');
+  }
+  const invite = await getInviteStatus(conn, params.inviteEventId);
+  if (invite.backChannelAccessId) {
+    return revokeRelationship(conn, {
+      accessId: invite.backChannelAccessId,
+      scopeStreamId: params.scopeStreamId || invite.scopeStreamId,
+      reason: params.reason
+    });
+  }
+  return revokeRelationship(conn, params);
+}
+
+/**
+ * Administrator side: approve a membership request. Reads the offer, refuses
+ * an ordinary offer (`cmc-membership-offer-expected`, client-side), and writes
+ * the accept with the administrator's token: the group's personal token or a
+ * delegate's. `grantedScopes` narrows the teams to a subset of those
+ * requested (a membership offer always allows it).
+ *
+ * @param {Object} conn                    group administrator's connection (personal or delegate token)
+ * @param {string} capabilityUrl           - the member's membership link
+ * @param {Object} opts
+ * @param {string} opts.scopeStreamId      - REQUIRED. Group's `:_cmc:apps:<app>[:...]` stream where the accept lands.
+ * @param {string[]} [opts.grantedScopes]  - team stream ids to grant (default: all requested)
+ * @param {string} [opts.accessName]
+ * @param {boolean} [opts.waitForCompletion=true]
+ * @param {number}  [opts.completionTimeoutMs=10000]
+ * @param {number}  [opts.completionPollIntervalMs=200]
+ * @returns {Promise<{acceptEventId:string, membershipAccessId:string|null, member:Object, status?:string}>}
+ */
+async function acceptMembership (conn, capabilityUrl, opts) {
+  opts = opts || {};
+  requireAcceptScope(opts, 'acceptMembership');
+  const offer = await readOffer(capabilityUrl, opts);
+  if (!offer.membership) {
+    throw new CmcError('acceptMembership: this offer is not a membership request (use acceptInvite)',
+      errorIds.MEMBERSHIP_OFFER_EXPECTED);
+  }
+  const acceptOpts = Object.assign({}, opts);
+  delete acceptOpts.grantedScopes;
+  if (opts.grantedScopes != null) {
+    if (!Array.isArray(opts.grantedScopes) || opts.grantedScopes.length === 0) {
+      throw new Error('acceptMembership: opts.grantedScopes must list at least one team (decline instead)');
+    }
+    acceptOpts.grantedPermissions = opts.grantedScopes.map(function (streamId) {
+      const requested = offer.requestedPermissions.find(function (p) { return p.streamId === streamId; });
+      if (requested == null) {
+        throw new CmcError('acceptMembership: ' + JSON.stringify(streamId) + ' was not requested',
+          errorIds.GRANTED_PERMISSIONS_NOT_SUBSET);
+      }
+      return { streamId: requested.streamId, level: requested.level };
+    });
+  }
+  const accepted = await acceptOffer(conn, capabilityUrl, acceptOpts, offer);
+  const result = {
+    acceptEventId: accepted.acceptEventId,
+    membershipAccessId: accepted.dataGrantAccessId,
+    member: accepted.counterparty
+  };
+  if (accepted.status != null) result.status = accepted.status;
+  return result;
+}
+
+/**
+ * Administrator side: decline a membership request (a refusal; no access is
+ * created).
+ *
+ * @param {Object} conn
+ * @param {string} capabilityUrl
+ * @param {Object} opts
+ * @param {string} opts.scopeStreamId      - REQUIRED. Group's stream where the refusal lands.
+ * @param {Object} [opts.reason]
+ * @returns {Promise<{refuseEventId:string}>}
+ */
+async function declineMembership (conn, capabilityUrl, opts) {
+  return refuseInvite(conn, capabilityUrl, opts);
+}
+
+function memberRecordFromAccess (access) {
+  const c = access.clientData.cmc;
+  const cp = c.counterparty || {};
+  const membership = c.membership || {};
+  return {
+    membershipAccessId: access.id,
+    // Identity only: the counterparty's endpoint is never copied.
+    member: { username: cp.username || null, host: cp.host || null },
+    appCode: c.appCode || null,
+    scopeStreamId: c.scopeStreamId || null,
+    scopes: (access.permissions || [])
+      .filter(function (p) { return isUserCreatableStreamId(p.streamId); })
+      .map(function (p) { return { streamId: p.streamId, level: p.level }; }),
+    requestedScopes: Array.isArray(membership.requestedScopes) ? membership.requestedScopes : [],
+    approvedBy: membership.approvedBy != null ? membership.approvedBy : null,
+    acceptEventId: c.acceptEventId || null,
+    created: access.created != null ? access.created : null,
+    expires: access.expires != null ? access.expires : null
+  };
+}
+
+/**
+ * Administrator side: list the group's members (accesses with
+ * `clientData.cmc.role === 'member'`). Needs a token allowed to list the
+ * group's accesses (personal token).
+ *
+ * @param {Object} conn
+ * @returns {Promise<Array>}
+ */
+async function listMembers (conn) {
+  const accesses = await conn.apiOne('accesses.get', {}, 'accesses');
+  return (accesses || [])
+    .filter(function (a) {
+      return a != null && a.clientData != null && a.clientData.cmc != null &&
+        a.clientData.cmc.role === 'member';
+    })
+    .map(memberRecordFromAccess);
+}
+
+/**
+ * Administrator side: end a membership. Writes a `consent/revoke-cmc` for the
+ * membership access; the group's core deletes it, tells the member, and
+ * sweeps the accesses it created for this member on patients' accounts
+ * (follow it with `listSweeps` / `getSweepStatus`).
+ *
+ * @param {Object} conn
+ * @param {Object} params
+ * @param {string} params.membershipAccessId
+ * @param {string} params.scopeStreamId    - group's stream the revoke is written on (`scopeStreamId` from listMembers)
+ * @param {Object} [params.reason]
+ * @returns {Promise<{revokeEventId:string}>}
+ */
+async function revokeMembership (conn, params) {
+  if (params == null || !params.membershipAccessId || !params.scopeStreamId) {
+    throw new Error('revokeMembership: params.membershipAccessId and params.scopeStreamId required');
+  }
+  const content = { accessId: params.membershipAccessId };
+  if (params.reason) content.reason = params.reason;
+  const event = await conn.apiOne('events.create', {
+    streamIds: [params.scopeStreamId],
+    type: ET_REVOKE,
+    content
+  }, 'event');
+  return { revokeEventId: event.id };
+}
+
+function sweepRecordFromEvent (event) {
+  const c = (event && event.content) || {};
+  return {
+    sweepEventId: event.id,
+    member: c.member || null,
+    membershipAccessId: c.membershipAccessId || null,
+    reason: c.reason || null,
+    status: c.status || 'pending',
+    failure: c.failure || null,
+    records: Array.isArray(c.records) ? c.records : [],
+    outcome: Array.isArray(c.outcome) ? c.outcome : [],
+    residuals: Array.isArray(c.residuals) ? c.residuals : [],
+    scopeStreamId: (event.streamIds && event.streamIds[0]) || event.streamId || null,
+    time: event.time != null ? event.time : null
+  };
+}
+
+/**
+ * Administrator side: read one offboarding sweep (`consent/member-revoke-cmc`,
+ * written by the server when a membership ends): what it deleted and the
+ * residuals it could not reach.
+ *
+ * @param {Object} conn
+ * @param {string} sweepEventId
+ * @returns {Promise<Object>}
+ */
+async function getSweepStatus (conn, sweepEventId) {
+  const event = await conn.apiOne('events.getOne', { id: sweepEventId }, 'event');
+  return sweepRecordFromEvent(event);
+}
+
+/**
+ * Administrator side: list offboarding sweeps, most recent first.
+ * `membershipAccessId` filters the events read (at most `limit`).
+ *
+ * @param {Object} conn
+ * @param {Object} [params]
+ * @param {string} [params.scopeStreamId=':_cmc:apps']
+ * @param {string} [params.membershipAccessId]
+ * @param {number} [params.limit=100]
+ * @returns {Promise<{items:Array, truncated:boolean}>}
+ */
+async function listSweeps (conn, params) {
+  params = params || {};
+  const limit = params.limit || 100;
+  const events = await conn.apiOne('events.get', {
+    streams: [params.scopeStreamId || NS_APPS],
+    types: [ET_MEMBER_REVOKE],
+    limit,
+    sortAscending: false
+  }, 'events');
+  let items = events.map(sweepRecordFromEvent);
+  if (params.membershipAccessId) {
+    items = items.filter(function (s) { return s.membershipAccessId === params.membershipAccessId; });
+  }
+  return { items, truncated: events.length >= limit };
+}
+
 // --- Accept hand-off (app-web-user-account) ---
 //
 // `acceptInvite` posts the trigger directly on a `pryv.Connection`.
@@ -1817,6 +2352,8 @@ module.exports = {
   ET_SYSTEM_ACK,
   ET_SYSTEM_SCOPE_REQUEST,
   ET_SYSTEM_SCOPE_UPDATE,
+  ET_MEMBER_ACCESS,
+  ET_MEMBER_REVOKE,
   EVENT_TYPES_LIFECYCLE,
   EVENT_TYPES_CHAT,
   EVENT_TYPES_SYSTEM,
@@ -1856,6 +2393,18 @@ module.exports = {
   sendSystemAck,
   acceptScopeUpdate,
   refuseScopeUpdate,
+  // group membership
+  requestMembership,
+  waitForMembership,
+  requestMemberAccess,
+  isMemberAccessRetryable,
+  leaveMembership,
+  acceptMembership,
+  declineMembership,
+  listMembers,
+  revokeMembership,
+  getSweepStatus,
+  listSweeps,
   // revocation arrivals (inbox)
   revocationFromEvent,
   revocationMatches,

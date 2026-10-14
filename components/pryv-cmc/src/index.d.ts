@@ -19,6 +19,10 @@ declare module '@pryv/cmc' {
   export const ET_SYSTEM_ACK: 'notification/ack-cmc';
   export const ET_SYSTEM_SCOPE_REQUEST: 'consent/scope-request-cmc';
   export const ET_SYSTEM_SCOPE_UPDATE: 'consent/scope-update-cmc';
+  /** Written by a member on the group's account: ask for an access on a patient's account. */
+  export const ET_MEMBER_ACCESS: 'consent/member-access-cmc';
+  /** Written by the server only: the record of an offboarding sweep. */
+  export const ET_MEMBER_REVOKE: 'consent/member-revoke-cmc';
   export const EVENT_TYPES_LIFECYCLE: readonly string[];
   export const EVENT_TYPES_CHAT: readonly string[];
   export const EVENT_TYPES_SYSTEM: readonly string[];
@@ -96,7 +100,25 @@ declare module '@pryv/cmc' {
     | 'cmc-chat-stream-not-chat'
     | 'cmc-chat-counterparty-access-not-found'
     | 'cmc-chat-no-remote-apiendpoint'
-    | 'cmc-chat-no-remote-chat-stream';
+    | 'cmc-chat-no-remote-chat-stream'
+    | 'cmc-member-access-not-member'
+    | 'cmc-member-access-relationship-not-found'
+    | 'cmc-member-access-scope-outside-membership'
+    | 'cmc-member-access-permissions-not-subset'
+    | 'cmc-member-access-expiry-out-of-range'
+    | 'cmc-member-access-rate-limited'
+    | 'cmc-member-access-in-flight'
+    | 'cmc-membership-permissions-invalid'
+    | 'cmc-member-stamp-invalid'
+    | 'cmc-member-access-grant-not-delegable'
+    | 'cmc-member-access-peer-rejected'
+    | 'cmc-member-access-peer-unreachable'
+    | 'cmc-member-access-membership-gone'
+    | 'cmc-member-access-not-retryable'
+    | 'cmc-member-revoke-residual'
+    | 'cmc-member-channel-not-supported'
+    | 'cmc-member-access-unsupported'
+    | 'cmc-membership-offer-expected';
 
   export const errorIds: {
     readonly CAPABILITY_INVALID: 'cmc-capability-invalid';
@@ -161,6 +183,28 @@ declare module '@pryv/cmc' {
     readonly REVOKE_NO_PEER_ENDPOINT: 'cmc-revoke-no-peer-endpoint';
     readonly SCOPE_UPDATE_TARGET_STREAM_MISMATCH: 'cmc-scope-update-target-stream-mismatch';
     readonly USER_CHOICE_NOT_ALLOWED: 'cmc-consent-user-choice-not-allowed';
+    // Group membership: refused at write (`error.data.id`)
+    readonly MEMBER_ACCESS_NOT_MEMBER: 'cmc-member-access-not-member';
+    readonly MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND: 'cmc-member-access-relationship-not-found';
+    readonly MEMBER_ACCESS_SCOPE_OUTSIDE_MEMBERSHIP: 'cmc-member-access-scope-outside-membership';
+    readonly MEMBER_ACCESS_PERMISSIONS_NOT_SUBSET: 'cmc-member-access-permissions-not-subset';
+    readonly MEMBER_ACCESS_EXPIRY_OUT_OF_RANGE: 'cmc-member-access-expiry-out-of-range';
+    readonly MEMBER_ACCESS_RATE_LIMITED: 'cmc-member-access-rate-limited';
+    readonly MEMBER_ACCESS_IN_FLIGHT: 'cmc-member-access-in-flight';
+    readonly MEMBERSHIP_PERMISSIONS_INVALID: 'cmc-membership-permissions-invalid';
+    readonly MEMBER_STAMP_INVALID: 'cmc-member-stamp-invalid';
+    // Group membership: recorded on the trigger (`content.failure.reason`)
+    readonly MEMBER_ACCESS_GRANT_NOT_DELEGABLE: 'cmc-member-access-grant-not-delegable';
+    readonly MEMBER_ACCESS_PEER_REJECTED: 'cmc-member-access-peer-rejected';
+    readonly MEMBER_ACCESS_PEER_UNREACHABLE: 'cmc-member-access-peer-unreachable';
+    readonly MEMBER_ACCESS_MEMBERSHIP_GONE: 'cmc-member-access-membership-gone';
+    readonly MEMBER_ACCESS_NOT_RETRYABLE: 'cmc-member-access-not-retryable';
+    readonly MEMBER_REVOKE_RESIDUAL: 'cmc-member-revoke-residual';
+    readonly MEMBER_CHANNEL_NOT_SUPPORTED: 'cmc-member-channel-not-supported';
+    /** Client-side: the group's core answered without a member access and without a failure. */
+    readonly MEMBER_ACCESS_UNSUPPORTED: 'cmc-member-access-unsupported';
+    /** Client-side: `acceptMembership` was given an ordinary offer. */
+    readonly MEMBERSHIP_OFFER_EXPECTED: 'cmc-membership-offer-expected';
   };
 
   /** Typed CMC failure surfaced by Level-1 functions. */
@@ -290,6 +334,12 @@ declare module '@pryv/cmc' {
      * only) requests no expiry; an older core mints the 7-day default instead.
      */
     expiresAt?: number | null;
+    /**
+     * Access type of the grant minted on accept. Default `'shared'`; `'app'` makes it
+     * delegable (the requester may create sub-accesses from it, as group member
+     * accesses require).
+     */
+    accessType?: 'shared' | 'app';
     to?: string | null;
     requesterMeta?: { displayName?: string; appId?: string; appUrl?: string };
   }): Promise<{ inviteEventId: string; capabilityUrl: string; mode: CapabilityMode; expiresAt: number | null }>;
@@ -346,8 +396,12 @@ declare module '@pryv/cmc' {
     requester: { username: string | null; host: string; displayName?: string };
     consent?: Record<string, string>;
     requestedPermissions: OfferedPermission[];
-    /** Whether the accepter may grant a subset (default false). */
-    allowUserChoice?: boolean;
+    /** Whether the accepter may grant a subset (default false; always true for a membership). */
+    allowUserChoice: boolean;
+    /** `'app'`: the grant would be delegable (the requester may create sub-accesses from it). */
+    accessType: 'shared' | 'app';
+    /** True when the requester asks to join the accepter's group (see `acceptMembership`). */
+    membership: boolean;
     mode: CapabilityMode;
     features: { chat?: boolean; systemMessaging?: boolean };
   }>;
@@ -381,6 +435,11 @@ declare module '@pryv/cmc' {
     scopeStreamId: string;
     extra?: { chat?: boolean; systemMessaging?: boolean };
     accessName?: string;
+    /**
+     * Grant only this subset of the offer (the offer must allow user choice;
+     * `mandatory` entries cannot be left out). Omit to grant the whole offer.
+     */
+    grantedPermissions?: Permission[];
     waitForCompletion?: boolean;
     completionTimeoutMs?: number;
     completionPollIntervalMs?: number;
@@ -476,6 +535,157 @@ declare module '@pryv/cmc' {
     peerNotified?: boolean;
     deliveryFailure?: { reason: string; detail?: any };
   }>;
+
+  // --- Group membership ---
+
+  /** Member side: a membership request ready to hand to a group administrator. */
+  export type MembershipRequest = {
+    inviteEventId: string;
+    /** Show as a QR code or link to an administrator, who opens it with `acceptMembership`. */
+    capabilityUrl: string;
+    mode: CapabilityMode;
+    expiresAt: number | null;
+    group: CmcActor;
+  };
+
+  export function requestMembership(conn: any, params: {
+    group: CmcActor;
+    /** Team streams on the GROUP's account (`:_cmc:apps:<app>[:<path>]`, not chats/collectors). */
+    scopeStreamIds: string[];
+    appCode: string;
+    /** How the member is shown to the administrator. */
+    displayName: string;
+    /** Stream on the member's own account where the request is written (default `:_cmc:apps:<appCode>`). */
+    scopeStreamId?: string;
+    title?: Record<string, string>;
+    description?: Record<string, string>;
+    consent?: Record<string, string>;
+    features?: { chat?: boolean; systemMessaging?: boolean };
+    expiresAt?: number;
+    requesterMeta?: { displayName?: string; appId?: string; appUrl?: string };
+  }): Promise<MembershipRequest>;
+
+  export function waitForMembership(conn: any, opts: {
+    group: CmcActor;
+    appCode?: string;
+    sinceTime?: number;
+    timeoutMs?: number;
+    intervalMs?: number;
+  }): Promise<{
+    acceptInboxEventId: string;
+    /** The member's access on the group's account. Carries a token. */
+    membershipApiEndpoint: string | null;
+    group: CmcActor | null;
+    features: { chat?: boolean; systemMessaging?: boolean };
+  }>;
+
+  /** An access on a patient's account, returned once by the group's core. */
+  export type MemberAccess = {
+    /** The `consent/member-access-cmc` trigger on the group's account. */
+    triggerEventId: string | null;
+    /** Carries a token: never stored by the server; do not log it. */
+    apiEndpoint: string;
+    accessId: string;
+    name: string;
+    /** Seconds since the epoch. */
+    expires: number;
+    /** `'name-only'`: the patient's core predates the member stamp; only the access name names the member. */
+    attribution: 'stamped' | 'name-only';
+  };
+
+  export function requestMemberAccess(conn: any, params: {
+    /** The patient. */
+    counterparty: CmcActor;
+    /** Team stream the trigger is written on (default `scopeStreamId`). */
+    streamId?: string;
+    /** The patient relationship's scope: `streamId` or a stream under it (default `streamId`). */
+    scopeStreamId?: string;
+    /** Stream permissions only; default: the offer's streams at `read`. */
+    permissions?: Permission[];
+    /** Seconds; bounded by the core (60 s to 7 days by default, 24 h when omitted). */
+    expireAfter?: number;
+  }): Promise<MemberAccess>;
+
+  /** True for `cmc-member-access-in-flight` and `cmc-member-access-peer-unreachable`: ask again shortly. */
+  export function isMemberAccessRetryable(err: unknown): boolean;
+
+  export function leaveMembership(conn: any, params:
+    | { inviteEventId: string; scopeStreamId?: string; reason?: Record<string, string> }
+    | { accessId: string; scopeStreamId: string; reason?: Record<string, string> }
+  ): Promise<void>;
+
+  export function acceptMembership(conn: any, capabilityUrl: string, opts: {
+    /** Group's `:_cmc:apps:<app>[:...]` stream where the accept lands. */
+    scopeStreamId: string;
+    /** Team stream ids to grant, a subset of those requested (default: all). */
+    grantedScopes?: string[];
+    accessName?: string;
+    waitForCompletion?: boolean;
+    completionTimeoutMs?: number;
+    completionPollIntervalMs?: number;
+    pryv?: any;
+  }): Promise<{
+    acceptEventId: string;
+    membershipAccessId: string | null;
+    member: { username: string | null; host: string | null; displayName?: string };
+    /** Present when `waitForCompletion` is false. */
+    status?: string;
+  }>;
+
+  export function declineMembership(conn: any, capabilityUrl: string, opts: {
+    scopeStreamId: string;
+    reason?: Record<string, string>;
+  }): Promise<{ refuseEventId: string }>;
+
+  export type MemberRecord = {
+    membershipAccessId: string;
+    member: { username: string | null; host: string | null };
+    appCode: string | null;
+    /** Group's stream of the membership relationship (where `revokeMembership` writes). */
+    scopeStreamId: string | null;
+    /** Team streams the membership holds. */
+    scopes: Permission[];
+    /** Team streams the member asked for. */
+    requestedScopes: string[];
+    /** The delegation that approved it when a delegate accepted; null for the owner. */
+    approvedBy: Record<string, unknown> | null;
+    acceptEventId: string | null;
+    created: number | null;
+    expires: number | null;
+  };
+
+  export function listMembers(conn: any): Promise<MemberRecord[]>;
+
+  export function revokeMembership(conn: any, params: {
+    membershipAccessId: string;
+    scopeStreamId: string;
+    reason?: Record<string, string>;
+  }): Promise<{ revokeEventId: string }>;
+
+  export type SweepReason = 'revoke' | 'accesses.delete' | 'expired' | 'narrowed' | 'detach' | 'account-deleted';
+
+  /** An offboarding sweep (`consent/member-revoke-cmc`), written by the server. */
+  export type SweepRecord = {
+    sweepEventId: string;
+    member: CmcActor | null;
+    membershipAccessId: string | null;
+    reason: SweepReason | (string & {}) | null;
+    status: string;
+    failure: { reason: string; detail?: any } | null;
+    records: Array<{ relationshipAccessId: string; counterparty: CmcActor; childAccessId: string; expires: number }>;
+    outcome: Array<{ childAccessId: string; result: 'deleted' | 'absent' | 'residual'; reason?: string }>;
+    residuals: Array<{ counterparty: CmcActor; childAccessId: string; expires: number; reason: string }>;
+    scopeStreamId: string | null;
+    time: number | null;
+  };
+
+  export function getSweepStatus(conn: any, sweepEventId: string): Promise<SweepRecord>;
+
+  export function listSweeps(conn: any, params?: {
+    scopeStreamId?: string;
+    membershipAccessId?: string;
+    limit?: number;
+  }): Promise<{ items: SweepRecord[]; truncated: boolean }>;
 
   // --- Accept hand-off (app-web-user-account) ---
 

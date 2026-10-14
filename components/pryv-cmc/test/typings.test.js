@@ -34,4 +34,8 @@ describe('[CMCTY] typings', function () {
   it('[CMCTY1] RelationshipRecord: counterparty includes the legacy { apiEndpoint } form; withdrawal `by` accepts known and later values', function () {
     expect(compile('relationshipRecord.ts')).to.deep.equal([]);
   });
+
+  it('[CMCTY2] group membership: member and administrator helpers, offer flags, error ids', function () {
+    expect(compile('membership.ts')).to.deep.equal([]);
+  });
 });

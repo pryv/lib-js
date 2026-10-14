@@ -4,6 +4,47 @@
 
 ## [Unreleased]
 
+`@pryv/cmc` 3.21.0; the other packages are unchanged.
+
+### Added
+
+- **`@pryv/cmc` group membership.** A group (a practice, a research team) is an ordinary Pryv
+  account whose members are other accounts; members invite patients on the group's behalf and read
+  a patient's data under an access that names them, created by the group's core. No backend is
+  needed. Needs cores that support group membership.
+  - Member side: `requestMembership(conn, { group, scopeStreamIds, appCode, displayName })` writes
+    a membership request (`request.membership: true`, `contribute` on team streams of the group's
+    account) and returns its `capabilityUrl` to show as a QR code or link to an administrator;
+    `waitForMembership(conn, { group })` returns the membership endpoint once that group accepted
+    (an acceptance from anyone else is ignored); `requestMemberAccess(membershipConn, { counterparty,
+    scopeStreamId, permissions?, expireAfter? })` returns an access on a patient's account from the
+    synchronous answer (`{ apiEndpoint, accessId, name, expires, attribution }`, the token is
+    returned once and never stored); `isMemberAccessRetryable(err)`; `leaveMembership(conn,
+    { inviteEventId })`.
+  - Administrator side (personal or delegate token): `acceptMembership(conn, capabilityUrl,
+    { scopeStreamId, grantedScopes? })`, `declineMembership`, `listMembers(conn)` (identity only,
+    never the member's endpoint), `revokeMembership(conn, { membershipAccessId, scopeStreamId })`,
+    `listSweeps` and `getSweepStatus` (what an offboarding sweep deleted and its residuals).
+  - `ET_MEMBER_ACCESS` (`consent/member-access-cmc`) and `ET_MEMBER_REVOKE`
+    (`consent/member-revoke-cmc`).
+  - `errorIds`: the 16 membership reasons the server emits (`MEMBER_ACCESS_*`,
+    `MEMBERSHIP_PERMISSIONS_INVALID`, `MEMBER_STAMP_INVALID`, `MEMBER_REVOKE_RESIDUAL`,
+    `MEMBER_CHANNEL_NOT_SUPPORTED`) and two produced by this package only:
+    `MEMBER_ACCESS_UNSUPPORTED` (the group's core answered without an access) and
+    `MEMBERSHIP_OFFER_EXPECTED` (`acceptMembership` given an ordinary offer).
+- **`@pryv/cmc` `readOffer()` returns `accessType`** (`'shared'` or `'app'`: an `'app'` grant is
+  delegable, which a consent screen should say), **`membership`** and **`allowUserChoice`** (always
+  true for a membership offer). The typings already declared `allowUserChoice`; the value was not
+  returned.
+- **`@pryv/cmc` `acceptInvite()` takes `grantedPermissions`** to grant a subset of an offer that
+  allows it.
+- Types: `createInvite` declares `accessType`.
+
+### Fixed
+
+- **`@pryv/cmc` `createInvite()` sends `allowUserChoice`.** The option was declared in the typings
+  but dropped, so every invite was all or nothing.
+
 ## 3.17.2 - 2026-10-12
 
 `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` 3.17.2 (the

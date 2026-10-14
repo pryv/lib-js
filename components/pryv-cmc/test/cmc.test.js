@@ -2113,3 +2113,553 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
   });
 });
+
+// --- Group membership ---
+
+/** A `pryv` module whose Connection reads one offer event (for readOffer). */
+function fakePryvWithOffer (offerContent) {
+  const stub = {
+    apiOne: async function (method, _params, expectedKey) {
+      if (method === 'events.get') return { events: [{ id: 'offer-m', content: offerContent }] }[expectedKey];
+      throw new Error('unexpected method: ' + method);
+    },
+    service: { info: async () => { throw new Error('not stubbed'); } },
+    accessInfo: async () => { throw new Error('not stubbed'); }
+  };
+  return {
+    Connection: function () { return stub; },
+    utils: { decomposeAPIEndpoint: () => ({ username: null, host: '' }) }
+  };
+}
+
+/** What `pryv.Connection.apiOne` throws for an error answer (a PryvError). */
+function apiError (id, dataId) {
+  const err = new Error('Error for api method: "events.create" >> ' + id);
+  err.name = 'PryvError';
+  err.innerObject = { id, message: 'refused', data: dataId ? { id: dataId } : undefined };
+  return err;
+}
+
+const GROUP = { username: 'practice', host: 'pryv.me' };
+const PATIENT = { username: 'patient', host: 'other.example' };
+const TEAM = ':_cmc:apps:practice:team-a';
+
+describe('[CMCM] @pryv/cmc group membership', function () {
+  describe('[CMCMC] constants and error ids', function () {
+    it('[CMCMC1] exposes the two membership event types', function () {
+      expect(cmc.ET_MEMBER_ACCESS).to.equal('consent/member-access-cmc');
+      expect(cmc.ET_MEMBER_REVOKE).to.equal('consent/member-revoke-cmc');
+    });
+
+    it('[CMCMC2] mirrors every membership id of the server catalogue', function () {
+      const atWrite = {
+        MEMBER_ACCESS_NOT_MEMBER: 'cmc-member-access-not-member',
+        MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND: 'cmc-member-access-relationship-not-found',
+        MEMBER_ACCESS_SCOPE_OUTSIDE_MEMBERSHIP: 'cmc-member-access-scope-outside-membership',
+        MEMBER_ACCESS_PERMISSIONS_NOT_SUBSET: 'cmc-member-access-permissions-not-subset',
+        MEMBER_ACCESS_EXPIRY_OUT_OF_RANGE: 'cmc-member-access-expiry-out-of-range',
+        MEMBER_ACCESS_RATE_LIMITED: 'cmc-member-access-rate-limited',
+        MEMBER_ACCESS_IN_FLIGHT: 'cmc-member-access-in-flight',
+        MEMBERSHIP_PERMISSIONS_INVALID: 'cmc-membership-permissions-invalid',
+        MEMBER_STAMP_INVALID: 'cmc-member-stamp-invalid'
+      };
+      const onTrigger = {
+        MEMBER_ACCESS_GRANT_NOT_DELEGABLE: 'cmc-member-access-grant-not-delegable',
+        MEMBER_ACCESS_PEER_REJECTED: 'cmc-member-access-peer-rejected',
+        MEMBER_ACCESS_PEER_UNREACHABLE: 'cmc-member-access-peer-unreachable',
+        MEMBER_ACCESS_MEMBERSHIP_GONE: 'cmc-member-access-membership-gone',
+        MEMBER_ACCESS_NOT_RETRYABLE: 'cmc-member-access-not-retryable',
+        MEMBER_REVOKE_RESIDUAL: 'cmc-member-revoke-residual',
+        MEMBER_CHANNEL_NOT_SUPPORTED: 'cmc-member-channel-not-supported'
+      };
+      for (const [k, v] of Object.entries(Object.assign({}, atWrite, onTrigger))) {
+        expect(cmc.errorIds[k], k).to.equal(v);
+      }
+      // client-side only
+      expect(cmc.errorIds.MEMBER_ACCESS_UNSUPPORTED).to.equal('cmc-member-access-unsupported');
+      expect(cmc.errorIds.MEMBERSHIP_OFFER_EXPECTED).to.equal('cmc-membership-offer-expected');
+    });
+  });
+
+  describe('[CMCMO] offers: createInvite, readOffer, acceptInvite', function () {
+    function createStub () {
+      return makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return { event: { id: 'inv-1', streamIds: params.streamIds, content: Object.assign({}, params.content, { capabilityUrl: 'https://cap@g.pryv.me/' }) } };
+          }
+        }
+      });
+    }
+
+    it('[CMCMO1] createInvite passes allowUserChoice through to request.allowUserChoice', async function () {
+      const conn = createStub();
+      await cmc.createInvite(conn, {
+        appCode: 'practice', scopeStreamId: TEAM, displayName: 'Practice', requestedPermissions: [], allowUserChoice: true
+      });
+      expect(conn.calls[0].params.content.request.allowUserChoice).to.equal(true);
+      const conn2 = createStub();
+      await cmc.createInvite(conn2, { appCode: 'practice', scopeStreamId: TEAM, displayName: 'Practice', requestedPermissions: [] });
+      expect(conn2.calls[0].params.content.request).to.not.have.property('allowUserChoice');
+    });
+
+    it('[CMCMO2] readOffer reports accessType, membership and allowUserChoice', async function () {
+      const plain = await cmc.readOffer('https://c@x/', { pryv: fakePryvWithOffer({ request: { permissions: [] } }) });
+      expect(plain.accessType).to.equal('shared');
+      expect(plain.membership).to.equal(false);
+      expect(plain.allowUserChoice).to.equal(false);
+      const delegable = await cmc.readOffer('https://c@x/', {
+        pryv: fakePryvWithOffer({ request: { permissions: [], accessType: 'app', allowUserChoice: true } })
+      });
+      expect(delegable.accessType).to.equal('app');
+      expect(delegable.allowUserChoice).to.equal(true);
+      // A membership offer always allows a subset, whatever it says.
+      const membership = await cmc.readOffer('https://c@x/', {
+        pryv: fakePryvWithOffer({ request: { permissions: [], membership: true, allowUserChoice: false } })
+      });
+      expect(membership.membership).to.equal(true);
+      expect(membership.allowUserChoice).to.equal(true);
+      expect(membership.accessType).to.equal('shared');
+    });
+
+    it('[CMCMO3] acceptInvite sends grantedPermissions when given', async function () {
+      const conn = makeStubConnection({
+        handlers: { 'events.create': function () { return { event: { id: 'acc-1', content: { status: 'pending' } } }; } }
+      });
+      await cmc.acceptInvite(conn, 'https://c@x/', {
+        scopeStreamId: ':_cmc:apps:a',
+        grantedPermissions: [{ streamId: 'diary', level: 'read' }],
+        waitForCompletion: false,
+        pryv: fakePryvWithOffer({ request: { permissions: [] } })
+      });
+      expect(conn.calls[0].params.content.grantedPermissions).to.deep.equal([{ streamId: 'diary', level: 'read' }]);
+    });
+  });
+
+  describe('[CMCMR] requestMembership / waitForMembership', function () {
+    it('[CMCMR1] writes a single-use membership offer asking contribute on the team streams', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return { event: { id: 'mreq-1', streamIds: params.streamIds, content: Object.assign({}, params.content, { capabilityUrl: 'https://cap@member.pryv.me/', capabilityExpiresAt: 1800000000 }) } };
+          }
+        }
+      });
+      const res = await cmc.requestMembership(conn, {
+        group: GROUP,
+        scopeStreamIds: [TEAM, ':_cmc:apps:practice:team-b'],
+        appCode: 'practice',
+        displayName: 'Dr. Who'
+      });
+      const call = conn.calls[0];
+      expect(call.method).to.equal('events.create');
+      expect(call.params.type).to.equal('consent/request-cmc');
+      expect(call.params.streamIds).to.deep.equal([':_cmc:apps:practice']);
+      expect(call.params.content.capabilityRequested).to.equal(true);
+      expect(call.params.content).to.not.have.property('capability');
+      expect(call.params.content.request.membership).to.equal(true);
+      expect(call.params.content.request.allowUserChoice).to.equal(true);
+      expect(call.params.content.request).to.not.have.property('accessType');
+      expect(call.params.content.request.permissions).to.deep.equal([
+        { streamId: TEAM, level: 'contribute' },
+        { streamId: ':_cmc:apps:practice:team-b', level: 'contribute' }
+      ]);
+      expect(res).to.deep.equal({
+        inviteEventId: 'mreq-1',
+        capabilityUrl: 'https://cap@member.pryv.me/',
+        mode: 'single-use',
+        expiresAt: 1800000000,
+        group: GROUP
+      });
+    });
+
+    it('[CMCMR2] refuses anything but team streams before writing', async function () {
+      const conn = makeStubConnection({ handlers: {} });
+      for (const bad of [[], [':_cmc:inbox'], ['diary'], [TEAM + ':chats:bob--pryv-me'], [':_cmc:apps:practice:collectors']]) {
+        let err;
+        try {
+          await cmc.requestMembership(conn, { group: GROUP, scopeStreamIds: bad, appCode: 'practice', displayName: 'X' });
+        } catch (e) { err = e; }
+        expect(err, JSON.stringify(bad)).to.be.instanceOf(cmc.CmcError);
+        expect(err.id).to.equal('cmc-membership-permissions-invalid');
+      }
+      expect(conn.calls).to.have.length(0);
+    });
+
+    it('[CMCMR3] requires the group identity, appCode and displayName', async function () {
+      const conn = makeStubConnection({ handlers: {} });
+      const base = { group: GROUP, scopeStreamIds: [TEAM], appCode: 'practice', displayName: 'X' };
+      for (const params of [
+        Object.assign({}, base, { group: { username: 'practice' } }),
+        Object.assign({}, base, { appCode: '' }),
+        Object.assign({}, base, { displayName: undefined })
+      ]) {
+        let err;
+        try { await cmc.requestMembership(conn, params); } catch (e) { err = e; }
+        expect(err).to.be.instanceOf(Error);
+      }
+      expect(conn.calls).to.have.length(0);
+    });
+
+    it('[CMCMR4] waitForMembership only takes the expected group\'s acceptance', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.get': function () {
+            return {
+              events: [
+                { id: 'other', content: { from: { username: 'colleague', host: 'pryv.me' }, requesterAppCode: 'practice', grantedAccess: { apiEndpoint: 'https://x@colleague.pryv.me/' } } },
+                { id: 'group', content: { from: GROUP, requesterAppCode: 'practice', grantedAccess: { apiEndpoint: 'https://m@practice.pryv.me/' }, features: { chat: true } } }
+              ]
+            };
+          }
+        }
+      });
+      const r = await cmc.waitForMembership(conn, { group: GROUP, appCode: 'practice', timeoutMs: 500, intervalMs: 10 });
+      expect(r).to.deep.equal({
+        acceptInboxEventId: 'group',
+        membershipApiEndpoint: 'https://m@practice.pryv.me/',
+        group: GROUP,
+        features: { chat: true }
+      });
+      expect(conn.calls[0].params.streams).to.deep.equal([':_cmc:inbox']);
+    });
+
+    it('[CMCMR5] waitForMembership requires the group identity', async function () {
+      let err;
+      try { await cmc.waitForMembership(makeStubConnection({ handlers: {} }), { appCode: 'practice' }); } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(Error);
+    });
+  });
+
+  describe('[CMCMA] requestMemberAccess', function () {
+    const MEMBER_ACCESS = {
+      apiEndpoint: 'https://child@patient.other.example/',
+      accessId: 'child-1',
+      name: 'cmc-member--who--0123456789ab',
+      expires: 1800086400,
+      attribution: 'stamped'
+    };
+
+    it('[CMCMA1] writes the trigger and returns the access from the synchronous response', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return {
+              event: { id: 'mint-1', streamIds: params.streamIds, content: Object.assign({}, params.content, { status: 'completed' }) },
+              memberAccess: MEMBER_ACCESS
+            };
+          }
+        }
+      });
+      const r = await cmc.requestMemberAccess(conn, {
+        counterparty: PATIENT,
+        scopeStreamId: TEAM + ':patient-1',
+        permissions: [{ streamId: 'diary', level: 'read' }],
+        expireAfter: 3600
+      });
+      const call = conn.calls[0];
+      expect(call.params.type).to.equal('consent/member-access-cmc');
+      expect(call.params.streamIds).to.deep.equal([TEAM + ':patient-1']);
+      expect(call.params.content).to.deep.equal({
+        counterparty: PATIENT,
+        scopeStreamId: TEAM + ':patient-1',
+        permissions: [{ streamId: 'diary', level: 'read' }],
+        expireAfter: 3600
+      });
+      // The whole result is read: memberAccess sits beside event.
+      expect(call.expectedKey).to.equal(undefined);
+      expect(r).to.deep.equal(Object.assign({ triggerEventId: 'mint-1' }, MEMBER_ACCESS));
+    });
+
+    it('[CMCMA2] writes on streamId and sends only the fields given', async function () {
+      const conn = makeStubConnection({
+        handlers: { 'events.create': function () { return { event: { id: 'mint-2', content: { status: 'completed' } }, memberAccess: MEMBER_ACCESS }; } }
+      });
+      await cmc.requestMemberAccess(conn, { counterparty: PATIENT, streamId: TEAM });
+      expect(conn.calls[0].params.streamIds).to.deep.equal([TEAM]);
+      expect(conn.calls[0].params.content).to.deep.equal({ counterparty: PATIENT });
+    });
+
+    it('[CMCMA3] a refusal at write throws CmcError with the server id', async function () {
+      const conn = makeStubConnection({
+        handlers: { 'events.create': function () { return { error: apiError('invalid-operation', 'cmc-member-access-in-flight') }; } }
+      });
+      let err;
+      try { await cmc.requestMemberAccess(conn, { counterparty: PATIENT, streamId: TEAM }); } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal('cmc-member-access-in-flight');
+      expect(err.cause.innerObject.data.id).to.equal('cmc-member-access-in-flight');
+      expect(cmc.isMemberAccessRetryable(err)).to.equal(true);
+    });
+
+    it('[CMCMA4] a non-CMC API error is rethrown as is', async function () {
+      const original = apiError('forbidden');
+      const conn = makeStubConnection({ handlers: { 'events.create': function () { return { error: original }; } } });
+      let err;
+      try { await cmc.requestMemberAccess(conn, { counterparty: PATIENT, streamId: TEAM }); } catch (e) { err = e; }
+      expect(err).to.equal(original);
+    });
+
+    it('[CMCMA5] a failed trigger throws CmcError with failure.reason; only in-flight and peer-unreachable are retryable', async function () {
+      async function failWith (reason) {
+        const conn = makeStubConnection({
+          handlers: {
+            'events.create': function () {
+              return { event: { id: 'mint-f', content: { status: 'failed', failure: { reason, detail: { peerErrorId: 'forbidden', httpStatus: 403 } } } } };
+            }
+          }
+        });
+        try { await cmc.requestMemberAccess(conn, { counterparty: PATIENT, streamId: TEAM }); } catch (e) { return e; }
+        throw new Error('expected a rejection');
+      }
+      const notDelegable = await failWith('cmc-member-access-grant-not-delegable');
+      expect(notDelegable).to.be.instanceOf(cmc.CmcError);
+      expect(notDelegable.id).to.equal('cmc-member-access-grant-not-delegable');
+      expect(notDelegable.cause.detail).to.deep.equal({ peerErrorId: 'forbidden', httpStatus: 403 });
+      expect(cmc.isMemberAccessRetryable(notDelegable)).to.equal(false);
+      expect(cmc.isMemberAccessRetryable(await failWith('cmc-member-access-peer-unreachable'))).to.equal(true);
+      expect(cmc.isMemberAccessRetryable(await failWith('cmc-member-access-peer-rejected'))).to.equal(false);
+      expect(cmc.isMemberAccessRetryable(null)).to.equal(false);
+    });
+
+    it('[CMCMA6] no access and no failure (a core without member access) throws cmc-member-access-unsupported', async function () {
+      const conn = makeStubConnection({
+        handlers: { 'events.create': function () { return { event: { id: 'mint-old', content: { counterparty: PATIENT } } }; } }
+      });
+      let err;
+      try { await cmc.requestMemberAccess(conn, { counterparty: PATIENT, streamId: TEAM }); } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal('cmc-member-access-unsupported');
+      expect(err.cause).to.deep.equal({ triggerEventId: 'mint-old', status: undefined });
+    });
+
+    it('[CMCMA7] requires the patient identity and a stream', async function () {
+      const conn = makeStubConnection({ handlers: {} });
+      for (const params of [{ streamId: TEAM }, { counterparty: PATIENT }, { counterparty: { username: 'p' }, streamId: TEAM }]) {
+        let err;
+        try { await cmc.requestMemberAccess(conn, params); } catch (e) { err = e; }
+        expect(err).to.be.instanceOf(Error);
+      }
+      expect(conn.calls).to.have.length(0);
+    });
+  });
+
+  describe('[CMCML] leaveMembership', function () {
+    it('[CMCML1] revokes through the back-channel access stamped on the request', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'events.getOne': { event: { id: 'mreq-1', streamIds: [':_cmc:apps:practice'], content: { status: 'accepted', backChannelAccessId: 'bc-1' } } },
+          'events.create': function (params) { return { event: { id: 'rev-1', content: params.content } }; }
+        }
+      });
+      await cmc.leaveMembership(conn, { inviteEventId: 'mreq-1', reason: { en: 'moving on' } });
+      const create = conn.calls.find(c => c.method === 'events.create');
+      expect(create.params.type).to.equal('consent/revoke-cmc');
+      expect(create.params.streamIds).to.deep.equal([':_cmc:apps:practice']);
+      expect(create.params.content).to.deep.equal({ accessId: 'bc-1', reason: { en: 'moving on' } });
+    });
+
+    it('[CMCML2] takes an access id directly', async function () {
+      const conn = makeStubConnection({
+        handlers: { 'events.create': function (params) { return { event: { id: 'rev-2', content: params.content } }; } }
+      });
+      await cmc.leaveMembership(conn, { accessId: 'bc-2', scopeStreamId: ':_cmc:apps:practice' });
+      expect(conn.calls).to.have.length(1);
+      expect(conn.calls[0].params.content).to.deep.equal({ accessId: 'bc-2' });
+    });
+  });
+
+  describe('[CMCMD] administrator: accept, decline, list, revoke', function () {
+    const MEMBERSHIP_OFFER = {
+      request: {
+        membership: true,
+        permissions: [{ streamId: TEAM, level: 'contribute' }, { streamId: ':_cmc:apps:practice:team-b', level: 'contribute' }]
+      },
+      requesterMeta: { displayName: 'Dr. Who', appId: 'practice' }
+    };
+
+    function acceptStub () {
+      return makeStubConnection({
+        handlers: {
+          'events.create': function () { return { event: { id: 'acc-m', content: { status: 'pending', dataGrantAccessId: 'membership-1' } } }; },
+          'events.getOne': { event: { id: 'acc-m', content: { status: 'completed', dataGrantAccessId: 'membership-1' } } }
+        }
+      });
+    }
+
+    it('[CMCMD1] acceptMembership grants the chosen teams only, at the requested level', async function () {
+      const conn = acceptStub();
+      const r = await cmc.acceptMembership(conn, 'https://cap@member.pryv.me/', {
+        scopeStreamId: ':_cmc:apps:practice',
+        grantedScopes: [TEAM],
+        completionPollIntervalMs: 1,
+        pryv: fakePryvWithOffer(MEMBERSHIP_OFFER)
+      });
+      const create = conn.calls.find(c => c.method === 'events.create');
+      expect(create.params.type).to.equal('consent/accept-cmc');
+      expect(create.params.streamIds).to.deep.equal([':_cmc:apps:practice']);
+      expect(create.params.content.grantedPermissions).to.deep.equal([{ streamId: TEAM, level: 'contribute' }]);
+      expect(create.params.content).to.not.have.property('grantedScopes');
+      expect(r.acceptEventId).to.equal('acc-m');
+      expect(r.membershipAccessId).to.equal('membership-1');
+      expect(r.member.displayName).to.equal('Dr. Who');
+    });
+
+    it('[CMCMD2] without grantedScopes the whole request is granted', async function () {
+      const conn = acceptStub();
+      const r = await cmc.acceptMembership(conn, 'https://cap@member.pryv.me/', {
+        scopeStreamId: ':_cmc:apps:practice', waitForCompletion: false, pryv: fakePryvWithOffer(MEMBERSHIP_OFFER)
+      });
+      expect(conn.calls[0].params.content).to.not.have.property('grantedPermissions');
+      expect(r.status).to.equal('pending');
+      expect(r.membershipAccessId).to.equal('membership-1');
+    });
+
+    it('[CMCMD3] refuses an ordinary offer and a team that was not requested, before writing', async function () {
+      const conn = acceptStub();
+      let err;
+      try {
+        await cmc.acceptMembership(conn, 'https://cap@x/', {
+          scopeStreamId: ':_cmc:apps:practice', pryv: fakePryvWithOffer({ request: { permissions: [] } })
+        });
+      } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal('cmc-membership-offer-expected');
+      err = null;
+      try {
+        await cmc.acceptMembership(conn, 'https://cap@x/', {
+          scopeStreamId: ':_cmc:apps:practice', grantedScopes: [':_cmc:apps:practice:team-z'], pryv: fakePryvWithOffer(MEMBERSHIP_OFFER)
+        });
+      } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal('cmc-granted-permissions-not-subset');
+      err = null;
+      try {
+        await cmc.acceptMembership(conn, 'https://cap@x/', {
+          scopeStreamId: ':_cmc:apps:practice', grantedScopes: [], pryv: fakePryvWithOffer(MEMBERSHIP_OFFER)
+        });
+      } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(Error);
+      expect(conn.calls).to.have.length(0);
+    });
+
+    it('[CMCMD4] acceptMembership requires the accept stream', async function () {
+      let err;
+      try { await cmc.acceptMembership(acceptStub(), 'https://cap@x/', {}); } catch (e) { err = e; }
+      expect(err.message).to.match(/acceptMembership: opts.scopeStreamId is required/);
+    });
+
+    it('[CMCMD5] declineMembership writes a refusal', async function () {
+      const conn = makeStubConnection({ handlers: { 'events.create': { event: { id: 'ref-1' } } } });
+      const r = await cmc.declineMembership(conn, 'https://cap@x/', { scopeStreamId: ':_cmc:apps:practice', reason: { en: 'unknown' } });
+      expect(conn.calls[0].params.type).to.equal('consent/refuse-cmc');
+      expect(r).to.deep.equal({ refuseEventId: 'ref-1' });
+    });
+
+    it('[CMCMD6] listMembers keeps member accesses and never copies the counterparty endpoint', async function () {
+      const conn = makeStubConnection({
+        handlers: {
+          'accesses.get': {
+            accesses: [
+              {
+                id: 'membership-1',
+                created: 1700000000,
+                permissions: [
+                  { streamId: ':_cmc:inbox', level: 'create-only' },
+                  { streamId: TEAM, level: 'contribute' },
+                  { streamId: TEAM + ':chats:who--pryv-me', level: 'contribute' }
+                ],
+                clientData: {
+                  cmc: {
+                    role: 'member',
+                    appCode: 'practice',
+                    scopeStreamId: ':_cmc:apps:practice',
+                    acceptEventId: 'acc-m',
+                    counterparty: { username: 'who', host: 'pryv.me', apiEndpoint: 'https://secret@who.pryv.me/' },
+                    membership: { approvedBy: null, requestedScopes: [TEAM, ':_cmc:apps:practice:team-b'] }
+                  }
+                }
+              },
+              { id: 'patient-rel', clientData: { cmc: { role: 'counterparty', counterparty: PATIENT } } },
+              { id: 'plain-app' }
+            ]
+          }
+        }
+      });
+      const members = await cmc.listMembers(conn);
+      expect(members).to.deep.equal([{
+        membershipAccessId: 'membership-1',
+        member: { username: 'who', host: 'pryv.me' },
+        appCode: 'practice',
+        scopeStreamId: ':_cmc:apps:practice',
+        scopes: [{ streamId: TEAM, level: 'contribute' }],
+        requestedScopes: [TEAM, ':_cmc:apps:practice:team-b'],
+        approvedBy: null,
+        acceptEventId: 'acc-m',
+        created: 1700000000,
+        expires: null
+      }]);
+      expect(JSON.stringify(members)).to.not.include('secret');
+    });
+
+    it('[CMCMD7] revokeMembership writes consent/revoke-cmc for the membership access', async function () {
+      const conn = makeStubConnection({ handlers: { 'events.create': function (params) { return { event: { id: 'rev-m', content: params.content } }; } } });
+      const r = await cmc.revokeMembership(conn, { membershipAccessId: 'membership-1', scopeStreamId: ':_cmc:apps:practice', reason: { en: 'left the practice' } });
+      expect(conn.calls[0].params).to.deep.equal({
+        streamIds: [':_cmc:apps:practice'],
+        type: 'consent/revoke-cmc',
+        content: { accessId: 'membership-1', reason: { en: 'left the practice' } }
+      });
+      expect(r).to.deep.equal({ revokeEventId: 'rev-m' });
+      let err;
+      try { await cmc.revokeMembership(conn, { membershipAccessId: 'membership-1' }); } catch (e) { err = e; }
+      expect(err).to.be.instanceOf(Error);
+    });
+  });
+
+  describe('[CMCMS] offboarding sweeps', function () {
+    const SWEEP = {
+      id: 'sweep-1',
+      time: 1700000100,
+      streamIds: [':_cmc:apps:practice'],
+      content: {
+        member: { username: 'who', host: 'pryv.me' },
+        membershipAccessId: 'membership-1',
+        reason: 'revoke',
+        records: [{ relationshipAccessId: 'rel-1', counterparty: PATIENT, childAccessId: 'child-1', expires: 1700086400 }],
+        status: 'failed',
+        failure: { reason: 'cmc-member-revoke-residual' },
+        outcome: [{ childAccessId: 'child-1', result: 'residual', reason: 'cmc-member-access-peer-unreachable' }],
+        residuals: [{ counterparty: PATIENT, childAccessId: 'child-1', expires: 1700086400, reason: 'cmc-member-access-peer-unreachable' }]
+      }
+    };
+
+    it('[CMCMS1] getSweepStatus maps the sweep record', async function () {
+      const conn = makeStubConnection({ handlers: { 'events.getOne': { event: SWEEP } } });
+      const s = await cmc.getSweepStatus(conn, 'sweep-1');
+      expect(conn.calls[0].params).to.deep.equal({ id: 'sweep-1' });
+      expect(s.sweepEventId).to.equal('sweep-1');
+      expect(s.status).to.equal('failed');
+      expect(s.failure.reason).to.equal(cmc.errorIds.MEMBER_REVOKE_RESIDUAL);
+      expect(s.residuals).to.have.length(1);
+      expect(s.outcome[0].result).to.equal('residual');
+      expect(s.scopeStreamId).to.equal(':_cmc:apps:practice');
+      expect(s.time).to.equal(1700000100);
+    });
+
+    it('[CMCMS2] listSweeps reads member-revoke events, newest first, filtered by membership', async function () {
+      const other = { id: 'sweep-2', content: { membershipAccessId: 'membership-2' } };
+      const conn = makeStubConnection({ handlers: { 'events.get': { events: [SWEEP, other] } } });
+      const r = await cmc.listSweeps(conn, { membershipAccessId: 'membership-1' });
+      expect(conn.calls[0].params).to.deep.equal({
+        streams: [':_cmc:apps'], types: ['consent/member-revoke-cmc'], limit: 100, sortAscending: false
+      });
+      expect(r.items.map(s => s.sweepEventId)).to.deep.equal(['sweep-1']);
+      expect(r.truncated).to.equal(false);
+      // a sparse record still maps
+      const all = await cmc.listSweeps(conn);
+      expect(all.items[1]).to.include({ sweepEventId: 'sweep-2', status: 'pending', member: null });
+      expect(all.items[1].residuals).to.deep.equal([]);
+    });
+  });
+});

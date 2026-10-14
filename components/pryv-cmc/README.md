@@ -102,9 +102,11 @@ Lifecycle / handler / chat-routing examples: `cmc.errorIds.CAPABILITY_INVALID` (
 | `RESERVED_STREAM_UNDELETABLE` | `'cmc-reserved-stream-undeletable'` | `streams.delete` rejected on a plugin-managed `:_cmc:*` parent (incl. personal-token deletes). |
 | `COUNTERPARTY_IDENTITY_MISSING` | `'cmc-counterparty-identity-missing'` | Peer-side `content.from` stamping hook rejected — the counterparty access lacks `{username,host}` (ops-level, shouldn't happen under normal flow). |
 
+**Added in `@pryv/cmc@3.21.0`** for [group membership](#group-accounts-membership): refused when the trigger is written (`error.data.id`) `MEMBER_ACCESS_NOT_MEMBER`, `MEMBER_ACCESS_RELATIONSHIP_NOT_FOUND`, `MEMBER_ACCESS_SCOPE_OUTSIDE_MEMBERSHIP`, `MEMBER_ACCESS_PERMISSIONS_NOT_SUBSET`, `MEMBER_ACCESS_EXPIRY_OUT_OF_RANGE`, `MEMBER_ACCESS_RATE_LIMITED`, `MEMBER_ACCESS_IN_FLIGHT`, `MEMBERSHIP_PERMISSIONS_INVALID`, `MEMBER_STAMP_INVALID`; recorded on the trigger (`failure.reason`) `MEMBER_ACCESS_GRANT_NOT_DELEGABLE`, `MEMBER_ACCESS_PEER_REJECTED`, `MEMBER_ACCESS_PEER_UNREACHABLE`, `MEMBER_ACCESS_MEMBERSHIP_GONE`, `MEMBER_ACCESS_NOT_RETRYABLE`, `MEMBER_REVOKE_RESIDUAL`, `MEMBER_CHANNEL_NOT_SUPPORTED`. Two are produced by this package only, never by a server: `MEMBER_ACCESS_UNSUPPORTED` (`'cmc-member-access-unsupported'`, the group's core answered without an access) and `MEMBERSHIP_OFFER_EXPECTED` (`'cmc-membership-offer-expected'`, `acceptMembership` given an ordinary offer).
+
 The full list lives in [`src/index.js`](src/index.js) (and the typed mirror in [`src/index.d.ts`](src/index.d.ts)).
 
-`cmc.CmcError` is a typed `Error` subclass carrying `.id` (one of `errorIds.*`) and `.failure` (the server's raw `failure` object). It's thrown by `acceptInvite` on `status: 'failed'`.
+`cmc.CmcError` is a typed `Error` subclass carrying `.id` (one of `errorIds.*`) and `.cause` (the server's raw `failure` object, or the API error it wraps). It's thrown by `acceptInvite` on `status: 'failed'` and by the membership helpers below.
 
 #### Capability TTL bounds
 
@@ -144,6 +146,8 @@ const invite = await cmc.createInvite(conn, {
   mode: 'single-use',            // or 'open-link'
   consent: { en: 'I consent to share data for this study.' },
   features: { chat: true, systemMessaging: true }
+  // allowUserChoice: true,      // the accepter may grant a subset (default: all or nothing)
+  // accessType: 'app',          // delegable grant: you may create sub-accesses from it
 });
 // invite = { inviteEventId, capabilityUrl, mode, expiresAt (number | null) }
 
@@ -203,12 +207,17 @@ const update = await cmc.proposeScopeUpdate(conn, {
 
 ```js
 const offer = await cmc.readOffer(capabilityUrl);
-// offer = { requester: { username, host, displayName }, consent, requestedPermissions, mode, features }
+// offer = { requester: { username, host, displayName }, consent, requestedPermissions,
+//           allowUserChoice, accessType, membership, mode, features }
+// accessType 'app': the grant is delegable (the requester can create sub-accesses
+// from it, for example for the members of a group); say so on the consent screen.
+// membership true: the requester asks to join YOUR group (see acceptMembership).
 
 const accepted = await cmc.acceptInvite(conn, capabilityUrl, {
   scopeStreamId: ':_cmc:apps:my-app',      // REQUIRED — own scope stream where the trigger lands.
   extra: { chat: true, systemMessaging: true },
   accessName: 'my-app-grant'
+  // grantedPermissions: [...]             // a subset of the offer, when offer.allowUserChoice
 });
 // accepted = { acceptEventId, dataGrantAccessId, counterparty, features }
 // Waits for Phase-2 completion by default (~50-200ms).
@@ -432,6 +441,117 @@ Against a server that predates the receiver-side enrichment, `side` and
 sent — often just the peer's own `accessId` and `appCode`. There may then be no
 shared identifier at all and `revocationMatches` returns false for everything;
 fall back to `rev.from` plus your own bookkeeping.
+
+#### Group accounts (membership)
+
+A group (a practice, a research team) is an ordinary Pryv account. Its members
+are other Pryv accounts: each joins with a membership, a CMC relationship in
+which the member asks and a group administrator accepts, so the member holds an
+access on the group's account. Members invite patients on the group's behalf
+and read a patient's data under an access that names them, created by the
+group's core; no backend is needed on the implementer's side. Requires cores
+that support group membership on both the group's and the patients' side.
+
+**Member side**
+
+```js
+const member = new pryv.Connection(memberApiEndpoint);   // the member's own account
+const group = { username: 'practice', host: 'pryv.me' };
+
+// 1. Ask to join: contribute on the group's team streams.
+const request = await cmc.requestMembership(member, {
+  group,
+  scopeStreamIds: [':_cmc:apps:practice:team-a'],   // streams on the GROUP's account
+  appCode: 'practice',
+  displayName: 'Dr. Who'                            // how the administrator sees you
+});
+// request = { inviteEventId, capabilityUrl, mode: 'single-use', expiresAt, group }
+// Show request.capabilityUrl as a QR code or a link to an administrator: nothing
+// is delivered to the group automatically.
+
+// 2. Wait for the administrator (a human: use a long timeout, or call again).
+const joined = await cmc.waitForMembership(member, { group, appCode: 'practice', timeoutMs: 10 * 60 * 1000 });
+const membership = new pryv.Connection(joined.membershipApiEndpoint);   // your access on the group's account
+// Only an acceptance from `group` counts; anyone else accepting the link is ignored.
+
+// 3. Invite a patient on the group's behalf. The grant must be delegable.
+const invite = await cmc.createInvite(membership, {
+  appCode: 'practice',
+  scopeStreamId: ':_cmc:apps:practice:team-a',
+  displayName: 'Practice',
+  requestedPermissions: [{ streamId: 'diary', level: 'read' }],
+  accessType: 'app'
+});
+
+// 4. Once the patient accepted: get an access on the patient's account.
+try {
+  const access = await cmc.requestMemberAccess(membership, {
+    counterparty: { username: 'patient', host: 'pryv.me' },
+    scopeStreamId: ':_cmc:apps:practice:team-a'      // the patient relationship's scope
+    // permissions: [{ streamId: 'diary', level: 'read' }],   // default: the offer's streams at read
+    // expireAfter: 3600                                     // seconds; default 24 h, at most 7 days
+  });
+  // access = { triggerEventId, apiEndpoint, accessId, name, expires, attribution }
+  const patient = new pryv.Connection(access.apiEndpoint);
+} catch (err) {
+  if (cmc.isMemberAccessRetryable(err)) { /* in flight or patient core unreachable: ask again shortly */ }
+  // err.id: cmc.errorIds.MEMBER_ACCESS_* (see the catalogue above)
+}
+
+// 5. Leave the group: the group's core deletes the accesses it created for you.
+await cmc.leaveMembership(member, { inviteEventId: request.inviteEventId });
+```
+
+`requestMemberAccess` is answered synchronously: the group's core creates the
+access on the patient's account through the patient's grant and returns it in
+the same response. The `apiEndpoint` carries a token; the server never stores
+it, so do not log it, and ask again when it expires (asking again for the same
+patient with the same permissions returns the same access while it is valid). `attribution` is
+`'name-only'` when the patient's core predates the member stamp: the access
+name still names the member. Against a group core without member access the
+call throws `cmc-member-access-unsupported`.
+
+`requestMembership` checks before writing that every stream is a team stream
+(`:_cmc:apps:<app>[:<path>]`, chats and collectors excluded), and throws
+`cmc-membership-permissions-invalid` otherwise, as the server does.
+
+**Administrator side** (the group's personal token, or a delegate's)
+
+```js
+const admin = new pryv.Connection(groupAdminApiEndpoint);
+
+const offer = await cmc.readOffer(pastedOrScannedUrl);
+// offer.membership === true; offer.requester is the member;
+// offer.requestedPermissions lists the teams asked for (show them as checkboxes).
+
+const accepted = await cmc.acceptMembership(admin, pastedOrScannedUrl, {
+  scopeStreamId: ':_cmc:apps:practice',            // group's stream where the accept lands
+  grantedScopes: [':_cmc:apps:practice:team-a']    // optional: a subset of the requested teams
+});
+// accepted = { acceptEventId, membershipAccessId, member }
+// An ordinary offer throws cmc-membership-offer-expected.
+
+await cmc.declineMembership(admin, pastedOrScannedUrl, { scopeStreamId: ':_cmc:apps:practice' });
+
+const members = await cmc.listMembers(admin);
+// [{ membershipAccessId, member: { username, host }, appCode, scopeStreamId,
+//    scopes, requestedScopes, approvedBy, acceptEventId, created, expires }]
+
+await cmc.revokeMembership(admin, {
+  membershipAccessId: members[0].membershipAccessId,
+  scopeStreamId: members[0].scopeStreamId
+});
+// The group's core then sweeps the accesses it created for that member on
+// patients' accounts, and records the sweep:
+const { items } = await cmc.listSweeps(admin, { membershipAccessId: members[0].membershipAccessId });
+const sweep = await cmc.getSweepStatus(admin, items[0].sweepEventId);
+// sweep = { status, reason, outcome: [{ childAccessId, result: 'deleted' | 'absent' | 'residual' }],
+//           residuals: [{ counterparty, childAccessId, expires, reason }], ... }
+```
+
+A membership approved with a delegate's token ends when that delegation is
+detached, unless the owner keeps it. Member-to-group chat and alerts are not
+supported (`cmc-member-channel-not-supported`).
 
 
 ### Examples
