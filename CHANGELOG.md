@@ -4,7 +4,9 @@
 
 ## [Unreleased]
 
-`@pryv/cmc` 3.21.0; the other packages are unchanged.
+## 3.21.0 - 2026-10-15
+
+`@pryv/cmc` 3.21.0 only (the other packages are unchanged at 3.17.2). Needs open-pryv.io 2.0.0-rc.53 or later for group memberships.
 
 ### Added
 
