@@ -829,10 +829,14 @@ async function revokeRelationship (conn, params) {
 }
 
 /**
- * Invalidate an open-link capability so it stops accepting NEW patients.
- * The provided `inviteEventId` is used to look up the trigger event and
- * read its `capabilityId`. Already-established relationships are
- * untouched. Idempotent; no-op on single-use capabilities.
+ * Withdraw an invite's capability so it stops accepting NEW patients: an
+ * open-link invite, or a single-use invite nobody accepted yet (open-pryv.io
+ * 2.0.0-rc.56 and later; the invite's status becomes `invalidated` and a
+ * later accept fails with `cmc-capability-invalidated`). The provided
+ * `inviteEventId` is used to look up the trigger event and read its
+ * `capabilityId`. Already-established relationships are untouched (use
+ * `revokeRelationship`). Idempotent; a no-op on a single-use invite already
+ * accepted, and on any single-use invite with an earlier core.
  *
  * @param {Object} conn
  * @param {Object} params

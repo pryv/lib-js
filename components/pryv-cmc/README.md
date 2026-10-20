@@ -165,7 +165,10 @@ await cmc.revokeRelationship(conn, {
   reason: { en: 'study completed' }
 });
 
-// Open-link mode only (Phase 2 lifecycle):
+// Withdraw an invite: an open-link invite, or a single-use invite nobody
+// accepted yet (open-pryv.io 2.0.0-rc.56 and later; a no-op once accepted).
+// The offer text stays readable through the link until it expires, so give
+// invites you may withdraw a short expiresAt.
 await cmc.invalidateCapability(conn, {
   inviteEventId: invite.inviteEventId,
   reason: { en: 'study cohort closed' }
@@ -177,7 +180,8 @@ const list = await cmc.listInvites(conn, { appCode: 'my-app', limit: 1000 });
 const one = await cmc.getInviteStatus(conn, invite.inviteEventId);
 // one.status: 'pending' | 'delivered' (open), 'accepted' / 'refused' / 'revoked'
 // (single-use, with one.counterparty and one.backChannelAccessId once accepted),
-// 'invalidated' (open-link), or 'expired' (derived). A refused single-use invite
+// 'invalidated' (withdrawn: open-link, or single-use not accepted, from
+// open-pryv.io 2.0.0-rc.56), or 'expired' (derived). A refused single-use invite
 // may still be accepted later.
 
 const joined = await cmc.listInviteAccepters(conn, { inviteEventId: invite.inviteEventId });

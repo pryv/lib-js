@@ -229,8 +229,10 @@ declare module '@pryv/cmc' {
   /**
    * What a core reports on the request event. `pending` / `delivered`: still
    * open. Single-use: `accepted`, `refused` (the link is not consumed, it may
-   * still be accepted), `revoked`. Open-link: `invalidated`; an open-link invite
-   * stays `pending` / `delivered` while it accepts joiners. `expired` is
+   * still be accepted), `revoked`. `invalidated`: withdrawn by the requester
+   * (`invalidateCapability`), an open-link invite or, with open-pryv.io
+   * 2.0.0-rc.56 and later, a single-use invite nobody accepted; an open-link
+   * invite stays `pending` / `delivered` while it accepts joiners. `expired` is
    * derived client-side. `completed` / `failed` are not produced for invites by
    * current cores.
    */

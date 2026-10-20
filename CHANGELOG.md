@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+## 3.21.1 - 2026-10-20
+
+`@pryv/cmc` 3.21.1 only (documentation and types; no behaviour change in the client; the other packages are unchanged at 3.17.2).
+
+### Changed
+
+- `invalidateCapability` documentation and the `InviteStatus` type comment: with open-pryv.io 2.0.0-rc.56 and later it also withdraws a single-use invite nobody accepted yet (its status becomes `invalidated`, a later accept fails with `cmc-capability-invalidated`); it stays a no-op on an accepted single-use invite and on any single-use invite with an earlier core. The offer text stays readable through the link until it expires, so give invites you may withdraw a short `expiresAt`.
+
 ## 3.21.0 - 2026-10-15
 
 `@pryv/cmc` 3.21.0 only (the other packages are unchanged at 3.17.2). Needs open-pryv.io 2.0.0-rc.53 or later for group memberships.
