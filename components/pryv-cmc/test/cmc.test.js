@@ -2125,9 +2125,11 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
 
     it('[CMCXRM] a superseded arrival is surfaced and matches no relationship', function () {
       // A late notice the receiving server dropped because the relationship was
-      // re-established since: the server enriches it with the CURRENT local
-      // handles, so without the guard it would match the live relationship and
-      // an app acting on the match would drop endpoints that still work.
+      // re-established since. The server does not enrich such an arrival, but
+      // the sender's own scope, offer and invite ids (an open link re-accepted
+      // keeps the same invite and offer) match the live relationship through
+      // those tiers, so without the guard an app acting on the match would drop
+      // endpoints that still work.
       const superseded = cmc.revocationFromEvent({
         ...REQUESTER_ARRIVAL,
         content: { ...REQUESTER_ARRIVAL.content, revokedAccessIds: [], superseded: 'relationship-re-established' }

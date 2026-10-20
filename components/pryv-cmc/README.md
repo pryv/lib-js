@@ -451,6 +451,12 @@ cmc.revocationMatches(rev, { inviteEventId, from: rev.from && relationship.peer 
 anything else is considered, and agreeing alone never proves a match. It is safe
 to trust because the server stamps `from` on every inbox arrival.
 
+On the requester side, a revocation's `acceptEventId` is the accepter's
+accept-trigger id, not the `acceptInboxEventId` that `waitForAccept` returns.
+Requester apps match on `accessId` or on `inviteEventId` with `from`, never by
+passing `acceptInboxEventId` as `acceptEventId` (it would never match, and the
+tier does not fall through).
+
 Against a server that predates the receiver-side enrichment, `side` and
 `localAccessId` are `null`, and the record carries only what that older server
 sent — often just the peer's own `accessId` and `appCode`. There may then be no
