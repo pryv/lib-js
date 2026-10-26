@@ -901,6 +901,117 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     });
   });
 
+  describe('[CMCL1AP] accept pre-checks the capability state read with the offer', function () {
+    /**
+     * A `pryv` module whose capability connection reads one offer and
+     * answers access-info with `accessInfo` (an Error to make it fail).
+     */
+    function fakePryvWithCapability (accessInfo, offerContent) {
+      const stub = {
+        apiOne: async function (method, _params, expectedKey) {
+          if (method === 'events.get') {
+            return { events: [{ id: 'offer-1', content: offerContent || { request: { permissions: [] } } }] }[expectedKey];
+          }
+          throw new Error('unexpected method: ' + method);
+        },
+        service: { info: async () => ({ api: 'https://{username}.example.com/' }) },
+        accessInfo: async () => {
+          if (accessInfo instanceof Error) throw accessInfo;
+          return accessInfo;
+        }
+      };
+      return {
+        Connection: function () { return stub; },
+        utils: { decomposeAPIEndpoint: () => ({ username: 'doctor', host: 'example.com' }) }
+      };
+    }
+    function capabilityAccess (state) {
+      return { user: { username: 'doctor' }, clientData: { cmc: { kind: 'capability', capability: { mode: 'single-use', state } } } };
+    }
+    function acceptConn () {
+      return makeStubConnection({
+        handlers: {
+          'events.create': function (params) {
+            return { event: { id: 'acc-p', streamIds: params.streamIds, content: { status: 'pending' } } };
+          }
+        }
+      });
+    }
+    async function acceptError (promise) {
+      try {
+        await promise;
+      } catch (e) {
+        return e;
+      }
+      return null;
+    }
+
+    it('[CMCL1AP1] readOffer returns the capability state from access-info', async function () {
+      const offer = await cmc.readOffer('https://c@x/', { pryv: fakePryvWithCapability(capabilityAccess('consumed')) });
+      expect(offer.capabilityState).to.equal('consumed');
+      expect(offer.requester.username).to.equal('doctor');
+      const open = await cmc.readOffer('https://c@x/', { pryv: fakePryvWithCapability(capabilityAccess('open')) });
+      expect(open.capabilityState).to.equal('open');
+    });
+
+    it('[CMCL1AP2] readOffer returns capabilityState null when access-info fails or carries no state', async function () {
+      const failed = await cmc.readOffer('https://c@x/', { pryv: fakePryvWithCapability(new Error('boom')) });
+      expect(failed.capabilityState).to.equal(null);
+      const bare = await cmc.readOffer('https://c@x/', { pryv: fakePryvWithCapability({ user: { username: 'doctor' } }) });
+      expect(bare.capabilityState).to.equal(null);
+    });
+
+    it('[CMCL1AP3] a consumed capability throws cmc-capability-consumed and writes no trigger', async function () {
+      const conn = acceptConn();
+      const err = await acceptError(cmc.acceptInvite(conn, 'https://c@x/', {
+        scopeStreamId: ':_cmc:apps:test', pryv: fakePryvWithCapability(capabilityAccess('consumed'))
+      }));
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal(cmc.errorIds.CAPABILITY_CONSUMED);
+      expect(conn.calls.filter((c) => c.method === 'events.create')).to.have.length(0);
+    });
+
+    it('[CMCL1AP4] an invalidated capability throws cmc-capability-invalidated and writes no trigger', async function () {
+      const conn = acceptConn();
+      const err = await acceptError(cmc.acceptInvite(conn, 'https://c@x/', {
+        scopeStreamId: ':_cmc:apps:test', pryv: fakePryvWithCapability(capabilityAccess('invalidated'))
+      }));
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal(cmc.errorIds.CAPABILITY_INVALIDATED);
+      expect(conn.calls.filter((c) => c.method === 'events.create')).to.have.length(0);
+    });
+
+    it('[CMCL1AP5] an open capability writes the trigger as before', async function () {
+      const conn = acceptConn();
+      const r = await cmc.acceptInvite(conn, 'https://c@x/', {
+        scopeStreamId: ':_cmc:apps:test', waitForCompletion: false, pryv: fakePryvWithCapability(capabilityAccess('open'))
+      });
+      expect(r.acceptEventId).to.equal('acc-p');
+      expect(r.counterparty.username).to.equal('doctor');
+      expect(conn.calls.filter((c) => c.method === 'events.create')).to.have.length(1);
+    });
+
+    it('[CMCL1AP6] an unreadable state (access-info fails) still writes the trigger: the server decides', async function () {
+      const conn = acceptConn();
+      const r = await cmc.acceptInvite(conn, 'https://c@x/', {
+        scopeStreamId: ':_cmc:apps:test', waitForCompletion: false, pryv: fakePryvWithCapability(new Error('boom'))
+      });
+      expect(r.acceptEventId).to.equal('acc-p');
+      expect(conn.calls.filter((c) => c.method === 'events.create')).to.have.length(1);
+    });
+
+    it('[CMCL1AP7] acceptMembership on a consumed capability throws cmc-capability-consumed and writes no trigger', async function () {
+      const conn = acceptConn();
+      const err = await acceptError(cmc.acceptMembership(conn, 'https://c@x/', {
+        scopeStreamId: ':_cmc:apps:practice',
+        pryv: fakePryvWithCapability(capabilityAccess('consumed'), { request: { permissions: [], membership: true } })
+      }));
+      expect(err).to.be.instanceOf(cmc.CmcError);
+      expect(err.id).to.equal(cmc.errorIds.CAPABILITY_CONSUMED);
+      expect(conn.calls.filter((c) => c.method === 'events.create')).to.have.length(0);
+    });
+  });
+
   describe('[CMCL1C] cross-direction: chat / system / ack', function () {
     let conn;
     beforeEach(function () {
@@ -1155,6 +1266,57 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
     it('[CMCL1NW3] includeWithdrawn: false behaves as the default', async function () {
       const r = await cmc.listAcceptedRelationships(stubWithEnded(), { includeWithdrawn: false });
       expect(r.map((x) => x.acceptEventId)).to.deep.equal(['acc-active', 'acc-no-content']);
+    });
+  });
+
+  describe('[CMCL1NF] listAcceptedRelationships and failed accept triggers', function () {
+    const FAILED = { status: 'failed', failure: { reason: 'cmc-capability-consumed' } };
+    /** Serves `all` sorted as given, honouring `skip` / `limit`. */
+    function stubWithEvents (all) {
+      return makeStubConnection({
+        handlers: {
+          'events.get': function (params) {
+            const skip = params.skip || 0;
+            return { events: all.slice(skip, skip + params.limit) };
+          }
+        }
+      });
+    }
+
+    it('[CMCL1NF1] leaves out failed triggers, also with includeWithdrawn', async function () {
+      const all = [
+        { id: 'acc-failed', streamIds: [':_cmc:apps:my-app'], content: FAILED },
+        { id: 'acc-ok', streamIds: [':_cmc:apps:my-app'], content: { status: 'completed', dataGrantAccessId: 'dg-1' } },
+        { id: 'acc-ended', streamIds: [':_cmc:apps:my-app'], content: { status: 'completed', withdrawal: { at: 1, by: 'accesses.delete' } } }
+      ];
+      const r = await cmc.listAcceptedRelationships(stubWithEvents(all));
+      expect(r.map((x) => x.acceptEventId)).to.deep.equal(['acc-ok']);
+      const withEnded = await cmc.listAcceptedRelationships(stubWithEvents(all), { includeWithdrawn: true });
+      expect(withEnded.map((x) => x.acceptEventId)).to.deep.equal(['acc-ok', 'acc-ended']);
+    });
+
+    it('[CMCL1NF2] failed triggers do not crowd real relationships out of `limit`: further pages are read', async function () {
+      const all = [];
+      for (let i = 0; i < 5; i++) all.push({ id: 'acc-failed-' + i, streamIds: [':_cmc:apps:my-app'], content: FAILED });
+      all.push({ id: 'acc-ok-1', streamIds: [':_cmc:apps:my-app'], content: { status: 'completed' } });
+      all.push({ id: 'acc-ok-2', streamIds: [':_cmc:apps:my-app'], content: { status: 'completed' } });
+      all.push({ id: 'acc-ok-3', streamIds: [':_cmc:apps:my-app'], content: { status: 'completed' } });
+      const conn = stubWithEvents(all);
+      const r = await cmc.listAcceptedRelationships(conn, { limit: 2 });
+      expect(r.map((x) => x.acceptEventId)).to.deep.equal(['acc-ok-1', 'acc-ok-2']);
+      expect(conn.calls.map((c) => c.params.skip)).to.deep.equal([undefined, 2, 4, 6]);
+      expect(conn.calls.every((c) => c.params.limit === 2)).to.equal(true);
+    });
+
+    it('[CMCL1NF3] stops reading when a page comes back short', async function () {
+      const all = [
+        { id: 'acc-failed', streamIds: [':_cmc:apps:my-app'], content: FAILED },
+        { id: 'acc-ok', streamIds: [':_cmc:apps:my-app'], content: { status: 'completed' } }
+      ];
+      const conn = stubWithEvents(all);
+      const r = await cmc.listAcceptedRelationships(conn, { limit: 5 });
+      expect(r.map((x) => x.acceptEventId)).to.deep.equal(['acc-ok']);
+      expect(conn.calls).to.have.length(1);
     });
   });
 
