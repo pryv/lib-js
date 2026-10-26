@@ -469,7 +469,9 @@ declare module '@pryv/cmc' {
 
   /**
    * Refuse an offer. `opts.scopeStreamId` is REQUIRED — same constraints
-   * as `acceptInvite`.
+   * as `acceptInvite`. Reads the offer first: a link already accepted or
+   * withdrawn throws `cmc-capability-consumed` / `cmc-capability-invalidated`
+   * without writing anything (an unreadable offer writes the refusal).
    */
   export function refuseInvite(conn: any, capabilityUrl: string, opts: {
     scopeStreamId: string;
@@ -659,6 +661,7 @@ declare module '@pryv/cmc' {
     status?: string;
   }>;
 
+  /** Decline a membership request: `refuseInvite`, with its state pre-check. */
   export function declineMembership(conn: any, capabilityUrl: string, opts: {
     scopeStreamId: string;
     reason?: Record<string, string>;

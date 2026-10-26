@@ -239,6 +239,8 @@ await cmc.refuseInvite(conn, capabilityUrl, {
   scopeStreamId: ':_cmc:apps:my-app',
   reason: { en: 'not interested' }
 });
+// Same pre-check: a link already accepted or withdrawn throws before the refusal
+// is written (an unreadable offer writes it and the server decides).
 
 await cmc.revokeAcceptance(conn, {
   scopeStreamId: ':_cmc:apps:my-app',
@@ -255,7 +257,7 @@ const relationships = await cmc.listAcceptedRelationships(conn, { scopeStreamId:
 // Needs a core that records withdrawals; an older core leaves ended ones looking active.
 // Failed accept triggers (refused by the server, no relationship) are always left out.
 // `limit` (default 1000) caps the records returned; left-out events do not count
-// against it (further pages are read).
+// against it, so several events.get calls may be made (pages of at least 100 events).
 
 // Respond to a scope-update request from the provider. The id is the
 // request's id on YOUR account (the provider gets it as remoteScopeRequestEventId).
@@ -578,6 +580,7 @@ const accepted = await cmc.acceptMembership(admin, pastedOrScannedUrl, {
 // An ordinary offer throws cmc-membership-offer-expected.
 
 await cmc.declineMembership(admin, pastedOrScannedUrl, { scopeStreamId: ':_cmc:apps:practice' });
+// Same pre-check as refuseInvite: an accepted or withdrawn request throws before writing.
 
 const members = await cmc.listMembers(admin);
 // [{ membershipAccessId, member: { username, host }, appCode, scopeStreamId,

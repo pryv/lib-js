@@ -1075,6 +1075,22 @@ async function acceptInvite (conn, capabilityUrl, opts) {
   return acceptOffer(conn, capabilityUrl, opts, offer);
 }
 
+/**
+ * A link already accepted (single-use) or withdrawn is refused by the
+ * server anyway, and the trigger then stays in the account as failed.
+ * Throw before writing it instead. The server stays the authority: an
+ * offer that could not be read (null) or an unknown state proceeds.
+ */
+function assertCapabilityAnswerable (offer, action) {
+  const capabilityState = offer?.capabilityState;
+  if (capabilityState === 'consumed') {
+    throw new CmcError('CMC ' + action + ' refused: the capability was already accepted', errorIds.CAPABILITY_CONSUMED);
+  }
+  if (capabilityState === 'invalidated') {
+    throw new CmcError('CMC ' + action + ' refused: the capability was withdrawn by the requester', errorIds.CAPABILITY_INVALIDATED);
+  }
+}
+
 function requireAcceptScope (opts, fnName) {
   if (!opts.scopeStreamId) {
     throw new Error(fnName + ': opts.scopeStreamId is required ' +
@@ -1088,16 +1104,7 @@ function requireAcceptScope (opts, fnName) {
  * read failed), then wait for completion unless told not to.
  */
 async function acceptOffer (conn, capabilityUrl, opts, offer) {
-  // A link already accepted (single-use) or withdrawn is refused by the
-  // server anyway; refusing it here leaves no failed trigger behind. The
-  // server stays the authority: an unknown state proceeds.
-  const capabilityState = offer?.capabilityState;
-  if (capabilityState === 'consumed') {
-    throw new CmcError('CMC accept refused: the capability was already accepted', errorIds.CAPABILITY_CONSUMED);
-  }
-  if (capabilityState === 'invalidated') {
-    throw new CmcError('CMC accept refused: the capability was withdrawn by the requester', errorIds.CAPABILITY_INVALIDATED);
-  }
+  assertCapabilityAnswerable(offer, 'accept');
   const scopeStreamId = opts.scopeStreamId;
   let counterparty = { username: null, host: null, displayName: undefined };
   let offerFeatures = null;
@@ -1253,6 +1260,12 @@ function sleep (ms) {
  * Refuse an offer. Single event write; plugin delivers refusal back via
  * capability. No accesses created.
  *
+ * Reads the offer first (best effort): a link already accepted
+ * (single-use) or withdrawn throws `cmc-capability-consumed` /
+ * `cmc-capability-invalidated` before anything is written, as the server
+ * would refuse the delivery. When the read fails the refusal is written
+ * and the server decides.
+ *
  * @param {Object} conn
  * @param {string} capabilityUrl
  * @param {Object} opts
@@ -1266,6 +1279,13 @@ async function refuseInvite (conn, capabilityUrl, opts) {
     throw new Error('refuseInvite: opts.scopeStreamId is required ' +
       '(an :_cmc:apps:<app>[:...] stream on YOUR account where the refuse trigger lands)');
   }
+  let offer = null;
+  try {
+    offer = await readOffer(capabilityUrl, opts);
+  } catch (_e) {
+    // Best-effort; if the offer read fails the refusal can still proceed.
+  }
+  assertCapabilityAnswerable(offer, 'refusal');
   const scopeStreamId = opts.scopeStreamId;
   const content = { capabilityUrl };
   if (opts.reason) content.reason = opts.reason;
@@ -1313,7 +1333,9 @@ async function revokeAcceptance (conn, params) {
  * @param {Object} [params]
  * @param {string} [params.scopeStreamId=':_cmc:apps']  - root or sub-scope to search recursively
  * @param {number} [params.limit=1000] - most relationships returned; events left out do not count
- *   (further pages of `limit` events are read until it is reached or the events run out)
+ *   (further pages of at least 100 events are read until it is reached or the events run out).
+ *   Pages are read with `skip`: an accept written between two pages can shift the list, so a
+ *   record may be missed or listed twice at a page boundary.
  * @param {boolean} [params.includeWithdrawn=false] - also list ended relationships
  * @returns {Promise<Array>}
  */
@@ -1334,18 +1356,20 @@ async function listAcceptedRelationships (conn, params) {
   }
   // The filter is local, so read page after page until `limit` records are
   // kept or the events run out: left-out events must not crowd out real
-  // relationships.
+  // relationships. A page is at least 100 events, so a small `limit` over
+  // many left-out events does not cost one request per event.
+  const pageSize = Math.max(limit, 100);
   const listed = [];
   let skip = 0;
   for (;;) {
-    const query = { streams, types: [ET_ACCEPT], limit };
+    const query = { streams, types: [ET_ACCEPT], limit: pageSize };
     if (skip > 0) query.skip = skip;
     const events = (await conn.apiOne('events.get', query, 'events')) || [];
     for (const event of events) {
       if (listed.length >= limit) break;
       if (isListed(event)) listed.push(event);
     }
-    if (listed.length >= limit || events.length < limit) break;
+    if (listed.length >= limit || events.length < pageSize) break;
     skip += events.length;
   }
   return listed.map(function (event) {
@@ -1899,6 +1923,8 @@ async function acceptMembership (conn, capabilityUrl, opts) {
   opts = opts || {};
   requireAcceptScope(opts, 'acceptMembership');
   const offer = await readOffer(capabilityUrl, opts);
+  // The state first: on a used or withdrawn request it is the useful error.
+  assertCapabilityAnswerable(offer, 'accept');
   if (!offer.membership) {
     throw new CmcError('acceptMembership: this offer is not a membership request (use acceptInvite)',
       errorIds.MEMBERSHIP_OFFER_EXPECTED);
