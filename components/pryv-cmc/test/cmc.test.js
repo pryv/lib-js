@@ -207,6 +207,19 @@ function makeStubConnection (options) {
   };
 }
 
+/**
+ * A `pryv` module whose capability connection fails to read the offer,
+ * offline: the best-effort offer read of refuseInvite / declineMembership
+ * then proceeds without touching the network.
+ */
+function offlinePryvOfferReadFails () {
+  return {
+    Connection: function () {
+      return { apiOne: async function () { throw new Error('offer read failed (offline stub)'); } };
+    }
+  };
+}
+
 describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
   describe('[CMCL1I] createInvite', function () {
     it('[CMCL1IA] posts a consent/request-cmc with capabilityRequested:true', async function () {
@@ -895,7 +908,9 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           }
         }
       });
-      const r = await cmc.refuseInvite(conn, 'https://t@x/', { scopeStreamId: ':_cmc:apps:test', reason: { en: 'no' } });
+      const r = await cmc.refuseInvite(conn, 'https://t@x/', {
+        scopeStreamId: ':_cmc:apps:test', reason: { en: 'no' }, pryv: offlinePryvOfferReadFails()
+      });
       expect(conn.calls[0].params.type).to.equal('consent/refuse-cmc');
       expect(r.refuseEventId).to.equal('rf-1');
     });
@@ -2906,7 +2921,9 @@ describe('[CMCM] @pryv/cmc group membership', function () {
 
     it('[CMCMD5] declineMembership writes a refusal', async function () {
       const conn = makeStubConnection({ handlers: { 'events.create': { event: { id: 'ref-1' } } } });
-      const r = await cmc.declineMembership(conn, 'https://cap@x/', { scopeStreamId: ':_cmc:apps:practice', reason: { en: 'unknown' } });
+      const r = await cmc.declineMembership(conn, 'https://cap@x/', {
+        scopeStreamId: ':_cmc:apps:practice', reason: { en: 'unknown' }, pryv: offlinePryvOfferReadFails()
+      });
       expect(conn.calls[0].params.type).to.equal('consent/refuse-cmc');
       expect(r).to.deep.equal({ refuseEventId: 'ref-1' });
     });
