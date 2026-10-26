@@ -456,10 +456,7 @@ class Connection {
     formData.append('event', JSON.stringify(event));
     formData.append('file', fileBlob, fileName);
 
-    const now = getTimestamp();
-    const { body } = await this._postFetchRaw('events', formData);
-    this._handleMeta(body, now);
-    return body;
+    return this._postEventFormData(formData);
   }
 
   /**
@@ -489,7 +486,21 @@ class Connection {
    */
   async createEventWithFormData (event, formData) {
     formData.append('event', JSON.stringify(event));
+    return this._postEventFormData(formData);
+  }
+
+  /**
+   * @private
+   * Post a multipart event creation and refine `deltaTime` from the
+   * response's `meta`, like every other API call. Shared by the three
+   * attachment upload methods.
+   * @param {FormData} formData - carries the `event` field and the file(s)
+   * @returns {Promise<Object>} the response body
+   */
+  async _postEventFormData (formData) {
+    const now = getTimestamp();
     const { body } = await this._postFetchRaw('events', formData);
+    this._handleMeta(body, now);
     return body;
   }
 

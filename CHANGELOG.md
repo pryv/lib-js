@@ -4,9 +4,11 @@
 
 ## [Unreleased]
 
-To be released as `@pryv/cmc` 3.22.0 only (a minor: `readOffer` gains a field and `listAcceptedRelationships`'s `limit` changes meaning; the other packages are unchanged at 3.17.2).
+To be released as `@pryv/cmc` 3.22.0 (a minor: `readOffer` gains a field and `listAcceptedRelationships`'s `limit` changes meaning) and a `pryv` patch (one fix, below); the other packages are unchanged at 3.17.2.
 
 ### Fixed
+
+- **`pryv` attachment uploads refine `deltaTime`.** `Connection#createEventWithFormData` and `Connection#createEventWithFileFromBuffer` did not read the response's `meta`, so uploads through them never refined the server-time offset (`deltaTime`); only `createEventWithFile` did. All three now go through one helper that applies the response `meta` like every other API call, in Node and in browsers. As with `createEventWithFile`, a response without `meta.serverTime` now throws.
 
 - **`@pryv/cmc` re-opening a used link no longer leaves a failed trigger** (issue #75). `readOffer` now also returns `capabilityState` (`'open'`, `'consumed'`, `'invalidated'`, or `null` when it could not be read), taken from the capability access's `clientData.cmc.capability.state` that `access-info` already returns. `acceptInvite`, `acceptMembership`, `refuseInvite` and `declineMembership` throw `CmcError` with `cmc-capability-consumed` (a single-use link already accepted) or `cmc-capability-invalidated` (withdrawn by the requester) before writing anything, instead of writing a `consent/accept-cmc` or `consent/refuse-cmc` trigger the server then marks `failed`. `acceptMembership` reports that state before checking `grantedScopes`. Callers already handling those ids see no difference except that no event is left behind. When the state cannot be read the trigger is written as before and the server decides; a race between two accepters can still leave a failed trigger. `refuseInvite` and `declineMembership` now read the offer first (one more round trip to the capability). `readOffer` also resolves `requester.username` from `service.info` when `access-info` fails (it was null then).
 - **`@pryv/cmc` `listAcceptedRelationships` leaves out failed accept triggers** (they never made a relationship), whatever `includeWithdrawn` says.
