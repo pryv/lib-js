@@ -209,8 +209,8 @@ function makeStubConnection (options) {
 
 /**
  * A `pryv` module whose capability connection fails to read the offer,
- * offline: the best-effort offer read of refuseInvite / declineMembership
- * then proceeds without touching the network.
+ * offline: the best-effort offer read of acceptInvite / refuseInvite /
+ * declineMembership then proceeds without touching the network.
  */
 function offlinePryvOfferReadFails () {
   return {
@@ -835,13 +835,15 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           }
         }
       });
-      const r = await cmc.acceptInvite(conn, 'http://127.0.0.1:0/invalid/', { scopeStreamId: ':_cmc:apps:test', waitForCompletion: false });
+      const r = await cmc.acceptInvite(conn, 'http://127.0.0.1:0/invalid/', {
+        scopeStreamId: ':_cmc:apps:test', waitForCompletion: false, pryv: offlinePryvOfferReadFails()
+      });
       expect(r.acceptEventId).to.equal('acc-1');
       expect(r.dataGrantAccessId).to.equal(null);
       expect(r.status).to.equal('pending');
       expect(r.counterparty).to.deep.equal({ username: null, host: null, displayName: undefined });
-      // 1 events.create. (Offer read attempt happens but on a separate
-      // pryv.Connection over the bogus capability URL — silently fails.)
+      // 1 events.create. (The offer read happens on a separate, stubbed
+      // capability connection and fails silently.)
       expect(conn.calls).to.have.length(1);
     });
 
@@ -873,7 +875,9 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
           }
         }
       });
-      const r = await cmc.acceptInvite(conn, 'http://127.0.0.1:0/invalid/', { scopeStreamId: ':_cmc:apps:test', completionPollIntervalMs: 5, completionTimeoutMs: 1000 });
+      const r = await cmc.acceptInvite(conn, 'http://127.0.0.1:0/invalid/', {
+        scopeStreamId: ':_cmc:apps:test', completionPollIntervalMs: 5, completionTimeoutMs: 1000, pryv: offlinePryvOfferReadFails()
+      });
       expect(r.acceptEventId).to.equal('acc-2');
       expect(r.dataGrantAccessId).to.equal('dg-1');
       expect(r.counterparty).to.deep.equal({ username: null, host: null, displayName: undefined });
@@ -893,7 +897,9 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       });
       let err = null;
       try {
-        await cmc.acceptInvite(conn, 'https://t@x/', { scopeStreamId: ':_cmc:apps:test', completionPollIntervalMs: 5, completionTimeoutMs: 1000 });
+        await cmc.acceptInvite(conn, 'https://t@x/', {
+          scopeStreamId: ':_cmc:apps:test', completionPollIntervalMs: 5, completionTimeoutMs: 1000, pryv: offlinePryvOfferReadFails()
+        });
       } catch (e) { err = e; }
       expect(err).to.exist;
       expect(err).to.be.instanceOf(cmc.CmcError);
@@ -2163,7 +2169,8 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       const r = await cmc.acceptInvite(conn, 'https://t@x/', {
         scopeStreamId: ':_cmc:apps:test',
         completionPollIntervalMs: 5,
-        completionTimeoutMs: 1000
+        completionTimeoutMs: 1000,
+        pryv: offlinePryvOfferReadFails()
       });
       expect(r.acceptEventId).to.equal('accept-1');
       expect(r.dataGrantAccessId).to.equal('dg-xyz');
