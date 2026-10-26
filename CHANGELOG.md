@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+To be released as `@pryv/cmc` 3.22.0 only (a minor: `readOffer` gains a field and `listAcceptedRelationships`'s `limit` changes meaning; the other packages are unchanged at 3.17.2).
+
+### Fixed
+
+- **`@pryv/cmc` re-opening a used link no longer leaves a failed trigger** (issue #75). `readOffer` now also returns `capabilityState` (`'open'`, `'consumed'`, `'invalidated'`, or `null` when it could not be read), taken from the capability access's `clientData.cmc.capability.state` that `access-info` already returns. `acceptInvite`, `acceptMembership`, `refuseInvite` and `declineMembership` throw `CmcError` with `cmc-capability-consumed` (a single-use link already accepted) or `cmc-capability-invalidated` (withdrawn by the requester) before writing anything, instead of writing a `consent/accept-cmc` or `consent/refuse-cmc` trigger the server then marks `failed`. `acceptMembership` reports that state before checking `grantedScopes`. Callers already handling those ids see no difference except that no event is left behind. When the state cannot be read the trigger is written as before and the server decides; a race between two accepters can still leave a failed trigger. `refuseInvite` and `declineMembership` now read the offer first (one more round trip to the capability). `readOffer` also resolves `requester.username` from `service.info` when `access-info` fails (it was null then).
+- **`@pryv/cmc` `listAcceptedRelationships` leaves out failed accept triggers** (they never made a relationship), whatever `includeWithdrawn` says.
+
+### Changed
+
+- **`@pryv/cmc` `listAcceptedRelationships` `limit` caps the relationships returned, not the events read.** Before, one `events.get` of `limit` events was made and at most `limit` records came back, fewer when some were left out. Now events left out (failed triggers, and ended relationships unless `includeWithdrawn`) do not count against `limit`: the client reads further pages (`skip`, pages of `max(limit, 100)` events) until `limit` records are kept or the events run out, so it may make several `events.get` calls. Same signature and record shape; a pile of failed triggers can no longer push real relationships out of the result.
+
 ## 3.21.1 - 2026-10-20
 
 `@pryv/cmc` 3.21.1 only (documentation and types; no behaviour change in the client; the other packages are unchanged at 3.17.2).

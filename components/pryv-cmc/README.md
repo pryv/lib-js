@@ -106,7 +106,7 @@ Lifecycle / handler / chat-routing examples: `cmc.errorIds.CAPABILITY_INVALID` (
 
 The full list lives in [`src/index.js`](src/index.js) (and the typed mirror in [`src/index.d.ts`](src/index.d.ts)).
 
-`cmc.CmcError` is a typed `Error` subclass carrying `.id` (one of `errorIds.*`) and `.cause` (the server's raw `failure` object, or the API error it wraps). It's thrown by `acceptInvite` on `status: 'failed'` and by the membership helpers below.
+`cmc.CmcError` is a typed `Error` subclass carrying `.id` (one of `errorIds.*`) and `.cause` (the server's raw `failure` object, or the API error it wraps). It's thrown by `acceptInvite` on `status: 'failed'` (and before writing anything when the offer read shows the link already consumed or invalidated) and by the membership helpers below.
 
 #### Capability TTL bounds
 
@@ -211,8 +211,11 @@ const update = await cmc.proposeScopeUpdate(conn, {
 
 ```js
 const offer = await cmc.readOffer(capabilityUrl);
-// offer = { requester: { username, host, displayName }, consent, requestedPermissions,
-//           allowUserChoice, accessType, membership, mode, features }
+// offer = { requester: { username, host, displayName }, capabilityState, consent,
+//           requestedPermissions, allowUserChoice, accessType, membership, mode, features }
+// capabilityState: 'open', 'consumed' (a single-use link already accepted) or
+// 'invalidated' (withdrawn by the requester); null when it could not be read.
+// Show "already accepted" / "withdrawn" instead of a consent screen for the last two.
 // accessType 'app': the grant is delegable (the requester can create sub-accesses
 // from it, for example for the members of a group); say so on the consent screen.
 // membership true: the requester asks to join YOUR group (see acceptMembership).
@@ -227,11 +230,17 @@ const accepted = await cmc.acceptInvite(conn, capabilityUrl, {
 // Waits for Phase-2 completion by default (~50-200ms).
 // Pass `waitForCompletion: false` to return immediately as { ..., status: 'pending' }.
 // Requires `conn` to be authenticated with a personal token (see hand-off helpers below).
+// A link the offer read shows already accepted (single-use) or withdrawn throws
+// CmcError 'cmc-capability-consumed' / 'cmc-capability-invalidated' before anything
+// is written, so re-opening a used link leaves no failed trigger in the account.
+// When the state cannot be read, the accept is written and the server decides.
 
 await cmc.refuseInvite(conn, capabilityUrl, {
   scopeStreamId: ':_cmc:apps:my-app',
   reason: { en: 'not interested' }
 });
+// Same pre-check: a link already accepted or withdrawn throws before the refusal
+// is written (an unreadable offer writes it and the server decides).
 
 await cmc.revokeAcceptance(conn, {
   scopeStreamId: ':_cmc:apps:my-app',
@@ -246,6 +255,9 @@ const relationships = await cmc.listAcceptedRelationships(conn, { scopeStreamId:
 // detached) is left out. Pass `includeWithdrawn: true` to list those too, each with
 // `withdrawal = { at, by, accessId?, revokeEventId?, relId? }` (null while active).
 // Needs a core that records withdrawals; an older core leaves ended ones looking active.
+// Failed accept triggers (refused by the server, no relationship) are always left out.
+// `limit` (default 1000) caps the records returned; left-out events do not count
+// against it, so several events.get calls may be made (pages of at least 100 events).
 
 // Respond to a scope-update request from the provider. The id is the
 // request's id on YOUR account (the provider gets it as remoteScopeRequestEventId).
@@ -563,9 +575,12 @@ const accepted = await cmc.acceptMembership(admin, pastedOrScannedUrl, {
   grantedScopes: [':_cmc:apps:practice:team-a']    // optional: a subset of the requested teams
 });
 // accepted = { acceptEventId, membershipAccessId, member }
+// A request already accepted or withdrawn (offer.capabilityState) throws
+// 'cmc-capability-consumed' / 'cmc-capability-invalidated' before anything is written.
 // An ordinary offer throws cmc-membership-offer-expected.
 
 await cmc.declineMembership(admin, pastedOrScannedUrl, { scopeStreamId: ':_cmc:apps:practice' });
+// Same pre-check as refuseInvite: an accepted or withdrawn request throws before writing.
 
 const members = await cmc.listMembers(admin);
 // [{ membershipAccessId, member: { username, host }, appCode, scopeStreamId,

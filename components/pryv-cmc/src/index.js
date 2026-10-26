@@ -943,7 +943,10 @@ async function proposeScopeUpdate (conn, params) {
  * @param {string} capabilityUrl
  * @param {Object} [opts]
  * @param {Object} [opts.pryv]   - explicit pryv module (otherwise resolved via require('pryv'))
- * @returns {Promise<{requester:{username:string|null,host:string,displayName?:string}, consent:Object|undefined, requestedPermissions:Array, allowUserChoice:boolean, accessType:'shared'|'app', membership:boolean, mode:string, features:Object}>}
+ * @returns {Promise<{requester:{username:string|null,host:string,displayName?:string}, capabilityState:string|null, consent:Object|undefined, requestedPermissions:Array, allowUserChoice:boolean, accessType:'shared'|'app', membership:boolean, mode:string, features:Object}>}
+ *   `capabilityState` is `'open'`, `'consumed'` (a single-use link already
+ *   accepted) or `'invalidated'` (withdrawn by the requester); null when it
+ *   could not be read.
  */
 async function readOffer (capabilityUrl, opts) {
   const pryv = (opts && opts.pryv) || require('pryv');
@@ -975,12 +978,19 @@ async function readOffer (capabilityUrl, opts) {
   const request = content.request || {};
   const meta = content.requesterMeta || {};
   let requesterIdentity = { username: null, host: '', displayName: meta.displayName };
+  // The capability access lives on the requester's platform: the username
+  // on it is the requester's, and its clientData carries the capability
+  // state ('open', 'consumed' once a single-use link was accepted,
+  // 'invalidated' once the requester withdrew it).
+  let accessInfo = null;
+  try {
+    accessInfo = await cap.accessInfo();
+  } catch (_e) {
+    // Best-effort; offer content still returned.
+  }
   try {
     const info = await cap.service.info();
     const decomposed = pryv.utils.decomposeAPIEndpoint(capabilityUrl, info.api);
-    // The capability access lives on the requester's platform — username
-    // on the capability is the requester's username.
-    const accessInfo = await cap.accessInfo();
     requesterIdentity = {
       username: (accessInfo && accessInfo.user && accessInfo.user.username) || decomposed.username,
       host: decomposed.host,
@@ -989,9 +999,12 @@ async function readOffer (capabilityUrl, opts) {
   } catch (_e) {
     // Best-effort identity; offer content still returned.
   }
+  const capabilityState = accessInfo?.clientData?.cmc?.capability?.state;
   const membership = request.membership === true;
   return {
     requester: requesterIdentity,
+    // null when the state could not be read (access-info failed).
+    capabilityState: typeof capabilityState === 'string' ? capabilityState : null,
     consent: request.consent,
     requestedPermissions: request.permissions || [],
     // The server treats a membership offer as allowing a subset whatever it says.
@@ -1023,6 +1036,9 @@ async function readOffer (capabilityUrl, opts) {
  *
  * By default resolves only after Phase 2 (trigger status='completed').
  * Throws CmcError carrying tagged failure.reason as error.id on 'failed'.
+ * When the offer read shows the link already accepted (single-use) or
+ * withdrawn, throws `cmc-capability-consumed` / `cmc-capability-invalidated`
+ * before writing anything, so no failed trigger is left in the account.
  *
  * Power users: opt out with { waitForCompletion: false } → resolves
  * immediately after events.create with { acceptEventId,
@@ -1048,7 +1064,8 @@ async function acceptInvite (conn, capabilityUrl, opts) {
   requireAcceptScope(opts, 'acceptInvite');
   // Read the offer FIRST to capture counterparty identity (single-use
   // capabilities flip to 'consumed' on the first accept, so a second
-  // read after submit would fail).
+  // read after submit would fail) and the capability state: a consumed
+  // or invalidated link throws before any trigger is written.
   let offer = null;
   try {
     offer = await readOffer(capabilityUrl, opts);
@@ -1056,6 +1073,22 @@ async function acceptInvite (conn, capabilityUrl, opts) {
     // Best-effort; if offer read fails the accept can still proceed.
   }
   return acceptOffer(conn, capabilityUrl, opts, offer);
+}
+
+/**
+ * A link already accepted (single-use) or withdrawn is refused by the
+ * server anyway, and the trigger then stays in the account as failed.
+ * Throw before writing it instead. The server stays the authority: an
+ * offer that could not be read (null) or an unknown state proceeds.
+ */
+function assertCapabilityAnswerable (offer, action) {
+  const capabilityState = offer?.capabilityState;
+  if (capabilityState === 'consumed') {
+    throw new CmcError('CMC ' + action + ' refused: the capability was already accepted', errorIds.CAPABILITY_CONSUMED);
+  }
+  if (capabilityState === 'invalidated') {
+    throw new CmcError('CMC ' + action + ' refused: the capability was withdrawn by the requester', errorIds.CAPABILITY_INVALIDATED);
+  }
 }
 
 function requireAcceptScope (opts, fnName) {
@@ -1071,6 +1104,7 @@ function requireAcceptScope (opts, fnName) {
  * read failed), then wait for completion unless told not to.
  */
 async function acceptOffer (conn, capabilityUrl, opts, offer) {
+  assertCapabilityAnswerable(offer, 'accept');
   const scopeStreamId = opts.scopeStreamId;
   let counterparty = { username: null, host: null, displayName: undefined };
   let offerFeatures = null;
@@ -1226,6 +1260,12 @@ function sleep (ms) {
  * Refuse an offer. Single event write; plugin delivers refusal back via
  * capability. No accesses created.
  *
+ * Reads the offer first (best effort): a link already accepted
+ * (single-use) or withdrawn throws `cmc-capability-consumed` /
+ * `cmc-capability-invalidated` before anything is written, as the server
+ * would refuse the delivery. When the read fails the refusal is written
+ * and the server decides.
+ *
  * @param {Object} conn
  * @param {string} capabilityUrl
  * @param {Object} opts
@@ -1239,6 +1279,13 @@ async function refuseInvite (conn, capabilityUrl, opts) {
     throw new Error('refuseInvite: opts.scopeStreamId is required ' +
       '(an :_cmc:apps:<app>[:...] stream on YOUR account where the refuse trigger lands)');
   }
+  let offer = null;
+  try {
+    offer = await readOffer(capabilityUrl, opts);
+  } catch (_e) {
+    // Best-effort; if the offer read fails the refusal can still proceed.
+  }
+  assertCapabilityAnswerable(offer, 'refusal');
   const scopeStreamId = opts.scopeStreamId;
   const content = { capabilityUrl };
   if (opts.reason) content.reason = opts.reason;
@@ -1279,12 +1326,16 @@ async function revokeAcceptance (conn, params) {
  * event (stamped by the server, whatever ended it: deleting the data grant,
  * a revoke by either side, a delegation detach). Those are left out unless
  * `params.includeWithdrawn` is true. A core that does not record withdrawals
- * leaves ended relationships looking active.
+ * leaves ended relationships looking active. Failed accept triggers (the
+ * server refused the accept, so no relationship exists) are always left out.
  *
  * @param {Object} conn
  * @param {Object} [params]
  * @param {string} [params.scopeStreamId=':_cmc:apps']  - root or sub-scope to search recursively
- * @param {number} [params.limit=1000] - most accept events read (withdrawn ones included)
+ * @param {number} [params.limit=1000] - most relationships returned; events left out do not count
+ *   (further pages of at least 100 events are read until it is reached or the events run out).
+ *   Pages are read with `skip`: an accept written between two pages can shift the list, so a
+ *   record may be missed or listed twice at a page boundary.
  * @param {boolean} [params.includeWithdrawn=false] - also list ended relationships
  * @returns {Promise<Array>}
  */
@@ -1295,16 +1346,32 @@ async function listAcceptedRelationships (conn, params) {
   // view (e.g. a single app or sub-scope).
   const streams = [params.scopeStreamId || NS_APPS];
   const limit = params.limit || 1000;
-  const events = await conn.apiOne('events.get', {
-    streams,
-    types: [ET_ACCEPT],
-    limit
-  }, 'events');
-  const listed = params.includeWithdrawn === true
-    ? events
-    : events.filter(function (event) {
-      return event?.content?.withdrawal == null;
-    });
+  const includeWithdrawn = params.includeWithdrawn === true;
+  function isListed (event) {
+    const c = event?.content;
+    // A failed trigger (e.g. a re-opened link the server refused) never
+    // made a relationship.
+    if (c?.status === 'failed') return false;
+    return includeWithdrawn || c?.withdrawal == null;
+  }
+  // The filter is local, so read page after page until `limit` records are
+  // kept or the events run out: left-out events must not crowd out real
+  // relationships. A page is at least 100 events, so a small `limit` over
+  // many left-out events does not cost one request per event.
+  const pageSize = Math.max(limit, 100);
+  const listed = [];
+  let skip = 0;
+  for (;;) {
+    const query = { streams, types: [ET_ACCEPT], limit: pageSize };
+    if (skip > 0) query.skip = skip;
+    const events = (await conn.apiOne('events.get', query, 'events')) || [];
+    for (const event of events) {
+      if (listed.length >= limit) break;
+      if (isListed(event)) listed.push(event);
+    }
+    if (listed.length >= limit || events.length < pageSize) break;
+    skip += events.length;
+  }
   return listed.map(function (event) {
     const c = (event && event.content) || {};
     return {
@@ -1856,6 +1923,8 @@ async function acceptMembership (conn, capabilityUrl, opts) {
   opts = opts || {};
   requireAcceptScope(opts, 'acceptMembership');
   const offer = await readOffer(capabilityUrl, opts);
+  // The state first: on a used or withdrawn request it is the useful error.
+  assertCapabilityAnswerable(offer, 'accept');
   if (!offer.membership) {
     throw new CmcError('acceptMembership: this offer is not a membership request (use acceptInvite)',
       errorIds.MEMBERSHIP_OFFER_EXPECTED);

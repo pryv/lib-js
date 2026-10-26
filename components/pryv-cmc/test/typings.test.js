@@ -38,4 +38,8 @@ describe('[CMCTY] typings', function () {
   it('[CMCTY2] group membership: member and administrator helpers, offer flags, error ids', function () {
     expect(compile('membership.ts')).to.deep.equal([]);
   });
+
+  it('[CMCTY3] readOffer: capabilityState is open, consumed, invalidated or null', function () {
+    expect(compile('offer.ts')).to.deep.equal([]);
+  });
 });

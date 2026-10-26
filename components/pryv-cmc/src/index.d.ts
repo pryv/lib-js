@@ -238,6 +238,8 @@ declare module '@pryv/cmc' {
    */
   export type InviteStatus = 'pending' | 'delivered' | 'accepted' | 'completed' | 'refused' | 'revoked' | 'invalidated' | 'expired' | 'failed';
   export type CapabilityMode = 'single-use' | 'open-link';
+  /** A capability access's lifecycle state (`clientData.cmc.capability.state`). */
+  export type CapabilityState = 'open' | 'consumed' | 'invalidated';
   export type PermissionLevel = 'read' | 'contribute' | 'manage' | 'create-only';
   export type Permission = { streamId: string; level: PermissionLevel };
 
@@ -403,6 +405,14 @@ declare module '@pryv/cmc' {
 
   export function readOffer(capabilityUrl: string, opts?: { pryv?: any }): Promise<{
     requester: { username: string | null; host: string; displayName?: string };
+    /**
+     * The capability's state, read from its access: `'open'`, `'consumed'`
+     * (a single-use link already accepted) or `'invalidated'` (withdrawn by
+     * the requester). Null when it could not be read. `acceptInvite` and
+     * `acceptMembership` throw `cmc-capability-consumed` /
+     * `cmc-capability-invalidated` on those states without writing anything.
+     */
+    capabilityState: CapabilityState | null;
     consent?: Record<string, string>;
     requestedPermissions: OfferedPermission[];
     /** Whether the accepter may grant a subset (default false; always true for a membership). */
@@ -459,7 +469,9 @@ declare module '@pryv/cmc' {
 
   /**
    * Refuse an offer. `opts.scopeStreamId` is REQUIRED — same constraints
-   * as `acceptInvite`.
+   * as `acceptInvite`. Reads the offer first: a link already accepted or
+   * withdrawn throws `cmc-capability-consumed` / `cmc-capability-invalidated`
+   * without writing anything (an unreadable offer writes the refusal).
    */
   export function refuseInvite(conn: any, capabilityUrl: string, opts: {
     scopeStreamId: string;
@@ -474,7 +486,11 @@ declare module '@pryv/cmc' {
 
   export function listAcceptedRelationships(conn: any, params?: {
     scopeStreamId?: string;
-    /** Most accept events read, withdrawn ones included (default 1000). */
+    /**
+     * Most relationships returned (default 1000). Accept events left out
+     * (failed triggers, and ended relationships unless `includeWithdrawn`)
+     * do not count: further pages are read until it is reached.
+     */
     limit?: number;
     /**
      * Default false: relationships that have ended (`withdrawal` set) are
@@ -645,6 +661,7 @@ declare module '@pryv/cmc' {
     status?: string;
   }>;
 
+  /** Decline a membership request: `refuseInvite`, with its state pre-check. */
   export function declineMembership(conn: any, capabilityUrl: string, opts: {
     scopeStreamId: string;
     reason?: Record<string, string>;
