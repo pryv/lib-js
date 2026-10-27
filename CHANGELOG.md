@@ -4,7 +4,9 @@
 
 ## [Unreleased]
 
-To be released as `@pryv/cmc` 3.22.0 (a minor: `readOffer` gains a field and `listAcceptedRelationships`'s `limit` changes meaning) and `pryv` 3.17.3 (a patch: one fix, below); the other packages are unchanged at 3.17.2.
+## 3.17.3 - 2026-10-27
+
+`@pryv/cmc` 3.22.0 (a minor: `readOffer` gains a field and `listAcceptedRelationships`'s `limit` changes meaning) and `pryv` 3.17.3 (a patch: one fix, below); `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` follow `pryv` to 3.17.3 with no change.
 
 ### Fixed
 
