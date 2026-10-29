@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`pryv` typings for account auto-deletion.** `account.getAutoDeletion` and `account.setAutoDeletion` are typed in `APICallMethods` (types `AutoDeletion`, `AutoDeletionSetParams`, `AutoDeletionSetting`, `AutoDeletionMode`, `AutoDeletionAction`), and `ServiceInfo.features.autoDeletion` as `AutoDeletionFeature`. Types only, no runtime change. The methods exist on cores whose service info advertises `features.autoDeletion`.
+
 ## 3.17.3 - 2026-10-27
 
 `@pryv/cmc` 3.22.0 (a minor: `readOffer` gains a field and `listAcceptedRelationships`'s `limit` changes meaning) and `pryv` 3.17.3 (a patch: one fix, below); `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` follow `pryv` to 3.17.3 with no change.

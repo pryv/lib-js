@@ -35,4 +35,8 @@ describe('[TYPX] typings', function () {
   it('[TYP1] ACCEPTED: apiEndpoint and username are optional (absent from a popup sign-in state)', function () {
     expect(compile('acceptedState.ts')).to.deep.equal([]);
   });
+
+  it('[TYP2] account auto-deletion: get / set parameters and answer, features.autoDeletion in service info', function () {
+    expect(compile('autoDeletion.ts')).to.deep.equal([]);
+  });
 });

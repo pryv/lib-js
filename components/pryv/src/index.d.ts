@@ -100,6 +100,98 @@ declare module 'pryv' {
     };
   };
 
+  /** Trigger of an account auto-deletion schedule. */
+  export type AutoDeletionMode = 'never' | 'date' | 'inactivity';
+  /** What happens at the deadline. Servers offer `delete` only today. */
+  export type AutoDeletionAction = 'delete' | 'transfer';
+
+  /**
+   * Parameters of `account.setAutoDeletion`.
+   * @see https://pryv.github.io/reference/#methods-account-account-setAutoDeletion
+   */
+  export type AutoDeletionSetParams = {
+    /** `default` removes the holder's setting: the platform's policy applies again. */
+    mode: AutoDeletionMode | 'default';
+    /**
+     * With `mode: 'date'` (required then): an ISO-8601 instant with a time and
+     * an offset or `Z`, e.g. `2027-06-01T23:59:59+02:00`. A date alone is refused.
+     */
+    date?: string;
+    /** With `mode: 'inactivity'` (required then): whole days without use. */
+    inactivityDays?: number;
+    /** Default `delete`; the action must be in `features.autoDeletion.actions`. */
+    action?: AutoDeletionAction;
+    /** Required to set a date or a period on an account that cannot receive reminders. */
+    acknowledgeNoReminders?: true;
+    /** The account password, required when the change arms a schedule or brings the deletion nearer. */
+    password?: string;
+  };
+
+  /** The holder's own auto-deletion setting (times in seconds). */
+  export type AutoDeletionSetting = {
+    mode: AutoDeletionMode;
+    date?: Timestamp;
+    inactivityDays?: number;
+    action: AutoDeletionAction;
+    acknowledgedNoReminders?: boolean;
+    updatedAt: Timestamp;
+  };
+
+  /**
+   * The answer of `account.getAutoDeletion` and `account.setAutoDeletion`
+   * (times in seconds).
+   * @see https://pryv.github.io/reference/#methods-account-account-getAutoDeletion
+   */
+  export type AutoDeletion = {
+    /** The policy in effect. */
+    effective: {
+      /** `user`: the holder's setting; `operator`: the platform's preset; `none`: not scheduled. */
+      source: 'user' | 'operator' | 'none';
+      mode: AutoDeletionMode;
+      date?: Timestamp;
+      inactivityDays?: number;
+      action: AutoDeletionAction;
+    };
+    /** `null` when the account follows the platform's policy. */
+    setting: AutoDeletionSetting | null;
+    /** Latest use of the account (personal and app accesses, a delegate's included). */
+    lastActivity: {
+      personal: Timestamp | null;
+      app: Timestamp | null;
+      delegate: Timestamp | null;
+      /** The latest of all; never moves backwards. */
+      max: Timestamp | null;
+      by: 'owner' | 'delegate' | null;
+    };
+    /** The deletion date the policy sets (the reminders count down to it). */
+    deadline: Timestamp | null;
+    /** When the account is actually due: the deadline, or later for the minimum notice. */
+    deleteAt: Timestamp | null;
+    deadlineReason: 'date' | 'inactivity' | 'minimum-notice' | null;
+    nextReminderAt: Timestamp | null;
+    remindersSent: Array<{ leadDays: number; at: Timestamp }>;
+    /** Set when the schedule is held (`reason`: `no-email`, or the check that refused the deletion). */
+    blocked: { reason: string; at: Timestamp } | null;
+    mail: 'available' | 'no-email' | 'not-configured';
+    bounds: { minDays: number; maxDays: number; minLeadDays: number };
+    userOverride: boolean;
+    allowUserOptOut: boolean;
+    /** Actions the holder may choose; may be empty. */
+    actions: AutoDeletionAction[];
+  };
+
+  /** `features.autoDeletion` of service info: absent when the platform turned the feature off. */
+  export type AutoDeletionFeature = {
+    triggers: Array<'date' | 'inactivity'>;
+    actions: AutoDeletionAction[];
+    /** Days before the deletion the reminders are sent, e.g. `[60, 30, 7, 1]`. */
+    reminderLeadDays: number[];
+    bounds: { minDays: number; maxDays: number; minLeadDays: number };
+    userOverride: boolean;
+    allowUserOptOut: boolean;
+    mailAvailable: boolean;
+  };
+
   export type HFSeries = {
     format: 'flatJSON';
     fields: string[];
@@ -622,6 +714,19 @@ declare module 'pryv' {
       };
       res: null;
     };
+    'account.getAutoDeletion': {
+      /** No parameters: pass `{}`. */
+      params: Record<string, never>;
+      res: {
+        autoDeletion: AutoDeletion;
+      };
+    };
+    'account.setAutoDeletion': {
+      params: AutoDeletionSetParams;
+      res: {
+        autoDeletion: AutoDeletion;
+      };
+    };
     'account.requestPasswordReset': {
       params: {
         appId: string;
@@ -818,6 +923,8 @@ declare module 'pryv' {
       noHF?: boolean;
       /** Account delegation is available on this platform. */
       delegation?: boolean;
+      /** Account auto-deletion: what an account holder may schedule. */
+      autoDeletion?: AutoDeletionFeature;
       [key: string]: any;
     };
   };
