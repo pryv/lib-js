@@ -102,8 +102,50 @@ declare module 'pryv' {
 
   /** Trigger of an account auto-deletion schedule. */
   export type AutoDeletionMode = 'never' | 'date' | 'inactivity';
-  /** What happens at the deadline. Servers offer `delete` only today. */
+  /** What happens at the deadline: deletion, or transfer to a beneficiary (who becomes the account's controller). */
   export type AutoDeletionAction = 'delete' | 'transfer';
+
+  /**
+   * Transfer settings of `account.setAutoDeletion` (with `action: 'transfer'`).
+   * Sending `name` or `dateOfBirth` replaces both (`''` and `''` remove them);
+   * sending neither keeps them for the same beneficiary.
+   */
+  export type AutoDeletionTransferParams = {
+    /** The beneficiary's address (not the account's own). */
+    email: string;
+    /** Only for the platform operator, to identify a beneficiary the email cannot reach; stored encrypted, never answered. */
+    name?: string;
+    /** `YYYY-MM-DD`, same use as `name`. */
+    dateOfBirth?: string;
+    /** `atSetup`: mailed now, with a decline link; `atTrigger`: only when the transfer starts. */
+    notifyBeneficiary: 'atSetup' | 'atTrigger';
+    /** Without a claim: `delete` (only where the holder may delete the account) or `keep`. */
+    fallback: 'delete' | 'keep';
+  };
+
+  /** The transfer of a holder's setting, as answered (never the name or date of birth). */
+  export type AutoDeletionTransferSetting = {
+    email: string;
+    notifyBeneficiary: 'atSetup' | 'atTrigger';
+    fallback: 'delete' | 'keep';
+    /** A name or a date of birth is stored. */
+    identityGiven?: true;
+  };
+
+  /** The current or last transfer of an account (times in seconds). */
+  export type AutoDeletionTransferState = {
+    status: 'named' | 'open' | 'claimed' | 'completed' | 'declined' | 'cancelled' | 'lapsed' | 'fallback-delete';
+    email: string;
+    beneficiaryNotifiedAt?: Timestamp;
+    openedAt?: Timestamp;
+    /** End of the claim window. */
+    endsAt?: Timestamp;
+    claimedBy?: { username: string; at: Timestamp };
+    /** Too many failed claims: refused until the platform's next pass. */
+    locked?: { at: Timestamp };
+    closedAt?: Timestamp;
+    closedReason?: 'owner-activity' | 'delegate-activity' | 'owner-change' | 'declined';
+  };
 
   /**
    * Parameters of `account.setAutoDeletion`.
@@ -121,9 +163,11 @@ declare module 'pryv' {
     inactivityDays?: number;
     /** Default `delete`; the action must be in `features.autoDeletion.actions`. */
     action?: AutoDeletionAction;
+    /** With `action: 'transfer'` (required then, refused otherwise). */
+    transfer?: AutoDeletionTransferParams;
     /** Required to set a date or a period on an account that cannot receive reminders. */
     acknowledgeNoReminders?: true;
-    /** The account password, required when the change arms a schedule or brings the deletion nearer. */
+    /** The account password, required when the change arms a schedule, brings the deletion nearer, or sets or changes a transfer. */
     password?: string;
   };
 
@@ -133,6 +177,7 @@ declare module 'pryv' {
     date?: Timestamp;
     inactivityDays?: number;
     action: AutoDeletionAction;
+    transfer?: AutoDeletionTransferSetting;
     acknowledgedNoReminders?: boolean;
     updatedAt: Timestamp;
   };
@@ -178,6 +223,10 @@ declare module 'pryv' {
     allowUserOptOut: boolean;
     /** Actions the holder may choose; may be empty. */
     actions: AutoDeletionAction[];
+    /** The current or last transfer, `null` when none. */
+    transfer: AutoDeletionTransferState | null;
+    /** Days a beneficiary has to claim the account once a transfer starts. */
+    claimWindowDays: number;
   };
 
   /** `features.autoDeletion` of service info: absent when the platform turned the feature off. */
@@ -725,6 +774,27 @@ declare module 'pryv' {
       params: AutoDeletionSetParams;
       res: {
         autoDeletion: AutoDeletion;
+      };
+    };
+    'account.transferClaim': {
+      /** Public: the token of the mailed claim link is the credential; `claimant` is the account taking over. */
+      params: {
+        appId: string;
+        token: string;
+        claimant: string;
+      };
+      res: {
+        transfer: { status: 'invited' | 'completed'; username: string };
+      };
+    };
+    'account.transferDecline': {
+      /** Public: the token of the mailed decline link is the credential. */
+      params: {
+        appId: string;
+        token: string;
+      };
+      res: {
+        declined: true;
       };
     };
     'account.requestPasswordReset': {
