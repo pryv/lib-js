@@ -141,8 +141,10 @@ declare module 'pryv' {
     /** End of the claim window. */
     endsAt?: Timestamp;
     claimedBy?: { username: string; at: Timestamp };
-    /** Too many failed claims: refused until the platform's next pass. */
-    locked?: { at: Timestamp };
+    /** Claims made with a wrong link (they refuse nothing). */
+    failedClaims?: { count: number; lastAt: Timestamp };
+    /** The holder was told the transfer started. */
+    ownerNotifiedAt?: Timestamp;
     closedAt?: Timestamp;
     closedReason?: 'owner-activity' | 'delegate-activity' | 'owner-change' | 'declined';
   };
