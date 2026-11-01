@@ -7,6 +7,7 @@
 ### Added
 
 - **`pryv` typings for account auto-deletion.** `account.getAutoDeletion` and `account.setAutoDeletion` are typed in `APICallMethods` (types `AutoDeletion`, `AutoDeletionSetParams`, `AutoDeletionSetting`, `AutoDeletionMode`, `AutoDeletionAction`), and `ServiceInfo.features.autoDeletion` as `AutoDeletionFeature`. Types only, no runtime change. The methods exist on cores whose service info advertises `features.autoDeletion`.
+- **`pryv` typings for account transfer.** `account.setAutoDeletion` takes `transfer` (`AutoDeletionTransferParams`: beneficiary `email`, optional `name` and `dateOfBirth`, `notifyBeneficiary`, `fallback`) with `action: 'transfer'`; the setting answers it as `AutoDeletionTransferSetting` (never the name or date of birth, `identityGiven` instead), and `AutoDeletion` gains `transfer` (`AutoDeletionTransferState`) and `claimWindowDays`. The public `account.transferClaim` and `account.transferDecline` are typed in `APICallMethods`. Types only, no runtime change.
 
 ## 3.17.3 - 2026-10-27
 
