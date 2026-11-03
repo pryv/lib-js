@@ -583,8 +583,10 @@ await cmc.declineMembership(admin, pastedOrScannedUrl, { scopeStreamId: ':_cmc:a
 // Same pre-check as refuseInvite: an accepted or withdrawn request throws before writing.
 
 const members = await cmc.listMembers(admin);
-// [{ membershipAccessId, member: { username, host }, appCode, scopeStreamId,
+// [{ membershipAccessId, member: { username, host, displayName? }, appCode, scopeStreamId,
 //    scopes, requestedScopes, approvedBy, acceptEventId, created, expires }]
+// member.displayName: the name the member gave in the request, when the core
+// keeps it (absent on older memberships).
 
 await cmc.revokeMembership(admin, {
   membershipAccessId: members[0].membershipAccessId,

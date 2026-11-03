@@ -1973,10 +1973,14 @@ function memberRecordFromAccess (access) {
   const c = access.clientData.cmc;
   const cp = c.counterparty || {};
   const membership = c.membership || {};
+  // Identity only: the counterparty's endpoint is never copied.
+  const member = { username: cp.username || null, host: cp.host || null };
+  // The name the member gave in the request, kept by cores that store it
+  // (absent on older memberships).
+  if (typeof cp.displayName === 'string' && cp.displayName !== '') member.displayName = cp.displayName;
   return {
     membershipAccessId: access.id,
-    // Identity only: the counterparty's endpoint is never copied.
-    member: { username: cp.username || null, host: cp.host || null },
+    member,
     appCode: c.appCode || null,
     scopeStreamId: c.scopeStreamId || null,
     scopes: (access.permissions || [])
@@ -1993,7 +1997,9 @@ function memberRecordFromAccess (access) {
 /**
  * Administrator side: list the group's members (accesses with
  * `clientData.cmc.role === 'member'`). Needs a token allowed to list the
- * group's accesses (personal token).
+ * group's accesses (personal token). Each record's `member` is
+ * `{ username, host }`, plus `displayName` (the name the member gave in the
+ * request) when the core keeps it.
  *
  * @param {Object} conn
  * @returns {Promise<Array>}
