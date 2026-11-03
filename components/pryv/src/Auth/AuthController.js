@@ -330,7 +330,14 @@ class AuthController {
   async _accessInfo (apiEndpoint) {
     // required here: Connection is not needed before the first switch
     const Connection = require('../Connection');
-    return await new Connection(apiEndpoint).accessInfo(true);
+    try {
+      return await new Connection(apiEndpoint).accessInfo(true);
+    } catch (e) {
+      // accessInfo() rejects an error answer with a PryvError carrying the
+      // server's error; anything else (network failure, unreadable answer) is thrown
+      if (e instanceof PryvError && e.innerObject != null) return { error: e.innerObject };
+      throw e;
+    }
   }
 
   /** @private */

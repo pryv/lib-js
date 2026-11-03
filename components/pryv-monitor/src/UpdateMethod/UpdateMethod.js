@@ -19,12 +19,21 @@ class UpdateMethod {
       throw new Error('An update Method can be assigned to one monitor only');
     }
     this.monitor = monitor;
+    // On each READY, run ready() and hand its promise to the monitor, so
+    // monitor.start() resolves only once this update method is ready.
+    // A failure goes to the monitor's `error` event.
+    const onReady = () => {
+      const task = new Promise((resolve) => { resolve(this.ready()); })
+        .catch((e) => { monitor.emit(Changes.ERROR, e); });
+      // `_addReadyTask` is internal to the Monitor (not typed)
+      (/** @type {any} */ (monitor))._addReadyTask(task);
+    };
     // @ts-ignore - Changes.READY and Changes.STOP are valid event names
-    monitor.on(Changes.READY, this.ready.bind(this));
+    monitor.on(Changes.READY, onReady);
     // @ts-ignore
     monitor.on(Changes.STOP, this.stop.bind(this));
     if (monitor.started) {
-      this.ready();
+      onReady();
     }
   }
 

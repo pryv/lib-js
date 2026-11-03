@@ -77,7 +77,9 @@ declare module 'pryv' {
 
     /**
      * Start the monitor and perform initial sync.
-     * Resolves with the same monitor instance.
+     * Resolves with the same monitor instance once the update methods are
+     * ready too (the Socket update method has subscribed), so a change made
+     * after `await monitor.start()` is notified.
      */
     start(): Promise<Monitor>;
 

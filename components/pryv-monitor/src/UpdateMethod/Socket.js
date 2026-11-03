@@ -13,14 +13,36 @@ const Changes = require('../lib/Changes');
  * @extends UpdateMethod
  */
 class Socket extends UpdateMethod {
+  /**
+   * Open the socket and subscribe to the monitor's scope; resolves once
+   * subscribed, then up to date (see `_open()`). A call while that is in
+   * progress shares it.
+   * @returns {Promise<void>}
+   */
   async ready () {
     if (this.socket) return;
+    if (this._opening == null) {
+      this._opening = this._open().finally(() => { this._opening = null; });
+    }
+    return this._opening;
+  }
+
+  /**
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _open () {
     // @ts-ignore - socket is added by @pryv/socket.io extension
     if (!this.monitor.connection.socket) {
       throw new Error('You should load package @pryv/socket.io to use monitor with websockets');
     }
     // @ts-ignore - socket is added by @pryv/socket.io extension
-    this.socket = await this.monitor.connection.socket.open();
+    const socket = await this.monitor.connection.socket.open();
+    if (!this.monitor.started) { // stopped while opening
+      try { socket.close(); } catch (e) { }
+      return;
+    }
+    this.socket = socket;
 
     // Scoped notifications (opt-in): register this monitor's scope so the server
     // wakes us only when a matching change occurs, delivered as a single
@@ -74,6 +96,9 @@ class Socket extends UpdateMethod {
         this.socket = null;
       }
     });
+    // A change made between the monitor's last fetch and the subscription
+    // above sent no notification: fetch what changed since, once.
+    if (this.monitor.started) await this.monitor.updateEvents();
   }
 
   async stop () {

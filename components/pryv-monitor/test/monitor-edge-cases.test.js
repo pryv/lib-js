@@ -226,5 +226,65 @@ describe('[MEDX] Monitor Edge Cases', function () {
       monitor.ready();
       expect(readyEmitted).to.be.false;
     });
+
+    /** An update method whose ready() takes `ms` milliseconds. */
+    class SlowUpdateMethod extends pryv.Monitor.UpdateMethod.Null {
+      constructor (ms, fail) {
+        super();
+        this.ms = ms;
+        this.fail = fail;
+        this.calls = 0;
+        this.completed = 0;
+      }
+
+      async ready () {
+        this.calls++;
+        await new Promise((resolve) => setTimeout(resolve, this.ms));
+        if (this.fail) throw new Error('ready failed');
+        this.completed++;
+      }
+    }
+
+    it('[MRDC] start() resolves once the update methods\' ready() completed, calling it once', async function () {
+      const slow = new SlowUpdateMethod(300);
+      const timer = new pryv.Monitor.UpdateMethod.EventsTimer(60000);
+      monitor.addUpdateMethod(slow).addUpdateMethod(timer);
+      await monitor.start();
+      expect(slow.calls).to.equal(1);
+      expect(slow.completed).to.equal(1);
+      expect(timer.timer).to.exist;
+      clearTimeout(timer.timer);
+    });
+
+    it('[MRDD] an update method failing in ready(): `error` emitted, start() resolves', async function () {
+      monitor.addUpdateMethod(new SlowUpdateMethod(10, true));
+      const errors = [];
+      monitor.on(Changes.ERROR, (e) => { errors.push(e); });
+      await monitor.start();
+      expect(errors.map((e) => e.message)).to.deep.equal(['ready failed']);
+    });
+
+    it('[MRDE] an update method added after start() gets ready() once', async function () {
+      await monitor.start();
+      const slow = new SlowUpdateMethod(10);
+      monitor.addUpdateMethod(slow);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(slow.calls).to.equal(1);
+      expect(slow.completed).to.equal(1);
+    });
+
+    it('[MRDF] Socket update method without @pryv/socket.io: `error` emitted, start() resolves', async function () {
+      const bare = new pryv.Monitor(new pryv.Connection(conn.apiEndpoint), { limit: 1 });
+      Object.defineProperty(bare.connection, 'socket', { value: undefined });
+      bare.addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
+      const errors = [];
+      bare.on(Changes.ERROR, (e) => { errors.push(e); });
+      try {
+        await bare.start();
+        expect(errors.map((e) => e.message)).to.deep.equal(['You should load package @pryv/socket.io to use monitor with websockets']);
+      } finally {
+        bare.stop();
+      }
+    });
   });
 });

@@ -71,7 +71,7 @@ The possible events are:
 await monitor.start()
 ```
 
-The monitor will fetch the entire dataset in the specified scope then trigger the change events accordingly.
+The monitor will fetch the entire dataset in the specified scope then trigger the change events accordingly. The promise resolves once the update methods are ready too (the `Socket` update method has subscribed to the server's notifications), so a change made after `await monitor.start()` is notified.
 
 #### Trigger Pryv events update
 

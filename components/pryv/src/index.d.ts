@@ -930,7 +930,11 @@ declare module 'pryv' {
       fields: string[],
       points: Array<Array<number | string>>,
     ): Promise<HFSeriesAddResult>;
-    /** Memoized; pass `forceRefresh: true` to bypass + refresh the cache. */
+    /**
+     * Memoized (successes only); pass `forceRefresh: true` to bypass + refresh the cache.
+     * Rejects with a `PryvError` when the server answers with an error (e.g. `invalid-access-token`),
+     * the server's error on `innerObject`, as `apiOne()` does.
+     */
     accessInfo(forceRefresh?: boolean): Promise<AccessInfo>;
     /** Update an access by composite id. */
     updateAccess(id: string, changes: object): Promise<object>;
