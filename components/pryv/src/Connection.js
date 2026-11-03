@@ -58,15 +58,12 @@ class Connection {
    * Get username for this connection.
    * It's async as it's constructed from access info.
    * @returns {Promise<string>} Promise resolving to the username
+   * @throws {PryvError} If the server answers access-info with an error, as
+   *   `accessInfo()` does (server's error on `innerObject`)
    */
   async username () {
+    // rejects as accessInfo() does when the server answers with an error
     const accessInfo = await this.accessInfo();
-    if (accessInfo.error) {
-      throw new PryvError(
-        'Failed fetching accessinfo: ' + accessInfo.error.message,
-        accessInfo.error
-      );
-    }
     // @ts-ignore - username is always a string
     return accessInfo.user.username;
   }
@@ -74,19 +71,27 @@ class Connection {
   /**
    * Get access info for this connection.
    *
-   * Memoized per-Connection: the first call fetches from the server and
-   * caches the result; subsequent calls return the cached copy in O(1).
-   * Pass `forceRefresh: true` to invalidate the cache and fetch a fresh
-   * copy from the server — used internally by `connection.socket` to
-   * react to `accessUpdated` server-push events. A failed server
-   * fetch leaves any prior cached value intact.
+   * Memoized per-Connection: the first successful call fetches from the
+   * server and caches the result; subsequent calls return the cached copy
+   * in O(1). Pass `forceRefresh: true` to invalidate the cache and fetch a
+   * fresh copy from the server — used internally by `connection.socket` to
+   * react to `accessUpdated` server-push events.
+   *
+   * Only a successful answer is cached: a failure is never cached, so the
+   * next call asks the server again, and a failed refresh leaves any prior
+   * cached value intact.
    *
    * @param {boolean} [forceRefresh=false] - bypass + refresh the cache
    * @returns {Promise<AccessInfo>} Promise resolving to the access info
+   * @throws {PryvError} If the server answers with an error (for example
+   *   `invalid-access-token` for an unknown, expired or deleted token), as
+   *   `apiOne()` does: the message names the method and the server's error id
+   *   and message, the server's error is on `innerObject`.
    */
   async accessInfo (forceRefresh = false) {
     if (!forceRefresh && this._accessInfoCache != null) return this._accessInfoCache;
     const fresh = await this.get('access-info', null);
+    if (fresh.error) throw apiCallError('getAccessInfo', fresh.error);
     this._accessInfoCache = fresh;
     return fresh;
   }
@@ -128,20 +133,8 @@ class Connection {
       result[0].error ||
       (expectedKey != null && result[0][expectedKey] == null)
     ) {
-      const error = result[0]?.error;
-      const innerObject = error || result;
-      let reason;
-      if (error) {
-        reason = [error.id, error.message].filter((v) => v != null && v !== '').join(': ') || 'error answer';
-      } else if (result[0] == null) {
-        reason = 'no result';
-      } else {
-        reason = `"${expectedKey}" missing in result`;
-      }
-      throw new PryvError(
-        `Error for api method: "${method}" >> ${reason}`,
-        innerObject
-      );
+      const reason = result[0] == null ? 'no result' : `"${expectedKey}" missing in result`;
+      throw apiCallError(method, result[0]?.error, result, reason);
     }
     if (expectedKey != null) return result[0][expectedKey];
     return result[0];
@@ -161,7 +154,7 @@ class Connection {
     try {
       accessInfo = await this.accessInfo();
     } catch (e) {
-      if (e.response?.body?.error?.id === 'invalid-access-token') {
+      if (e.innerObject?.id === 'invalid-access-token') {
         return null; // Already revoked OK..
       }
       if (throwOnFail) throw e;
@@ -169,10 +162,9 @@ class Connection {
     }
     // delete access
     try {
-      const result = usingConnection.apiOne('accesses.delete', {
+      return await usingConnection.apiOne('accesses.delete', {
         id: accessInfo.id
       });
-      return result;
     } catch (e) {
       if (throwOnFail) throw e;
       return null;
@@ -583,6 +575,24 @@ module.exports = Connection;
 
 function getTimestamp () {
   return Date.now() / 1000;
+}
+
+/**
+ * The error thrown for a failed API call. The message names the method and the
+ * server's error id and message (or `reason` when there is no error answer);
+ * the server's error, or else the whole answer, is on `innerObject`. The call's
+ * params are never in the message: they can carry passwords and tokens.
+ * @param {string} method - API method id
+ * @param {Object} [error] - the server's error answer, if any
+ * @param {any} [answer] - the whole answer, kept when there is no error answer
+ * @param {string} [reason] - why the call failed when there is no error answer
+ * @returns {PryvError}
+ */
+function apiCallError (method, error, answer, reason) {
+  if (error) {
+    reason = [error.id, error.message].filter((v) => v != null && v !== '').join(': ') || 'error answer';
+  }
+  return new PryvError(`Error for api method: "${method}" >> ${reason}`, error || answer);
 }
 
 const MIME_TYPES = {

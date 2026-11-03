@@ -77,7 +77,9 @@ declare module 'pryv' {
 
     /**
      * Start the monitor and perform initial sync.
-     * Resolves with the same monitor instance.
+     * Resolves with the same monitor instance once the update methods are
+     * ready too (the Socket update method has subscribed), so a change made
+     * after `await monitor.start()` is notified.
      */
     start(): Promise<Monitor>;
 
@@ -201,6 +203,15 @@ declare module 'pryv' {
    * Requires @pryv/socket.io to be loaded.
    */
   export class SocketUpdateMethod extends MonitorUpdateMethod {
+    /**
+     * @param options.subscribeTimeoutMs - how long to wait for the server to
+     *   acknowledge the subscription before the opening fails (default 15000)
+     */
+    constructor(options?: { subscribeTimeoutMs?: number });
+
+    /** The subscribe ack timeout in milliseconds */
+    readonly subscribeTimeoutMs: number;
+
     /** The socket instance (set after ready() is called) */
     protected socket?: SocketIO;
   }

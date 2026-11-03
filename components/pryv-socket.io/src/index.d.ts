@@ -40,7 +40,8 @@ declare module 'pryv' {
     | 'accessUpdated'
     | 'notificationsChanged'
     | 'disconnect'
-    | 'error';
+    | 'error'
+    | 'reconnect';
 
   /**
    * Socket.IO transport for a `Connection`.
@@ -88,6 +89,9 @@ declare module 'pryv' {
      * - `notificationsChanged` - Scoped subscription matched (see `subscribe()`)
      * - `disconnect` - Socket disconnected
      * - `error` - An error occurred
+     * - `reconnect` - Reconnected automatically, and the scoped subscriptions were
+     *   sent again (`resubscribed` is true when there were some and the server
+     *   accepted them): fetch what changed while disconnected
      */
     on(event: 'eventsChanged', listener: () => void): this;
     on(event: 'streamsChanged', listener: () => void): this;
@@ -96,6 +100,7 @@ declare module 'pryv' {
     on(event: 'notificationsChanged', listener: (payload: { keys: string[] }) => void): this;
     on(event: 'disconnect', listener: (reason: string) => void): this;
     on(event: 'error', listener: (error: Error | unknown) => void): this;
+    on(event: 'reconnect', listener: (info: { resubscribed: boolean }) => void): this;
     on(event: SocketIOEventName, listener: (...args: unknown[]) => void): this;
 
     /**
@@ -103,6 +108,9 @@ declare module 'pryv' {
      * changes are delivered as `notificationsChanged({ keys })`. Resolves the
      * server ack `{ ok, keys }`, or `{ ok: false }` when the server does not
      * support scoped notifications (so callers can fall back to coarse events).
+     * The subscriptions are sent again after an automatic reconnection, then
+     * `reconnect` is emitted; a call whose ack was lost with a disconnection
+     * resolves with the ack of that re-subscription.
      */
     subscribe(
       payload:

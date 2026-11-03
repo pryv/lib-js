@@ -525,5 +525,25 @@ describe('[CONX] Connection', () => {
       const cached = await cachingConn.accessInfo();
       expect(cached).to.equal(refreshed);
     });
+
+    it('[CAIE] an invalid token: accessInfo() rejects with invalid-access-token, and does not cache it', async () => {
+      const regexAPIandToken = /(.+):\/\/(.+)/gm;
+      const res = regexAPIandToken.exec(testData.apiEndpoint);
+      const badConn = new pryv.Connection(res[1] + '://' + 'cnotavalidtoken' + cuid() + '@' + res[2]);
+      let fetches = 0;
+      const getFetchRaw = badConn._getFetchRaw.bind(badConn);
+      badConn._getFetchRaw = (...args) => { fetches++; return getFetchRaw(...args); };
+      for (const attempt of [1, 2]) {
+        let error = null;
+        try {
+          await badConn.accessInfo();
+        } catch (e) {
+          error = e;
+        }
+        expect(error, 'attempt ' + attempt).to.be.instanceOf(pryv.PryvError);
+        expect(error.innerObject.id).to.equal('invalid-access-token');
+        expect(fetches).to.equal(attempt); // asked the server again: nothing cached
+      }
+    });
   });
 });

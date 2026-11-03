@@ -215,6 +215,8 @@ const connection = new pryv.Connection(apiEndpoint);
 const accessInfo = await connection.accessInfo();
 ```
 
+The result is cached on the connection (pass `true` to fetch it again). When the server answers with an error, for example `invalid-access-token` for an unknown, expired or deleted token, the promise rejects with a `pryv.PryvError` whose `innerObject` is the server's error (`e.innerObject.id`), as `apiOne()` does; a failure is never cached.
+
 #### Using `pryv.Service.login()` _(trusted apps only)_
 
 [API reference](https://api.pryv.com/reference-full/#login-user)

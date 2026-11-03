@@ -47,10 +47,20 @@ class Monitor extends EventEmitter {
       updatingEvents: false, // semaphore to prevent updating events in parallel
       updatingStreams: false // semaphore to prevent updating streams in parallel
     };
+    /**
+     * @private
+     * Collects, while READY is emitted, the promises of the update methods'
+     * `ready()` (see `ready()`); null otherwise.
+     * @type {Array<Promise<void>>|null}
+     */
+    this._readyTasks = null;
   }
 
   /**
-   * Start the monitor and perform initial sync
+   * Start the monitor and perform initial sync.
+   * Resolves once the update methods are ready too (e.g. the Socket update
+   * method has subscribed to the server's notifications), so a change made
+   * after `await monitor.start()` is notified.
    * @returns {Promise<Monitor>} Promise resolving to this Monitor instance
    */
   async start () {
@@ -64,7 +74,14 @@ class Monitor extends EventEmitter {
 
     this.states.starting = false;
     this.states.started = true;
-    this.ready();
+    try {
+      await this.ready();
+    } catch (e) {
+      // an update method failed and nobody listens to `error`: start() fails,
+      // so leave the monitor stopped (update methods get STOP to clean up)
+      this.stop();
+      throw e;
+    }
     return this;
   }
 
@@ -95,7 +112,8 @@ class Monitor extends EventEmitter {
         this.updateEvents();
       }.bind(this), 1);
     } else {
-      this.ready();
+      // an update method's failure was emitted as `error` (dropped if nobody listens)
+      this.ready().catch(() => {});
     }
     return this;
   }
@@ -127,7 +145,8 @@ class Monitor extends EventEmitter {
         this.updateStreams();
       }.bind(this), 1);
     } else {
-      this.ready();
+      // an update method's failure was emitted as `error` (dropped if nobody listens)
+      this.ready().catch(() => {});
     }
     return this;
   }
@@ -137,10 +156,29 @@ class Monitor extends EventEmitter {
    * Called after init phase and each updateEvents
    * Advertise the update method or any listener that the Monitor is ready
    * for a next event update
+   * @returns {Promise<void>} resolves once the update methods' `ready()`
+   *   started by this READY have completed (their errors go to the `error` event)
    */
   ready () {
-    if (!this.states.started) return; // it might be stoped
-    this.emit(Changes.READY);
+    if (!this.states.started) return Promise.resolve(); // it might be stoped
+    const previousTasks = this._readyTasks;
+    const tasks = this._readyTasks = [];
+    try {
+      this.emit(Changes.READY);
+    } finally {
+      this._readyTasks = previousTasks;
+    }
+    return Promise.all(tasks).then(() => {});
+  }
+
+  /**
+   * @private
+   * Called by an update method from its READY listener with the promise of
+   * its `ready()`: the pending `ready()` call waits for it.
+   * @param {Promise<void>} task
+   */
+  _addReadyTask (task) {
+    if (this._readyTasks != null) this._readyTasks.push(task);
   }
 
   /**

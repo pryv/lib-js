@@ -28,6 +28,11 @@ class EventsTimer extends UpdateMethod {
       if (this.monitor.started) this.monitor.updateEvents();
     }, this.updateRateMS);
   }
+
+  async stop () {
+    if (this.timer != null) clearTimeout(this.timer);
+    this.timer = null;
+  }
 }
 
 module.exports = EventsTimer;

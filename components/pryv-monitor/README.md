@@ -71,7 +71,7 @@ The possible events are:
 await monitor.start()
 ```
 
-The monitor will fetch the entire dataset in the specified scope then trigger the change events accordingly.
+The monitor will fetch the entire dataset in the specified scope then trigger the change events accordingly. The promise resolves once the update methods are ready too (the `Socket` update method has subscribed to the server's notifications), so a change made after `await monitor.start()` is notified.
 
 #### Trigger Pryv events update
 
@@ -106,8 +106,9 @@ Update methods can be triggered automatically with:
   ```js
   new pryv.Monitor.UpdateMethod.Socket()
   ```
-  This uses the [Socket.IO add-on](https://github.com/pryv/lib-js/tree/master/components/pryv-socket.io#readme) to relay notifications from Pryv.io to the monitor.
+  This uses the [Socket.IO add-on](https://github.com/pryv/lib-js/tree/master/components/pryv-socket.io#readme) to relay notifications from Pryv.io to the monitor. After an automatic reconnection it fetches what changed while disconnected. A socket failure (for example socket.io giving up reconnecting) is emitted as `error` when the monitor has `error` listeners, and only logged as a warning otherwise; the socket is then reopened on the monitor's next update. Option: `new pryv.Monitor.UpdateMethod.Socket({ subscribeTimeoutMs })` (default 15000), how long to wait for the server to acknowledge the subscription before the opening fails.
 - **Custom**: You can design your own update method by extending the [`UpdateMethod`](https://github.com/pryv/lib-js/tree/master/components/pryv-monitor/src/UpdateMethod/UpdateMethod.js) class.
+  Its `ready()` is called each time the monitor is ready for a next update (once started, then after each update), and `stop()` when the monitor stops. `start()` waits for the promise `ready()` returns on start, so do there what must be in place before changes can be detected (open a connection, subscribe). A rejection of `ready()` is emitted as `error`; if nothing listens to `error`, `start()` rejects with it and the monitor is stopped (on later calls the failure is only emitted as `error`).
 
 #### Stop monitoring
 
