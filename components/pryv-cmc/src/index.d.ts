@@ -676,7 +676,12 @@ declare module '@pryv/cmc' {
 
   export type MemberRecord = {
     membershipAccessId: string;
-    member: { username: string | null; host: string | null };
+    /**
+     * Identity of the member. `displayName` is the name the member gave in the
+     * membership request, present only when the core keeps it (absent on older
+     * memberships and earlier cores).
+     */
+    member: { username: string | null; host: string | null; displayName?: string };
     appCode: string | null;
     /** Group's stream of the membership relationship (where `revokeMembership` writes). */
     scopeStreamId: string | null;

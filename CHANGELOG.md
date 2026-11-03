@@ -7,6 +7,7 @@
 ### Added
 
 - **`pryv` typings for account auto-deletion.** `account.getAutoDeletion` and `account.setAutoDeletion` are typed in `APICallMethods` (types `AutoDeletion`, `AutoDeletionSetParams`, `AutoDeletionSetting`, `AutoDeletionMode`, `AutoDeletionAction`), and `ServiceInfo.features.autoDeletion` as `AutoDeletionFeature`. Types only, no runtime change. The methods exist on cores whose service info advertises `features.autoDeletion`.
+- **`@pryv/cmc` `listMembers` returns the member's `displayName` when the core keeps it** (open-pryv.io release after 2.0.0-rc.71). Such cores store the name a member gave in its membership request (`requesterMeta.displayName`) on the membership access, and `listMembers` returns it as `member.displayName`. The key is left out when there is none: memberships accepted by earlier cores, or requests made without a display name. `MemberRecord.member` is typed `{ username: string | null; host: string | null; displayName?: string }`.
 - **`pryv` typings for account transfer.** `account.setAutoDeletion` takes `transfer` (`AutoDeletionTransferParams`: beneficiary `email`, optional `name` and `dateOfBirth`, `notifyBeneficiary`, `fallback`) with `action: 'transfer'`; the setting answers it as `AutoDeletionTransferSetting` (never the name or date of birth, `identityGiven` instead), and `AutoDeletion` gains `transfer` (`AutoDeletionTransferState`) and `claimWindowDays`. The public `account.transferClaim` and `account.transferDecline` are typed in `APICallMethods`. Types only, no runtime change.
 
 ### Changed

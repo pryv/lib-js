@@ -2981,6 +2981,33 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       expect(JSON.stringify(members)).to.not.include('secret');
     });
 
+    it('[CMCMD6B] listMembers returns the member\'s displayName when the core keeps it, and omits it otherwise', async function () {
+      const membership = (id, counterparty) => ({
+        id,
+        permissions: [{ streamId: TEAM, level: 'contribute' }],
+        clientData: { cmc: { role: 'member', appCode: 'practice', counterparty } }
+      });
+      const conn = makeStubConnection({
+        handlers: {
+          'accesses.get': {
+            accesses: [
+              membership('with-name', { username: 'who', host: 'pryv.me', displayName: 'Dr Who', apiEndpoint: 'https://secret@who.pryv.me/' }),
+              membership('older', { username: 'old', host: 'pryv.me' }),
+              membership('empty-name', { username: 'anon', host: 'pryv.me', displayName: '' })
+            ]
+          }
+        }
+      });
+      const members = await cmc.listMembers(conn);
+      expect(members.map((m) => m.member)).to.deep.equal([
+        { username: 'who', host: 'pryv.me', displayName: 'Dr Who' },
+        { username: 'old', host: 'pryv.me' },
+        { username: 'anon', host: 'pryv.me' }
+      ]);
+      expect('displayName' in members[1].member).to.equal(false);
+      expect(JSON.stringify(members)).to.not.include('secret');
+    });
+
     it('[CMCMD7] revokeMembership writes consent/revoke-cmc for the membership access', async function () {
       const conn = makeStubConnection({ handlers: { 'events.create': function (params) { return { event: { id: 'rev-m', content: params.content } }; } } });
       const r = await cmc.revokeMembership(conn, { membershipAccessId: 'membership-1', scopeStreamId: ':_cmc:apps:practice', reason: { en: 'left the practice' } });
