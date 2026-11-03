@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## 3.18.0 - 2026-11-03
+
+`pryv` 3.18.0 (a minor: `Connection#accessInfo()` now rejects an error answer, a behaviour change, see Changed) and `@pryv/cmc` 3.23.0 (a minor: `listMembers` returns `displayName`); `@pryv/socket.io` and `@pryv/monitor` carry the fixes below; `@pryv/delegation` and `@pryv/encryption` follow `pryv` to 3.18.0 with no change.
+
 ### Added
 
 - **`pryv` typings for account auto-deletion.** `account.getAutoDeletion` and `account.setAutoDeletion` are typed in `APICallMethods` (types `AutoDeletion`, `AutoDeletionSetParams`, `AutoDeletionSetting`, `AutoDeletionMode`, `AutoDeletionAction`), and `ServiceInfo.features.autoDeletion` as `AutoDeletionFeature`. Types only, no runtime change. The methods exist on cores whose service info advertises `features.autoDeletion`.
