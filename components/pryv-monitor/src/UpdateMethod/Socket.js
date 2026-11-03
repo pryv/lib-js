@@ -74,7 +74,14 @@ class Socket extends UpdateMethod {
         this.socket = null;
         if (this._abortSubscribe != null) this._abortSubscribe(null);
       }
-      this.monitor.emit(Changes.ERROR, error);
+      // This arrives from the transport, inside socket.io-client: an `error`
+      // event nobody listens to would throw there (an uncaught exception).
+      if (this.monitor.listenerCount(Changes.ERROR) > 0) {
+        this.monitor.emit(Changes.ERROR, error);
+      } else {
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn('@pryv/monitor: socket error: ' + message + ' (listen to "error" on the monitor to handle it)');
+      }
     });
 
     // Scoped notifications (opt-in): register this monitor's scope so the server

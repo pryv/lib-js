@@ -363,6 +363,32 @@ describe('[MEDX] Monitor Edge Cases', function () {
       }
     });
 
+    it('[MRDR] Socket transport gave up, no `error` listener on the monitor: no exception, one warning, reopened on the next update', async function () {
+      const { m, fake } = socketMonitor();
+      try {
+        await m.start();
+        const warn = console.warn;
+        const warned = [];
+        console.warn = (...args) => { warned.push(args.join(' ')); };
+        try {
+          // as @pryv/socket.io after reconnect_failed: handle gone, then 'error'
+          fake._io = null;
+          fake.emit('error', new Error('socket.io: reconnect_failed (gave up after configured attempts)'));
+        } finally {
+          console.warn = warn;
+        }
+        expect(warned.length).to.equal(1);
+        expect(warned[0]).to.include('reconnect_failed');
+        expect(m.started).to.equal(true);
+        await m.updateEvents(); // its READY reopens the socket
+        await m.ready();
+        expect(fake.opens).to.equal(2);
+        expectListenedOnce(fake);
+      } finally {
+        m.stop();
+      }
+    });
+
     it('[MRDJ] Socket after stop() and start() again: its listeners are not duplicated', async function () {
       const { m, fake } = socketMonitor();
       try {
