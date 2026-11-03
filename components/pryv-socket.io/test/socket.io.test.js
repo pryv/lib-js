@@ -177,6 +177,70 @@ describe('[SKIX] Socket.IO', function () {
     });
   });
 
+  describe('[SFTX] transport failures (no server)', () => {
+    const { EventEmitter } = require('events');
+
+    /** A SocketIO whose socket.io-client socket is a stand-in (with its Manager on `.io`). */
+    function socketWithFakeIo () {
+      const conn = new pryv.Connection('https://tok@alice.example.test/');
+      conn.username = async () => 'alice';
+      const socket = conn.socket;
+      const fake = new EventEmitter();
+      fake.io = new EventEmitter(); // the Manager: emits reconnect_failed
+      fake.closed = 0;
+      fake.close = () => { fake.closed++; };
+      socket._createIo = () => fake;
+      return { socket, fake };
+    }
+
+    async function openedSocketWithFakeIo () {
+      const { socket, fake } = socketWithFakeIo();
+      const opening = socket.open();
+      await new Promise((resolve) => setImmediate(resolve)); // username() resolved, fake created
+      fake.emit('connect');
+      await opening;
+      return { socket, fake };
+    }
+
+    it('[SFTA] reconnect_failed (from the Manager): the socket is closed and `error` emitted', async () => {
+      const { socket, fake } = await openedSocketWithFakeIo();
+      const errors = [];
+      socket.on('error', (e) => { errors.push(e); });
+      fake.io.emit('reconnect_failed');
+      expect(errors.map((e) => e.message)).to.deep.equal(['socket.io: reconnect_failed (gave up after configured attempts)']);
+      expect(socket._io).to.equal(null);
+      expect(fake.closed).to.equal(1);
+    });
+
+    it('[SFTB] reconnect_failed with no `error` listener: no exception, the socket is closed', async () => {
+      const { socket, fake } = await openedSocketWithFakeIo();
+      const warn = console.warn;
+      const warned = [];
+      console.warn = (...args) => { warned.push(args.join(' ')); };
+      try {
+        fake.io.emit('reconnect_failed'); // would throw an unhandled 'error' event
+      } finally {
+        console.warn = warn;
+      }
+      expect(socket._io).to.equal(null);
+      expect(fake.closed).to.equal(1);
+      expect(warned.length).to.equal(1);
+    });
+
+    it('[SFTC] a failed first connection: open() rejects and the failed socket is closed', async () => {
+      const { socket, fake } = socketWithFakeIo();
+      const opening = socket.open();
+      await new Promise((resolve) => setImmediate(resolve));
+      fake.emit('connect_error', new Error('refused'));
+      let error = null;
+      try { await opening; } catch (e) { error = e; }
+      expect(error?.message).to.equal('refused');
+      expect(fake.closed).to.equal(1);
+      expect(socket._io).to.equal(null);
+      expect(socket.connecting).to.equal(false);
+    });
+  });
+
   describe('[SNTX] notification', () => {
     before(async () => {
       conn = new pryv.Connection(apiEndpoint);

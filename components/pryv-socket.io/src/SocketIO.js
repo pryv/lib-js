@@ -63,38 +63,48 @@ class SocketIO extends EventEmitter {
           // socket.io-client default is reconnectionAttempts: Infinity, max delay 5s.
           // With these settings, a stuck client gives up after ~10 attempts spread
           // over ~1 minute (with randomization), then surfaces 'error' to consumers.
-          // @ts-ignore - io is callable in socket.io-client
-          this._io = io(socketEndpoint, {
+          this._io = this._createIo(socketEndpoint, {
             forceNew: true,
             transports: ['websocket'],
             reconnectionAttempts: 10,
             reconnectionDelayMax: 60000,
             randomizationFactor: 0.5
           });
+          const ioSocket = this._io;
 
-          // Terminal failure: socket.io-client gave up reconnecting.
-          // Tear down our handle and surface 'error' so consumers (e.g. Monitor)
-          // can clean up instead of leaving a zombie socket reference.
-          this._io.on('reconnect_failed', () => {
-            const dead = this._io;
+          // Terminal failure: socket.io-client gave up reconnecting (emitted by
+          // its Manager, `socket.io`, not by the socket). Tear down our handle
+          // and surface 'error' so consumers (e.g. Monitor) can clean up
+          // instead of leaving a zombie socket reference.
+          ioSocket.io.on('reconnect_failed', () => {
+            if (this._io !== ioSocket) return; // closed or replaced meanwhile
             this._io = null;
             this.connecting = false;
-            try { if (dead) dead.close(); } catch (ex) { }
-            this.emit('error', new Error('socket.io: reconnect_failed (gave up after configured attempts)'));
+            try { ioSocket.close(); } catch (ex) { }
+            this._scopes.clear();
+            settlePendingSubscribes(this, { ok: false, error: new Error('socket closed') });
+            const error = new Error('socket.io: reconnect_failed (gave up after configured attempts)');
+            // without a listener, EventEmitter throws 'error' events, here
+            // inside socket.io-client's reconnection timer: an uncaught exception
+            if (this.listenerCount('error') > 0) {
+              this.emit('error', error);
+            } else {
+              console.warn('@pryv/socket.io: ' + error.message + '; the socket is closed (listen to "error" on connection.socket to handle it)');
+            }
           });
 
           // handle failure
           for (const errcode of ['connect_error', 'connection_failed', 'error', 'connection_timeout']) {
             const myCode = errcode;
-            this._io.on(errcode, (e) => {
+            ioSocket.on(errcode, (e) => {
               if (!this.connecting) return; // do not care about errors if connected
 
+              // close the failed socket, or socket.io-client keeps retrying it
+              try { ioSocket.close(); } catch (ex) { }
               this._io = null;
               this.connecting = false;
               if (e === null) { e = myCode; }
               if (!(e instanceof Error)) { e = new Error(e); }
-
-              try { this._io.close(); } catch (ex) { }
               return reject(e);
             });
           }
@@ -129,6 +139,18 @@ class SocketIO extends EventEmitter {
           return reject(e);
         });
     });
+  }
+
+  /**
+   * @private
+   * Create the socket.io-client socket (a seam for tests).
+   * @param {string} endpoint
+   * @param {Object} options
+   * @returns {any} the socket.io-client socket
+   */
+  _createIo (endpoint, options) {
+    // @ts-ignore - io is callable in socket.io-client
+    return io(endpoint, options);
   }
 
   /**
