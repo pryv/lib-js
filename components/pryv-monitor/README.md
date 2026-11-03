@@ -108,6 +108,7 @@ Update methods can be triggered automatically with:
   ```
   This uses the [Socket.IO add-on](https://github.com/pryv/lib-js/tree/master/components/pryv-socket.io#readme) to relay notifications from Pryv.io to the monitor.
 - **Custom**: You can design your own update method by extending the [`UpdateMethod`](https://github.com/pryv/lib-js/tree/master/components/pryv-monitor/src/UpdateMethod/UpdateMethod.js) class.
+  Its `ready()` is called each time the monitor is ready for a next update (once started, then after each update), and `stop()` when the monitor stops. `start()` waits for the promise `ready()` returns on start, so do there what must be in place before changes can be detected (open a connection, subscribe). A rejection of `ready()` is emitted as `error`; if nothing listens to `error`, `start()` rejects with it and the monitor is stopped (on later calls the failure is only emitted as `error`).
 
 #### Stop monitoring
 

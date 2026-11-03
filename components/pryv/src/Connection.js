@@ -58,6 +58,8 @@ class Connection {
    * Get username for this connection.
    * It's async as it's constructed from access info.
    * @returns {Promise<string>} Promise resolving to the username
+   * @throws {PryvError} If the server answers access-info with an error, as
+   *   `accessInfo()` does (server's error on `innerObject`)
    */
   async username () {
     // rejects as accessInfo() does when the server answers with an error

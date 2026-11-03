@@ -112,7 +112,8 @@ class Monitor extends EventEmitter {
         this.updateEvents();
       }.bind(this), 1);
     } else {
-      this.ready();
+      // an update method's failure was emitted as `error` (dropped if nobody listens)
+      this.ready().catch(() => {});
     }
     return this;
   }
@@ -144,7 +145,8 @@ class Monitor extends EventEmitter {
         this.updateStreams();
       }.bind(this), 1);
     } else {
-      this.ready();
+      // an update method's failure was emitted as `error` (dropped if nobody listens)
+      this.ready().catch(() => {});
     }
     return this;
   }

@@ -371,6 +371,81 @@ describe('[MEDX] Monitor Edge Cases', function () {
       }
     });
 
+    /** Resolves true if `promise` settles within `ms` milliseconds, false otherwise. */
+    function settlesWithin (promise, ms) {
+      let timer;
+      return Promise.race([
+        promise.then(() => true, () => true),
+        new Promise((resolve) => { timer = setTimeout(() => resolve(false), ms); })
+      ]).finally(() => clearTimeout(timer));
+    }
+
+    it('[MRDK] stop() while Socket waits for the subscribe ack: start() settles, and the monitor starts again', async function () {
+      const { m, fake } = socketMonitor();
+      // like socket.io-client once the socket is closed: the ack never comes
+      let holdAck = true;
+      let subscribing;
+      const subscribed = new Promise((resolve) => { subscribing = resolve; });
+      fake.subscribe = async () => {
+        if (!holdAck) return { ok: true };
+        subscribing();
+        return new Promise(() => {});
+      };
+      try {
+        const first = m.start();
+        await subscribed;
+        m.stop();
+        expect(await settlesWithin(first, 3000), 'first start() settles').to.equal(true);
+        expect(m.started).to.equal(false);
+        holdAck = false;
+        expect(await settlesWithin(m.start(), 5000), 'second start() settles').to.equal(true);
+        expect(m.started).to.equal(true);
+        expect(fake.opens).to.equal(2);
+        expectListenedOnce(fake);
+      } finally {
+        m.stop();
+      }
+    });
+
+    it('[MRDL] Socket failing to open while a second READY waits for it: `error` emitted once', async function () {
+      const { m, fake } = socketMonitor();
+      fake.open = () => new Promise((resolve, reject) => setTimeout(() => reject(new Error('cannot open')), 100));
+      const errors = [];
+      m.on(Changes.ERROR, (e) => { errors.push(e); });
+      const starting = m.start();
+      // a second READY while the socket is opening (as from an update)
+      while (!m.started) await new Promise((resolve) => setTimeout(resolve, 5));
+      const second = m.ready();
+      await starting;
+      await second;
+      expect(errors.map((e) => e.message)).to.deep.equal(['cannot open']);
+      m.stop();
+    });
+
+    it('[MRDM] an update method failing in a later ready() with no `error` listener: no unhandled rejection', async function () {
+      if (typeof process === 'undefined' || typeof process.on !== 'function') this.skip();
+      const failing = new SlowUpdateMethod(10);
+      monitor.addUpdateMethod(failing);
+      await monitor.start();
+      failing.fail = true;
+      const unhandled = [];
+      const onUnhandled = (reason) => { unhandled.push(reason); };
+      const mochaListeners = process.listeners('unhandledRejection');
+      process.removeAllListeners('unhandledRejection');
+      process.on('unhandledRejection', onUnhandled);
+      try {
+        await monitor.updateEvents(); // its READY runs the failing ready()
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const late = new SlowUpdateMethod(10, true); // added to the started monitor
+        monitor.addUpdateMethod(late);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } finally {
+        process.removeListener('unhandledRejection', onUnhandled);
+        for (const l of mochaListeners) process.on('unhandledRejection', l);
+      }
+      expect(unhandled.map((e) => e.message)).to.deep.equal([]);
+    });
+
     it('[MRDF] Socket update method without @pryv/socket.io: `error` emitted, start() resolves', async function () {
       const bare = new pryv.Monitor(new pryv.Connection(conn.apiEndpoint), { limit: 1 });
       Object.defineProperty(bare.connection, 'socket', { value: undefined });

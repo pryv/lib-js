@@ -885,6 +885,7 @@ declare module 'pryv' {
   export class Connection {
     constructor (apiEndpoint: string, service?: Service);
     get service(): Service;
+    /** From `accessInfo()`; rejects with the same `PryvError` on an error answer (e.g. `invalid-access-token`). */
     username(): Promise<string>;
     api<Calls extends APICall[] = APICall[]>(
       apiCalls: Calls,

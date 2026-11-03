@@ -27,13 +27,16 @@ class UpdateMethod {
         .catch((e) => { monitor.emit(Changes.ERROR, e); });
       // `_addReadyTask` is internal to the Monitor (not typed)
       (/** @type {any} */ (monitor))._addReadyTask(task);
+      return task;
     };
     // @ts-ignore - Changes.READY and Changes.STOP are valid event names
     monitor.on(Changes.READY, onReady);
     // @ts-ignore
     monitor.on(Changes.STOP, this.stop.bind(this));
     if (monitor.started) {
-      onReady();
+      // added to a started monitor: nobody awaits this ready(); a failure was
+      // emitted as `error` (dropped if nobody listens)
+      onReady().catch(() => {});
     }
   }
 

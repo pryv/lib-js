@@ -16,14 +16,14 @@ class Socket extends UpdateMethod {
   /**
    * Open the socket and subscribe to the monitor's scope; resolves once
    * subscribed, then up to date (see `_open()`). A call while that is in
-   * progress shares it.
+   * progress waits for it; its failure is reported once, by the call that
+   * started it.
    * @returns {Promise<void>}
    */
   async ready () {
     if (this.socket) return;
-    if (this._opening == null) {
-      this._opening = this._open().finally(() => { this._opening = null; });
-    }
+    if (this._opening != null) return this._opening.then(() => {}, () => {});
+    this._opening = this._open().finally(() => { this._opening = null; });
     return this._opening;
   }
 
@@ -47,6 +47,20 @@ class Socket extends UpdateMethod {
     // `connection.socket`: drop the listeners of the previous opening first
     this._removeListeners();
 
+    this._listen('error', (error) => {
+      // If the underlying socket.io-client transport has been torn down
+      // (i.e. SocketIO emitted 'error' after reconnect_failed), drop our
+      // reference so a future Changes.READY can rebuild instead of
+      // short-circuiting on the cached, dead handle (and end a pending
+      // subscribe wait: its ack will not come).
+      // `_io` is the SocketIO instance's internal transport handle (not typed)
+      if (this.socket && !(/** @type {any} */ (this.socket))._io) {
+        this.socket = null;
+        if (this._abortSubscribe != null) this._abortSubscribe(null);
+      }
+      this.monitor.emit(Changes.ERROR, error);
+    });
+
     // Scoped notifications (opt-in): register this monitor's scope so the server
     // wakes us only when a matching change occurs, delivered as a single
     // `notificationsChanged({ keys })`. Because a scoped connection opts out of
@@ -68,12 +82,24 @@ class Socket extends UpdateMethod {
       if (scope[f] != null) eventsQuery[f] = scope[f];
     }
     const streamsQuery = scope.streams != null ? { streams: scope.streams } : {};
-    const ack = await this.socket.subscribe({
-      scopes: {
-        monEvents: { kind: 'events', query: eventsQuery },
-        monStreams: { kind: 'streams', query: streamsQuery }
-      }
-    });
+    // Once the socket is closed (by stop()) the ack never comes (socket.io-client
+    // drops ack callbacks on disconnect): stop() ends the wait instead.
+    const stopped = new Promise((resolve) => { this._abortSubscribe = resolve; });
+    let ack;
+    try {
+      ack = await Promise.race([
+        this.socket.subscribe({
+          scopes: {
+            monEvents: { kind: 'events', query: eventsQuery },
+            monStreams: { kind: 'streams', query: streamsQuery }
+          }
+        }),
+        stopped
+      ]);
+    } finally {
+      this._abortSubscribe = null;
+    }
+    if (this.socket !== socket) return; // stopped (or torn down) while subscribing
     if (!ack || ack.ok !== true) {
       // Server does not support scoped subscriptions — use coarse signals.
       this._listen('eventsChanged', onEvents);
@@ -88,24 +114,17 @@ class Socket extends UpdateMethod {
     this._listen('accessUpdated', (payload) => {
       this.monitor.emit('accessUpdated', payload);
     });
-    this._listen('error', (error) => {
-      // If the underlying socket.io-client transport has been torn down
-      // (i.e. SocketIO emitted 'error' after reconnect_failed), drop our
-      // reference so a future Changes.READY can rebuild instead of
-      // short-circuiting on the cached, dead handle.
-      // `_io` is the SocketIO instance's internal transport handle (not typed)
-      if (this.socket && !(/** @type {any} */ (this.socket))._io) {
-        this.socket = null;
-      }
-      this.monitor.emit(Changes.ERROR, error);
-    });
     // A change made between the monitor's last fetch and the subscription
-    // above sent no notification: fetch what changed since, once.
+    // above sent no notification: fetch what changed since, once. Best effort
+    // for the "before start() resolves" part: if an events update is already
+    // running, updateEvents() only queues a re-run and returns at once (the
+    // running update and the re-run still cover the gap).
     if (this.monitor.started) await this.monitor.updateEvents();
   }
 
   async stop () {
     this._removeListeners();
+    if (this._abortSubscribe != null) this._abortSubscribe(null);
     if (!this.socket) return;
     try { this.socket.close(); } catch (e) { }
     this.socket = null;
