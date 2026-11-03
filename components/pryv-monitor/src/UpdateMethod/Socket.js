@@ -6,6 +6,8 @@
 const UpdateMethod = require('./UpdateMethod');
 const Changes = require('../lib/Changes');
 
+const DEFAULT_SUBSCRIBE_TIMEOUT_MS = 15000;
+
 /**
  * Update method that uses @pryv/socket.io events for real-time updates.
  * Requires @pryv/socket.io to be loaded.
@@ -13,6 +15,20 @@ const Changes = require('../lib/Changes');
  * @extends UpdateMethod
  */
 class Socket extends UpdateMethod {
+  /**
+   * @param {Object} [options]
+   * @param {number} [options.subscribeTimeoutMs=15000] - how long to wait for
+   *   the server to acknowledge the subscription before the opening fails
+   */
+  constructor (options = {}) {
+    super();
+    const timeout = options.subscribeTimeoutMs;
+    if (timeout != null && !(typeof timeout === 'number' && timeout > 0)) {
+      throw new Error('Monitor socket subscribeTimeoutMs should be a number > 0');
+    }
+    this.subscribeTimeoutMs = timeout ?? DEFAULT_SUBSCRIBE_TIMEOUT_MS;
+  }
+
   /**
    * Open the socket and subscribe to the monitor's scope; resolves once
    * subscribed, then up to date (see `_open()`). A call while that is in
@@ -83,8 +99,15 @@ class Socket extends UpdateMethod {
     }
     const streamsQuery = scope.streams != null ? { streams: scope.streams } : {};
     // Once the socket is closed (by stop()) the ack never comes (socket.io-client
-    // drops ack callbacks on disconnect): stop() ends the wait instead.
+    // drops ack callbacks on disconnect): stop() ends the wait instead. An ack
+    // lost with a brief disconnection is replaced by the one of the
+    // re-subscription @pryv/socket.io sends on reconnection; without a
+    // reconnection in time the opening fails after `subscribeTimeoutMs`.
     const stopped = new Promise((resolve) => { this._abortSubscribe = resolve; });
+    let timer;
+    const timedOut = new Promise((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error('socket.io: no answer to subscribe within ' + this.subscribeTimeoutMs + 'ms')), this.subscribeTimeoutMs);
+    });
     let ack;
     try {
       ack = await Promise.race([
@@ -94,17 +117,39 @@ class Socket extends UpdateMethod {
             monStreams: { kind: 'streams', query: streamsQuery }
           }
         }),
-        stopped
+        stopped,
+        timedOut
       ]);
+    } catch (e) {
+      // not subscribed: drop this opening so a next READY opens again
+      if (this.socket === socket) {
+        this._removeListeners();
+        this.socket = null;
+        try { socket.close(); } catch (ex) { }
+      }
+      throw e;
     } finally {
+      clearTimeout(timer);
       this._abortSubscribe = null;
     }
     if (this.socket !== socket) return; // stopped (or torn down) while subscribing
-    if (!ack || ack.ok !== true) {
-      // Server does not support scoped subscriptions — use coarse signals.
+    let coarse = false;
+    const useCoarseSignals = () => {
+      coarse = true;
       this._listen('eventsChanged', onEvents);
       this._listen('streamsChanged', onStreams);
-    }
+    };
+    // Server does not support scoped subscriptions — use coarse signals.
+    if (!ack || ack.ok !== true) useCoarseSignals();
+    // After an automatic reconnection @pryv/socket.io has sent the
+    // subscription again (the server forgets it with the old connection);
+    // nothing was notified while disconnected: fetch what changed.
+    this._listen('reconnect', (info) => {
+      if (!this.monitor.started) return;
+      if (!coarse && !(info && info.resubscribed)) useCoarseSignals();
+      this.monitor.updateEvents();
+      this.monitor.updateStreams();
+    });
     // Re-emit the server's fine-grained `accessUpdated` event on the
     // Monitor itself so consumers can subscribe via
     // `monitor.onAccessUpdated(handler)`. The underlying SocketIO has

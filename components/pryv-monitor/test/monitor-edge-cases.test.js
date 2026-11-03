@@ -320,12 +320,18 @@ describe('[MEDX] Monitor Edge Cases', function () {
       close () { this._io = null; }
     }
 
-    function socketMonitor () {
+    function socketMonitor (socketOptions) {
       const m = new pryv.Monitor(new pryv.Connection(conn.apiEndpoint), { limit: 1 });
       const fake = new FakeSocket();
       Object.defineProperty(m.connection, 'socket', { value: fake });
-      m.addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
+      m.addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket(socketOptions));
       return { m, fake };
+    }
+
+    function expectListenedNone (fake) {
+      for (const name of ['notificationsChanged', 'accessUpdated', 'error', 'reconnect']) {
+        expect(fake.listenerCount(name), name).to.equal(0);
+      }
     }
 
     function expectListenedOnce (fake) {
@@ -444,6 +450,74 @@ describe('[MEDX] Monitor Edge Cases', function () {
         for (const l of mochaListeners) process.on('unhandledRejection', l);
       }
       expect(unhandled.map((e) => e.message)).to.deep.equal([]);
+    });
+
+    it('[MRDN] Socket after a reconnection: fetches what changed, then keeps following notifications', async function () {
+      const { m, fake } = socketMonitor();
+      try {
+        await m.start();
+        const calls = [];
+        const updateEvents = m.updateEvents.bind(m);
+        const updateStreams = m.updateStreams.bind(m);
+        m.updateEvents = () => { calls.push('events'); return updateEvents(); };
+        m.updateStreams = () => { calls.push('streams'); return updateStreams(); };
+        // @pryv/socket.io sent the subscription again after reconnecting
+        fake.emit('reconnect', { resubscribed: true });
+        expect(calls).to.deep.equal(['events', 'streams']);
+        fake.emit('notificationsChanged', { keys: ['monEvents'] });
+        expect(calls).to.deep.equal(['events', 'streams', 'events']);
+        expect(fake.listenerCount('eventsChanged')).to.equal(0);
+        // a reconnection where the subscription was not accepted again: the
+        // server sends the coarse signals to the connection, follow those
+        fake.emit('reconnect', { resubscribed: false });
+        expect(fake.listenerCount('eventsChanged')).to.equal(1);
+        expect(fake.listenerCount('streamsChanged')).to.equal(1);
+        fake.emit('reconnect', { resubscribed: false });
+        expect(fake.listenerCount('eventsChanged')).to.equal(1);
+      } finally {
+        m.stop();
+      }
+    });
+
+    /** A Socket monitor whose subscribe ack never comes (lost, no reconnection). */
+    function neverAcking (timeoutMs) {
+      const { m, fake } = socketMonitor({ subscribeTimeoutMs: timeoutMs });
+      fake.subscribe = () => new Promise(() => {});
+      return { m, fake };
+    }
+
+    it('[MRDO] Socket subscribe ack never comes: the opening fails after subscribeTimeoutMs (`error`, start() resolves)', async function () {
+      const { m, fake } = neverAcking(300);
+      const errors = [];
+      m.on(Changes.ERROR, (e) => { errors.push(e); });
+      try {
+        const t0 = Date.now();
+        expect(await settlesWithin(m.start(), 5000), 'start() settles').to.equal(true);
+        expect(Date.now() - t0).to.be.gte(300);
+        expect(errors.map((e) => e.message)).to.deep.equal(['socket.io: no answer to subscribe within 300ms']);
+        expect(m.started).to.equal(true);
+        expect(fake._io).to.equal(null); // closed, so a next READY opens again
+        expectListenedNone(fake);
+      } finally {
+        m.stop();
+      }
+    });
+
+    it('[MRDP] Socket subscribe ack never comes, no `error` listener: start() rejects, the monitor is stopped', async function () {
+      const { m } = neverAcking(200);
+      let error = null;
+      try {
+        await m.start();
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.equal('socket.io: no answer to subscribe within 200ms');
+      expect(m.started).to.equal(false);
+    });
+
+    it('[MRDQ] Socket subscribeTimeoutMs must be a positive number', function () {
+      expect(() => new pryv.Monitor.UpdateMethod.Socket({ subscribeTimeoutMs: 0 })).to.throw('subscribeTimeoutMs');
+      expect(new pryv.Monitor.UpdateMethod.Socket().subscribeTimeoutMs).to.equal(15000);
     });
 
     it('[MRDF] Socket update method without @pryv/socket.io: `error` emitted, start() resolves', async function () {

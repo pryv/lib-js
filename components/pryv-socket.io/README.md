@@ -48,6 +48,7 @@ Once the add-on is loaded, `pryv.Connection` instances expose the `socket` prope
   - `notificationsChanged`: when a scoped subscription registered via `connection.socket.subscribe(...)` matches (payload: `{ keys }`).
   - `disconnect`: when the socket disconnects.
   - `error`: on error. The callback will receive the error as first argument.
+  - `reconnect`: after socket.io reconnected on its own. The server forgets the scoped subscriptions with the old connection, so the add-on sends those made with `connection.socket.subscribe(...)` again first (callback argument: `{ resubscribed }`, true when there were some and the server accepted them). Nothing was notified while disconnected: fetch what may have changed.
 
 
 ### Examples

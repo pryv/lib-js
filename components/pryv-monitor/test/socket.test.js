@@ -109,6 +109,40 @@ describe('[MSKX] Monitor + Socket.IO', function () {
     });
   });
 
+  describe('[MSRX] reconnection', function () {
+    this.timeout(30000);
+
+    it('[MSRA] after a reconnection: what changed while disconnected is emitted, and later changes are notified', async function () {
+      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1, streams: [global.testStreamId] })
+        .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
+      const seen = [];
+      monitor.on('event', (event) => { seen.push(event.id); });
+      const waitFor = async (id) => {
+        const deadline = Date.now() + 10000;
+        while (!seen.includes(id) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+        return seen.includes(id);
+      };
+      const create = async (content) => (await conn.api([{
+        method: 'events.create',
+        params: { streamIds: [global.testStreamId], type: 'note/txt', content: content + ' ' + Date.now() }
+      }]))[0].event.id;
+      try {
+        await monitor.start();
+        const io = monitor.connection.socket._io;
+        const reconnected = new Promise((resolve) => monitor.connection.socket.on('reconnect', resolve));
+        io.disconnect();
+        const whileDisconnected = await create('while disconnected');
+        io.connect();
+        await reconnected;
+        expect(await waitFor(whileDisconnected), 'change made while disconnected emitted').to.equal(true);
+        const afterReconnect = await create('after reconnect');
+        expect(await waitFor(afterReconnect), 'change after the reconnection notified').to.equal(true);
+      } finally {
+        monitor.stop();
+      }
+    });
+  });
+
   describe('[MSTX] stop', () => {
     it('[MSTA] Monitor stops when requested', async function () {
       this.timeout(20000);
