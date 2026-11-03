@@ -169,11 +169,18 @@ describe('[SKIX] Socket.IO', function () {
 
     it('[SRSD] close(): a waiting subscribe() resolves, and nothing is kept for a next opening', async () => {
       const { socket, sent } = socketOnFakeTransport();
+      const transport = socket._io;
+      let closed = 0;
+      transport.close = () => { closed++; };
       const subscribing = socket.subscribe({ key: 'k1', kind: 'events', query: {} });
       socket.close();
       expect((await subscribing).ok).to.equal(false);
       expect(socket._scopes.size).to.equal(0);
       expect(sent.length).to.equal(1);
+      expect(closed).to.equal(1);
+      // the closed transport never connects again: a next open() makes a new one
+      expect(socket._io).to.equal(null);
+      expect(socket.connecting).to.equal(false);
     });
   });
 

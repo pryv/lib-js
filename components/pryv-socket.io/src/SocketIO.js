@@ -158,7 +158,12 @@ class SocketIO extends EventEmitter {
    */
   close () {
     checkOpen(this);
-    this._io.close();
+    // a closed socket.io-client socket never connects again (a later emit is
+    // only buffered): drop it, so a next open() creates a new one
+    const io = this._io;
+    this._io = null;
+    this.connecting = false;
+    try { io.close(); } catch (e) { }
     // the server drops the subscriptions with the connection; a waiting
     // subscribe() gets no ack any more
     this._scopes.clear();

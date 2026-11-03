@@ -315,7 +315,15 @@ describe('[MEDX] Monitor Edge Cases', function () {
         this.opens = 0;
       }
 
-      async open () { this.opens++; this._io = {}; return this; }
+      // as @pryv/socket.io: open() reuses a live handle, close() drops it
+      // (checked on the add-on itself in its [SRSD] test)
+      async open () {
+        if (this._io) return this;
+        this.opens++;
+        this._io = {};
+        return this;
+      }
+
       async subscribe () { return { ok: true }; }
       close () { this._io = null; }
     }

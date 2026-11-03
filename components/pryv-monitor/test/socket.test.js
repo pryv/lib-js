@@ -143,6 +143,34 @@ describe('[MSKX] Monitor + Socket.IO', function () {
     });
   });
 
+  describe('[MSRS] restart', function () {
+    this.timeout(30000);
+
+    it('[MSRB] start(), stop(), start() again: an event created after the restart is emitted', async function () {
+      const monitor = new pryv.Monitor(apiEndpoint, { limit: 1, streams: [global.testStreamId] })
+        .addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket({ subscribeTimeoutMs: 8000 }));
+      const seen = [];
+      const errors = [];
+      monitor.on('event', (event) => { seen.push(event.id); });
+      monitor.on('error', (e) => { errors.push(e); });
+      try {
+        await monitor.start();
+        monitor.stop();
+        await monitor.start();
+        expect(errors.map((e) => e.message), 'no error on restart').to.deep.equal([]);
+        const id = (await conn.api([{
+          method: 'events.create',
+          params: { streamIds: [global.testStreamId], type: 'note/txt', content: 'after restart ' + Date.now() }
+        }]))[0].event.id;
+        const deadline = Date.now() + 10000;
+        while (!seen.includes(id) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+        expect(seen, 'event created after the restart emitted').to.include(id);
+      } finally {
+        monitor.stop();
+      }
+    });
+  });
+
   describe('[MSTX] stop', () => {
     it('[MSTA] Monitor stops when requested', async function () {
       this.timeout(20000);
