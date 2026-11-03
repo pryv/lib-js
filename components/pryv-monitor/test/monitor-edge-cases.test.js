@@ -5,6 +5,7 @@
 /* global describe, it, before, beforeEach, afterEach, expect, pryv, conn, prepareAndCreateBaseStreams */
 
 require('./load-helpers');
+const { EventEmitter } = require('events');
 const Changes = require('../src/lib/Changes');
 
 describe('[MEDX] Monitor Edge Cases', function () {
@@ -271,6 +272,103 @@ describe('[MEDX] Monitor Edge Cases', function () {
       await new Promise((resolve) => setTimeout(resolve, 100));
       expect(slow.calls).to.equal(1);
       expect(slow.completed).to.equal(1);
+    });
+
+    it('[MRDG] an update method failing in ready() with no `error` listener: start() rejects and the monitor is stopped', async function () {
+      monitor.addUpdateMethod(new SlowUpdateMethod(10, true));
+      let stops = 0;
+      monitor.on(Changes.STOP, () => { stops++; });
+      let error = null;
+      try {
+        await monitor.start();
+      } catch (e) {
+        error = e;
+      }
+      expect(error?.message).to.equal('ready failed');
+      expect(monitor.started).to.equal(false);
+      expect(stops).to.equal(1);
+    });
+
+    it('[MRDH] monitor.stop() clears the EventsTimer pending timeout', async function () {
+      const timer = new pryv.Monitor.UpdateMethod.EventsTimer(60000);
+      monitor.addUpdateMethod(timer);
+      await monitor.start();
+      const pending = timer.timer;
+      expect(pending).to.exist;
+      const cleared = [];
+      const clearTimeout = global.clearTimeout;
+      global.clearTimeout = (t) => { cleared.push(t); return clearTimeout(t); };
+      try {
+        monitor.stop();
+      } finally {
+        global.clearTimeout = clearTimeout;
+      }
+      expect(cleared).to.include(pending);
+      expect(timer.timer).to.equal(null);
+    });
+
+    /** Stands for `connection.socket` (a SocketIO): one instance, opened again on each rebuild. */
+    class FakeSocket extends EventEmitter {
+      constructor () {
+        super();
+        this._io = null;
+        this.opens = 0;
+      }
+
+      async open () { this.opens++; this._io = {}; return this; }
+      async subscribe () { return { ok: true }; }
+      close () { this._io = null; }
+    }
+
+    function socketMonitor () {
+      const m = new pryv.Monitor(new pryv.Connection(conn.apiEndpoint), { limit: 1 });
+      const fake = new FakeSocket();
+      Object.defineProperty(m.connection, 'socket', { value: fake });
+      m.addUpdateMethod(new pryv.Monitor.UpdateMethod.Socket());
+      return { m, fake };
+    }
+
+    function expectListenedOnce (fake) {
+      for (const name of ['notificationsChanged', 'accessUpdated', 'error']) {
+        expect(fake.listenerCount(name), name).to.equal(1);
+      }
+    }
+
+    it('[MRDI] Socket rebuilt after the transport gave up: its listeners are not duplicated', async function () {
+      const { m, fake } = socketMonitor();
+      const errors = [];
+      m.on(Changes.ERROR, (e) => { errors.push(e); });
+      let accessUpdated = 0;
+      m.onAccessUpdated(() => { accessUpdated++; });
+      try {
+        await m.start();
+        expectListenedOnce(fake);
+        // the transport gave up (as after reconnect_failed), then the next READY rebuilds
+        fake._io = null;
+        fake.emit('error', new Error('gave up'));
+        await m.ready();
+        expect(fake.opens).to.equal(2);
+        expectListenedOnce(fake);
+        fake.emit('accessUpdated', { type: 'access-updated' });
+        expect(accessUpdated).to.equal(1);
+        expect(errors.map((e) => e.message)).to.deep.equal(['gave up']);
+      } finally {
+        m.stop();
+      }
+    });
+
+    it('[MRDJ] Socket after stop() and start() again: its listeners are not duplicated', async function () {
+      const { m, fake } = socketMonitor();
+      try {
+        await m.start();
+        m.stop();
+        expect(fake.listenerCount('notificationsChanged')).to.equal(0);
+        await m.start();
+        expect(fake.opens).to.equal(2);
+        expectListenedOnce(fake);
+      } finally {
+        m.stop();
+      }
     });
 
     it('[MRDF] Socket update method without @pryv/socket.io: `error` emitted, start() resolves', async function () {

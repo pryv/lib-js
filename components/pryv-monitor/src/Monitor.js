@@ -74,7 +74,14 @@ class Monitor extends EventEmitter {
 
     this.states.starting = false;
     this.states.started = true;
-    await this.ready();
+    try {
+      await this.ready();
+    } catch (e) {
+      // an update method failed and nobody listens to `error`: start() fails,
+      // so leave the monitor stopped (update methods get STOP to clean up)
+      this.stop();
+      throw e;
+    }
     return this;
   }
 
