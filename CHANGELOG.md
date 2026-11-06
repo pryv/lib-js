@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+A minor release for `pryv`: new public API and state fields (see Added), and a typing change (see Changed).
+
+### Fixed
+
+- **`pryv` sign-in from stored credentials checks that the stored access covers the requested permissions** (issue #81). On page load the controller restored the stored sign-in without comparing its access with `authRequest.requestedPermissions`: after an app widened its request (a new stream, a higher level), a returning person kept the old access, the app never asked for the new permissions, and every call on the new stream answered `forbidden`. When a sign-in is stored and stream permissions are requested, the controller now reads the stored access with one `access-info` call. Covered (same `streamId` or `'*'`, level at least the requested one: `read` < `contribute` < `manage`, `create-only` covered by `create-only`, `contribute`, `manage`; a requested `none` needs nothing; feature permissions ignored; a personal access covers everything; no parent-stream coverage; the local store prefix is ignored, `:local:x` being the same stream as `x`): signed in as before. Not covered: not signed in, the state is `INITIALIZED` with `reasonId: 'MISSING_PERMISSIONS'` and `missingPermissions`, and a click on the button asks for the access again (the auth page updates the app access in place); the stored sign-in is kept until the next sign-in replaces it. A refused token (`invalid-access-token`, `forbidden`): not signed in, `reasonId: 'STORED_ACCESS_REFUSED'`, the account marked unavailable. A network error or any other failure: signed in as before, so an offline start keeps the sign-in.
+- Two cases still sign in, with `missingPermissions` on the `AUTHORIZED` state: an access through account delegation (`accessInfo().delegation.isDelegatedAccess`), by choice not asked for again automatically (the app may offer it and read `missingPermissions`); and a stored sign-in already made for this same request, where asking again would not help. Every sign-in through the auth request (popup or redirect) now stores a fingerprint of its requested permissions with the account (`permissionsFingerprint`, from the sorted `streamId` + `level` pairs; feature permissions ignored); when it matches the current request and the access still does not cover it (an older core, an update the core refused), the person is signed in rather than asked on every page load. Sign-ins stored by earlier versions have no fingerprint and are asked again once.
+- The return of a sign-in by redirection (`returnURL`) is not checked: the stored sign-in is used as before while the return replaces it, so the page does not briefly show the signed-out state (and no `access-info` call is made with a token the auth page may just have replaced). The default button reports such a return with the new `loginButton.hasAuthReturn()`; a custom button may implement it.
+
+### Added
+
+- **`pryv.Auth.missingPermissions(requestedPermissions, accessInfo)`** and **`authController.missingPermissions(accessInfo)`**: the requested stream permissions an access does not cover (empty when covered), by the rule above. An account switch without sign-in (`switchTo`) carries `missingPermissions` on its `AUTHORIZED` state too. Typed: `MissingPermissions`, `MissingPermissionsAccess`, `INITIALIZED.reasonId` / `missingPermissions`, `ACCEPTED.missingPermissions`, `StoredAuthProfile.permissionsFingerprint`, `CustomLoginButton.hasAuthReturn`.
+
+### Changed
+
+- **`pryv` typings: `PermissionLevel` includes `'none'`**, as the API does. A TypeScript `switch` over `Permission.level` that is checked for exhaustiveness must handle it.
+
 ## 3.18.0 - 2026-11-03
 
 `pryv` 3.18.0 (a minor: `Connection#accessInfo()` now rejects an error answer, a behaviour change, see Changed) and `@pryv/cmc` 3.23.0 (a minor: `listMembers` returns `displayName`); `@pryv/socket.io` and `@pryv/monitor` carry the fixes below; `@pryv/delegation` and `@pryv/encryption` follow `pryv` to 3.18.0 with no change.

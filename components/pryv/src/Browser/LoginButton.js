@@ -311,7 +311,10 @@ class LoginButton {
         }
       }
       if (body?.status === AuthStates.AUTHORIZED && typeof body.username === 'string') {
-        body.profile = ProfileStore.fromAccepted(body);
+        // stored with the sign-in: the request it answered
+        body.profile = ProfileStore.fromAccepted(body, typeof authController._requestedPermissionsFingerprint === 'function'
+          ? authController._requestedPermissionsFingerprint()
+          : undefined);
         // the auth page of this sign-in locates the account app
         if (typeof flow.authUrl === 'string') authController._authUrl = flow.authUrl;
       } else if (signedIn) {
@@ -335,23 +338,38 @@ class LoginButton {
         window.history.replaceState(null, '', utils.cleanURLFromPrYvParams(url));
       }
     }
-
-    /** The key of the returning auth request, or null when the URL is not a return. */
-    function retrieveKey (url) {
-      // Modern lowercase form (pryvKey / pryvPoll) is preferred; the
-      // capital-Y form (prYvkey / prYvpoll) is accepted for back-compat
-      // with apps emitting the legacy URL contract — see
-      // [DEPRECATED] notes on cleanURLFromPrYvParams.
-      const params = utils.getQueryParamsFromURL(url);
-      const key = params.pryvKey || params.prYvkey;
-      if (key) return key;
-      const poll = params.pryvPoll || params.prYvpoll;
-      // the poll URL ends with the key (`<access>/<key>`); only the key is
-      // used, the poll URL fetched is the one stored when the flow started
-      if (poll) return poll.split(/[?#]/)[0].split('/').filter(Boolean).pop() || null;
-      return null;
-    }
   }
+
+  /**
+   * Whether this page is the return of a sign-in by redirection that this
+   * page started (its key matches the stored flow): the auth controller then
+   * leaves the stored sign-in unchecked, `finishAuthProcessAfterRedirection`
+   * replaces it.
+   * @returns {boolean}
+   */
+  hasAuthReturn () {
+    if (!utils.isBrowser()) return false;
+    const key = retrieveKey(window.location.href);
+    if (key == null) return false;
+    const flow = readAuthFlow(this._cookieKey);
+    return flow != null && flow.key === key;
+  }
+}
+
+/** The key of the returning auth request, or null when the URL is not a return. */
+function retrieveKey (url) {
+  // Modern lowercase form (pryvKey / pryvPoll) is preferred; the
+  // capital-Y form (prYvkey / prYvpoll) is accepted for back-compat
+  // with apps emitting the legacy URL contract — see
+  // [DEPRECATED] notes on cleanURLFromPrYvParams.
+  const params = utils.getQueryParamsFromURL(url);
+  const key = params.pryvKey || params.prYvkey;
+  if (key) return key;
+  const poll = params.pryvPoll || params.prYvpoll;
+  // the poll URL ends with the key (`<access>/<key>`); only the key is
+  // used, the poll URL fetched is the one stored when the flow started
+  if (poll) return poll.split(/[?#]/)[0].split('/').filter(Boolean).pop() || null;
+  return null;
 }
 
 // ---- the auth request started by this page, kept across the redirect ----

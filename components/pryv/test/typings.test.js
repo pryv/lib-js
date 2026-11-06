@@ -39,4 +39,8 @@ describe('[TYPX] typings', function () {
   it('[TYP2] account auto-deletion: get / set parameters and answer, features.autoDeletion in service info', function () {
     expect(compile('autoDeletion.ts')).to.deep.equal([]);
   });
+
+  it('[TYP3] stored sign-in permissions check: INITIALIZED reasonId / missingPermissions, Auth.missingPermissions', function () {
+    expect(compile('authPermissions.ts')).to.deep.equal([]);
+  });
 });

@@ -609,7 +609,7 @@ getAuthorizationData () {
 The [authentication process](https://api.pryv.com/reference/#authenticate-your-app) implementation on the frontend can go through the following states:
 
 1. `LOADING`: while the visual assets are loading
-2. `INITIALIZED`: visuals assets are loaded, or right after `REFUSED` (the button is back to its sign-in state)
+2. `INITIALIZED`: visuals assets are loaded, or right after `REFUSED` (the button is back to its sign-in state). When a stored sign-in was not used, it carries a `reasonId`: `'MISSING_PERMISSIONS'` (with `missingPermissions`) or `'STORED_ACCESS_REFUSED'`, see [Stored sign-in and the requested permissions](#stored-sign-in-and-the-requested-permissions)
 3. `NEED_SIGNIN`: from the response of the [auth request](https://api.pryv.com/reference/#auth-request) through [polling](https://api.pryv.com/reference/#poll-request)
 4. `AUTHORIZED`: When [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Accepted**
 5. `REFUSED`: when [polling](https://api.pryv.com/reference/#poll-request) concludes with **Result: Refused**; carries the auth page's `reasonId` (e.g. `'REFUSED_BY_USER'`, or `'REFUSED_MANDATORY_CONSENT'` when a mandatory consent was declined), its `message` and `serviceInfo`, and is followed by `INITIALIZED`. A refused account switch returns to the previous account instead (see `SWITCHING`)
@@ -617,7 +617,7 @@ The [authentication process](https://api.pryv.com/reference/#authenticate-your-a
 7. `SWITCHING`: an account switch started (`{ from, to }`, `to` is `null` when the account is chosen in the sign-in popup); followed by `AUTHORIZED` for the new account, or for the previous one when the switch sign-in is refused. Listeners that ignore it see the usual `NEED_SIGNIN` then `AUTHORIZED` sequence
 8. `ERROR`: see message for more information
 
-You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request), except that an `AUTHORIZED` reached through the popup hands the app `{ status, id, key, serviceInfo?, cmcInvites?, delegation? }` (credentials through `connectFromKey(key)`). `LOADING`, `INITIALIZED` and `SIGNOUT` only have `status`. The `ERROR` state carries a `message` property, and an `error` (with an `id` such as `'unexpected-auth-return'` when available); a click on the button in `ERROR` starts over.
+You will need to provide a function to react depending on the state. The states `NEED_SIGNIN` and `AUTHORIZED` carry the same properties as the [auth process polling responses](https://api.pryv.com/reference/#poll-request), except that an `AUTHORIZED` reached through the popup hands the app `{ status, id, key, serviceInfo?, cmcInvites?, delegation? }` (credentials through `connectFromKey(key)`). `LOADING` and `SIGNOUT` only have `status`; `INITIALIZED` has `serviceInfo`, and `reasonId` / `missingPermissions` as described below. The `ERROR` state carries a `message` property, and an `error` (with an `id` such as `'unexpected-auth-return'` when available); a click on the button in `ERROR` starts over.
 
 ```js
 async onStateChange (state) {
@@ -659,6 +659,26 @@ async onStateChange (state) {
   }
 }
 ```
+
+##### Stored sign-in and the requested permissions
+
+On page load, a stored sign-in is used only when its access still serves the app. When `authRequest.requestedPermissions` asks for stream permissions, the controller checks the stored access with one `access-info` call (no call when no sign-in is stored or no stream permission is requested):
+
+- **Covered**: signed in (`AUTHORIZED`), as before. A requested permission is covered by a permission of the access on the same `streamId`, or on `'*'`, with at least the requested level: `read` < `contribute` < `manage`; `create-only` is covered by `create-only`, `contribute` and `manage` (not by `read`); a requested `none` needs nothing. Feature permissions are ignored on both sides, and a personal access covers everything. A permission on a parent stream does **not** cover a child stream: stream ids are compared as they are, except for the local store prefix (`:local:diary` and `diary` are the same stream, as the core stores it). This does not make the app ask on every page load: on the new sign-in, the auth page finds the app access does not match the request exactly and updates it to the requested permissions.
+- **Not covered** (the app requests more than the stored access allows, for example after adding a stream): not signed in. The state is `INITIALIZED` with `reasonId: 'MISSING_PERMISSIONS'` and `missingPermissions` (the uncovered requested permissions), so a click on the button asks for the access again; the auth page then updates the app access in place. The stored sign-in is kept until the next sign-in replaces it, and nothing is deleted on the server.
+- **Token refused** (`invalid-access-token`, `forbidden`): not signed in, `reasonId: 'STORED_ACCESS_REFUSED'`; the account stays remembered, marked unavailable.
+- **Any other failure** (network error, server error): signed in as before, so starting offline does not sign the person out.
+
+Two cases sign in even when the access does not cover the request, because asking again cannot help; the `AUTHORIZED` state then carries `missingPermissions`:
+
+- **Account delegation**: the access works through account delegation (`accessInfo().delegation.isDelegatedAccess`, for example a parent acting for a child). This is a choice: such an access is not asked for again automatically. The app may offer it (the sign-in button, or `addAccount()`) after reading `missingPermissions`.
+- **Already asked for this request**: every sign-in through the auth request stores, with the account, a fingerprint of the requested permissions it was made for (`permissionsFingerprint`: the `streamId` + `level` pairs, in any order; feature permissions and names are ignored). When the stored fingerprint is the one of the current request, the access was already asked for these permissions and still does not cover them (an older core, an update the core refused): signing in prevents a sign-in loop. A sign-in stored without a fingerprint (by an earlier version) or for another request is asked again once.
+
+The return of a sign-in by redirection (`returnURL`) is not checked: the stored sign-in is used as before while the return replaces it. A custom button reports such a return with `hasAuthReturn()` (the default button does).
+
+An app that starts the auth request by itself on `INITIALIZED` (rather than waiting for a click) should check `reasonId` first: a person who refuses the new permissions is otherwise asked again on every page load, as nothing is stored on a refusal.
+
+An account switch that needs no sign-in (`switchTo`) also carries `missingPermissions` when the access does not cover the request (it is not blocked). The rule is available to the app as `pryv.Auth.missingPermissions(requestedPermissions, accessInfo)` and `authController.missingPermissions(accessInfo)`, both returning the uncovered requested permissions (an empty array when covered).
 
 ##### Button actions
 
