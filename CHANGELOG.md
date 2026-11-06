@@ -4,7 +4,9 @@
 
 ## [Unreleased]
 
-A minor release for `pryv`: new public API and state fields (see Added), and a typing change (see Changed).
+## 3.19.0 - 2026-11-06
+
+`pryv` 3.19.0 (a minor: new public API and state fields, see Added, and a typing change, see Changed); `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` follow `pryv` to 3.19.0 with no change; `@pryv/cmc` unchanged (3.23.0).
 
 ### Fixed
 
