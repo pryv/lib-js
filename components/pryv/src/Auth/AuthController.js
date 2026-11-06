@@ -117,6 +117,7 @@ class AuthController {
       this.state = Object.assign({ status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo }, notSignedIn);
     }
 
+    // must run after checkAutoLogin: its hasAuthReturn() reads the flow this finish clears
     if (loginButton != null && loginButton.finishAuthProcessAfterRedirection != null) {
       // @ts-ignore - this is a valid AuthController
       await loginButton.finishAuthProcessAfterRedirection(this);
