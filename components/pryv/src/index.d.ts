@@ -14,7 +14,7 @@ declare module 'pryv' {
     /** Serial that changes when core or register is updated */
     serial: string;
   };
-  export type PermissionLevel = 'read' | 'contribute' | 'manage' | 'create-only';
+  export type PermissionLevel = 'read' | 'contribute' | 'manage' | 'create-only' | 'none';
   export type KeyValue = { [key: string]: string | number };
 
   export type Attachment = {
