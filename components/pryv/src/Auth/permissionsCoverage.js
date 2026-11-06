@@ -31,7 +31,9 @@ const COVERED_BY = {
  * `read` < `contribute` < `manage`; `create-only` is covered by
  * `create-only`, `contribute` and `manage` (not by `read`); a requested
  * `none` needs nothing. A permission on a parent stream does NOT cover a
- * child stream (the stream ids are compared as they are). Feature
+ * child stream (the stream ids are compared as they are, except that the
+ * local store prefix is left out: `:local:diary` and `diary` are the same
+ * stream, as the core stores it). Feature
  * permissions (`{ feature, setting }`) are ignored on both sides. A personal
  * access covers everything.
  *
@@ -44,7 +46,13 @@ function missingPermissions (requestedPermissions, accessInfo) {
   if (accessInfo?.type === 'personal') return [];
   const granted = streamPermissions(accessInfo?.permissions);
   return requested
-    .filter((r) => !granted.some((g) => (g.streamId === r.streamId || g.streamId === '*') && covers(g.level, r.level)))
+    .filter((r) => {
+      const id = withoutLocalPrefix(r.streamId);
+      return !granted.some((g) => {
+        const grantedId = withoutLocalPrefix(g.streamId);
+        return (grantedId === id || grantedId === '*') && covers(g.level, r.level);
+      });
+    })
     .map((r) => Object.assign({}, r));
 }
 
@@ -60,6 +68,22 @@ function permissionsFingerprint (requestedPermissions) {
     .map((p) => JSON.stringify([p.streamId, p.level]))
     .sort();
   return fnv1a(entries.join(','));
+}
+
+/**
+ * A stream id without its local store prefix, as the core canonicalises a
+ * permission's stream id: `:local:diary` is `diary`, the store root
+ * `:local:` is `*`, a repeated prefix is removed again. Other stores'
+ * prefixes are kept.
+ */
+function withoutLocalPrefix (streamId) {
+  const PREFIX = ':local:';
+  let id = streamId;
+  for (let i = 0; i < 8 && id.startsWith(PREFIX); i++) {
+    id = id.slice(PREFIX.length);
+    if (id === '') return '*';
+  }
+  return id;
 }
 
 function covers (grantedLevel, requestedLevel) {

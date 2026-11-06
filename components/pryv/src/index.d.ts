@@ -1519,6 +1519,12 @@ declare module 'pryv' {
     deleteAuthorizationData?: () => Promise<void>;
     finishAuthProcessAfterRedirection?: (authController: AuthController) => Promise<void>;
     /**
+     * `true` when the page is the return of a sign-in by redirection that
+     * this button started: the stored sign-in is then not checked against
+     * the requested permissions (the return replaces it).
+     */
+    hasAuthReturn?: () => boolean;
+    /**
      * Called when the signed-in button is clicked. Return `false` to fall
      * back to the SIGNOUT state (logout confirmation); log out from the menu
      * with `AuthController.signOut()`.
@@ -1546,6 +1552,7 @@ declare module 'pryv' {
     saveAuthorizationData(authData: StoredAuthorizationData): void;
     deleteAuthorizationData(): Promise<void>;
     finishAuthProcessAfterRedirection(authController: AuthController): Promise<void>;
+    hasAuthReturn(): boolean;
     showMenu(): boolean;
     /** Resolves when the re-initialization it may start (a dismissed "Log out?") is done. */
     closeMenu(): Promise<void>;

@@ -72,6 +72,20 @@ describe('[ACOV] requested permissions coverage', function () {
     expect(permissionsFingerprint([req('a', 'read'), req('b', 'contribute')])).to.not.equal(fp);
     expect(permissionsFingerprint([req('a', 'read'), req('b', 'manage'), req('c', 'read')])).to.not.equal(fp);
   });
+
+  it('[ACOV7] the local store prefix is ignored on both sides, other store prefixes are not', function () {
+    expect(missingPermissions([req(':local:diary', 'read')], app({ streamId: 'diary', level: 'read' }))).to.deep.equal([]);
+    expect(missingPermissions([req('diary', 'read')], app({ streamId: ':local:diary', level: 'manage' }))).to.deep.equal([]);
+    expect(missingPermissions([req(':local::local:diary', 'read')], app({ streamId: 'diary', level: 'read' }))).to.deep.equal([]);
+    expect(missingPermissions([req(':local::_cmc:apps:x', 'manage')], app({ streamId: ':_cmc:apps:x', level: 'manage' }))).to.deep.equal([]);
+    // the local store root is the whole local store, as '*'
+    expect(missingPermissions([req('diary', 'read')], app({ streamId: ':local:', level: 'read' }))).to.deep.equal([]);
+    // the level still counts, and another store is another stream
+    expect(missingPermissions([req(':local:diary', 'manage')], app({ streamId: 'diary', level: 'read' }))).to.have.lengthOf(1);
+    expect(missingPermissions([req(':other:diary', 'read')], app({ streamId: 'diary', level: 'read' }))).to.have.lengthOf(1);
+    // the uncovered entry is returned as requested
+    expect(missingPermissions([req(':local:diary', 'read')], app())).to.deep.equal([req(':local:diary', 'read')]);
+  });
 });
 
 /**
@@ -321,6 +335,66 @@ describe('[ALPM] auto-login and the requested permissions', function () {
     expect(auth.state.username).to.equal('bob');
     expect(auth.state.missingPermissions).to.deep.equal([REQUESTED[6]]);
     expect(auth.state.profile.permissionsFingerprint).to.equal('abcdef01');
+  });
+
+  it('[ALPMC] the return of a sign-in by redirection is not checked: no access-info call, no storage write, no transient INITIALIZED', async () => {
+    for (const [shape, stored] of storedShapes()) {
+      const button = makeButton(stored);
+      button.hasAuthReturn = () => true;
+      const external = [];
+      // the token the auth page may just have replaced
+      const auth = makeAuth(button, { error: { id: 'invalid-access-token' } }, REQUESTED, (s) => external.push(s.status));
+      await auth.init();
+      expect(auth.accessInfoCalls, shape).to.deep.equal([]);
+      expect(external, shape).to.deep.equal([AuthStates.LOADING, AuthStates.AUTHORIZED]);
+      expect(ProfileStore.read(button.saved).active.unavailable, shape).to.equal(undefined);
+    }
+    // not a return: checked
+    const button = makeButton({ username: 'alice', apiEndpoint: ENDPOINT });
+    button.hasAuthReturn = () => false;
+    const auth = makeAuth(button, OLD_ACCESS);
+    await auth.init();
+    expect(auth.state.reasonId).to.equal('MISSING_PERMISSIONS');
+  });
+
+  it('[ALPMD] LoginButton.hasAuthReturn: true only for the return of the request this page started', function () {
+    if (typeof JSDOM === 'undefined') this.skip();
+    const GLOBALS = ['document', 'window', 'location', 'navigator'];
+    const saved = {};
+    for (const name of GLOBALS) saved[name] = Object.getOwnPropertyDescriptor(global, name);
+    const cookieKey = 'pryv-libjs-alpm-app';
+    const check = (url, flow) => {
+      const dom = new JSDOM('<!DOCTYPE html><body></body>', { url });
+      global.document = dom.window.document;
+      global.window = dom.window;
+      global.location = dom.window.location;
+      global.navigator = { userAgent: 'Safari' };
+      if (flow != null) global.window.sessionStorage.setItem(cookieKey + '-authflow', JSON.stringify(flow));
+      return LoginButton.prototype.hasAuthReturn.call({ _cookieKey: cookieKey });
+    };
+    try {
+      const flow = { key: 'alk1', poll: 'https://reg.test.local/access/alk1' };
+      expect(check('http://localhost/app?pryvKey=alk1', flow)).to.equal(true);
+      expect(check('http://localhost/app?prYvpoll=https%3A%2F%2Freg.test.local%2Faccess%2Falk1&prYvstatus=ACCEPTED', flow)).to.equal(true);
+      expect(check('http://localhost/app?pryvKey=other', flow)).to.equal(false);
+      expect(check('http://localhost/app?pryvKey=alk1', null)).to.equal(false);
+      expect(check('http://localhost/app', flow)).to.equal(false);
+    } finally {
+      for (const name of GLOBALS) {
+        if (saved[name]) Object.defineProperty(global, name, saved[name]);
+        else delete global[name];
+      }
+    }
+  });
+
+  it('[ALPME] a single-account stored sign-in keeps its fingerprint on the profile only', async () => {
+    const external = [];
+    const stored = { username: 'alice', apiEndpoint: ENDPOINT, permissionsFingerprint: CURRENT_FP };
+    const auth = makeAuth(makeButton(stored), FULL_ACCESS, REQUESTED, (s) => external.push(s));
+    await auth.init();
+    const signedIn = external.find((s) => s.status === AuthStates.AUTHORIZED);
+    expect(signedIn).to.not.have.property('permissionsFingerprint');
+    expect(signedIn.profile.permissionsFingerprint).to.equal(CURRENT_FP);
   });
 });
 

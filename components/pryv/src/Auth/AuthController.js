@@ -728,7 +728,11 @@ async function checkAutoLogin (authController) {
   // a button that cannot rewrite its storage still must not sign in to it
   if (typeof storedCredentials.apiEndpoint === 'string' && !ProfileStore.carriesToken(storedCredentials.apiEndpoint)) return;
   const state = Object.assign({}, { status: AuthStates.AUTHORIZED }, storedCredentials);
-  if (typeof state.username === 'string' && typeof state.apiEndpoint === 'string') state.profile = ProfileStore.profileOf(state);
+  if (typeof state.username === 'string' && typeof state.apiEndpoint === 'string') {
+    state.profile = ProfileStore.profileOf(state);
+    // kept on the profile only: the app's listener gets the stored shape it knows
+    delete state.permissionsFingerprint;
+  }
   return await signInIfPermitted(authController, state);
 }
 
@@ -749,6 +753,8 @@ async function checkAutoLogin (authController) {
  *   page load);
  * - any other failure (network, server error): signed in as before, so an
  *   offline start does not sign the person out.
+ * Not checked on the return of a sign-in by redirection (the button reports
+ * it with `hasAuthReturn()`): that sign-in replaces the stored one at once.
  * @returns {Promise<Object|undefined>} when not signed in, what to add to
  *   the INITIALIZED state (`reasonId`, `missingPermissions`)
  */
@@ -756,7 +762,9 @@ async function signInIfPermitted (authController, state) {
   const requested = authController.settings.authRequest.requestedPermissions;
   // what an access without any permission would miss: nothing to check when empty
   const asksForStreams = missingPermissions(requested, null).length > 0;
-  if (!asksForStreams || typeof state.apiEndpoint !== 'string') {
+  const loginButton = authController.loginButton;
+  const returning = typeof loginButton?.hasAuthReturn === 'function' && loginButton.hasAuthReturn() === true;
+  if (!asksForStreams || returning || typeof state.apiEndpoint !== 'string') {
     authController.state = state;
     return;
   }
