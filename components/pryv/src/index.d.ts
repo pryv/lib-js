@@ -1239,6 +1239,15 @@ declare module 'pryv' {
     LOADING: {};
     INITIALIZED: {
       serviceInfo: ServiceInfo;
+      /**
+       * Present when a stored sign-in was not used on page load:
+       * `'MISSING_PERMISSIONS'` (its access does not cover the requested
+       * permissions; a click on the button asks for them again) or
+       * `'STORED_ACCESS_REFUSED'` (its token was refused).
+       */
+      reasonId?: 'MISSING_PERMISSIONS' | 'STORED_ACCESS_REFUSED';
+      /** With `reasonId: 'MISSING_PERMISSIONS'`: the requested permissions the stored access does not cover. */
+      missingPermissions?: AuthRequestedPermission[];
     };
     NEED_SIGNIN: {
       authUrl: string;
@@ -1294,6 +1303,13 @@ declare module 'pryv' {
         delegate: { username: string; hostSlug?: string };
       };
       profile?: AuthProfile;
+      /**
+       * Requested permissions the access does not cover, on a sign-in from
+       * stored credentials or an account switch without sign-in, when asking
+       * again would not help (an access through account delegation, or a
+       * stored sign-in already made for this request). Absent when covered.
+       */
+      missingPermissions?: AuthRequestedPermission[];
       /** One-time credential hand-off key (shared-secret delivery), in place of `token`. */
       handoff?: { type: 'shared-secret'; key: string };
       /** What the auth page did with each invite of the request (a hint). */
@@ -1473,6 +1489,8 @@ declare module 'pryv' {
   export type StoredAuthProfile = AuthProfile & {
     apiEndpoint: string;
     unavailable?: true;
+    /** Fingerprint of the requested permissions of the sign-in that stored it. */
+    permissionsFingerprint?: string;
   };
 
   /**
@@ -1485,6 +1503,8 @@ declare module 'pryv' {
     apiEndpoint?: string;
     username?: string;
     actingAs?: AuthProfile['actingAs'];
+    /** Fingerprint of the requested permissions of the active account's sign-in. */
+    permissionsFingerprint?: string;
     /** Auth page of the sign-in (without query), kept to locate the account app. */
     authUrl?: string;
     profiles?: StoredAuthProfile[];
@@ -1576,6 +1596,8 @@ declare module 'pryv' {
     switchTo(username: string | null): Promise<void>;
     /** Sign in to one more account (`actAs: 'allow'`), keeping the remembered ones. */
     addAccount(): Promise<void>;
+    /** The requested permissions `accessInfo` does not cover (see `pryv.Auth.missingPermissions`). */
+    missingPermissions(accessInfo: MissingPermissionsAccess): AuthRequestedPermission[];
     /** Account app profile URL, or null when it cannot be determined. */
     accountUrl(): string | null;
     /** Opens the account app in a new tab; returns the URL, or null. */
@@ -1631,10 +1653,30 @@ declare module 'pryv' {
     refresh(): Promise<Connection>;
   }
 
+  /** What `missingPermissions` reads of an access (an `AccessInfo` fits). */
+  export type MissingPermissionsAccess = {
+    type?: string;
+    permissions?: Array<Partial<Permission>>;
+  } | null;
+
+  /**
+   * The requested stream permissions the access does not cover (empty when
+   * covered): same `streamId` or `'*'`, level at least the requested one
+   * (`read` < `contribute` < `manage`; `create-only` covered by
+   * `create-only`, `contribute`, `manage`; `none` needs nothing). No
+   * parent-stream coverage; feature permissions ignored; a personal access
+   * covers everything.
+   */
+  export type MissingPermissions = (
+    requestedPermissions: AuthRequestedPermission[],
+    accessInfo: MissingPermissionsAccess,
+  ) => AuthRequestedPermission[];
+
   export const Auth: {
     setupAuth: SetupAuth;
     AuthStates: AuthStates;
     AuthController: typeof AuthController;
+    missingPermissions: MissingPermissions;
   }
 
   export type getServiceInfoFromURL = (url: string) => string;
@@ -1708,6 +1750,7 @@ declare module 'pryv' {
       setupAuth: SetupAuth;
       AuthStates: AuthStates;
       AuthController: typeof AuthController;
+      missingPermissions: MissingPermissions;
     };
     Browser: {
       LoginButton: typeof LoginButton;

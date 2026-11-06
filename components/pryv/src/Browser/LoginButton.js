@@ -311,7 +311,10 @@ class LoginButton {
         }
       }
       if (body?.status === AuthStates.AUTHORIZED && typeof body.username === 'string') {
-        body.profile = ProfileStore.fromAccepted(body);
+        // stored with the sign-in: the request it answered
+        body.profile = ProfileStore.fromAccepted(body, typeof authController._requestedPermissionsFingerprint === 'function'
+          ? authController._requestedPermissionsFingerprint()
+          : undefined);
         // the auth page of this sign-in locates the account app
         if (typeof flow.authUrl === 'string') authController._authUrl = flow.authUrl;
       } else if (signedIn) {

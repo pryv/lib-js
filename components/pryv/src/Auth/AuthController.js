@@ -10,6 +10,7 @@ const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
 const PryvError = require('../lib/PryvError');
 const { refusedState, unreadableAnswerState } = require('./pollOutcome');
+const { missingPermissions, permissionsFingerprint } = require('./permissionsCoverage');
 
 /**
  * Controller for authentication flow
@@ -87,11 +88,14 @@ class AuthController {
    */
   async init () {
     cancelAuthFlow(this);
+    const flowId = this._authFlowId;
     this.serviceInfo = this.service.infoSync();
     this.state = { status: AuthStates.LOADING };
     this.assets = await loadAssets(this);
 
     const loginButton = this.loginButton;
+    // why the stored sign-in was not used (on the INITIALIZED state)
+    let notSignedIn = null;
     // initialize human interaction interface
     if (loginButton != null) {
       // Register the button's state listener at most once: init() can run again
@@ -103,12 +107,14 @@ class AuthController {
         this._loginButtonListenerRegistered = true;
       }
       // autologin needs cookies/storage implemented in human interaction interface
-      await checkAutoLogin(this);
+      notSignedIn = await checkAutoLogin(this);
+      // a sign-out or another init() during the access check replaced this one
+      if (this._authFlowId !== flowId) return this.service;
     }
 
     // if auto login is not prompted
     if (this.state.status !== AuthStates.AUTHORIZED) {
-      this.state = { status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo };
+      this.state = Object.assign({ status: AuthStates.INITIALIZED, serviceInfo: this.serviceInfo }, notSignedIn);
     }
 
     if (loginButton != null && loginButton.finishAuthProcessAfterRedirection != null) {
@@ -296,7 +302,10 @@ class AuthController {
       if (this._authFlowId !== flowId) return;
       if (info != null && info.error == null) {
         const profile = profileFromAccessInfo(target, info);
-        this.state = { status: AuthStates.AUTHORIZED, username: profile.username, apiEndpoint: profile.apiEndpoint, profile };
+        const state = { status: AuthStates.AUTHORIZED, username: profile.username, apiEndpoint: profile.apiEndpoint, profile };
+        const missing = missingPermissions(this.settings.authRequest.requestedPermissions, info);
+        if (missing.length > 0) state.missingPermissions = missing;
+        this.state = state;
         return;
       }
       if (!ACCESS_GONE_ERRORS.includes(info?.error?.id)) {
@@ -321,6 +330,25 @@ class AuthController {
     const previous = restorableState(this.state);
     this.state = { status: AuthStates.SWITCHING, from: current?.username ?? null, to: null };
     await this.startAuthRequest({ actAs: 'allow' }, previous);
+  }
+
+  /**
+   * The requested stream permissions that an access does not cover (empty
+   * when it covers them all): see `pryv.Auth.missingPermissions`.
+   * @param {Object} accessInfo - as `connection.accessInfo()` returns it
+   * @returns {Array<Object>}
+   */
+  missingPermissions (accessInfo) {
+    return missingPermissions(this.settings.authRequest.requestedPermissions, accessInfo);
+  }
+
+  /**
+   * @private Fingerprint of this app's requested stream permissions, stored with each
+   * sign-in made through the auth request.
+   * @returns {string}
+   */
+  _requestedPermissionsFingerprint () {
+    return permissionsFingerprint(this.settings.authRequest.requestedPermissions);
   }
 
   /**
@@ -549,7 +577,8 @@ class AuthController {
         const previous = this._switchPrevious;
         this._switchPrevious = null;
         if (pollResponse.status === AuthStates.AUTHORIZED) {
-          pollResponse.profile = ProfileStore.fromAccepted(pollResponse);
+          // stored with the sign-in: the request it answered (see checkAutoLogin)
+          pollResponse.profile = ProfileStore.fromAccepted(pollResponse, this._requestedPermissionsFingerprint());
         } else if (previous != null) {
           // an account switch that did not complete: stay on the previous account
           console.warn('pryv: account switch did not complete (' +
@@ -694,19 +723,80 @@ async function checkAutoLogin (authController) {
     if (store.active == null || !ProfileStore.carriesToken(store.active.apiEndpoint)) return;
     const state = { status: AuthStates.AUTHORIZED, username: store.active.username, apiEndpoint: store.active.apiEndpoint, profile: store.active };
     if (store.authUrl != null) state.authUrl = store.authUrl;
-    authController.state = state;
-    return;
+    return await signInIfPermitted(authController, state);
   }
   // a button that cannot rewrite its storage still must not sign in to it
   if (typeof storedCredentials.apiEndpoint === 'string' && !ProfileStore.carriesToken(storedCredentials.apiEndpoint)) return;
   const state = Object.assign({}, { status: AuthStates.AUTHORIZED }, storedCredentials);
   if (typeof state.username === 'string' && typeof state.apiEndpoint === 'string') state.profile = ProfileStore.profileOf(state);
+  return await signInIfPermitted(authController, state);
+}
+
+/**
+ * Sign in from a stored sign-in (`state`, AUTHORIZED), unless its access no
+ * longer serves the app. When the app requests stream permissions, the
+ * stored access is checked with `access-info` (one call):
+ * - refused (`invalid-access-token`, `forbidden`): not signed in, the
+ *   account is marked unavailable;
+ * - not covering every requested permission (see `missingPermissions`): not
+ *   signed in, so a click on the button asks for the access again (the auth
+ *   page updates the app access in place). The stored sign-in is kept, the
+ *   next sign-in replaces it. Except when asking again cannot help, then
+ *   signed in as before with `missingPermissions` on the state: the access
+ *   works through account delegation, or the stored sign-in was made for
+ *   this same request (same permissions fingerprint: a sign-in that was
+ *   asked again and still does not cover them, which must not block every
+ *   page load);
+ * - any other failure (network, server error): signed in as before, so an
+ *   offline start does not sign the person out.
+ * @returns {Promise<Object|undefined>} when not signed in, what to add to
+ *   the INITIALIZED state (`reasonId`, `missingPermissions`)
+ */
+async function signInIfPermitted (authController, state) {
+  const requested = authController.settings.authRequest.requestedPermissions;
+  // what an access without any permission would miss: nothing to check when empty
+  const asksForStreams = missingPermissions(requested, null).length > 0;
+  if (!asksForStreams || typeof state.apiEndpoint !== 'string') {
+    authController.state = state;
+    return;
+  }
+  const flowId = authController._authFlowId;
+  let info;
+  try {
+    info = await authController._accessInfo(state.apiEndpoint);
+  } catch (e) {
+    info = null; // network failure, unreadable answer: nothing known about the access
+  }
+  // a sign-out or another init() during the check replaced this one
+  if (authController._authFlowId !== flowId) return;
+  if (info != null && info.error != null) {
+    if (ACCESS_GONE_ERRORS.includes(info.error.id)) {
+      if (typeof state.username === 'string') {
+        authController._saveProfiles(ProfileStore.markUnavailable(authController._readProfiles(), state.username));
+      }
+      return { reasonId: 'STORED_ACCESS_REFUSED' };
+    }
+    info = null; // any other answer (server error, rate limit) says nothing about the access
+  }
+  if (info != null) {
+    const missing = missingPermissions(requested, info);
+    if (missing.length > 0) {
+      const delegated = info.delegation?.isDelegatedAccess === true;
+      const storedFingerprint = state.profile?.permissionsFingerprint ?? state.permissionsFingerprint;
+      const askedAlready = storedFingerprint === authController._requestedPermissionsFingerprint();
+      if (!delegated && !askedAlready) {
+        return { reasonId: 'MISSING_PERMISSIONS', missingPermissions: missing };
+      }
+      state.missingPermissions = missing;
+    }
+  }
   authController.state = state;
 }
 
 /** A stored profile refreshed with what its access says about itself. */
 function profileFromAccessInfo (stored, info) {
   const profile = { username: stored.username, apiEndpoint: stored.apiEndpoint };
+  if (stored.permissionsFingerprint != null) profile.permissionsFingerprint = stored.permissionsFingerprint;
   const d = info.delegation;
   if (d != null && d.isDelegatedAccess === true && typeof d.delegate?.username === 'string') {
     profile.actingAs = { username: stored.username, delegate: d.delegate.username };

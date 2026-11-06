@@ -6,6 +6,7 @@ const AuthController = require('./AuthController');
 const AuthStates = require('./AuthStates');
 const LoginButton = require('../Browser/LoginButton');
 const Service = require('../Service');
+const { missingPermissions } = require('./permissionsCoverage');
 
 /**
  * @memberof pryv
@@ -14,7 +15,8 @@ const Service = require('../Service');
 module.exports = {
   setupAuth,
   AuthStates,
-  AuthController
+  AuthController,
+  missingPermissions
 };
 
 /**

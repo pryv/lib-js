@@ -10,9 +10,11 @@
  * The top-level `apiEndpoint` / `username` are the active account (what
  * versions without profiles read); `profiles` lists every remembered
  * account, most recently used first, the active one included.
- * A profile is `{ username, apiEndpoint, actingAs?, unavailable? }`, where
- * `actingAs = { username, delegate }` marks an account used through account
- * delegation (`delegate` is the username of the person acting).
+ * A profile is `{ username, apiEndpoint, actingAs?, unavailable?,
+ * permissionsFingerprint? }`, where `actingAs = { username, delegate }` marks
+ * an account used through account delegation (`delegate` is the username of
+ * the person acting), and `permissionsFingerprint` identifies the requested
+ * permissions of the sign-in that stored it (see permissionsCoverage).
  * @memberof pryv.Auth
  */
 module.exports = {
@@ -75,6 +77,7 @@ function write (store) {
     data.apiEndpoint = store.active.apiEndpoint;
     data.username = store.active.username;
     if (store.active.actingAs != null) data.actingAs = store.active.actingAs;
+    if (store.active.permissionsFingerprint != null) data.permissionsFingerprint = store.active.permissionsFingerprint;
   }
   if (store.authUrl != null) data.authUrl = store.authUrl;
   data.profiles = store.profiles.map(profileOf);
@@ -114,6 +117,7 @@ function profileOf (p) {
     profile.actingAs = { username: p.username, delegate: p.actingAs.delegate };
   }
   if (p.unavailable === true) profile.unavailable = true;
+  if (typeof p.permissionsFingerprint === 'string') profile.permissionsFingerprint = p.permissionsFingerprint;
   return profile;
 }
 
@@ -125,9 +129,12 @@ function isProfile (p) {
  * The profile of an ACCEPTED auth-request body. Its `delegation` block is a
  * display hint posted by the auth page; `accessInfo().delegation` is
  * authoritative and replaces it when the profile is next activated.
+ * @param {Object} body
+ * @param {string} [permissionsFingerprint] - of the request this sign-in answered
  */
-function fromAccepted (body) {
+function fromAccepted (body, permissionsFingerprint) {
   const profile = { username: body.username, apiEndpoint: body.apiEndpoint };
+  if (typeof permissionsFingerprint === 'string') profile.permissionsFingerprint = permissionsFingerprint;
   const d = body.delegation;
   if (d != null && d.isDelegatedAccess === true && d.controlledUsername === body.username &&
       typeof d.delegate?.username === 'string') {
