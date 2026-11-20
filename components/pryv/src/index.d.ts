@@ -263,6 +263,33 @@ declare module 'pryv' {
     timestamp: Timestamp;
   };
 
+  export type WebHookScopeKind = 'events' | 'streams' | 'accesses';
+
+  /**
+   * A named scope of a webhook: the webhook is notified only of changes matching
+   * one of its scopes, and the call's `messages` carry the matched scope keys.
+   * `kind` defaults to `events`. An `accesses` scope needs a personal access and
+   * at least one of `streams`, `types`, `accessIds`.
+   */
+  export type WebHookScope =
+    | {
+      kind?: 'events';
+      query?: Partial<Pick<EventQueryParamsStreamQuery, 'streams' | 'types' | 'content' | 'clientData' | 'state'>>;
+    }
+    | {
+      kind: 'streams';
+      query?: Partial<Pick<EventQueryParamsStreamQuery, 'streams' | 'state'>>;
+    }
+    | {
+      kind: 'accesses';
+      query?: Partial<Pick<EventQueryParamsStreamQuery, 'streams' | 'types' | 'state'>> & {
+        accessIds?: Identifier[];
+      };
+    };
+
+  /** Named scopes of a webhook, keyed by a name you choose. */
+  export type WebHookScopes = { [key: string]: WebHookScope };
+
   export type WebHook = {
     id: Identifier;
     accessId: Identifier;
@@ -271,6 +298,13 @@ declare module 'pryv' {
     maxRetries: number;
     currentRetries: number;
     state: 'active' | 'inactive';
+    /** Present on a scoped webhook only. */
+    scopes?: WebHookScopes;
+    /**
+     * Read-only. `true` when the webhook has a signing secret, so its calls carry
+     * a `Pryv-Signature` header. Absent from cores that do not sign webhook calls.
+     */
+    signed?: boolean;
     runCount: number;
     failCount: number;
     lastRun: Run;
@@ -279,6 +313,15 @@ declare module 'pryv' {
     createdBy: Identifier;
     modified: Timestamp;
     modifiedBy: Identifier;
+  };
+
+  /**
+   * A webhook as returned by `webhooks.create` and `webhooks.rotateSecret`: with its
+   * signing secret (`whsec_...`), returned only by these two methods.
+   */
+  export type WebHookWithSecret = WebHook & {
+    /** Absent from cores that do not sign webhook calls. */
+    secret?: string;
   };
 
   export type ItemDeletion = {
@@ -636,16 +679,19 @@ declare module 'pryv' {
     };
     'webhooks.create': {
       params: {
-        webhook: Partial<Pick<WebHook, 'url' | 'state'>>;
+        /** At most 2048 characters, `https` or `http`, without credentials. */
+        url: string;
+        scopes?: WebHookScopes;
       };
       res: {
-        webhook: WebHook;
+        webhook: WebHookWithSecret;
       };
     };
     'webhooks.update': {
       params: {
         id: Identifier;
-        update: Partial<Pick<WebHook, 'state'>>;
+        /** `scopes` replaces the whole map. */
+        update: Partial<Pick<WebHook, 'state' | 'scopes'>>;
       };
       res: {
         webhook: WebHook;
@@ -665,6 +711,14 @@ declare module 'pryv' {
       };
       res: {
         webhook: WebHook;
+      };
+    };
+    'webhooks.rotateSecret': {
+      params: {
+        id: Identifier;
+      };
+      res: {
+        webhook: WebHookWithSecret;
       };
     };
 

@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`pryv` typings for signed webhook calls.** `WebHook` gains the read-only `signed?: boolean`; `webhooks.create` answers a `WebHookWithSecret` (the webhook with its signing `secret?: string`, `whsec_...`, returned once); the new `webhooks.rotateSecret` (`{ id }`, answers a `WebHookWithSecret` with the new secret) is typed in `APICallMethods`. Types only, no runtime change. Both fields are absent from cores that do not sign webhook calls.
+- **`pryv` typings for webhook scopes:** `WebHook.scopes?` (`WebHookScopes`, a map of named `WebHookScope` `{ kind?: 'events' | 'streams' | 'accesses', query? }`, kind `WebHookScopeKind`), accepted by `webhooks.create` and `webhooks.update`.
+
+### Changed
+
+- **`pryv` typings: `webhooks.create` params now match the API**, `{ url: string; scopes?: WebHookScopes }`. They were typed `{ webhook: { url?, state? } }`, a shape the server refuses (it takes `url` and `scopes` at the top level and refuses `state`). Type-only breaking change: TypeScript code that passed `webhook: { ... }` or `state` must pass `url` (and `scopes`) directly; the call it made was already refused at runtime. `webhooks.update` also accepts `scopes` in `update`, next to `state`.
+
 ## 3.19.0 - 2026-11-06
 
 `pryv` 3.19.0 (a minor: new public API and state fields, see Added, and a typing change, see Changed); `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` follow `pryv` to 3.19.0 with no change; `@pryv/cmc` unchanged (3.23.0).
