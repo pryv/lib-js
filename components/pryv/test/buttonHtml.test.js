@@ -123,6 +123,21 @@ describe('[BHTX] sign-in button, content from the service', function () {
       expect(globalThis.__pwned).to.equal(undefined);
     });
 
+    it('[BHBF] the messages of the service are shown on the button, the missing ones keep their default', async () => {
+      const b = button(STOCK);
+      b.service.assets = async () => ({
+        loginButtonGetHTML: async () => STOCK,
+        loginButtonLoadCSS: async () => {},
+        loginButtonGetMessages: async () => ({ LOADING: { en: 'wait' }, LOGIN: { en: 'Enter' }, LOGOUT_CONFIRM: { en: 'Leave?' } })
+      });
+      await b.init();
+      const text = async (state) => { await b.onStateChange(state); return b.loginButtonText.textContent; };
+      expect(await text({ status: AuthStates.LOADING })).to.equal('wait');
+      expect(await text({ status: AuthStates.INITIALIZED })).to.equal('Enter: ' + MARKUP);
+      expect(await text({ status: AuthStates.ERROR, message: 'm' })).to.equal('Error: m');
+      expect(b.auth.messages.SIGNOUT_CONFIRM).to.equal('Leave?');
+    });
+
     it('[BHBB] an auth URL that is not http(s) is an error: nothing is opened', async () => {
       saved.fetchPost = utils.fetchPost;
       const opened = [];

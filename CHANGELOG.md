@@ -15,6 +15,10 @@
 - **`pryv` typings for signed webhook calls.** `WebHook` gains the read-only `signed?: boolean`; `webhooks.create` answers a `WebHookWithSecret` (the webhook with its signing `secret?: string`, `whsec_...`, returned once); the new `webhooks.rotateSecret` (`{ id }`, answers a `WebHookWithSecret` with the new secret) is typed in `APICallMethods`. Types only, no runtime change. Both fields are absent from cores that do not sign webhook calls.
 - **`pryv` typings for webhook scopes:** `WebHook.scopes?` (`WebHookScopes`, a map of named `WebHookScope` `{ kind?: 'events' | 'streams' | 'accesses', query? }`, kind `WebHookScopeKind`), accepted by `webhooks.create` and `webhooks.update`.
 
+### Fixed
+
+- **`pryv` sign-in button: the messages of the service** (`LOADING`, `ERROR`, `LOGIN`, ... of `buttonSignIn.messages`) are shown on the button; they only reached the account menu. `LOGOUT_CONFIRM`, the key existing services define, is read as `SIGNOUT_CONFIRM`. Default messages fill the missing keys, as before. The button of a service that defines messages can show other words than before (pryv.me: "Login" instead of "Signin").
+
 ### Changed
 
 - **BREAKING (sign-in button, custom HTML): what is filtered.** Kept elements: `div span p br b i strong em small img a button`; any other (inline `svg`, `iframe`, `form`, `input`, `style`, `script`, ...) is removed with its content. Kept attributes: `class title alt role dir lang style width height aria-*`, an `id` starting with `pryv-access-btn`, an absolute http(s) `src` of an image; any other (`on*`, `href`, `data-*`, ...) is removed. A warning in the console says what was. Markup or HTML entities in a service name, a username or a message are shown literally. An auth page URL that is not http(s), in the answer of an auth request or of a poll, ends in `ERROR` (`error.id: 'invalid-auth-url'`); an account URL that is not http(s) hides "Manage my account" (a relative one, of the page's own origin, is accepted).

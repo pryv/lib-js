@@ -222,7 +222,7 @@ describe('[LBTX] LoginButton', function () {
 
     it('[LBSB] handles INITIALIZED state', async function () {
       await loginBtn.onStateChange({ status: AuthStates.INITIALIZED });
-      expect(loginBtn.text).to.include('Signin');
+      expect(loginBtn.text).to.include(loginBtn.auth.messages.LOGIN);
     });
 
     it('[LBSC] handles AUTHORIZED state', async function () {
@@ -434,7 +434,7 @@ describe('[LBTX] LoginButton', function () {
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(states.filter((s) => s === AuthStates.SIGNOUT)).to.have.lengthOf(1);
       expect(confirms).to.equal(0);
-      expect(dialog().querySelector('.pryv-menu-username').textContent).to.equal('Logout?');
+      expect(dialog().querySelector('.pryv-menu-username').textContent).to.equal(loginBtn.auth.messages.SIGNOUT_CONFIRM);
       expect(dialog().querySelector('.pryv-menu-account')).to.equal(null);
       // Cancel keeps the credentials and returns to the signed-in state
       // (the button used to stay inert after a cancelled logout)

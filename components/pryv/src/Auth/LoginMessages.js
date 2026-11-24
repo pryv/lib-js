@@ -93,6 +93,8 @@ const Messages = {
  */
 function get (languageCode, definitions) {
   const myMessages = Object.assign({}, Messages, definitions || {});
+  // the key the assets of existing services use
+  if (definitions?.LOGOUT_CONFIRM && !definitions.SIGNOUT_CONFIRM) myMessages.SIGNOUT_CONFIRM = definitions.LOGOUT_CONFIRM;
   const res = {};
   Object.keys(myMessages).forEach((key) => {
     res[key] = myMessages[key][languageCode] || myMessages[key].en;

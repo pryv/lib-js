@@ -105,7 +105,7 @@ class LoginButton {
         break;
       }
       case AuthStates.SWITCHING:
-        this.text = this.messages.SWITCHING || '...';
+        this.text = messagesOf(this).SWITCHING || '...';
         break;
       case AuthStates.SIGNOUT: {
         // A confirmed logout (the menu's "Log out", or `auth.signOut()`)
@@ -446,7 +446,7 @@ const MENU_OPTIONS = ['logout', 'account', 'switch', 'info'];
 /** `kim-doe (via parent-doe)` for an account used through delegation. */
 function profileLabel (loginButton, profile) {
   if (profile?.actingAs == null) return profile?.username;
-  return profile.username + ' (' + loginButton.messages.VIA + ' ' + profile.actingAs.delegate + ')';
+  return profile.username + ' (' + messagesOf(loginButton).VIA + ' ' + profile.actingAs.delegate + ')';
 }
 
 /** The auth page URL without its query and fragment (they may carry a key). */
@@ -544,7 +544,7 @@ function menuElement (tag, className, text) {
 function buildMenu (loginBtn, confirmLogout) {
   ensureMenuStyle();
   const auth = loginBtn.auth;
-  const messages = Object.assign({}, loginBtn.messages, auth.messages);
+  const messages = messagesOf(loginBtn);
   const options = confirmLogout
     ? { logout: true, account: false, info: false }
     : menuOptions(loginBtn.authSettings.menu);
@@ -745,14 +745,19 @@ async function loadAssets (loginBtn) {
   loginBtn.loginButtonText = textHolder;
 }
 
+/** The service's own messages (loaded by the controller) over the defaults. */
+function messagesOf (loginButton) {
+  return Object.assign({}, loginButton.messages, loginButton.auth?.messages);
+}
+
 function getErrorMessage (loginButton, message) {
-  return loginButton.messages.ERROR + ': ' + message;
+  return messagesOf(loginButton).ERROR + ': ' + message;
 }
 
 function getLoadingMessage (loginButton) {
-  return loginButton.messages.LOADING;
+  return messagesOf(loginButton).LOADING;
 }
 
 function getInitializedMessage (loginButton, serviceName) {
-  return loginButton.messages.LOGIN + ': ' + serviceName;
+  return messagesOf(loginButton).LOGIN + ': ' + serviceName;
 }
