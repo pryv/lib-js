@@ -95,7 +95,8 @@
           this.text = 'Signed in as ' + state.username;
           this.saveAuthorizationData({
             apiEndpoint: state.apiEndpoint,
-            username: state.username
+            username: state.username,
+            platform: this.auth.platform // not used under another platform
           });
           break;
         case pryv.Auth.AuthStates.SIGNOUT:

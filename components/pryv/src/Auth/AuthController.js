@@ -40,6 +40,16 @@ class AuthController {
       });
     }
     this.service = service;
+    /**
+     * The platform of this controller (see `ProfileStore.platformOf`): a stored
+     * sign-in is used, changed or forgotten only when it was made on it.
+     * @type {string}
+     */
+    this.platform = ProfileStore.platformOf(service);
+    // A sign-in stored by an earlier version names no platform: it is taken as
+    // this one's, unless the page address chose this platform (a link could
+    // then name any). Read once, the address may be cleaned later.
+    this._adoptUnbound = !pageNamesPlatform(this.platform);
 
     // probably remove
     this.languageCode = this.settings.authRequest.languageCode || 'en';
@@ -227,8 +237,8 @@ class AuthController {
     const others = current == null ? store.profiles : ProfileStore.remove(store, current).profiles;
     const loginButton = this.loginButton;
     if (!all && others.length > 0 && loginButton != null && typeof loginButton.saveAuthorizationData === 'function') {
-      loginButton.saveAuthorizationData(ProfileStore.write(Object.assign({}, store, { active: null, profiles: others })));
-    } else if (loginButton != null && typeof loginButton.deleteAuthorizationData === 'function') {
+      this._saveProfiles(Object.assign({}, store, { active: null, profiles: others }));
+    } else if (loginButton != null && typeof loginButton.deleteAuthorizationData === 'function' && this._storageIsOurs()) {
       await loginButton.deleteAuthorizationData();
     }
     await this.init();
@@ -373,16 +383,31 @@ class AuthController {
   _readProfiles () {
     const loginButton = this.loginButton;
     if (loginButton == null || typeof loginButton.getAuthorizationData !== 'function') return ProfileStore.read(null);
-    return ProfileStore.read(loginButton.getAuthorizationData());
+    return ProfileStore.read(this._stored(loginButton.getAuthorizationData()));
+  }
+
+  /** @private What the storage holds, when it belongs to this platform (else null). */
+  _stored (raw) {
+    return ProfileStore.forPlatform(raw, this.platform, this._adoptUnbound);
+  }
+
+  /** @private False when the storage holds the sign-in of another platform, which is then left alone. */
+  _storageIsOurs () {
+    const loginButton = this.loginButton;
+    if (loginButton == null || typeof loginButton.getAuthorizationData !== 'function') return true;
+    const raw = loginButton.getAuthorizationData();
+    // nothing stored, or a storage that answers later: nothing known of another platform
+    if (raw == null || typeof raw !== 'object' || typeof raw.then === 'function') return true;
+    return this._stored(raw) != null;
   }
 
   /** @private */
   _saveProfiles (store) {
     const loginButton = this.loginButton;
     if (loginButton == null || typeof loginButton.saveAuthorizationData !== 'function') return;
-    const data = ProfileStore.write(store);
+    const data = ProfileStore.write(Object.assign({}, store, { platform: this.platform }));
     if (data == null && typeof loginButton.deleteAuthorizationData === 'function') {
-      loginButton.deleteAuthorizationData();
+      if (this._storageIsOurs()) loginButton.deleteAuthorizationData();
     } else if (data != null) {
       loginButton.saveAuthorizationData(data);
     }
@@ -704,13 +729,30 @@ function accountUrlFromAuthUrl (authUrl) {
   return url.origin + path.slice(0, -'/auth'.length);
 }
 
+/**
+ * Whether the page address (query or fragment) names `platform` as the service
+ * to use, with any of its `pryvServiceInfoUrl`.
+ * @param {string} platform
+ */
+function pageNamesPlatform (platform) {
+  const href = globalThis.location?.href;
+  if (typeof href !== 'string') return false;
+  for (const match of href.matchAll(/[?#&]pryvServiceInfoUrl=([^&#]*)/g)) {
+    let value = match[1];
+    try { value = decodeURIComponent(value); } catch (e) { /* taken as is */ }
+    if (ProfileStore.normalizedUrl(value) === platform) return true;
+  }
+  return false;
+}
+
 async function checkAutoLogin (authController) {
   const loginButton = authController.loginButton;
   if (loginButton == null) {
     return;
   }
 
-  let storedCredentials = await loginButton.getAuthorizationData();
+  // only a sign-in made on this platform
+  let storedCredentials = authController._stored(await loginButton.getAuthorizationData());
   if (storedCredentials == null) return;
   // Forget the stored sign-ins that carry no token (3.13.0 saved some after a
   // redirect return): they would sign in to a session the API refuses, or
@@ -719,7 +761,7 @@ async function checkAutoLogin (authController) {
   const tokenless = stored.profiles.filter((p) => !ProfileStore.carriesToken(p.apiEndpoint));
   if (tokenless.length > 0) {
     authController._saveProfiles(tokenless.reduce((s, p) => ProfileStore.remove(s, p.username), stored));
-    storedCredentials = await loginButton.getAuthorizationData();
+    storedCredentials = authController._stored(await loginButton.getAuthorizationData());
     if (storedCredentials == null) return;
   }
   if (typeof storedCredentials.authUrl === 'string') authController._authUrl = storedCredentials.authUrl;
@@ -739,6 +781,7 @@ async function checkAutoLogin (authController) {
     // kept on the profile only: the app's listener gets the stored shape it knows
     delete state.permissionsFingerprint;
   }
+  delete state.platform;
   return await signInIfPermitted(authController, state);
 }
 

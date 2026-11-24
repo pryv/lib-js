@@ -85,4 +85,33 @@ describe('[PSTX] ProfileStore', function () {
     expect(ProfileStore.fromAccepted({ username: 'lou-doe', apiEndpoint: 'https://t@lou.example.com/', delegation: hint }).actingAs).to.equal(undefined);
     expect(ProfileStore.fromAccepted({ username: 'kim-doe', apiEndpoint: kim.apiEndpoint, delegation: { controlledUsername: 'kim-doe', delegate: { username: 'p' } } }).actingAs).to.equal(undefined);
   });
+
+  it('[PSTF] the platform is the service information URL given, in one spelling, never its content', function () {
+    const of = (url, info) => ProfileStore.platformOf({ _serviceInfoUrl: url, infoSync: () => info ?? { access: 'https://a.example/', serial: '1' } });
+    const base = 'https://p.example/service/info';
+    expect(of(base)).to.equal(base);
+    expect(of('HTTPS://P.example:443/x/../service/info#frag')).to.equal(base);
+    for (const other of [base + '/', base + '?a=1', 'https://p.example/service/infos', 'https://q.example/service/info', 'http://p.example/service/info', 'https://p.example:8443/service/info']) {
+      expect(of(other), other).to.not.equal(base);
+    }
+    expect(of(null)).to.equal('inline:https://a.example/');
+    expect(of('', null)).to.equal('inline:https://a.example/');
+    expect(ProfileStore.platformOf({ infoSync: () => null })).to.equal('inline:');
+    expect(of('not a url ::')).to.be.a('string');
+  });
+
+  it('[PSTG] stored data names its platform; it belongs to that one only, or to the one in use when it names none and is adopted', function () {
+    const data = ProfileStore.write({ active: parent, profiles: [parent], platform: 'https://p.example/i' });
+    expect(data.platform).to.equal('https://p.example/i');
+    expect(ProfileStore.read(data).platform).to.equal('https://p.example/i');
+    expect(ProfileStore.read(parent)).to.not.have.property('platform');
+    for (const adopt of [true, false]) {
+      expect(ProfileStore.forPlatform(data, 'https://p.example/i', adopt)).to.equal(data);
+      expect(ProfileStore.forPlatform(data, 'https://q.example/i', adopt)).to.equal(null);
+      expect(ProfileStore.forPlatform(null, 'https://p.example/i', adopt)).to.equal(null);
+      expect(ProfileStore.forPlatform('text', 'https://p.example/i', adopt)).to.equal(null);
+    }
+    expect(ProfileStore.forPlatform(parent, 'https://p.example/i', true)).to.equal(parent);
+    expect(ProfileStore.forPlatform(parent, 'https://p.example/i', false)).to.equal(null);
+  });
 });

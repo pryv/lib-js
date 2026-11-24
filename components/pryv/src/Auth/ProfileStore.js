@@ -6,7 +6,7 @@
 /**
  * The accounts a sign-in button remembers for one app, as stored in its
  * authorization data:
- * `{ apiEndpoint, username, actingAs?, authUrl?, profiles: [...] }`.
+ * `{ apiEndpoint, username, actingAs?, authUrl?, platform?, profiles: [...] }`.
  * The top-level `apiEndpoint` / `username` are the active account (what
  * versions without profiles read); `profiles` lists every remembered
  * account, most recently used first, the active one included.
@@ -15,6 +15,8 @@
  * an account used through account delegation (`delegate` is the username of
  * the person acting), and `permissionsFingerprint` identifies the requested
  * permissions of the sign-in that stored it (see permissionsCoverage).
+ * `platform` is the platform the sign-ins were made on (see `platformOf`);
+ * absent when an earlier version stored them.
  * @memberof pryv.Auth
  */
 module.exports = {
@@ -26,7 +28,10 @@ module.exports = {
   markUnavailable,
   profileOf,
   fromAccepted,
-  carriesToken
+  carriesToken,
+  platformOf,
+  normalizedUrl,
+  forPlatform
 };
 
 const utils = require('../utils');
@@ -47,14 +52,58 @@ function carriesToken (apiEndpoint) {
 }
 
 /**
+ * The identity of the platform of `service`: the service information URL the
+ * app gave. Nothing of the service information itself is an identity: a
+ * foreign document can claim any of it. Without a URL (inline service
+ * information, the app's own), its `access`.
+ * @param {Object} service
+ * @returns {string}
+ */
+function platformOf (service) {
+  const url = service?._serviceInfoUrl;
+  if (typeof url === 'string' && url !== '') return normalizedUrl(url);
+  return 'inline:' + (service?.infoSync?.()?.access ?? '');
+}
+
+/**
+ * `url` in one spelling, without its fragment. Only what cannot change the
+ * resource it names: path, trailing slash and query are kept.
+ * @param {string} url
+ * @returns {string}
+ */
+function normalizedUrl (url) {
+  try {
+    const normalized = new URL(url, globalThis.location?.href);
+    normalized.hash = '';
+    return normalized.href;
+  } catch (e) {
+    return url;
+  }
+}
+
+/**
+ * The stored data when it belongs to `platform`, else null. Data stored by an
+ * earlier version names no platform: it belongs to it when `adoptUnbound`.
+ * @param {Object|null|undefined} stored
+ * @param {string} platform
+ * @param {boolean} adoptUnbound
+ */
+function forPlatform (stored, platform, adoptUnbound) {
+  if (stored == null || typeof stored !== 'object') return null;
+  if (typeof stored.platform === 'string') return stored.platform === platform ? stored : null;
+  return adoptUnbound ? stored : null;
+}
+
+/**
  * Parse stored authorization data (any version) into
- * `{ active, profiles, authUrl }`; `active` is `profiles[0]` or null.
+ * `{ active, profiles, authUrl, platform? }`; `active` is `profiles[0]` or null.
  * @param {Object|null|undefined} stored
  */
 function read (stored) {
   const store = { active: null, profiles: [], authUrl: undefined };
   if (stored == null || typeof stored !== 'object' || stored.deleted === true) return store;
   if (typeof stored.authUrl === 'string') store.authUrl = stored.authUrl;
+  if (typeof stored.platform === 'string') store.platform = stored.platform;
   if (Array.isArray(stored.profiles)) {
     store.profiles = stored.profiles.filter(isProfile).map(profileOf);
   }
@@ -80,6 +129,7 @@ function write (store) {
     if (store.active.permissionsFingerprint != null) data.permissionsFingerprint = store.active.permissionsFingerprint;
   }
   if (store.authUrl != null) data.authUrl = store.authUrl;
+  if (store.platform != null) data.platform = store.platform;
   data.profiles = store.profiles.map(profileOf);
   return data;
 }

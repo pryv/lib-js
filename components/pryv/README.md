@@ -555,6 +555,8 @@ serviceInfoUrl = pryv.Browser.serviceInfoFromUrl(null, {
 
 A value that is not an absolute http(s) URL, or not in the list (exact match, once normalised), is ignored (`undefined`).
 
+A sign-in is remembered for the service information URL it was made with: under another one the app starts signed out, see [Stored sign-in and the platform](#stored-sign-in-and-the-platform).
+
 #### Visual assets
 
 The HTML of the sign-in button comes from the service: the default button keeps its structure (`div span p br b i strong em small img a button`), the attributes `class title alt role dir lang style width height aria-*`, ids starting with `pryv-access-btn` and absolute http(s) image sources; every other attribute is dropped, every other element with its content (scripts, SVG, forms, embedded content), with a warning in the console. It must hold an element with id `pryv-access-btn-text`, else the built-in button is shown. A custom button must not write `loginButtonGetHTML()` with `innerHTML`. The stylesheet of the service styles the page that embeds the button.
@@ -616,6 +618,8 @@ getAuthorizationData () {
 }
 ```
 
+A button that stores the sign-in itself adds `platform: this.auth.platform` to it (as below): the controller uses, changes and forgets stored data of its own platform only.
+
 ##### Authentication lifecycle
 
 The [authentication process](https://api.pryv.com/reference/#authenticate-your-app) implementation on the frontend can go through the following states:
@@ -654,7 +658,8 @@ async onStateChange (state) {
       this.text = state.username;
       this.saveAuthorizationData({
         apiEndpoint: state.apiEndpoint,
-        username: state.username
+        username: state.username,
+        platform: this.auth.platform // not used under another platform
       });
       break;
     case AuthStates.SIGNOUT:
@@ -761,6 +766,17 @@ The default button's cookies (`pryv-libjs-<appId>` and `pryv-libjs-<appId>-profi
 - `authSettings.cookiePath` (default `'/'`) scopes them to a sub-path. To keep two deployments with the same app id on one host from sharing the sign-in, give **each** its own sub-path (`'/prod/'` and `'/staging/'`): a cookie written for `/` is sent to every path, is the one read there, and is removed by the other deployment's next sign-in or log out.
 - `pryv.Browser.CookieUtils` uses the same defaults; `set(key, value, expireInDays, { path, secure, sameSite, domain })` and `del(key, { path, domain })` override them (browsers refuse `sameSite: 'None'` without `secure`). `get(key)` returns `undefined` for a value it cannot read.
 - Versions up to 3.16 wrote the cookies for the path of the page they ran on, and for every subdomain. `set()` and `del()` remove those copies on the current page's path and its parents. A copy left on another route by an older version is removed the next time the app runs on that route; until then, a log out performed elsewhere does not reach it.
+
+##### Stored sign-in and the platform
+
+The stored sign-in names its platform: the service information URL given to `setupAuth()` (or to `new Service()`), available as `auth.platform`. It is used, listed, changed and forgotten only under that same URL, so a link naming another platform neither restores nor touches it.
+
+- The URL is compared once normalised, without its fragment: path, trailing slash and query count. Another spelling of the same platform has its own stored sign-in. Nothing in the service information itself is compared, as another platform can claim any of it. An app whose URL changes asks its users to sign in once.
+- One platform is remembered per app id: completing a sign-in under another one replaces it.
+- A sign-in stored by a version before 3.20 names no platform. It is kept, except on a page whose address names the platform in use (`pryvServiceInfoUrl`, in the query or the fragment): sign in again there. An app that lets a link choose the platform by another means, or removes the parameter before `setupAuth()`, keeps it in every case.
+- A sign-in by redirection is completed only under the platform that started it.
+- Service information given inline (no URL) is the app's own: it is told apart by its `access`, which protects nothing if the app builds it from untrusted input.
+- The three storage methods of a custom button are covered as soon as its data holds `platform`. Credentials an app keeps elsewhere are not.
 
 ##### Custom button usage
 

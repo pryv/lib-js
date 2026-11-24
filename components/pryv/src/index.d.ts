@@ -1561,6 +1561,11 @@ declare module 'pryv' {
     permissionsFingerprint?: string;
     /** Auth page of the sign-in (without query), kept to locate the account app. */
     authUrl?: string;
+    /**
+     * The platform the sign-in was made on (`AuthController.platform`); absent
+     * when an earlier version stored it.
+     */
+    platform?: string;
     profiles?: StoredAuthProfile[];
   } | null;
 
@@ -1569,6 +1574,11 @@ declare module 'pryv' {
     getAuthorizationData(): StoredAuthorizationData;
     onStateChange(state: AuthStatePayload): Promise<void>;
     onClick(): void;
+    /**
+     * Store the data as given. A button that builds it itself adds
+     * `platform: authController.platform`, so that it is not used under
+     * another platform.
+     */
     saveAuthorizationData?: (authData: StoredAuthorizationData) => void;
     deleteAuthorizationData?: () => Promise<void>;
     finishAuthProcessAfterRedirection?: (authController: AuthController) => Promise<void>;
@@ -1625,6 +1635,11 @@ declare module 'pryv' {
     serviceInfo: ServiceInfo | null;
     assets: ServiceAssets | null;
     loginButton: CustomLoginButton;
+    /**
+     * The platform: the service information URL the app gave, without its
+     * fragment. A stored sign-in is used only with the platform it was made on.
+     */
+    readonly platform: string;
     languageCode: string;
     messages: KeyValue;
     stateChangeListeners: Array<(state: AuthStatePayload) => void>;

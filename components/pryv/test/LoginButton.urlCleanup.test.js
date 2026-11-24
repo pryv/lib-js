@@ -18,8 +18,9 @@ const utils = require('../src/utils');
 const COOKIE_KEY = 'pryv-libjs-test-app';
 const THIS = { _cookieKey: COOKIE_KEY };
 
-function seedFlow (key, poll, cookieKey = COOKIE_KEY) {
-  global.window.sessionStorage.setItem(cookieKey + '-authflow', JSON.stringify({ key, poll, authUrl: 'https://ui.test.local/access/access.html?key=' + key }));
+// `platform`: what a real button stores (that of `fakeService`, without a URL).
+function seedFlow (key, poll, cookieKey = COOKIE_KEY, platform = undefined) {
+  global.window.sessionStorage.setItem(cookieKey + '-authflow', JSON.stringify({ key, poll, authUrl: 'https://ui.test.local/access/access.html?key=' + key, platform }));
 }
 
 function storedFlow (cookieKey = COOKIE_KEY) {
@@ -192,7 +193,7 @@ describe('[LBRH] LoginButton redirect return with credential hand-off', function
 
   it('[LBH4] end to end: real button + controller store a usable sign-in, keep the legacy listener shape, sign-out clears the cache', async () => {
     f.setPage('http://localhost/app?prYvpoll=https%3A%2F%2Freg.test.local%2Faccess%2Fflowkey4&prYvkey=flowkey4&prYvstatus=ACCEPTED');
-    seedFlow('flowkey4', 'https://reg.test.local/access/flowkey4', 'pryv-libjs-lbh4-app');
+    seedFlow('flowkey4', 'https://reg.test.local/access/flowkey4', 'pryv-libjs-lbh4-app', 'inline:https://reg.test.local/access/');
     f.poll(HANDOFF_BODY);
     f.retrieve(() => ({ secret: { username: 'alice', token: 'tok-789', apiEndpoint: 'https://alice.test.local/' } }));
     const external = [];
@@ -263,7 +264,7 @@ describe('[LBRH] LoginButton redirect return with credential hand-off', function
 
   it('[LBH7] end to end: a refused redirect return reaches the app as REFUSED, then the button resets to INITIALIZED', async () => {
     f.setPage('http://localhost/app?pryvKey=flowkey7');
-    seedFlow('flowkey7', 'https://reg.test.local/access/flowkey7', 'pryv-libjs-lbh7-app');
+    seedFlow('flowkey7', 'https://reg.test.local/access/flowkey7', 'pryv-libjs-lbh7-app', 'inline:https://reg.test.local/access/');
     f.poll({ status: 'REFUSED', reasonId: 'REFUSED_BY_USER', message: 'access refused by user' }, { status: 403 });
     const external = [];
     const serviceInfo = { access: 'https://reg.test.local/access/', name: 'Test' };
@@ -295,7 +296,7 @@ describe('[LBRH] LoginButton redirect return with credential hand-off', function
 
   it('[LBH8] a listener that starts over on a refused redirect return is not overridden by the reset', async () => {
     f.setPage('http://localhost/app?pryvKey=flowkey8');
-    seedFlow('flowkey8', 'https://reg.test.local/access/flowkey8', 'pryv-libjs-lbh8-app');
+    seedFlow('flowkey8', 'https://reg.test.local/access/flowkey8', 'pryv-libjs-lbh8-app', 'inline:https://reg.test.local/access/');
     f.poll({ status: 'REFUSED', reasonId: 'REFUSED_BY_USER' }, { status: 403 });
     const external = [];
     let loginBtn = null;
@@ -458,7 +459,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
       fakeService(Object.assign({ name: 'Test' }, SERVICE_INFO)));
     loginBtn._cookieKey = 'pryv-libjs-lbrba-app';
     loginBtn.saveAuthorizationData({ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/', profiles: [{ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/' }] });
-    seedFlow('k1', CORE_POLL, 'pryv-libjs-lbrba-app');
+    seedFlow('k1', CORE_POLL, 'pryv-libjs-lbrba-app', 'inline:' + SERVICE_INFO.access);
     f.poll(ACCEPTED);
     await loginBtn.init();
     expect(f.fetchCalls).to.deep.equal([CORE_POLL]);
@@ -483,7 +484,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
         fakeService(Object.assign({ name: 'Test' }, SERVICE_INFO)));
       loginBtn._cookieKey = 'pryv-libjs-lbrbd-app';
       loginBtn.saveAuthorizationData({ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/', profiles: [{ username: 'bob', apiEndpoint: 'https://tb@bob.mc.example.com/' }] });
-      if (seeded) seedFlow('k1', CORE_POLL, 'pryv-libjs-lbrbd-app');
+      if (seeded) seedFlow('k1', CORE_POLL, 'pryv-libjs-lbrbd-app', 'inline:' + SERVICE_INFO.access);
       f.poll(body, response);
       await loginBtn.init();
       expect(loginBtn.auth.state.status, label).to.equal('ACCEPTED');

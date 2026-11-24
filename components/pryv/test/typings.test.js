@@ -43,4 +43,8 @@ describe('[TYPX] typings', function () {
   it('[TYP3] stored sign-in permissions check: INITIALIZED reasonId / missingPermissions, Auth.missingPermissions', function () {
     expect(compile('authPermissions.ts')).to.deep.equal([]);
   });
+
+  it('[TYP4] the platform of a controller and of a stored sign-in', function () {
+    expect(compile('storedPlatform.ts')).to.deep.equal([]);
+  });
 });

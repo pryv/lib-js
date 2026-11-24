@@ -81,7 +81,7 @@ class LoginButton {
           // Remember the request this page started: on the way back, only
           // its key is accepted and only its (server-issued) poll URL is
           // fetched (see finishAuthProcessAfterRedirection).
-          writeAuthFlow(this._cookieKey, { key: state.key, poll: state.poll, authUrl: loginUrl });
+          writeAuthFlow(this._cookieKey, { key: state.key, poll: state.poll, authUrl: loginUrl, platform: this.auth?.platform });
           location.href = loginUrl;
           return;
         } else {
@@ -95,12 +95,13 @@ class LoginButton {
         // Never remember a sign-in that cannot call the API (it would be
         // restored on every page load).
         if (!ProfileStore.carriesToken(profile?.apiEndpoint)) break;
-        const store = ProfileStore.read(this.getAuthorizationData());
+        // The accounts of this platform only, and stored as its own.
+        const store = this.auth != null ? this.auth._readProfiles() : ProfileStore.read(this.getAuthorizationData());
         // Kept to locate the account app after a reload (see AuthController.accountUrl).
         const authUrl = withoutQuery(state.authUrl || this.auth?._authUrl) || store.authUrl;
         this.saveAuthorizationData(ProfileStore.write(Object.assign(
           ProfileStore.activate(store, profile, this.authSettings.maxProfiles),
-          { authUrl }
+          { authUrl, platform: this.auth?.platform }
         )));
         break;
       }
@@ -192,7 +193,11 @@ class LoginButton {
     const active = Cookies.get(this._cookieKey);
     const remembered = Cookies.get(this._cookieKey + PROFILES_COOKIE_SUFFIX);
     if (remembered == null || !Array.isArray(remembered.profiles)) return active;
-    const data = Object.assign({}, active != null && active.deleted !== true ? active : {}, { profiles: remembered.profiles });
+    const signedIn = active != null && active.deleted !== true;
+    // An earlier version rewrote the main cookie only: the list is another platform's.
+    if (signedIn && active.platform !== remembered.platform) return active;
+    const data = Object.assign({}, signedIn ? active : {}, { profiles: remembered.profiles });
+    if (!signedIn && remembered.platform != null) data.platform = remembered.platform;
     if (data.authUrl == null && remembered.authUrl != null) data.authUrl = remembered.authUrl;
     return data;
   }
@@ -216,7 +221,8 @@ class LoginButton {
       Cookies.del(this._cookieKey, options);
     }
     if (Array.isArray(profiles)) {
-      const remembered = Object.assign({ profiles: profiles.slice() }, active.authUrl != null ? { authUrl: active.authUrl } : {});
+      const remembered = Object.assign({ profiles: profiles.slice() }, active.authUrl != null ? { authUrl: active.authUrl } : {},
+        active.platform != null ? { platform: active.platform } : {});
       // A browser drops a cookie over ~4 KB: forget the least recently used
       // accounts (the list is most recent first) until it fits.
       while (remembered.profiles.length > 1 &&
@@ -257,7 +263,9 @@ class LoginButton {
       // it: a link carrying another key or poll URL must not sign the page
       // in (to a foreign host, or to someone else's account).
       const flow = readAuthFlow(this._cookieKey);
-      if (flow == null || flow.key !== key || typeof flow.poll !== 'string') {
+      // A request started under another platform is another request: its auth
+      // page must not choose the platform its answer is stored for.
+      if (flow == null || flow.key !== key || typeof flow.poll !== 'string' || flow.platform !== authController.platform) {
         console.warn('pryv: ignoring a sign-in return for a request this page did not start');
         if (!signedIn) {
           authController.state = {
@@ -359,7 +367,7 @@ class LoginButton {
     const key = retrieveKey(window.location.href);
     if (key == null) return false;
     const flow = readAuthFlow(this._cookieKey);
-    return flow != null && flow.key === key;
+    return flow != null && flow.key === key && flow.platform === this.auth?.platform;
   }
 }
 
