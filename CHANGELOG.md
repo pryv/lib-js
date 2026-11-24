@@ -11,14 +11,14 @@
 
 ### Added
 
-- **`pryv.Browser.serviceInfoFromUrl(url, { allowedServiceInfoUrls })`**: accept only the listed services from the page address.
+- **`pryv.Browser.serviceInfoFromUrl(url, { allowedServiceInfoUrls })`**: accept only the listed services from the page address (exact match, once normalised).
 - **`pryv` typings for signed webhook calls.** `WebHook` gains the read-only `signed?: boolean`; `webhooks.create` answers a `WebHookWithSecret` (the webhook with its signing `secret?: string`, `whsec_...`, returned once); the new `webhooks.rotateSecret` (`{ id }`, answers a `WebHookWithSecret` with the new secret) is typed in `APICallMethods`. Types only, no runtime change. Both fields are absent from cores that do not sign webhook calls.
 - **`pryv` typings for webhook scopes:** `WebHook.scopes?` (`WebHookScopes`, a map of named `WebHookScope` `{ kind?: 'events' | 'streams' | 'accesses', query? }`, kind `WebHookScopeKind`), accepted by `webhooks.create` and `webhooks.update`.
 
 ### Changed
 
-- **BREAKING (sign-in button, custom HTML): what is filtered.** Elements other than `div span p br b i strong em small img a button` (inline `svg`, `iframe`, `form`, `input`, `style`, `script`, ...), `on*` handlers, `href`, `data-*`, ids not starting with `pryv-` and non-http(s) image sources are removed, with a warning in the console. Markup or HTML entities in a service name, a username or a message are shown literally. An auth request answered with a non-http(s) `authUrl` ends in `ERROR` (`error.id: 'invalid-auth-url'`); a non-http(s) account URL hides "Manage my account".
-- **BREAKING: `pryv.Browser.serviceInfoFromUrl()` answers `undefined` for a value that is not an http(s) URL.** Typing: `(url?, options?) => string | undefined`.
+- **BREAKING (sign-in button, custom HTML): what is filtered.** Kept elements: `div span p br b i strong em small img a button`; any other (inline `svg`, `iframe`, `form`, `input`, `style`, `script`, ...) is removed with its content. Kept attributes: `class title alt role dir lang style width height aria-*`, an `id` starting with `pryv-access-btn`, an absolute http(s) `src` of an image; any other (`on*`, `href`, `data-*`, ...) is removed. A warning in the console says what was. Markup or HTML entities in a service name, a username or a message are shown literally. An auth page URL that is not http(s), in the answer of an auth request or of a poll, ends in `ERROR` (`error.id: 'invalid-auth-url'`); an account URL that is not http(s) hides "Manage my account" (a relative one, of the page's own origin, is accepted).
+- **BREAKING: `pryv.Browser.serviceInfoFromUrl()` answers `undefined` for a value that is not an absolute http(s) URL.** Typing: `(url?, options?) => string | undefined`.
 - **`pryv` typings: `webhooks.create` params now match the API**, `{ url: string; scopes?: WebHookScopes }`. They were typed `{ webhook: { url?, state? } }`, a shape the server refuses (it takes `url` and `scopes` at the top level and refuses `state`). Type-only breaking change: TypeScript code that passed `webhook: { ... }` or `state` must pass `url` (and `scopes`) directly; the call it made was already refused at runtime. `webhooks.update` also accepts `scopes` in `update`, next to `state`.
 
 ## 3.19.0 - 2026-11-06

@@ -553,11 +553,11 @@ serviceInfoUrl = pryv.Browser.serviceInfoFromUrl(null, {
 }) || defaultServiceInfoUrl;
 ```
 
-A value that is not an http(s) URL, or not in the list, is ignored (`undefined`).
+A value that is not an absolute http(s) URL, or not in the list (exact match, once normalised), is ignored (`undefined`).
 
 #### Visual assets
 
-The HTML of the sign-in button comes from the service: the default button keeps its structure (`div span p br b i strong em small img a button`), classes, styles, `pryv-` ids, `aria-*` attributes and http(s) images, and drops the rest (scripts, event handlers, links, SVG, embedded content), with a warning in the console. It must hold an element with id `pryv-access-btn-text`, else the built-in button is shown. A custom button must not write `loginButtonGetHTML()` with `innerHTML`. The stylesheet of the service styles the page that embeds the button.
+The HTML of the sign-in button comes from the service: the default button keeps its structure (`div span p br b i strong em small img a button`), the attributes `class title alt role dir lang style width height aria-*`, ids starting with `pryv-access-btn` and absolute http(s) image sources; every other attribute is dropped, every other element with its content (scripts, SVG, forms, embedded content), with a warning in the console. It must hold an element with id `pryv-access-btn-text`, else the built-in button is shown. A custom button must not write `loginButtonGetHTML()` with `innerHTML`. The stylesheet of the service styles the page that embeds the button.
 
 To customize visual assets, please refer to the [pryv.me assets repository](https://github.com/pryv/assets-pryv.me). For example, see [how to customize the sign-in button](https://github.com/pryv/assets-pryv.me/tree/master/lib-js/).
 
@@ -642,6 +642,7 @@ async onStateChange (state) {
       break;
     case AuthStates.NEED_SIGNIN:
       const loginUrl = state.authUrl || state.url; // .url is deprecated
+      if (!/^https?:\/\//i.test(loginUrl)) throw new Error('Invalid auth URL'); // it comes from the service
       if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup)
         location.href = loginUrl;
         return;

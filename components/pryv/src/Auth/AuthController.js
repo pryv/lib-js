@@ -9,7 +9,7 @@ const ProfileStore = require('./ProfileStore');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
 const PryvError = require('../lib/PryvError');
-const { refusedState, unreadableAnswerState } = require('./pollOutcome');
+const { invalidAuthUrlError, refusedState, unreadableAnswerState } = require('./pollOutcome');
 const { missingPermissions, permissionsFingerprint } = require('./permissionsCoverage');
 
 /**
@@ -507,7 +507,7 @@ class AuthController {
         // The button navigates to or opens this URL: nothing but a web page.
         const authUrl = body?.authUrl || body?.url;
         if (authUrl != null && !utils.isHttpUrl(authUrl)) {
-          throw Object.assign(new Error('Invalid auth URL'), { id: 'invalid-auth-url' });
+          throw invalidAuthUrlError();
         }
         return body;
       } catch (e) {

@@ -10,6 +10,8 @@ const AuthStates = require('./AuthStates');
  * same shapes.
  */
 module.exports = {
+  invalidAuthUrlError,
+  invalidAuthUrlState,
   refusedState,
   unreadableAnswerState
 };
@@ -34,4 +36,14 @@ function refusedState (body, serviceInfo) {
  */
 function unreadableAnswerState (body) {
   return { status: AuthStates.ERROR, message: 'Cannot fetch result', error: body?.error ?? body };
+}
+
+/** An auth request or a poll answered with an auth page URL that is not http(s). */
+function invalidAuthUrlError () {
+  return Object.assign(new Error('Invalid auth URL'), { id: 'invalid-auth-url' });
+}
+
+function invalidAuthUrlState () {
+  const error = invalidAuthUrlError();
+  return { status: AuthStates.ERROR, message: error.message, error };
 }

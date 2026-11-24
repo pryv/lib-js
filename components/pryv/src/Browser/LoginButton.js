@@ -6,7 +6,7 @@ const Cookies = require('./CookieUtils');
 const AuthStates = require('../Auth/AuthStates');
 const AuthController = require('../Auth/AuthController');
 const ProfileStore = require('../Auth/ProfileStore');
-const { refusedState, unreadableAnswerState } = require('../Auth/pollOutcome');
+const { invalidAuthUrlState, refusedState, unreadableAnswerState } = require('../Auth/pollOutcome');
 const Messages = require('../Auth/LoginMessages');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
@@ -71,6 +71,12 @@ class LoginButton {
         break;
       case AuthStates.NEED_SIGNIN: {
         const loginUrl = state.authUrl || state.url; // url is deprecated
+        // Also reached with the answer of a poll (return of a sign-in by
+        // redirection): nothing but a web page is navigated to or opened.
+        if (!utils.isHttpUrl(loginUrl)) {
+          this.auth.state = invalidAuthUrlState();
+          return;
+        }
         if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup)
           // Remember the request this page started: on the way back, only
           // its key is accepted and only its (server-issued) poll URL is

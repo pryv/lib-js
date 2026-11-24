@@ -16,7 +16,7 @@ const STOCK = `<div id="pryv-access-btn" class="pryv-access-btn-signin">
   <span class="pryv-access-btn pryv-access-btn-pryv-access-color"><span id="pryv-access-btn-text"></span></span>
 </div>
 `;
-const MARKUP = '<img src="x" onerror="window.__pwned=1">';
+const MARKUP = '<img src="https://x.invalid/x" onerror="window.__pwned=1">';
 
 describe('[BHTX] sign-in button, content from the service', function () {
   let doc, warn;
@@ -49,13 +49,13 @@ describe('[BHTX] sign-in button, content from the service', function () {
       warnings.length = 0;
       const { div } = built(`<script>1</script>${MARKUP}<iframe src="https://x"></iframe><svg onload="1"><a href="https://x">s</a></svg>
         <a href="javascript:1" class="k">link</a><style>p{}</style><form action="/x"><input name="i"></form>
-        <img src="javascript:1"><img src="data:image/png;base64,AA=="><img src="https://x.y/logo.png" alt="logo" srcset="https://x.y/2.png 2x">
-        <div id="console" data-x="1" onclick="1" aria-label="l" style="color: red">t</div><math><mi>m</mi></math>
+        <img src="javascript:1"><img src="/logout"><img src="data:image/png;base64,AA=="><img src="https://x.y/logo.png" alt="logo" srcset="https://x.y/2.png 2x">
+        <div id="pryv-menu-style"></div><div id="console" data-x="1" onclick="1" aria-label="l" style="color: red">t</div><math><mi>m</mi></math>
         <button formaction="javascript:1">b</button><p id="pryv-access-btn-text" title="t"></p><!-- c -->`);
       for (const tag of ['script', 'iframe', 'svg', 'style', 'form', 'input', 'math']) expect(div.querySelector(tag), tag).to.equal(null);
       const attributes = new Set(Array.from(div.querySelectorAll('*')).flatMap((e) => Array.from(e.attributes).map((a) => a.name)));
       expect(Array.from(attributes).sort()).to.deep.equal(['alt', 'aria-label', 'class', 'id', 'src', 'style', 'title', 'type']);
-      expect(Array.from(div.querySelectorAll('[src]')).map((e) => e.getAttribute('src'))).to.deep.equal(['x', 'https://x.y/logo.png']);
+      expect(Array.from(div.querySelectorAll('[src]')).map((e) => e.getAttribute('src'))).to.deep.equal(['https://x.invalid/x', 'https://x.y/logo.png']);
       expect(Array.from(div.querySelectorAll('[id]')).map((e) => e.id)).to.deep.equal(['pryv-access-btn-text']);
       expect(div.querySelector('button').getAttribute('type')).to.equal('button');
       expect(div.innerHTML).to.not.include('<!--');
@@ -63,7 +63,7 @@ describe('[BHTX] sign-in button, content from the service', function () {
     });
 
     it('[BHAC] without a usable text element the built-in button is shown', () => {
-      for (const html of ['', '<b>no holder</b>', '<form><span id="pryv-access-btn-text"></span></form>']) {
+      for (const html of ['', '<b>no holder</b>', '<form><span id="pryv-access-btn-text"></span></form>', '<img id="pryv-access-btn-text">']) {
         const { div, textHolder } = built(html);
         expect(textHolder.id, html).to.equal('pryv-access-btn-text');
         expect(div.querySelector('#pryv-access-btn').contains(textHolder), html).to.equal(true);
@@ -102,6 +102,7 @@ describe('[BHTX] sign-in button, content from the service', function () {
     }
 
     it('[BHBA] the service HTML is filtered, then names, usernames and messages are text', async () => {
+      delete globalThis.__pwned;
       const b = button(MARKUP + '<span id="pryv-access-btn-text"></span>');
       await b.init();
       const span = document.getElementById('bhSpan');
@@ -117,6 +118,9 @@ describe('[BHTX] sign-in button, content from the service', function () {
         expect(b.loginButtonText.children.length, state.status).to.equal(0);
         expect(b.loginButtonText.textContent, state.status).to.include(MARKUP);
       }
+      // in a browser: nothing ran (jsdom runs no handler anyway)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(globalThis.__pwned).to.equal(undefined);
     });
 
     it('[BHBB] an auth URL that is not http(s) is an error: nothing is opened', async () => {
@@ -142,6 +146,28 @@ describe('[BHTX] sign-in button, content from the service', function () {
       } finally {
         utils.fetchPost = saved.fetchPost;
         window.open = open;
+      }
+    });
+
+    it('[BHBE] neither does the answer of a poll, on the return of a sign-in by redirection', async () => {
+      for (const returnURL of [undefined, 'self#']) {
+        const b = button(STOCK);
+        await b.init();
+        b.authSettings.authRequest.returnURL = returnURL;
+        const opened = [];
+        const open = window.open;
+        window.open = (u) => { opened.push(u); return null; };
+        try {
+          b.auth.state = { status: AuthStates.NEED_SIGNIN, key: 'k', poll: 'https://x.y/poll', authUrl: 'javascript:alert(1)' };
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        } finally {
+          window.open = open;
+        }
+        expect(b.auth.state.status).to.equal(AuthStates.ERROR);
+        expect(b.auth.state.error.id).to.equal('invalid-auth-url');
+        expect(opened).to.deep.equal([]);
+        expect(Object.keys(window.sessionStorage).filter((k) => /authflow/.test(k))).to.deep.equal([]);
+        expect(window.location.href).to.not.include('alert');
       }
     });
 

@@ -28,7 +28,7 @@ const FALLBACK_HTML = '<div id="pryv-access-btn" class="pryv-access-btn-signin">
 function buildButton (html, doc) {
   const dropped = new Set();
   let fragment = rebuild(html, doc, dropped);
-  if (fragment.querySelector('#' + TEXT_ID) == null) {
+  if (!canShowText(fragment.querySelector('#' + TEXT_ID))) {
     console.warn('pryv: the sign-in button HTML of the service has no usable #' + TEXT_ID + ', using the built-in button');
     fragment = rebuild(FALLBACK_HTML, doc, new Set());
   }
@@ -36,6 +36,10 @@ function buildButton (html, doc) {
     console.warn('pryv: removed from the sign-in button HTML of the service: ' + Array.from(dropped).join(', '));
   }
   return { fragment, textHolder: fragment.querySelector('#' + TEXT_ID) };
+}
+
+function canShowText (element) {
+  return element != null && !['img', 'br'].includes(element.localName);
 }
 
 function rebuild (html, doc, dropped) {
@@ -58,7 +62,7 @@ function copyChildren (from, to, doc, dropped) {
       }
       const element = doc.createElement(name);
       for (const attribute of Array.from(node.attributes)) {
-        if (isAllowed(name, attribute, doc)) element.setAttribute(attribute.name, attribute.value);
+        if (isAllowed(name, attribute)) element.setAttribute(attribute.name, attribute.value);
         else dropped.add(attribute.name);
       }
       if (name === 'button') element.setAttribute('type', 'button');
@@ -68,8 +72,8 @@ function copyChildren (from, to, doc, dropped) {
   }
 }
 
-function isAllowed (elementName, { name, value }, doc) {
-  if (name === 'id') return value.startsWith('pryv-'); // never an id of the page around the button
-  if (name === 'src') return elementName === 'img' && utils.isHttpUrl(value, doc.baseURI);
+function isAllowed (elementName, { name, value }) {
+  if (name === 'id') return value.startsWith('pryv-access-btn'); // never an id of the page around the button
+  if (name === 'src') return elementName === 'img' && utils.isHttpUrl(value, ''); // absolute: no request to the page's own origin
   return ATTRIBUTES.includes(name) || /^aria-[a-z]+$/.test(name);
 }
