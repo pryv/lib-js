@@ -545,7 +545,19 @@ serviceInfoUrl = pryv.Browser.serviceInfoFromUrl() || defaultServiceInfoUrl;
 })();
 ```
 
+**Security.** The parameter lets whoever wrote the link choose the platform the person signs in to, its sign-in page and its stylesheet. An app serving known platforms should accept only these:
+
+```js
+serviceInfoUrl = pryv.Browser.serviceInfoFromUrl(null, {
+  allowedServiceInfoUrls: ['https://reg.pryv.me/service/info']
+}) || defaultServiceInfoUrl;
+```
+
+A value that is not an http(s) URL, or not in the list, is ignored (`undefined`).
+
 #### Visual assets
+
+The HTML of the sign-in button comes from the service: the default button keeps its structure (`div span p br b i strong em small img a button`), classes, styles, `pryv-` ids, `aria-*` attributes and http(s) images, and drops the rest (scripts, event handlers, links, SVG, embedded content), with a warning in the console. It must hold an element with id `pryv-access-btn-text`, else the built-in button is shown. A custom button must not write `loginButtonGetHTML()` with `innerHTML`. The stylesheet of the service styles the page that embeds the button.
 
 To customize visual assets, please refer to the [pryv.me assets repository](https://github.com/pryv/assets-pryv.me). For example, see [how to customize the sign-in button](https://github.com/pryv/assets-pryv.me/tree/master/lib-js/).
 
@@ -655,7 +667,7 @@ async onStateChange (state) {
       console.log('WARNING Unhandled state for Login: ' + state.status);
   }
   if (this.loginButtonText) {
-    this.loginButtonText.innerHTML = this.text;
+    this.loginButtonText.textContent = this.text; // never innerHTML: the text holds the service name and messages
   }
 }
 ```

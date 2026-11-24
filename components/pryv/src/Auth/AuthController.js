@@ -397,7 +397,7 @@ class AuthController {
    */
   accountUrl () {
     let base = this.settings.accountUrl || this.serviceInfo?.account || accountUrlFromAuthUrl(this._authUrl);
-    if (typeof base !== 'string' || base === '') return null;
+    if (!utils.isHttpUrl(base)) return null;
     base = base.replace(/\/+$/, '');
     // @ts-ignore - Service keeps the URL it was created with
     const serviceInfoUrl = this.service?._serviceInfoUrl;
@@ -504,6 +504,11 @@ class AuthController {
           // never in the message (it echoes the request's permissions and data).
           throw PryvError.fromApiResponse(response, body);
         }
+        // The button navigates to or opens this URL: nothing but a web page.
+        const authUrl = body?.authUrl || body?.url;
+        if (authUrl != null && !utils.isHttpUrl(authUrl)) {
+          throw Object.assign(new Error('Invalid auth URL'), { id: 'invalid-auth-url' });
+        }
         return body;
       } catch (e) {
         if (this._authFlowId !== flowId) throw e; // replaced while posting
@@ -511,7 +516,7 @@ class AuthController {
         this._switchPrevious = null;
         this.state = previous ?? {
           status: AuthStates.ERROR,
-          message: 'Requesting access',
+          message: e.id === 'invalid-auth-url' ? e.message : 'Requesting access',
           error: e
         };
         throw e; // forward error

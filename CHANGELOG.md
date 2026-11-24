@@ -4,13 +4,21 @@
 
 ## [Unreleased]
 
+### Security
+
+- **`pryv` sign-in button: content coming from the service is no longer written as HTML.** The button text (service name, username, messages) is written as text. The button HTML of the service's assets is filtered: structural elements, classes, styles and images are kept; scripts, event handlers, links and embedded content are removed, and the built-in button is used when the HTML has no `#pryv-access-btn-text` element. The sign-in and account pages are opened only when their URL is http(s). Before this release, a service information document could run script in the page embedding the button. This matters most for apps that let the page address choose the platform (`pryv.Browser.serviceInfoFromUrl()`): update, and pass the new `allowedServiceInfoUrls` option when your app serves known platforms. Custom button HTML: see Changed for what is filtered.
+- **`@pryv/cmc`: `requestAcceptUrl` / `requestAccept` and `requestScopeUpdateUrl` / `requestScopeUpdate` refuse an `authUrl` that is not http(s).**
+
 ### Added
 
+- **`pryv.Browser.serviceInfoFromUrl(url, { allowedServiceInfoUrls })`**: accept only the listed services from the page address.
 - **`pryv` typings for signed webhook calls.** `WebHook` gains the read-only `signed?: boolean`; `webhooks.create` answers a `WebHookWithSecret` (the webhook with its signing `secret?: string`, `whsec_...`, returned once); the new `webhooks.rotateSecret` (`{ id }`, answers a `WebHookWithSecret` with the new secret) is typed in `APICallMethods`. Types only, no runtime change. Both fields are absent from cores that do not sign webhook calls.
 - **`pryv` typings for webhook scopes:** `WebHook.scopes?` (`WebHookScopes`, a map of named `WebHookScope` `{ kind?: 'events' | 'streams' | 'accesses', query? }`, kind `WebHookScopeKind`), accepted by `webhooks.create` and `webhooks.update`.
 
 ### Changed
 
+- **BREAKING (sign-in button, custom HTML): what is filtered.** Elements other than `div span p br b i strong em small img a button` (inline `svg`, `iframe`, `form`, `input`, `style`, `script`, ...), `on*` handlers, `href`, `data-*`, ids not starting with `pryv-` and non-http(s) image sources are removed, with a warning in the console. Markup or HTML entities in a service name, a username or a message are shown literally. An auth request answered with a non-http(s) `authUrl` ends in `ERROR` (`error.id: 'invalid-auth-url'`); a non-http(s) account URL hides "Manage my account".
+- **BREAKING: `pryv.Browser.serviceInfoFromUrl()` answers `undefined` for a value that is not an http(s) URL.** Typing: `(url?, options?) => string | undefined`.
 - **`pryv` typings: `webhooks.create` params now match the API**, `{ url: string; scopes?: WebHookScopes }`. They were typed `{ webhook: { url?, state? } }`, a shape the server refuses (it takes `url` and `scopes` at the top level and refuses `state`). Type-only breaking change: TypeScript code that passed `webhook: { ... }` or `state` must pass `url` (and `scopes`) directly; the call it made was already refused at runtime. `webhooks.update` also accepts `scopes` in `update`, next to `state`.
 
 ## 3.19.0 - 2026-11-06

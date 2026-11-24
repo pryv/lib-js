@@ -111,7 +111,8 @@ class ServiceAssets {
   }
 
   /**
-   * Get HTML for Login Button
+   * Get HTML for Login Button, as the service sends it: untrusted, never write it
+   * with `innerHTML` (the default button rebuilds it from an allow-list)
    * @returns {Promise<string>} Promise resolving to HTML string
    */
   async loginButtonGetHTML () {

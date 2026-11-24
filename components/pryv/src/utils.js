@@ -291,6 +291,24 @@ const utils = module.exports = {
   },
 
   /**
+   * Whether a value is an http(s) URL: the only kind ever navigated to or
+   * opened, and loaded from the sign-in button HTML of a service.
+   * @memberof pryv.utils
+   * @private
+   * @param {*} value
+   * @param {string} [base] - base URL, for a relative value (default: the page)
+   * @returns {boolean}
+   */
+  isHttpUrl: function (value, base = globalThis.location?.href) {
+    if (typeof value !== 'string' || value === '') return false;
+    try {
+      return ['http:', 'https:'].includes(new URL(value, base || undefined).protocol);
+    } catch (e) {
+      return false;
+    }
+  },
+
+  /**
    * Extract query parameters from a URL
    * @memberof pryv.utils
    * @param {string} url - URL to parse

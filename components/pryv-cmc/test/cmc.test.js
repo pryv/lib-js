@@ -1768,6 +1768,13 @@ describe('[CMCL1] @pryv/cmc Level-1 protocol functions', function () {
       expect(u.searchParams.get('capabilityUrl')).to.equal(CAP_URL);
     });
 
+    it('[CMCAH9] an authUrl that is not http(s) is refused by both hand-offs, nothing is opened', function () {
+      for (const authUrl of ['javascript:alert(1)', 'data:text/html,x']) {
+        expect(() => cmc.requestAcceptUrl({ authUrl, pryvApi: PRYV_API, capabilityUrl: CAP_URL, scopeStreamId: SCOPE })).to.throw(/http\(s\)/);
+        expect(() => cmc.requestScopeUpdateUrl({ authUrl, pryvApi: PRYV_API, scopeRequestEventId: 'id' })).to.throw(/http\(s\)/);
+      }
+    });
+
     it('[CMCAH4] requestAcceptUrl throws when required options are missing', function () {
       expect(() => cmc.requestAcceptUrl({ pryvApi: PRYV_API, capabilityUrl: CAP_URL, scopeStreamId: SCOPE })).to.throw(/authUrl/);
       expect(() => cmc.requestAcceptUrl({ authUrl: BASE, pryvApi: PRYV_API, scopeStreamId: SCOPE })).to.throw(/capabilityUrl/);

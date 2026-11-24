@@ -2174,6 +2174,7 @@ function requestAcceptUrl (opts) {
   if (typeof opts.authUrl !== 'string' || opts.authUrl.length === 0) {
     throw new Error('requestAcceptUrl: opts.authUrl required');
   }
+  if (!isHttpUrl(opts.authUrl)) throw new Error('requestAcceptUrl: opts.authUrl must be an http(s) URL');
   if (typeof opts.capabilityUrl !== 'string' || opts.capabilityUrl.length === 0) {
     throw new Error('requestAcceptUrl: opts.capabilityUrl required');
   }
@@ -2199,6 +2200,15 @@ function requestAcceptUrl (opts) {
   }
   const sep = opts.authUrl.includes('?') ? '&' : '?';
   return opts.authUrl + sep + q.join('&');
+}
+
+/** A relative URL is one of the page's own origin. */
+function isHttpUrl (value) {
+  try {
+    return ['http:', 'https:'].includes(new URL(value, globalThis.location?.href).protocol);
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
@@ -2325,6 +2335,7 @@ function requestScopeUpdateUrl (opts) {
   if (typeof opts.authUrl !== 'string' || opts.authUrl.length === 0) {
     throw new Error('requestScopeUpdateUrl: opts.authUrl required');
   }
+  if (!isHttpUrl(opts.authUrl)) throw new Error('requestScopeUpdateUrl: opts.authUrl must be an http(s) URL');
   if (typeof opts.scopeRequestEventId !== 'string' || opts.scopeRequestEventId.length === 0) {
     throw new Error('requestScopeUpdateUrl: opts.scopeRequestEventId required');
   }

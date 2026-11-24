@@ -11,6 +11,7 @@ const Messages = require('../Auth/LoginMessages');
 const handoff = require('../lib/handoff');
 const pollUrls = require('../lib/pollUrls');
 const utils = require('../utils');
+const { buildButton } = require('./buttonHtml');
 
 /* global location */
 
@@ -122,7 +123,7 @@ class LoginButton {
     // @ts-ignore - loginButtonText is set by setupButton
     if (this.loginButtonText) {
       // @ts-ignore
-      this.loginButtonText.innerHTML = this.text;
+      this.loginButtonText.textContent = this.text;
     }
   }
 
@@ -732,8 +733,10 @@ function setupButton (loginBtn) {
  */
 async function loadAssets (loginBtn) {
   const assets = await loginBtn.service.assets();
-  loginBtn.loginButtonSpan.innerHTML = await assets.loginButtonGetHTML();
-  loginBtn.loginButtonText = document.getElementById('pryv-access-btn-text');
+  const { fragment, textHolder } = buildButton(await assets.loginButtonGetHTML(), document);
+  loginBtn.loginButtonSpan.textContent = '';
+  loginBtn.loginButtonSpan.appendChild(fragment);
+  loginBtn.loginButtonText = textHolder;
 }
 
 function getErrorMessage (loginButton, message) {

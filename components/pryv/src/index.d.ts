@@ -1740,7 +1740,15 @@ declare module 'pryv' {
     missingPermissions: MissingPermissions;
   }
 
-  export type getServiceInfoFromURL = (url: string) => string;
+  /**
+   * The service information URL named by the `pryvServiceInfoUrl` query parameter of
+   * `url` (default: the page), or undefined when absent, not an http(s) URL, or not
+   * one of `allowedServiceInfoUrls` (when given).
+   */
+  export type getServiceInfoFromURL = (
+    url?: string,
+    options?: { allowedServiceInfoUrls?: string[] }
+  ) => string | undefined;
 
   /**
    * Options of `pryv.Browser.CookieUtils`. Defaults: the whole site

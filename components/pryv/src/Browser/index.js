@@ -19,11 +19,26 @@ module.exports = {
   serviceInfoFromUrl: getServiceInfoFromURL
 };
 
+function isAbsoluteHttpUrl (value) {
+  return utils.isHttpUrl(value, '');
+}
+
 /**
- * Util to grab parameters from url query string
- * @param {*} url
+ * The service information URL named by the `pryvServiceInfoUrl` query parameter.
+ * The parameter lets whoever wrote the link choose the platform: an app serving
+ * known platforms should pass `allowedServiceInfoUrls`.
+ * @param {string} [url] - default: the URL of the page
+ * @param {Object} [options]
+ * @param {Array<string>} [options.allowedServiceInfoUrls] - accept these only
+ * @returns {string|undefined} undefined when absent, not an http(s) URL, or not allowed
  */
-function getServiceInfoFromURL (url) {
-  const queryParams = utils.getQueryParamsFromURL(url || window.location.href);
-  return queryParams.pryvServiceInfoUrl;
+function getServiceInfoFromURL (url, options) {
+  const value = utils.getQueryParamsFromURL(url || window.location.href).pryvServiceInfoUrl;
+  if (!isAbsoluteHttpUrl(value)) return undefined;
+  const allowed = options?.allowedServiceInfoUrls;
+  if (allowed != null && !allowed.some((a) => isAbsoluteHttpUrl(a) && new URL(a).href === new URL(value).href)) {
+    console.warn('pryv: the pryvServiceInfoUrl of the page address is not an allowed service');
+    return undefined;
+  }
+  return value;
 }
