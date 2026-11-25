@@ -83,6 +83,7 @@
           break;
         case pryv.Auth.AuthStates.NEED_SIGNIN:
           const loginUrl = state.authUrl || state.url; // .url is deprecated
+          if (!/^https?:\/\//i.test(loginUrl)) throw new Error('Invalid auth URL'); // it comes from the service
           if (this.authSettings.authRequest.returnURL) { // open on same page (no Popup)
             location.href = loginUrl;
             return;
@@ -94,7 +95,8 @@
           this.text = 'Signed in as ' + state.username;
           this.saveAuthorizationData({
             apiEndpoint: state.apiEndpoint,
-            username: state.username
+            username: state.username,
+            platform: this.auth.platform // not used under another platform
           });
           break;
         case pryv.Auth.AuthStates.SIGNOUT:
@@ -112,7 +114,7 @@
           console.log('WARNING Unhandled state for Login: ' + state.status);
       }
       if (this.loginButtonSpan) {
-        this.loginButtonSpan.innerHTML = this.text;
+        this.loginButtonSpan.textContent = this.text;
       }
     }
 
