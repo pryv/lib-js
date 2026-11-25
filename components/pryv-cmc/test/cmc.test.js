@@ -2513,6 +2513,36 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       expect(conn2.calls[0].params.content.request).to.not.have.property('allowUserChoice');
     });
 
+    it('[RVEK] createInvite writes requireVerifiedEmail only when given', async function () {
+      for (const requireVerifiedEmail of [true, false]) {
+        const conn = createStub();
+        await cmc.createInvite(conn, {
+          appCode: 'practice',
+          scopeStreamId: TEAM,
+          displayName: 'Practice',
+          requestedPermissions: [{ streamId: ':system:email', level: 'read' }],
+          requireVerifiedEmail
+        });
+        expect(conn.calls[0].params.content.request.requireVerifiedEmail).to.equal(requireVerifiedEmail);
+      }
+      const conn2 = createStub();
+      await cmc.createInvite(conn2, { appCode: 'practice', scopeStreamId: TEAM, displayName: 'Practice', requestedPermissions: [] });
+      expect(conn2.calls[0].params.content.request).to.not.have.property('requireVerifiedEmail');
+    });
+
+    it('[RVEL] readOffer reports requireVerifiedEmail (false when absent)', async function () {
+      const plain = await cmc.readOffer('https://c@x/', { pryv: fakePryvWithOffer({ request: { permissions: [] } }) });
+      expect(plain.requireVerifiedEmail).to.equal(false);
+      const requiring = await cmc.readOffer('https://c@x/', {
+        pryv: fakePryvWithOffer({ request: { permissions: [{ streamId: ':system:email', level: 'read' }], requireVerifiedEmail: true } })
+      });
+      expect(requiring.requireVerifiedEmail).to.equal(true);
+    });
+
+    it('[RVEM] errorIds names the refusal of an unproved address', function () {
+      expect(cmc.errorIds.VERIFIED_EMAIL_REQUIRED).to.equal('cmc-verified-email-required');
+    });
+
     it('[CMCMO2] readOffer reports accessType, membership and allowUserChoice', async function () {
       const plain = await cmc.readOffer('https://c@x/', { pryv: fakePryvWithOffer({ request: { permissions: [] } }) });
       expect(plain.accessType).to.equal('shared');

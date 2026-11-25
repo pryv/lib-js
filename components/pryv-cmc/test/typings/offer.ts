@@ -3,7 +3,7 @@
  * [BSD-3-Clause](https://github.com/pryv/lib-js/blob/master/LICENSE)
  */
 // Compiled (never run) by typings.test.js: readOffer's capability state.
-import { readOffer, acceptInvite, errorIds, CmcError } from '@pryv/cmc';
+import { createInvite, readOffer, acceptInvite, errorIds, CmcError } from '@pryv/cmc';
 import type { CapabilityState } from '@pryv/cmc';
 
 declare const conn: any;
@@ -11,6 +11,8 @@ const seen: unknown[] = [];
 
 export async function consumerSide (url: string): Promise<void> {
   const offer = await readOffer(url);
+  const needsProof: boolean = offer.requireVerifiedEmail;
+  seen.push(needsProof);
   const state: CapabilityState | null = offer.capabilityState;
   if (state === 'consumed' || state === 'invalidated') {
     seen.push('already answered');
@@ -22,5 +24,16 @@ export async function consumerSide (url: string): Promise<void> {
   } catch (err) {
     if (err instanceof CmcError && err.id === errorIds.CAPABILITY_CONSUMED) seen.push(err.id);
     if (err instanceof CmcError && err.id === errorIds.CAPABILITY_INVALIDATED) seen.push(err.id);
+    if (err instanceof CmcError && err.id === errorIds.VERIFIED_EMAIL_REQUIRED) seen.push(err.id);
   }
+}
+
+export async function providerSide (): Promise<void> {
+  await createInvite(conn, {
+    appCode: 'my-app',
+    scopeStreamId: ':_cmc:apps:my-app',
+    displayName: 'Dr. Alice',
+    requestedPermissions: [{ streamId: ':system:email', level: 'read' }],
+    requireVerifiedEmail: true
+  });
 }

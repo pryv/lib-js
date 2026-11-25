@@ -148,6 +148,7 @@ const invite = await cmc.createInvite(conn, {
   features: { chat: true, systemMessaging: true }
   // allowUserChoice: true,      // the accepter may grant a subset (default: all or nothing)
   // accessType: 'app',          // delegable grant: you may create sub-accesses from it
+  // requireVerifiedEmail: true, // accepting takes a proved email address, see below
 });
 // invite = { inviteEventId, capabilityUrl, mode, expiresAt (number | null) }
 
@@ -203,6 +204,8 @@ const update = await cmc.proposeScopeUpdate(conn, {
 //  must use `proposeScopeUpdate`.)
 ```
 
+**Requiring a verified email.** With `requireVerifiedEmail: true` the accept is refused while the accepting account's primary email address is not proved (`errorIds.VERIFIED_EMAIL_REQUIRED` on the accepter's side; the platform tells you nothing, and the link stays usable). `requestedPermissions` must ask `{ streamId: ':system:email', level: 'read' }`, with `mandatory: true` when `allowUserChoice` is set. Set it when you create the invite: a link carries the offer as it was then. The accepting platform enforces it when its service info has `features.cmcRequireVerifiedEmail`; an older one ignores it. **It is not a guarantee to you, even with the flag**: it is enforced on the accepter's side, stops ordinary clients and guides the person, but a person determined to can answer a link with a grant made by hand, and the address can change after the accept. Read the `verification/email` event next to the address through the grant each time you use the address.
+
 #### Consumer side (the accepter)
 
 > **Token class.** `consent/accept-cmc` and `consent/scope-update-cmc` writes require a **personal** access token server-side (Pryv.io rejects app/shared tokens with `400 invalid-operation` + `error.data.id === 'cmc-accept-requires-personal-token'`). If your app holds only an app/shared token, use the [accept hand-off helpers](#accept-hand-off-app-without-a-personal-token) instead of calling `acceptInvite` / `acceptScopeUpdate` directly.
@@ -212,7 +215,8 @@ const update = await cmc.proposeScopeUpdate(conn, {
 ```js
 const offer = await cmc.readOffer(capabilityUrl);
 // offer = { requester: { username, host, displayName }, capabilityState, consent,
-//           requestedPermissions, allowUserChoice, accessType, membership, mode, features }
+//           requestedPermissions, allowUserChoice, requireVerifiedEmail, accessType,
+//           membership, mode, features }
 // capabilityState: 'open', 'consumed' (a single-use link already accepted) or
 // 'invalidated' (withdrawn by the requester); null when it could not be read.
 // Show "already accepted" / "withdrawn" instead of a consent screen for the last two.

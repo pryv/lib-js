@@ -267,6 +267,10 @@ const errorIds = Object.freeze({
   HANDLER_MISSING_CAPABILITY_ID: 'cmc-handler-missing-capability-id',
   HANDLER_OFFER_MISSING_CAPABILITY_ID: 'cmc-handler-offer-missing-capability-id',
   OFFER_EMPTY_PERMISSIONS: 'cmc-offer-empty-permissions',
+  // The offer requires a verified email (`requireVerifiedEmail`) and the
+  // accepting account's primary address is not proved. The link stays open:
+  // accept again once it is.
+  VERIFIED_EMAIL_REQUIRED: 'cmc-verified-email-required',
   // Handler routing
   HANDLER_WRONG_TYPE: 'cmc-handler-wrong-type',
   HANDLER_THREW: 'cmc-handler-threw',
@@ -459,6 +463,13 @@ class CmcError extends Error {
  *   the grant) for least-privilege re-delegation with per-actor audit.
  * @param {boolean} [params.allowUserChoice=false] - true lets the accepter
  *   grant a subset of the permissions (except `mandatory` entries).
+ * @param {boolean} [params.requireVerifiedEmail=false] - true: the accept is
+ *   refused while the accepting account's primary email address is not proved
+ *   (`errorIds.VERIFIED_EMAIL_REQUIRED`). `requestedPermissions` must ask
+ *   `:system:email` at `read`, `mandatory` with `allowUserChoice`. Set it on
+ *   creation (a link carries the offer as it was then). A platform that
+ *   enforces it has `features.cmcRequireVerifiedEmail` in its service info;
+ *   an older one ignores it.
  * @param {string|null} [params.to=null]
  * @param {Object} [params.requesterMeta]
  * @returns {Promise<{inviteEventId:string, capabilityUrl:string, mode:string, expiresAt:number|null}>}
@@ -491,6 +502,7 @@ async function writeOffer (conn, params, extraRequest, fnName) {
   if (params.expiresAt !== undefined) request.expiresAt = params.expiresAt;
   if (params.accessType) request.accessType = params.accessType;
   if (typeof params.allowUserChoice === 'boolean') request.allowUserChoice = params.allowUserChoice;
+  if (typeof params.requireVerifiedEmail === 'boolean') request.requireVerifiedEmail = params.requireVerifiedEmail;
   if (extraRequest != null) Object.assign(request, extraRequest);
   const content = {
     to: params.to === undefined ? null : params.to,
@@ -1009,6 +1021,8 @@ async function readOffer (capabilityUrl, opts) {
     requestedPermissions: request.permissions || [],
     // The server treats a membership offer as allowing a subset whatever it says.
     allowUserChoice: membership || request.allowUserChoice === true,
+    // true: accepting takes a proved primary email address.
+    requireVerifiedEmail: request.requireVerifiedEmail === true,
     // 'app': the grant is delegable (the requester may create sub-accesses
     // from it); consent screens should say so.
     accessType: request.accessType === 'app' ? 'app' : 'shared',

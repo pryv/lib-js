@@ -136,6 +136,7 @@ declare module '@pryv/cmc' {
     readonly HANDLER_MISSING_CAPABILITY_URL: 'cmc-handler-missing-capability-url';
     readonly HANDLER_OFFER_MISSING_CAPABILITY_ID: 'cmc-handler-offer-missing-capability-id';
     readonly OFFER_EMPTY_PERMISSIONS: 'cmc-offer-empty-permissions';
+    readonly VERIFIED_EMAIL_REQUIRED: 'cmc-verified-email-required';
     readonly HANDLER_WRONG_TYPE: 'cmc-handler-wrong-type';
     readonly HANDLER_THREW: 'cmc-handler-threw';
     readonly HANDLER_OFFER_READ_FAILED: 'cmc-handler-offer-read-failed';
@@ -336,6 +337,14 @@ declare module '@pryv/cmc' {
      * true lets them grant a subset, except `mandatory` entries.
      */
     allowUserChoice?: boolean;
+    /**
+     * Default false. true: the accept is refused while the accepting account's
+     * primary email address is not proved (`errorIds.VERIFIED_EMAIL_REQUIRED`).
+     * `requestedPermissions` must ask `:system:email` at `read`, `mandatory`
+     * with `allowUserChoice`. A platform that enforces it has
+     * `features.cmcRequireVerifiedEmail` in its service info.
+     */
+    requireVerifiedEmail?: boolean;
     mode?: CapabilityMode;
     title?: Record<string, string>;
     description?: Record<string, string>;
@@ -417,6 +426,8 @@ declare module '@pryv/cmc' {
     requestedPermissions: OfferedPermission[];
     /** Whether the accepter may grant a subset (default false; always true for a membership). */
     allowUserChoice: boolean;
+    /** True when accepting takes a proved primary email address on the accepting account. */
+    requireVerifiedEmail: boolean;
     /** `'app'`: the grant would be delegable (the requester may create sub-accesses from it). */
     accessType: 'shared' | 'app';
     /** True when the requester asks to join the accepter's group (see `acceptMembership`). */
