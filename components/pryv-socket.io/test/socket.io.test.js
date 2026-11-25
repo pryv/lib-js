@@ -203,7 +203,7 @@ describe('[SKIX] Socket.IO', function () {
     async function openedSocketWithFakeIo () {
       const { socket, fake } = socketWithFakeIo();
       const opening = socket.open();
-      await new Promise((resolve) => setImmediate(resolve)); // username() resolved, fake created
+      await new Promise((resolve) => setTimeout(resolve, 0)); // username() resolved, fake created
       fake.emit('connect');
       await opening;
       return { socket, fake };
@@ -237,7 +237,7 @@ describe('[SKIX] Socket.IO', function () {
     it('[SFTC] a failed first connection: open() rejects and the failed socket is closed', async () => {
       const { socket, fake } = socketWithFakeIo();
       const opening = socket.open();
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       fake.emit('connect_error', new Error('refused'));
       let error = null;
       try { await opening; } catch (e) { error = e; }

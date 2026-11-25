@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## 3.20.0 - 2026-11-25
+
+`pryv` 3.20.0 (a minor: security fixes of the sign-in button, see Security, with the two behaviour changes marked BREAKING under Changed) and `@pryv/cmc` 3.23.1 (a patch: the `authUrl` check, see Security); `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` follow `pryv` to 3.20.0 with no change.
+
 ### Security
 
 - **`pryv` sign-in button: content coming from the service is no longer written as HTML.** The button text (service name, username, messages) is written as text. The button HTML of the service's assets is filtered: structural elements, classes, styles and images are kept; scripts, event handlers, links and embedded content are removed, and the built-in button is used when the HTML has no `#pryv-access-btn-text` element. The sign-in and account pages are opened only when their URL is http(s). Before this release, a service information document could run script in the page embedding the button. This matters most for apps that let the page address choose the platform (`pryv.Browser.serviceInfoFromUrl()`): update, and pass the new `allowedServiceInfoUrls` option when your app serves known platforms. Custom button HTML: see Changed for what is filtered.
@@ -14,7 +18,7 @@
 
 - **`AuthController.platform`** (read-only) and `StoredAuthorizationData.platform`: the platform of a sign-in.
 - **`pryv.Browser.serviceInfoFromUrl(url, { allowedServiceInfoUrls })`**: accept only the listed services from the page address (exact match, once normalised).
-- **`pryv` typings for signed webhook calls.** `WebHook` gains the read-only `signed?: boolean`; `webhooks.create` answers a `WebHookWithSecret` (the webhook with its signing `secret?: string`, `whsec_...`, returned once); the new `webhooks.rotateSecret` (`{ id }`, answers a `WebHookWithSecret` with the new secret) is typed in `APICallMethods`. Types only, no runtime change. Both fields are absent from cores that do not sign webhook calls.
+- **`pryv` typings for signed webhook calls.** `WebHook` gains the read-only `signed?: boolean`; `webhooks.create` answers a `WebHookWithSecret` (the webhook with its signing `secret?: string`, `whsec_...`, returned once); the new `webhooks.rotateSecret` (`{ id }`, answers a `WebHookWithSecret` with the new secret) is typed in `APICallMethods`. Types only, no runtime change. Both fields are absent from cores that do not sign webhook calls. Needs an open-pryv.io release after 2.0.0-rc.87.
 - **`pryv` typings for webhook scopes:** `WebHook.scopes?` (`WebHookScopes`, a map of named `WebHookScope` `{ kind?: 'events' | 'streams' | 'accesses', query? }`, kind `WebHookScopeKind`), accepted by `webhooks.create` and `webhooks.update`.
 
 ### Fixed
