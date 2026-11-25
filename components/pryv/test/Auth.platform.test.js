@@ -137,6 +137,12 @@ describe('[APLX] a stored sign-in is bound to its platform', function () {
       auth._saveProfiles(auth._readProfiles());
       expect([button.saves, button.deletes]).to.deep.equal([0, 0], 'an empty list of its own forgets nothing');
     }
+    // nor by a switch, nor by an access found refused
+    const other = customButton(Object.assign({ platform: P, profiles: [ALICE, BOB] }, ALICE));
+    const elsewhere = await controller(EVIL, other);
+    await elsewhere.switchTo('bob').catch(() => {});
+    elsewhere._saveProfiles(require('../src/Auth/ProfileStore').markUnavailable(elsewhere._readProfiles(), 'alice'));
+    expect([other.saves, other.deletes]).to.deep.equal([0, 0]);
     // its own platform forgets it, and keeps the others stamped
     const button = customButton(Object.assign({ platform: P, profiles: [ALICE, BOB] }, ALICE));
     const auth = await controller(P, button);
@@ -147,17 +153,25 @@ describe('[APLX] a stored sign-in is bound to its platform', function () {
     expect(button.stored).to.equal(null);
   });
 
-  it('[APL4] a sign-in stored by an earlier version is kept, unless the page address names the platform', async function () {
+  it('[APL4] a sign-in stored by an earlier version is kept, and used unless the page address names a platform, in any way', async function () {
     const own = encodeURIComponent(P);
     const pages = [
       ['http://localhost/app', true],
-      ['http://localhost/app?pryvServiceInfoUrl=' + encodeURIComponent(EVIL), true],
+      ['http://localhost/app?a=1#b', true],
+      ['http://localhost/app?pryvServiceInfoUrl=' + encodeURIComponent(EVIL), false],
       ['http://localhost/app?pryvServiceInfoUrl=' + own, false],
       ['http://localhost/app#pryvServiceInfoUrl=' + own, false],
       ['http://localhost/app?a=1&pryvServiceInfoUrl=' + own + '&b=2', false],
       ['http://localhost/app?pryvServiceInfoUrl=' + own + '&pryvServiceInfoUrl=' + encodeURIComponent(EVIL), false],
       ['http://localhost/app?pryvServiceInfoUrl=' + encodeURIComponent(EVIL) + '&pryvServiceInfoUrl=' + own, false],
-      ['http://localhost/app?pryvServiceInfoUrl=' + encodeURIComponent(P + '#x'), false]
+      ['http://localhost/app?pryvServiceInfoUrl=' + encodeURIComponent(P + '#x'), false],
+      // read by an app in another way than a strict parser would
+      ['http://localhost/app?pryvServiceInfoUrl=https://evil.example/a%2Fb#%zz', false],
+      ['http://localhost/app?pryvServiceInfoUrl=https://evil.example/a%252Fb', false],
+      ['http://localhost/app?pryvServiceInfoUrl=https://evil.example/in+fo', false],
+      ['http://localhost/app?pryvServiceInfoUr%6C=' + own, false],
+      ['http://localhost/app?PRYVSERVICEINFOURL=' + own, false],
+      ['http://localhost/app#/route?pryvServiceInfoUrl=' + own, false]
     ];
     for (const [page, kept] of pages) {
       setPage(page);
@@ -177,7 +191,8 @@ describe('[APLX] a stored sign-in is bound to its platform', function () {
     expect(stored.platform).to.equal(P);
     expect(stored.profiles.map((p) => p.username)).to.deep.equal(['bob', 'alice']);
     const cookies = global.document.cookie;
-    expect(cookies.split(encodeURIComponent(encodeURIComponent(P))).length + cookies.split(encodeURIComponent(P)).length).to.be.greaterThan(3, 'in both cookies');
+    const Cookies = require('../src/Browser/CookieUtils');
+    expect([Cookies.get(KEY).platform, Cookies.get(KEY + '-profiles').platform]).to.deep.equal([P, P]);
 
     const foreign = await loginButton(EVIL);
     expect(foreign.auth.state.status).to.equal(AuthStates.INITIALIZED);
@@ -207,6 +222,31 @@ describe('[APLX] a stored sign-in is bound to its platform', function () {
     expect(btn.getAuthorizationData().platform).to.equal(P);
     expect(btn.getAuthorizationData().profiles).to.have.lengthOf(2);
     await btn.deleteAuthorizationData();
+  });
+
+  it('[APLB] the default button: cookies of an earlier version are left as they are on a page whose address names a platform', async function () {
+    const btn = new LoginButton(settings(), service(P));
+    btn._cookieKey = KEY;
+    btn.saveAuthorizationData(Object.assign({ profiles: [ALICE, BOB] }, ALICE));
+    setPage('http://localhost/app?pryvServiceInfoUrl=' + encodeURIComponent(P));
+    const cookies = global.document.cookie;
+    const on = await loginButton(P);
+    expect(on.auth.state.status).to.equal(AuthStates.INITIALIZED);
+    await on.auth.signOut({ all: true });
+    expect(global.document.cookie).to.equal(cookies);
+    await btn.deleteAuthorizationData();
+  });
+
+  it('[APLC] a log out forgets a sign-in that names no platform (a custom button that stores it as before)', async function () {
+    setPage('http://localhost/app?pryvServiceInfoUrl=' + encodeURIComponent(P));
+    const button = customButton(null);
+    const auth = await controller(P, button);
+    auth.state = Object.assign({ status: AuthStates.AUTHORIZED }, ALICE);
+    button.stored = Object.assign({}, ALICE);
+    await auth.signOut();
+    expect([button.deletes, button.stored]).to.deep.equal([1, null]);
+    setPage('http://localhost/app');
+    expect((await controller(P, button)).state.status).to.equal(AuthStates.INITIALIZED);
   });
 
   it('[APL7] the two cookies are read together only when they name the same platform', async function () {
@@ -252,6 +292,19 @@ describe('[APLX] a stored sign-in is bound to its platform', function () {
     await btn.deleteAuthorizationData();
   });
 
+  it('[APLD] end to end: started under one platform, returned under another: refused', async function () {
+    const redirect = { authRequest: { requestingAppId: APP, requestedPermissions: [], returnURL: 'self#' } };
+    const there = await loginButton(EVIL, redirect);
+    await there.onStateChange({ status: 'NEED_SIGNIN', key: 'k1', poll: 'https://evil.example/poll/k1', authUrl: 'http://localhost/app#auth' });
+    const flow = global.window.sessionStorage.getItem(KEY + '-authflow');
+    setPage('http://localhost/app?pryvServiceInfoUrl=' + encodeURIComponent(P) + '&pryvKey=k1');
+    global.window.sessionStorage.setItem(KEY + '-authflow', flow);
+    const back = await loginButton(P, redirect);
+    expect(fetched).to.deep.equal([]);
+    expect(back.auth.state.error.id).to.equal('unexpected-auth-return');
+    expect(back.getAuthorizationData()).to.equal(undefined);
+  });
+
   it('[APL9] a redirect sign-in keeps the platform it was started under', async function () {
     const btn = await loginButton(P, { authRequest: { requestingAppId: APP, requestedPermissions: [], returnURL: 'self#' } });
     await btn.onStateChange({ status: 'NEED_SIGNIN', key: 'k2', poll: 'https://p.example/k2', authUrl: 'http://localhost/app#auth' });
@@ -268,7 +321,10 @@ describe('[APLX] a stored sign-in is bound to its platform', function () {
     const slow = customButton(null);
     slow.getAuthorizationData = async () => Object.assign({ platform: P }, ALICE);
     expect((await controller(P, slow)).state.status).to.equal(AuthStates.AUTHORIZED);
-    expect((await controller(EVIL, slow)).state.status).to.equal(AuthStates.INITIALIZED);
+    const foreign = await controller(EVIL, slow);
+    expect(foreign.state.status).to.equal(AuthStates.INITIALIZED);
+    await foreign.signOut({ all: true });
+    expect(slow.deletes).to.equal(0);
     // its sign-out still forgets it
     setPage('http://localhost/app?pryvServiceInfoUrl=' + encodeURIComponent(P));
     const signedIn = await controller(P, slow);

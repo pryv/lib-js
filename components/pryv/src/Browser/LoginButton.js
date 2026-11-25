@@ -265,7 +265,8 @@ class LoginButton {
       const flow = readAuthFlow(this._cookieKey);
       // A request started under another platform is another request: its auth
       // page must not choose the platform its answer is stored for.
-      if (flow == null || flow.key !== key || typeof flow.poll !== 'string' || flow.platform !== authController.platform) {
+      if (flow == null || flow.key !== key || typeof flow.poll !== 'string' ||
+          typeof flow.platform !== 'string' || flow.platform !== authController.platform) {
         console.warn('pryv: ignoring a sign-in return for a request this page did not start');
         if (!signedIn) {
           authController.state = {
@@ -367,7 +368,7 @@ class LoginButton {
     const key = retrieveKey(window.location.href);
     if (key == null) return false;
     const flow = readAuthFlow(this._cookieKey);
-    return flow != null && flow.key === key && flow.platform === this.auth?.platform;
+    return flow != null && flow.key === key && typeof flow.platform === 'string' && flow.platform === this.auth?.platform;
   }
 }
 

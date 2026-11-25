@@ -4,10 +4,7 @@
  */
 // Compiled (never run) by typings.test.js: a custom button stores the platform
 // of its controller with the sign-in.
-import type pryv from 'pryv';
-
-type Controller = pryv.Auth.AuthController;
-type Stored = pryv.Auth.StoredAuthorizationData;
+import type { AuthController as Controller, StoredAuthorizationData as Stored } from 'pryv';
 
 export function toStore (auth: Controller, apiEndpoint: string, username: string): Stored {
   return { apiEndpoint, username, platform: auth.platform };

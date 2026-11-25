@@ -16,10 +16,12 @@ const utils = require('../src/utils');
 // `<cookieKey>-authflow` before navigating to the auth page; `seedFlow`
 // stands for that start.
 const COOKIE_KEY = 'pryv-libjs-test-app';
-const THIS = { _cookieKey: COOKIE_KEY };
+// the platform of the fake controllers, kept with the flow they started
+const PLATFORM = 'https://p.test.local/service/info';
+const THIS = { _cookieKey: COOKIE_KEY, auth: { platform: PLATFORM } };
 
 // `platform`: what a real button stores (that of `fakeService`, without a URL).
-function seedFlow (key, poll, cookieKey = COOKIE_KEY, platform = undefined) {
+function seedFlow (key, poll, cookieKey = COOKIE_KEY, platform = PLATFORM) {
   global.window.sessionStorage.setItem(cookieKey + '-authflow', JSON.stringify({ key, poll, authUrl: 'https://ui.test.local/access/access.html?key=' + key, platform }));
 }
 
@@ -62,7 +64,7 @@ describe('[LBRU] LoginButton URL cleanup after redirect', function () {
 
   it('[LBR1] strips consumed prYv* params from the visible URL', async () => {
     seedFlow('key123', 'http://localhost/poll/key123');
-    const authController = { serviceInfo: {} };
+    const authController = { platform: PLATFORM, serviceInfo: {} };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expect(authController.state).to.eql({ status: 'ACCEPTED' });
     expect(global.window.location.href).to.equal('http://localhost/app?x=1');
@@ -163,7 +165,7 @@ describe('[LBRH] LoginButton redirect return with credential hand-off', function
     seedFlow('flowkey1', 'https://reg.test.local/access/flowkey1');
     f.poll(HANDOFF_BODY);
     f.retrieve(() => ({ secret: { username: 'alice', token: 'tok-123', apiEndpoint: 'https://alice.test.local/' } }));
-    const authController = { serviceInfo: { access: 'https://reg.test.local/access/' } };
+    const authController = { platform: PLATFORM, serviceInfo: { access: 'https://reg.test.local/access/' } };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
 
     const state = authController.state;
@@ -184,7 +186,7 @@ describe('[LBRH] LoginButton redirect return with credential hand-off', function
     seedFlow('flowkey2', 'https://reg.test.local/access/flowkey2');
     f.poll(HANDOFF_BODY);
     f.retrieve(() => ({ secret: { username: 'alice', token: 'tok-456', apiEndpoint: 'https://alice.test.local/' } }));
-    const authController = { serviceInfo: { access: 'https://reg.test.local/access/' } };
+    const authController = { platform: PLATFORM, serviceInfo: { access: 'https://reg.test.local/access/' } };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
 
     expect(authController.state.token).to.equal('tok-456');
@@ -239,6 +241,7 @@ describe('[LBRH] LoginButton redirect return with credential hand-off', function
     const serviceInfo = { access: 'https://reg.test.local/access/' };
     const states = [];
     const authController = {
+      platform: PLATFORM,
       serviceInfo,
       get state () { return states[states.length - 1]; },
       set state (s) { states.push(s); }
@@ -319,7 +322,7 @@ describe('[LBRH] LoginButton redirect return with credential hand-off', function
     seedFlow('flowkey3', 'https://reg.test.local/access/flowkey3');
     f.poll(HANDOFF_BODY);
     f.retrieve(() => { throw new Error('shared-secret-unavailable'); });
-    const authController = { serviceInfo: { access: 'https://reg.test.local/access/' } };
+    const authController = { platform: PLATFORM, serviceInfo: { access: 'https://reg.test.local/access/' } };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
 
     expect(authController.state.status).to.equal('ERROR');
@@ -380,7 +383,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
   it('[LBRB2] a return with no flow started on this page is refused without any fetch', async () => {
     f.setPage('http://localhost/app?prYvpoll=https%3A%2F%2Fevil.example%2Fpoll&prYvkey=x&prYvstatus=ACCEPTED');
     f.poll(ACCEPTED);
-    const authController = { serviceInfo: SERVICE_INFO };
+    const authController = { platform: PLATFORM, serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expectRefused(authController);
     // nothing from the page URL reaches the poll-URL map either
@@ -391,7 +394,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     f.setPage('http://localhost/app?prYvpoll=https%3A%2F%2Faccess.mc.example.com%2Faccess%2Fk2&prYvkey=k2');
     seedFlow('k1', CORE_POLL);
     f.poll(ACCEPTED);
-    const authController = { serviceInfo: SERVICE_INFO };
+    const authController = { platform: PLATFORM, serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expectRefused(authController);
     expect(storedFlow().key).to.equal('k1');
@@ -402,7 +405,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     f.setPage('http://localhost/app?prYvpoll=https%3A%2F%2Fevil.example%2Faccess%2Fk1&prYvkey=k1');
     seedFlow('k1', CORE_POLL);
     f.poll(ACCEPTED);
-    const authController = { serviceInfo: SERVICE_INFO };
+    const authController = { platform: PLATFORM, serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expect(f.fetchCalls).to.deep.equal([CORE_POLL]);
     expect(authController.state.status).to.equal('ACCEPTED');
@@ -413,7 +416,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     f.setPage('http://localhost/app?pryvKey=k1');
     seedFlow('k1', CORE_POLL);
     f.poll(ACCEPTED);
-    const authController = { serviceInfo: SERVICE_INFO };
+    const authController = { platform: PLATFORM, serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expect(f.fetchCalls).to.deep.equal([CORE_POLL]);
     expect(authController.state.status).to.equal('ACCEPTED');
@@ -423,7 +426,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     f.setPage('http://localhost/app?prYvkey=k1');
     seedFlow('k1', 'https://api2.example.com/reg/access/k1');
     f.poll({ status: 'ACCEPTED', username: 'alice', apiEndpoint: 'https://tok@api2.example.com/alice/' });
-    const authController = { serviceInfo: SERVICE_INFO };
+    const authController = { platform: PLATFORM, serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expect(authController.state.status).to.equal('ACCEPTED');
     expect(authController.state.apiEndpoint).to.equal('https://tok@api2.example.com/alice/');
@@ -446,9 +449,9 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
 
   it('[LBRB9] a stored flow without a usable poll URL is refused without any fetch', async () => {
     f.setPage('http://localhost/app?prYvkey=k1');
-    global.window.sessionStorage.setItem(COOKIE_KEY + '-authflow', JSON.stringify({ key: 'k1' }));
+    global.window.sessionStorage.setItem(COOKIE_KEY + '-authflow', JSON.stringify({ key: 'k1', platform: PLATFORM }));
     f.poll(ACCEPTED);
-    const authController = { serviceInfo: SERVICE_INFO };
+    const authController = { platform: PLATFORM, serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expectRefused(authController);
   });
@@ -503,7 +506,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     f.setPage('http://localhost/app?prYvkey=k-rem');
     seedFlow('k-rem', 'https://core-b.mc.example.com/reg/access/k-rem');
     f.poll(ACCEPTED);
-    await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, { serviceInfo: SERVICE_INFO });
+    await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, { platform: PLATFORM, serviceInfo: SERVICE_INFO });
     expect(pollUrls.lookup('k-rem')).to.equal('https://core-b.mc.example.com/reg/access/k-rem');
   });
 
@@ -519,11 +522,11 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
 
   it('[LBRBC] leftover one-shot params without a key are cleaned; a malformed escape does not break init', async () => {
     f.setPage('http://localhost/app?x=1&prYvstatus=ACCEPTED');
-    await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, { serviceInfo: SERVICE_INFO });
+    await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, { platform: PLATFORM, serviceInfo: SERVICE_INFO });
     expect(global.window.location.href).to.equal('http://localhost/app?x=1');
 
     f.setPage('http://localhost/app?q=100%&prYvkey=k1');
-    const authController = { serviceInfo: SERVICE_INFO };
+    const authController = { platform: PLATFORM, serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expect(authController.state.error.id).to.equal('unexpected-auth-return');
   });
@@ -545,7 +548,7 @@ describe('[LBRB] LoginButton redirect return is bound to the flow this page star
     expect(navigated).to.have.length(1);
 
     f.poll(ACCEPTED);
-    const authController = { serviceInfo: SERVICE_INFO };
+    const authController = { platform: PLATFORM, serviceInfo: SERVICE_INFO };
     await LoginButton.prototype.finishAuthProcessAfterRedirection.call(THIS, authController);
     expectRefused(authController);
   });

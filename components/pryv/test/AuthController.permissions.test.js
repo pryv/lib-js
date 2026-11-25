@@ -308,8 +308,8 @@ describe('[ALPM] auto-login and the requested permissions', function () {
       global.navigator = { userAgent: 'Safari' };
       try {
         const cookieKey = 'pryv-libjs-alpm-app';
-        global.window.sessionStorage.setItem(cookieKey + '-authflow', JSON.stringify({ key: 'alk1', poll: 'https://reg.test.local/access/alk1' }));
-        const authController = { serviceInfo: SERVICE_INFO, _requestedPermissionsFingerprint: () => CURRENT_FP };
+        global.window.sessionStorage.setItem(cookieKey + '-authflow', JSON.stringify({ key: 'alk1', poll: 'https://reg.test.local/access/alk1', platform: 'https://p.test.local/i' }));
+        const authController = { platform: 'https://p.test.local/i', serviceInfo: SERVICE_INFO, _requestedPermissionsFingerprint: () => CURRENT_FP };
         await LoginButton.prototype.finishAuthProcessAfterRedirection.call({ _cookieKey: cookieKey }, authController);
         expect(authController.state.status).to.equal(AuthStates.AUTHORIZED);
         expect(authController.state.profile).to.deep.equal({ username: 'alice', apiEndpoint: 'https://tok2@alice.test.local/', permissionsFingerprint: CURRENT_FP });
@@ -370,10 +370,10 @@ describe('[ALPM] auto-login and the requested permissions', function () {
       global.location = dom.window.location;
       global.navigator = { userAgent: 'Safari' };
       if (flow != null) global.window.sessionStorage.setItem(cookieKey + '-authflow', JSON.stringify(flow));
-      return LoginButton.prototype.hasAuthReturn.call({ _cookieKey: cookieKey });
+      return LoginButton.prototype.hasAuthReturn.call({ _cookieKey: cookieKey, auth: { platform: 'https://p.test.local/i' } });
     };
     try {
-      const flow = { key: 'alk1', poll: 'https://reg.test.local/access/alk1' };
+      const flow = { key: 'alk1', poll: 'https://reg.test.local/access/alk1', platform: 'https://p.test.local/i' };
       expect(check('http://localhost/app?pryvKey=alk1', flow)).to.equal(true);
       expect(check('http://localhost/app?prYvpoll=https%3A%2F%2Freg.test.local%2Faccess%2Falk1&prYvstatus=ACCEPTED', flow)).to.equal(true);
       expect(check('http://localhost/app?pryvKey=other', flow)).to.equal(false);

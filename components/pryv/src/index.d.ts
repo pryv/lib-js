@@ -1571,6 +1571,7 @@ declare module 'pryv' {
 
   export type CustomLoginButton = {
     init?: () => Promise<Service>;
+    /** What the button stored, synchronously. */
     getAuthorizationData(): StoredAuthorizationData;
     onStateChange(state: AuthStatePayload): Promise<void>;
     onClick(): void;

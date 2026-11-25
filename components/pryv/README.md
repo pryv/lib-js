@@ -618,7 +618,7 @@ getAuthorizationData () {
 }
 ```
 
-A button that stores the sign-in itself adds `platform: this.auth.platform` to it (as below): the controller uses, changes and forgets stored data of its own platform only.
+A button that stores the sign-in itself adds `platform: this.auth.platform` to it (as below): the controller uses, changes and forgets stored data of its own platform only. Without it, the stored sign-in is not used on any page whose address names a platform (`pryvServiceInfoUrl`). The three storage methods are synchronous.
 
 ##### Authentication lifecycle
 
@@ -769,11 +769,11 @@ The default button's cookies (`pryv-libjs-<appId>` and `pryv-libjs-<appId>-profi
 
 ##### Stored sign-in and the platform
 
-The stored sign-in names its platform: the service information URL given to `setupAuth()` (or to `new Service()`), available as `auth.platform`. It is used, listed, changed and forgotten only under that same URL, so a link naming another platform neither restores nor touches it.
+The stored sign-in names its platform: the service information URL given to `setupAuth()` (or to `new Service()`), available as `auth.platform`. The controller uses, lists, changes and forgets it only under that same URL, so a link naming another platform neither restores nor touches it.
 
 - The URL is compared once normalised, without its fragment: path, trailing slash and query count. Another spelling of the same platform has its own stored sign-in. Nothing in the service information itself is compared, as another platform can claim any of it. An app whose URL changes asks its users to sign in once.
 - One platform is remembered per app id: completing a sign-in under another one replaces it.
-- A sign-in stored by a version before 3.20 names no platform. It is kept, except on a page whose address names the platform in use (`pryvServiceInfoUrl`, in the query or the fragment): sign in again there. An app that lets a link choose the platform by another means, or removes the parameter before `setupAuth()`, keeps it in every case.
+- A sign-in stored by a version before 3.20, or by a custom button that does not store `platform`, names none. It is kept, and used except on a page whose address names a platform (`pryvServiceInfoUrl` anywhere in it). An app that lets a link choose the platform by another means, or removes the parameter before `setupAuth()`, uses it in every case.
 - A sign-in by redirection is completed only under the platform that started it.
 - Service information given inline (no URL) is the app's own: it is told apart by its `access`, which protects nothing if the app builds it from untrusted input.
 - The three storage methods of a custom button are covered as soon as its data holds `platform`. Credentials an app keeps elsewhere are not.

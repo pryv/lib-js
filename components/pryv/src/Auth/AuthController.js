@@ -47,9 +47,9 @@ class AuthController {
      */
     this.platform = ProfileStore.platformOf(service);
     // A sign-in stored by an earlier version names no platform: it is taken as
-    // this one's, unless the page address chose this platform (a link could
-    // then name any). Read once, the address may be cleaned later.
-    this._adoptUnbound = !pageNamesPlatform(this.platform);
+    // this one's, unless the page address names a platform (a link could name
+    // any). Read once, the address may be cleaned later.
+    this._adoptUnbound = !pageNamesAPlatform();
 
     // probably remove
     this.languageCode = this.settings.authRequest.languageCode || 'en';
@@ -222,6 +222,9 @@ class AuthController {
     const all = options?.all === true;
     cancelAuthFlow(this);
     const store = this._readProfiles();
+    const loginButton = this.loginButton;
+    // read before the listeners of SIGNOUT; a storage may answer later
+    const stored = loginButton?.getAuthorizationData?.();
     // during a switch, the account being left
     const current = this.state?.username ?? this.state?.from;
     this._signingOut = true;
@@ -235,11 +238,13 @@ class AuthController {
     // clearing with `undefined` would wipe an unrelated concurrent flow.
     if (this._authFlowKey != null) handoff.cacheClear(this._authFlowKey);
     const others = current == null ? store.profiles : ProfileStore.remove(store, current).profiles;
-    const loginButton = this.loginButton;
     if (!all && others.length > 0 && loginButton != null && typeof loginButton.saveAuthorizationData === 'function') {
       this._saveProfiles(Object.assign({}, store, { active: null, profiles: others }));
-    } else if (loginButton != null && typeof loginButton.deleteAuthorizationData === 'function' && this._storageIsOurs()) {
-      await loginButton.deleteAuthorizationData();
+    } else if (loginButton != null && typeof loginButton.deleteAuthorizationData === 'function') {
+      const raw = await stored;
+      // The sign-in of another platform is left alone. One that names none is
+      // the one being left, whoever stored it, when an account was signed in.
+      if (this._isOurs(raw) || (current != null && raw.platform == null)) await loginButton.deleteAuthorizationData();
     }
     await this.init();
   }
@@ -379,7 +384,7 @@ class AuthController {
     }
   }
 
-  /** @private */
+  /** @internal The remembered accounts of this platform. */
   _readProfiles () {
     const loginButton = this.loginButton;
     if (loginButton == null || typeof loginButton.getAuthorizationData !== 'function') return ProfileStore.read(null);
@@ -391,13 +396,9 @@ class AuthController {
     return ProfileStore.forPlatform(raw, this.platform, this._adoptUnbound);
   }
 
-  /** @private False when the storage holds the sign-in of another platform, which is then left alone. */
-  _storageIsOurs () {
-    const loginButton = this.loginButton;
-    if (loginButton == null || typeof loginButton.getAuthorizationData !== 'function') return true;
-    const raw = loginButton.getAuthorizationData();
-    // nothing stored, or a storage that answers later: nothing known of another platform
-    if (raw == null || typeof raw !== 'object' || typeof raw.then === 'function') return true;
+  /** @private False when the storage holds (`raw`) the sign-in of another platform, or may. */
+  _isOurs (raw) {
+    if (raw == null || typeof raw !== 'object' || raw.deleted === true) return true;
     return this._stored(raw) != null;
   }
 
@@ -407,7 +408,10 @@ class AuthController {
     if (loginButton == null || typeof loginButton.saveAuthorizationData !== 'function') return;
     const data = ProfileStore.write(Object.assign({}, store, { platform: this.platform }));
     if (data == null && typeof loginButton.deleteAuthorizationData === 'function') {
-      if (this._storageIsOurs()) loginButton.deleteAuthorizationData();
+      /** @type {any} */
+      const raw = loginButton.getAuthorizationData();
+      // what cannot be seen yet (a storage that answers later) is not forgotten
+      if (typeof raw?.then !== 'function' && this._isOurs(raw)) loginButton.deleteAuthorizationData();
     } else if (data != null) {
       loginButton.saveAuthorizationData(data);
     }
@@ -730,19 +734,15 @@ function accountUrlFromAuthUrl (authUrl) {
 }
 
 /**
- * Whether the page address (query or fragment) names `platform` as the service
- * to use, with any of its `pryvServiceInfoUrl`.
- * @param {string} platform
+ * Whether the page address names a platform (a `pryvServiceInfoUrl` anywhere in
+ * it, escaped or not). Not which one: an app may read the address in another
+ * way than this would (escapes, `+`, letter case, repeated parameters).
  */
-function pageNamesPlatform (platform) {
+function pageNamesAPlatform () {
   const href = globalThis.location?.href;
   if (typeof href !== 'string') return false;
-  for (const match of href.matchAll(/[?#&]pryvServiceInfoUrl=([^&#]*)/g)) {
-    let value = match[1];
-    try { value = decodeURIComponent(value); } catch (e) { /* taken as is */ }
-    if (ProfileStore.normalizedUrl(value) === platform) return true;
-  }
-  return false;
+  const unescaped = href.replace(/%([0-9a-f]{2})/gi, (m, hex) => String.fromCharCode(parseInt(hex, 16)));
+  return /pryvServiceInfoUrl/i.test(href) || /pryvServiceInfoUrl/i.test(unescaped);
 }
 
 async function checkAutoLogin (authController) {

@@ -33,6 +33,20 @@ describe('[ACNX] AuthController', function () {
     global.navigator = { userAgent: 'Safari' };
   });
 
+  // The browser harness names a platform in its address: there, the stored
+  // sign-ins these tests write (without a platform, as an earlier version)
+  // would not be used. See Auth.platform.test.js.
+  let harnessUrl = null;
+  before(() => {
+    if (!/pryvServiceInfoUrl/.test(window.location.href)) return;
+    harnessUrl = window.location.href;
+    window.history.replaceState(null, '', window.location.pathname);
+  });
+
+  after(() => {
+    if (harnessUrl != null) window.history.replaceState(null, '', harnessUrl);
+  });
+
   after(async () => {
     if (!cleanupDom) return;
     delete global.document;

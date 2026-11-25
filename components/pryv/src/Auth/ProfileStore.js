@@ -61,7 +61,8 @@ function carriesToken (apiEndpoint) {
  */
 function platformOf (service) {
   const url = service?._serviceInfoUrl;
-  if (typeof url === 'string' && url !== '') return normalizedUrl(url);
+  // the truthiness `Service.info()` fetches on; a URL object is one too
+  if (url) return normalizedUrl(String(url));
   return 'inline:' + (service?.infoSync?.()?.access ?? '');
 }
 
@@ -73,7 +74,7 @@ function platformOf (service) {
  */
 function normalizedUrl (url) {
   try {
-    const normalized = new URL(url, globalThis.location?.href);
+    const normalized = new URL(url, globalThis.document?.baseURI ?? globalThis.location?.href);
     normalized.hash = '';
     return normalized.href;
   } catch (e) {
@@ -90,7 +91,7 @@ function normalizedUrl (url) {
  */
 function forPlatform (stored, platform, adoptUnbound) {
   if (stored == null || typeof stored !== 'object') return null;
-  if (typeof stored.platform === 'string') return stored.platform === platform ? stored : null;
+  if (stored.platform != null) return stored.platform === platform ? stored : null;
   return adoptUnbound ? stored : null;
 }
 

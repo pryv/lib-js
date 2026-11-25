@@ -94,6 +94,7 @@ describe('[PSTX] ProfileStore', function () {
     for (const other of [base + '/', base + '?a=1', 'https://p.example/service/infos', 'https://q.example/service/info', 'http://p.example/service/info', 'https://p.example:8443/service/info']) {
       expect(of(other), other).to.not.equal(base);
     }
+    expect(of(new URL(base + '#x'))).to.equal(base, 'a URL object');
     expect(of(null)).to.equal('inline:https://a.example/');
     expect(of('', null)).to.equal('inline:https://a.example/');
     expect(ProfileStore.platformOf({ infoSync: () => null })).to.equal('inline:');
@@ -111,6 +112,7 @@ describe('[PSTX] ProfileStore', function () {
       expect(ProfileStore.forPlatform(null, 'https://p.example/i', adopt)).to.equal(null);
       expect(ProfileStore.forPlatform('text', 'https://p.example/i', adopt)).to.equal(null);
     }
+    expect(ProfileStore.forPlatform(Object.assign({ platform: 1 }, parent), 'https://p.example/i', true)).to.equal(null);
     expect(ProfileStore.forPlatform(parent, 'https://p.example/i', true)).to.equal(parent);
     expect(ProfileStore.forPlatform(parent, 'https://p.example/i', false)).to.equal(null);
   });
