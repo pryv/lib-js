@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## 3.24.0 - 2026-11-25
+
+`@pryv/cmc` 3.24.0 (a minor: an invite can require a verified email address); `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` stay at 3.20.0.
+
 ### Added
 
 - **`@pryv/cmc`: an invite can require a verified email address.** `createInvite({ requireVerifiedEmail: true })` (the permissions must ask `:system:email` at `read`), `readOffer().requireVerifiedEmail`, `errorIds.VERIFIED_EMAIL_REQUIRED`. Enforced by a platform whose service info has `features.cmcRequireVerifiedEmail`; an older one ignores it (pryv/open-pryv.io#173).
