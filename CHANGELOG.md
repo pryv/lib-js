@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`@pryv/cmc` `errorIds`: `ACCEPT_WITHDRAWN`** (`'cmc-accept-withdrawn'`, on the accepter's accept trigger: a queued retry of an accept whose consent ended meanwhile, or that a newer accept for the same counterparty and scope replaced; nothing is minted or delivered again) **and `INCOMING_ACCEPT_SUPERSEDED`** (`'cmc-incoming-accept-superseded'`, on the requester's core: an accept received before the one the relationship is paired with, refused when retried). Both are permanent, never retried, and returned by open-pryv.io 2.0.0-rc.90 and later. Also in the `CmcErrorId` typing.
+
 ## 3.24.0 - 2026-11-25
 
 `@pryv/cmc` 3.24.0 (a minor: an invite can require a verified email address); `pryv`, `@pryv/socket.io`, `@pryv/monitor`, `@pryv/delegation` and `@pryv/encryption` stay at 3.20.0.

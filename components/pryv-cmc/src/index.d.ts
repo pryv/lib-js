@@ -121,7 +121,9 @@ declare module '@pryv/cmc' {
     | 'cmc-member-access-token-missing'
     | 'cmc-membership-offer-expected'
     | 'cmc-offer-stream-not-offerable'
-    | 'cmc-invalidate-link-scope-mismatch';
+    | 'cmc-invalidate-link-scope-mismatch'
+    | 'cmc-accept-withdrawn'
+    | 'cmc-incoming-accept-superseded';
 
   export const errorIds: {
     readonly CAPABILITY_INVALID: 'cmc-capability-invalid';
@@ -184,6 +186,10 @@ declare module '@pryv/cmc' {
     readonly OFFER_STREAM_NOT_OFFERABLE: 'cmc-offer-stream-not-offerable';
     /** `consent/invalidate-link-cmc` written on a stream that does not hold the invite it names. */
     readonly INVALIDATE_LINK_SCOPE_MISMATCH: 'cmc-invalidate-link-scope-mismatch';
+    /** On the accepter's accept trigger: a queued retry of an accept whose consent ended meanwhile, or that a newer accept for the same counterparty and scope replaced; nothing is minted or delivered, never retried (open-pryv.io 2.0.0-rc.90+). */
+    readonly ACCEPT_WITHDRAWN: 'cmc-accept-withdrawn';
+    /** Requester side: an accept received before the one the relationship is paired with (a later accept replaced it), refused when retried, never retried (open-pryv.io 2.0.0-rc.90+). */
+    readonly INCOMING_ACCEPT_SUPERSEDED: 'cmc-incoming-accept-superseded';
     readonly PROTECTED_EVENT_WRITE: 'cmc-protected-event-write';
     readonly REVOKE_DELETE_FAILED: 'cmc-revoke-delete-failed';
     readonly REVOKE_DELIVERY_FAILED: 'cmc-revoke-delivery-failed';

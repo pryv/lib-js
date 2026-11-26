@@ -2489,6 +2489,11 @@ describe('[CMCM] @pryv/cmc group membership', function () {
       expect(cmc.errorIds).to.not.have.property('OFFER_PERMISSIONS_INVALID');
       expect(Object.values(cmc.errorIds)).to.not.include('cmc-offer-permissions-invalid');
     });
+
+    it('[CMCMC4] mirrors the accept-retry refusal ids of the server catalogue', function () {
+      expect(cmc.errorIds.ACCEPT_WITHDRAWN).to.equal('cmc-accept-withdrawn');
+      expect(cmc.errorIds.INCOMING_ACCEPT_SUPERSEDED).to.equal('cmc-incoming-accept-superseded');
+    });
   });
 
   describe('[CMCMO] offers: createInvite, readOffer, acceptInvite', function () {

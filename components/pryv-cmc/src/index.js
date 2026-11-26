@@ -354,6 +354,16 @@ const errorIds = Object.freeze({
   // `consent/invalidate-link-cmc` written on a stream that does not hold the
   // invite it names (or the invite cannot be found).
   INVALIDATE_LINK_SCOPE_MISMATCH: 'cmc-invalidate-link-scope-mismatch',
+  // Accepter side, on the accept trigger: a queued retry of an accept whose
+  // consent ended meanwhile (its accept carries `withdrawal` or was deleted)
+  // or that a newer accept for the same counterparty and scope replaced.
+  // Nothing is minted or delivered again; never retried (open-pryv.io
+  // 2.0.0-rc.90+).
+  ACCEPT_WITHDRAWN: 'cmc-accept-withdrawn',
+  // Requester side: an accept received before the one the relationship is
+  // paired with (a later accept replaced it), refused when retried; never
+  // retried (open-pryv.io 2.0.0-rc.90+).
+  INCOMING_ACCEPT_SUPERSEDED: 'cmc-incoming-accept-superseded',
   // An app or shared access wrote a protocol record outside the plugin's own
   // paths (answered 403 `forbidden` with this `data.id`).
   PROTECTED_EVENT_WRITE: 'cmc-protected-event-write',
