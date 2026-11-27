@@ -73,12 +73,14 @@ describe('[PERX] PryvError', function () {
   });
 
   it('[PERJ] innerObject and response are readable but not enumerable (not printed with the error)', function () {
-    const error = new PryvError('Outer', { id: 'invalid-access-token', secret: 'tok' });
-    error.response = { body: { secret: 'tok' }, status: 401 };
+    // A value no stack trace can contain (the stack holds the checkout path).
+    const secret = 'perj-inner-secret-9c41';
+    const error = new PryvError('Outer', { id: 'invalid-access-token', secret });
+    error.response = { body: { secret }, status: 401 };
     expect(error.innerObject.id).to.equal('invalid-access-token');
     expect(error.response.status).to.equal(401);
     expect(Object.keys(error)).to.not.include('innerObject');
     expect(Object.keys(error)).to.not.include('response');
-    expect(require('util').inspect(error)).to.not.include('tok');
+    expect(require('util').inspect(error)).to.not.include(secret);
   });
 });
