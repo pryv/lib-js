@@ -47,4 +47,8 @@ describe('[TYPX] typings', function () {
   it('[TYP4] the platform of a controller and of a stored sign-in', function () {
     expect(compile('storedPlatform.ts')).to.deep.equal([]);
   });
+
+  it('[TYP5] account emails: entries of account.get / account.update, optional verificationCooldownUntil', function () {
+    expect(compile('accountEmails.ts')).to.deep.equal([]);
+  });
 });

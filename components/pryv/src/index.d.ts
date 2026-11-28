@@ -90,6 +90,25 @@ declare module 'pryv' {
     accessToken: string;
   };
 
+  /** How an account email's ownership was established (`null`: stored before provenance was recorded). */
+  export type AccountEmailVerificationMethod = 'email-link' | 'email-code' | 'operator' | 'registration' | 'legacy' | null;
+
+  /** An entry of `AccountInformation.emails`. */
+  export type AccountEmail = {
+    value: string;
+    primary: boolean;
+    status: 'pending' | 'verified';
+    /** When the address was proved, `null` when it was not. */
+    verifiedAt: Timestamp | null;
+    verificationMethod: AccountEmailVerificationMethod;
+    /**
+     * Pryv timestamp until which a new verification mail for the address is refused;
+     * `null` when no cooldown runs. A refused resend's `retryAfterSeconds` stays authoritative.
+     * Absent from cores up to 2.0.0-rc.92.
+     */
+    verificationCooldownUntil?: Timestamp | null;
+  };
+
   export type AccountInformation = {
     username: string;
     email: string;
@@ -98,6 +117,8 @@ declare module 'pryv' {
       dbDocuments: number;
       attachedFiles: number;
     };
+    /** The account's email addresses (cores with multiple emails per account). */
+    emails?: AccountEmail[];
   };
 
   /** Trigger of an account auto-deletion schedule. */

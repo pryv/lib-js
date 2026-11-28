@@ -67,6 +67,9 @@ declare module '@pryv/delegation' {
     hostSlug: string;
   };
 
+  /** How a relationship was made, set by the core (read-only). */
+  export type DelegationOrigin = 'created' | 'attached';
+
   /** An entry of `listDelegates()` (B side). */
   export type DelegateRecord = {
     relId: string;
@@ -75,6 +78,8 @@ declare module '@pryv/delegation' {
     requestedAt: number;
     activatedAt?: number | null;
     lastTokenIssuedAt?: number | null;
+    /** How the relationship was made: `'created'` (the delegate created the account) or `'attached'` (the account invited an existing delegate). Absent from cores up to 2.0.0-rc.92. */
+    origin?: DelegationOrigin;
   };
 
   /** An entry of `listControlled()` (A side). */
@@ -84,6 +89,8 @@ declare module '@pryv/delegation' {
     status: RelationshipStatus;
     requestedAt: number;
     activatedAt?: number | null;
+    /** How the relationship was made: `'created'` (the delegate created the account) or `'attached'` (the account invited an existing delegate). Absent from cores up to 2.0.0-rc.92. */
+    origin?: DelegationOrigin;
   };
 
   /**

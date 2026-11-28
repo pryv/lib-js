@@ -7,6 +7,8 @@
 ### Added
 
 - **`@pryv/cmc` `errorIds`: `ACCEPT_WITHDRAWN`** (`'cmc-accept-withdrawn'`, on the accepter's accept trigger: a queued retry of an accept whose consent ended meanwhile, or that a newer accept for the same counterparty and scope replaced; nothing is minted or delivered again) **and `INCOMING_ACCEPT_SUPERSEDED`** (`'cmc-incoming-accept-superseded'`, on the requester's core: an accept received before the one the relationship is paired with, refused when retried). Both are permanent, never retried, and returned by open-pryv.io 2.0.0-rc.90 and later. Also in the `CmcErrorId` typing.
+- **`@pryv/delegation` typings: `DelegateRecord.origin` and `ControlledRecord.origin`** (`DelegationOrigin`, `'created' | 'attached'`): how the relationship was made, set by the core (open-pryv.io issue 174). Optional: absent from cores up to 2.0.0-rc.92. Types only, no runtime change.
+- **`pryv` typings: `AccountInformation.emails`** (`AccountEmail[]`, the result of `account.get` / `account.update` on cores with multiple emails per account): `value`, `primary`, `status` (`'pending' | 'verified'`), `verifiedAt`, `verificationMethod` (`AccountEmailVerificationMethod`) and `verificationCooldownUntil` (the time until which a new verification mail for the address is refused, `null` when no cooldown runs; optional, absent from cores up to 2.0.0-rc.92; a refused resend's `retryAfterSeconds` stays authoritative). Types only, no runtime change.
 
 ## 3.24.0 - 2026-11-25
 
